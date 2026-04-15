@@ -28,7 +28,7 @@ class GCNNet(nn.Module):
         self.latent_dim = model_args.latent_dim
         self.mlp_hidden = model_args.mlp_hidden
         self.emb_normlize = model_args.emb_normlize
-        self.device = torch.device('cuda:'+str(model_args.device))
+        self.device = torch.device(model_args.device)
         self.num_gnn_layers = len(self.latent_dim)
         self.num_mlp_layers = len(self.mlp_hidden) + 1
         self.dense_dim = self.latent_dim[-1]

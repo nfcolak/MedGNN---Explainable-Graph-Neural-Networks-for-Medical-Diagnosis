@@ -27,7 +27,7 @@ class GATParser():# hyper-parameter for gat model
 class ModelParser():
     def __init__(self):
         super().__init__()
-        self.device: int = 0
+        self.device = 'cpu'
         self.model_name: str = 'gcn'
         self.checkpoint: str = './checkpoint'
         self.concate: bool = False                     # whether to concate the gnn features before mlp
@@ -49,10 +49,7 @@ class ModelParser():
 
     def process_args(self) -> None:
         # self.device = torch.device('cpu')
-        if torch.cuda.is_available():
-            self.device = torch.device('cuda', self.device_id)
-        else:
-            pass
+        self.device = 'cpu'
 
 
 class MCTSParser(DataParser, ModelParser):
