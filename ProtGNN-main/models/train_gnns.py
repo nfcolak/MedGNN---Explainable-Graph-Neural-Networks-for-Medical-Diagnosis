@@ -15,6 +15,70 @@ from my_mcts import mcts
 from tqdm import tqdm
 
 
+def _compute_class_weights(labels, num_classes):
+    class_counts = np.bincount(labels, minlength=num_classes).astype(np.float32)
+    nonzero_mask = class_counts > 0
+    class_weights = np.ones(num_classes, dtype=np.float32)
+    class_weights[nonzero_mask] = len(labels) / (num_classes * class_counts[nonzero_mask])
+    return torch.tensor(class_weights, dtype=torch.float32, device=model_args.device), class_counts
+
+
+def _average_precision_score(y_true, y_score):
+    y_true = np.asarray(y_true, dtype=np.int64)
+    y_score = np.asarray(y_score, dtype=np.float64)
+    positive_count = y_true.sum()
+    if positive_count == 0:
+        return float('nan')
+
+    order = np.argsort(-y_score)
+    y_true = y_true[order]
+    tp = np.cumsum(y_true)
+    fp = np.cumsum(1 - y_true)
+    precision = tp / np.maximum(tp + fp, 1)
+    recall = tp / positive_count
+
+    precision = np.concatenate(([1.0], precision))
+    recall = np.concatenate(([0.0], recall))
+    return float(np.sum((recall[1:] - recall[:-1]) * precision[1:]))
+
+
+def _collect_binary_metrics(labels, predictions, positive_scores):
+    labels = np.asarray(labels, dtype=np.int64)
+    predictions = np.asarray(predictions, dtype=np.int64)
+    positive_scores = np.asarray(positive_scores, dtype=np.float64)
+
+    tp = int(np.sum((predictions == 1) & (labels == 1)))
+    tn = int(np.sum((predictions == 0) & (labels == 0)))
+    fp = int(np.sum((predictions == 1) & (labels == 0)))
+    fn = int(np.sum((predictions == 0) & (labels == 1)))
+
+    precision = tp / max(tp + fp, 1)
+    recall = tp / max(tp + fn, 1)
+    specificity = tn / max(tn + fp, 1)
+    f1 = 0.0 if precision + recall == 0 else 2 * precision * recall / (precision + recall)
+    balanced_acc = (recall + specificity) / 2
+    ap = _average_precision_score(labels, positive_scores)
+
+    return {
+        'precision': precision,
+        'recall': recall,
+        'specificity': specificity,
+        'f1': f1,
+        'balanced_acc': balanced_acc,
+        'pr_auc': ap,
+    }
+
+
+def _format_eval_metrics(split_name, metrics):
+    msg = f"{split_name} | Loss: {metrics['loss']:.3f} | Acc: {metrics['acc']:.3f}"
+    if 'pr_auc' in metrics:
+        msg += (
+            f" | PR-AUC: {metrics['pr_auc']:.3f} | Recall: {metrics['recall']:.3f}"
+            f" | Precision: {metrics['precision']:.3f} | F1: {metrics['f1']:.3f}"
+        )
+    return msg
+
+
 def warm_only(model):
     for p in model.model.gnn_layers.parameters():
         p.requires_grad = True
@@ -112,7 +176,13 @@ def train_GC(clst, sep):
     dataset = get_dataset(data_args.dataset_dir, data_args.dataset_name, task=data_args.task)
     input_dim = dataset.num_node_features
     output_dim = int(dataset.num_classes)
-    dataloader = get_dataloader(dataset, train_args.batch_size, data_split_ratio=data_args.data_split_ratio)
+    dataloader = get_dataloader(
+        dataset,
+        train_args.batch_size,
+        random_split_flag=data_args.random_split,
+        data_split_ratio=data_args.data_split_ratio,
+        seed=data_args.seed,
+    )
 
     print('start training model==================')
     gnnNets = GnnNets(input_dim, output_dim, model_args)
@@ -120,7 +190,9 @@ def train_GC(clst, sep):
     #checkpoint = torch.load(os.path.join(ckpt_dir, f'{model_args.model_name}_best.pth'))
     #gnnNets.update_state_dict(checkpoint['net'])
     gnnNets.to_device()
-    criterion = nn.CrossEntropyLoss()
+    train_labels = np.array([int(dataset[idx].y.view(-1)[0].item()) for idx in dataloader['train'].dataset.indices])
+    class_weights, class_counts = _compute_class_weights(train_labels, output_dim)
+    criterion = nn.CrossEntropyLoss(weight=class_weights)
     optimizer = Adam(gnnNets.parameters(), lr=train_args.learning_rate, weight_decay=train_args.weight_decay)
 
     avg_nodes = 0.0
@@ -132,9 +204,11 @@ def train_GC(clst, sep):
     avg_edge_index /= len(dataset)
     print(f"graphs {len(dataset)}, avg_nodes{avg_nodes :.4f}, avg_edge_index_{avg_edge_index/2 :.4f}")
 
-    best_acc = 0.0
+    best_metric = float('-inf')
     data_size = len(dataset)
     print(f'The total num of dataset is {data_size}')
+    print(f'Train class counts: {class_counts.astype(int).tolist()}')
+    print(f'Class weights: {[round(weight, 4) for weight in class_weights.detach().cpu().tolist()]}')
 
     # save path for model
     if not os.path.isdir('checkpoint'):
@@ -217,13 +291,16 @@ def train_GC(clst, sep):
 
         # report eval msg
         eval_state = evaluate_GC(dataloader['eval'], gnnNets, criterion)
-        print(f"Eval Epoch: {epoch} | Loss: {eval_state['loss']:.3f} | Acc: {eval_state['acc']:.3f}")
-        append_record("Eval epoch {:2d}, loss: {:.3f}, acc: {:.3f}".format(epoch, eval_state['loss'], eval_state['acc']))
+        print(f"Eval Epoch: {epoch} | {_format_eval_metrics('Eval', eval_state)}")
+        append_record(_format_eval_metrics(f"Eval epoch {epoch:2d}", eval_state))
 
         # only save the best model
-        is_best = (eval_state['acc'] > best_acc)
+        selection_metric = eval_state.get('pr_auc', eval_state['acc'])
+        if np.isnan(selection_metric):
+            selection_metric = eval_state['acc']
+        is_best = selection_metric > best_metric
 
-        if eval_state['acc'] > best_acc:
+        if selection_metric > best_metric:
             early_stop_count = 0
         else:
             early_stop_count += 1
@@ -232,24 +309,30 @@ def train_GC(clst, sep):
             break
 
         if is_best:
-            best_acc = eval_state['acc']
+            best_metric = selection_metric
             early_stop_count = 0
         if is_best or epoch % train_args.save_epoch == 0:
-            save_best(ckpt_dir, epoch, gnnNets, model_args.model_name, eval_state['acc'], is_best)
+            save_best(ckpt_dir, epoch, gnnNets, model_args.model_name, selection_metric, is_best)
 
-    print(f"The best validation accuracy is {best_acc}.")
+    if output_dim == 2:
+        print(f"The best validation PR-AUC is {best_metric:.3f}.")
+    else:
+        print(f"The best validation accuracy is {best_metric:.3f}.")
     # report test msg
     checkpoint = torch.load(os.path.join(ckpt_dir, f'{model_args.model_name}_best.pth'))
     gnnNets.update_state_dict(checkpoint['net'])
     test_state, _, _ = test_GC(dataloader['test'], gnnNets, criterion)
-    print(f"Test: | Loss: {test_state['loss']:.3f} | Acc: {test_state['acc']:.3f}")
-    append_record("loss: {:.3f}, acc: {:.3f}".format(test_state['loss'], test_state['acc']))
+    print(f"Test: | {_format_eval_metrics('Test', test_state)}")
+    append_record(_format_eval_metrics("Test", test_state))
 
 
 
 def evaluate_GC(eval_dataloader, gnnNets, criterion):
     acc = []
     loss_list = []
+    labels = []
+    predictions = []
+    pred_probs = []
     gnnNets.eval()
     with torch.no_grad():
         for batch in eval_dataloader:
@@ -260,9 +343,19 @@ def evaluate_GC(eval_dataloader, gnnNets, criterion):
             _, prediction = torch.max(logits, -1)
             loss_list.append(loss.item())
             acc.append(prediction.eq(batch.y).cpu().numpy())
+            labels.append(batch.y.cpu())
+            predictions.append(prediction.cpu())
+            pred_probs.append(probs.cpu())
 
-        eval_state = {'loss': np.average(loss_list),
-                      'acc': np.concatenate(acc, axis=0).mean()}
+        eval_state = {
+            'loss': np.average(loss_list),
+            'acc': np.concatenate(acc, axis=0).mean(),
+        }
+        labels = torch.cat(labels, dim=0).numpy()
+        predictions = torch.cat(predictions, dim=0).numpy()
+        pred_probs = torch.cat(pred_probs, dim=0).numpy()
+        if pred_probs.ndim == 2 and pred_probs.shape[1] == 2:
+            eval_state.update(_collect_binary_metrics(labels, predictions, pred_probs[:, 1]))
 
     return eval_state
 
@@ -272,6 +365,7 @@ def test_GC(test_dataloader, gnnNets, criterion):
     loss_list = []
     pred_probs = []
     predictions = []
+    labels = []
     gnnNets.eval()
     with torch.no_grad():
         for batch in test_dataloader:
@@ -284,12 +378,18 @@ def test_GC(test_dataloader, gnnNets, criterion):
             acc.append(prediction.eq(batch.y).cpu().numpy())
             predictions.append(prediction)
             pred_probs.append(probs)
+            labels.append(batch.y)
 
-    test_state = {'loss': np.average(loss_list),
-                  'acc': np.average(np.concatenate(acc, axis=0).mean())}
+    test_state = {
+        'loss': np.average(loss_list),
+        'acc': np.average(np.concatenate(acc, axis=0).mean()),
+    }
 
     pred_probs = torch.cat(pred_probs, dim=0).cpu().detach().numpy()
     predictions = torch.cat(predictions, dim=0).cpu().detach().numpy()
+    labels = torch.cat(labels, dim=0).cpu().detach().numpy()
+    if pred_probs.ndim == 2 and pred_probs.shape[1] == 2:
+        test_state.update(_collect_binary_metrics(labels, predictions, pred_probs[:, 1]))
     return test_state, pred_probs, predictions
 
 

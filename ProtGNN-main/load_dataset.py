@@ -11,6 +11,43 @@ from torch.utils.data import random_split, Subset
 from torch_geometric.data import Data, InMemoryDataset, DataLoader
 
 
+def _extract_graph_labels(dataset):
+    labels = []
+    for idx in range(len(dataset)):
+        label = dataset[idx].y
+        if torch.is_tensor(label):
+            label = label.view(-1)[0].item()
+        labels.append(int(label))
+    return np.array(labels)
+
+
+def _stratified_split_indices(labels, split_sizes, seed):
+    rng = np.random.default_rng(seed)
+    indices = np.arange(len(labels))
+    train_indices, eval_indices, test_indices = [], [], []
+
+    for label in np.unique(labels):
+        label_indices = indices[labels == label]
+        rng.shuffle(label_indices)
+        label_count = len(label_indices)
+
+        train_count = int(round(split_sizes[0] * label_count))
+        eval_count = int(round(split_sizes[1] * label_count))
+
+        if train_count + eval_count > label_count:
+            eval_count = max(0, label_count - train_count)
+        test_count = label_count - train_count - eval_count
+
+        train_indices.extend(label_indices[:train_count].tolist())
+        eval_indices.extend(label_indices[train_count:train_count + eval_count].tolist())
+        test_indices.extend(label_indices[train_count + eval_count:train_count + eval_count + test_count].tolist())
+
+    rng.shuffle(train_indices)
+    rng.shuffle(eval_indices)
+    rng.shuffle(test_indices)
+    return train_indices, eval_indices, test_indices
+
+
 def undirected_graph(data):
     data.edge_index = torch.cat([torch.stack([data.edge_index[1], data.edge_index[0]], dim=0),
                                  data.edge_index], dim=1)
@@ -360,12 +397,11 @@ def get_dataloader(dataset, batch_size, random_split_flag=True, data_split_ratio
         eval = Subset(dataset, dev_indices)
         test = Subset(dataset, test_indices)
     else:
-        num_train = int(data_split_ratio[0] * len(dataset))
-        num_eval = int(data_split_ratio[1] * len(dataset))
-        num_test = len(dataset) - num_train - num_eval
-
-        train, eval, test = random_split(dataset, lengths=[num_train, num_eval, num_test],
-                                         generator=torch.Generator().manual_seed(seed))
+        labels = _extract_graph_labels(dataset)
+        train_indices, eval_indices, test_indices = _stratified_split_indices(labels, data_split_ratio, seed)
+        train = Subset(dataset, train_indices)
+        eval = Subset(dataset, eval_indices)
+        test = Subset(dataset, test_indices)
 
     dataloader = dict()
     dataloader['train'] = DataLoader(train, batch_size=batch_size, shuffle=True)
