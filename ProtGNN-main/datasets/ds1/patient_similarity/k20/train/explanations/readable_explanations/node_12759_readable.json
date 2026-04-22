@@ -1,0 +1,271 @@
+{
+  "node_idx": 12759,
+  "true_label": 0,
+  "pred_label": 0,
+  "correct": true,
+  "positive_probability": 0.4191008508205414,
+  "num_subgraph_nodes": 349,
+  "num_subgraph_edges": 1916,
+  "top_explanations": {
+    "GradExplainer": {
+      "top_features_by_abs_score": [
+        {
+          "feature": "comorbidity_score",
+          "score": -0.0035602482967078686,
+          "abs_score": 0.0035602482967078686
+        },
+        {
+          "feature": "age",
+          "score": -0.0033248853869736195,
+          "abs_score": 0.0033248853869736195
+        },
+        {
+          "feature": "apache_score",
+          "score": -0.003235788084566593,
+          "abs_score": 0.003235788084566593
+        },
+        {
+          "feature": "sofa_score",
+          "score": -0.0030728764832019806,
+          "abs_score": 0.0030728764832019806
+        },
+        {
+          "feature": "ventilation_required",
+          "score": -0.003052125684916973,
+          "abs_score": 0.003052125684916973
+        },
+        {
+          "feature": "sepsis_flag",
+          "score": -0.0020693030674010515,
+          "abs_score": 0.0020693030674010515
+        },
+        {
+          "feature": "vasopressor_used",
+          "score": -0.0020367430988699198,
+          "abs_score": 0.0020367430988699198
+        },
+        {
+          "feature": "heart_rate_max",
+          "score": 0.0011837152997031808,
+          "abs_score": 0.0011837152997031808
+        }
+      ],
+      "top_subgraph_nodes_by_abs_score": [
+        {
+          "subgraph_node_rank": 123,
+          "score": -0.04342058300971985,
+          "abs_score": 0.04342058300971985
+        },
+        {
+          "subgraph_node_rank": 0,
+          "score": -0.037921641021966934,
+          "abs_score": 0.037921641021966934
+        },
+        {
+          "subgraph_node_rank": 327,
+          "score": -0.03208243474364281,
+          "abs_score": 0.03208243474364281
+        },
+        {
+          "subgraph_node_rank": 176,
+          "score": -0.031328972429037094,
+          "abs_score": 0.031328972429037094
+        },
+        {
+          "subgraph_node_rank": 83,
+          "score": -0.03079548291862011,
+          "abs_score": 0.03079548291862011
+        },
+        {
+          "subgraph_node_rank": 114,
+          "score": -0.030354805290699005,
+          "abs_score": 0.030354805290699005
+        },
+        {
+          "subgraph_node_rank": 174,
+          "score": -0.029833119362592697,
+          "abs_score": 0.029833119362592697
+        },
+        {
+          "subgraph_node_rank": 342,
+          "score": -0.02944045141339302,
+          "abs_score": 0.02944045141339302
+        }
+      ]
+    },
+    "IntegratedGradExplainer": {
+      "top_features_by_abs_score": [
+        {
+          "feature": "vasopressor_used",
+          "score": 0.0027199378237128258,
+          "abs_score": 0.0027199378237128258
+        },
+        {
+          "feature": "sofa_score",
+          "score": -0.0024615004658699036,
+          "abs_score": 0.0024615004658699036
+        },
+        {
+          "feature": "age",
+          "score": 0.0021390863694250584,
+          "abs_score": 0.0021390863694250584
+        },
+        {
+          "feature": "ventilation_required",
+          "score": -0.0014531307388097048,
+          "abs_score": 0.0014531307388097048
+        },
+        {
+          "feature": "comorbidity_score",
+          "score": -0.001290195737965405,
+          "abs_score": 0.001290195737965405
+        },
+        {
+          "feature": "apache_score",
+          "score": 0.0010326949413865805,
+          "abs_score": 0.0010326949413865805
+        },
+        {
+          "feature": "length_of_stay_days",
+          "score": 0.0008400038932450116,
+          "abs_score": 0.0008400038932450116
+        },
+        {
+          "feature": "sepsis_flag",
+          "score": -0.0007309788488782942,
+          "abs_score": 0.0007309788488782942
+        }
+      ],
+      "top_subgraph_nodes_by_abs_score": [
+        {
+          "subgraph_node_rank": 159,
+          "score": -0.015276025980710983,
+          "abs_score": 0.015276025980710983
+        },
+        {
+          "subgraph_node_rank": 54,
+          "score": -0.013861439190804958,
+          "abs_score": 0.013861439190804958
+        },
+        {
+          "subgraph_node_rank": 339,
+          "score": -0.013183008879423141,
+          "abs_score": 0.013183008879423141
+        },
+        {
+          "subgraph_node_rank": 111,
+          "score": -0.011314836330711842,
+          "abs_score": 0.011314836330711842
+        },
+        {
+          "subgraph_node_rank": 160,
+          "score": -0.011220310814678669,
+          "abs_score": 0.011220310814678669
+        },
+        {
+          "subgraph_node_rank": 211,
+          "score": -0.010919179767370224,
+          "abs_score": 0.010919179767370224
+        },
+        {
+          "subgraph_node_rank": 164,
+          "score": -0.010644158348441124,
+          "abs_score": 0.010644158348441124
+        },
+        {
+          "subgraph_node_rank": 323,
+          "score": -0.010616009123623371,
+          "abs_score": 0.010616009123623371
+        }
+      ]
+    },
+    "GNNExplainer": {
+      "top_features_by_abs_score": [
+        {
+          "feature": "systolic_bp_std",
+          "score": 0.16027654707431793,
+          "abs_score": 0.16027654707431793
+        },
+        {
+          "feature": "temperature_mean",
+          "score": 0.1595764458179474,
+          "abs_score": 0.1595764458179474
+        },
+        {
+          "feature": "respiratory_rate_mean",
+          "score": 0.15483802556991577,
+          "abs_score": 0.15483802556991577
+        },
+        {
+          "feature": "sofa_score",
+          "score": 0.15423043072223663,
+          "abs_score": 0.15423043072223663
+        },
+        {
+          "feature": "admission_type",
+          "score": 0.152858167886734,
+          "abs_score": 0.152858167886734
+        },
+        {
+          "feature": "ventilation_required",
+          "score": 0.1520988643169403,
+          "abs_score": 0.1520988643169403
+        },
+        {
+          "feature": "systolic_bp_mean",
+          "score": 0.15139523148536682,
+          "abs_score": 0.15139523148536682
+        },
+        {
+          "feature": "apache_score",
+          "score": 0.1512686014175415,
+          "abs_score": 0.1512686014175415
+        }
+      ],
+      "top_subgraph_nodes_by_abs_score": [
+        {
+          "subgraph_node_rank": 0,
+          "score": 0.0,
+          "abs_score": 0.0
+        },
+        {
+          "subgraph_node_rank": 1,
+          "score": 0.0,
+          "abs_score": 0.0
+        },
+        {
+          "subgraph_node_rank": 2,
+          "score": 0.0,
+          "abs_score": 0.0
+        },
+        {
+          "subgraph_node_rank": 3,
+          "score": 0.0,
+          "abs_score": 0.0
+        },
+        {
+          "subgraph_node_rank": 4,
+          "score": 0.0,
+          "abs_score": 0.0
+        },
+        {
+          "subgraph_node_rank": 5,
+          "score": 0.0,
+          "abs_score": 0.0
+        },
+        {
+          "subgraph_node_rank": 6,
+          "score": 0.0,
+          "abs_score": 0.0
+        },
+        {
+          "subgraph_node_rank": 7,
+          "score": 0.0,
+          "abs_score": 0.0
+        }
+      ],
+      "edge_mask_nonzero_count": 0,
+      "edge_mask_positive_count": 0
+    }
+  }
+}

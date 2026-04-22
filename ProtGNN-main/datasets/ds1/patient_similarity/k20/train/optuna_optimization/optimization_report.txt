@@ -1,0 +1,39 @@
+Patient Similarity Hyperparameter Optimization
+====================================================
+Tool: Optuna 4.8.0
+Trials: 25
+Objective: maximize validation PR-AUC
+Best trial: 24
+Best validation PR-AUC: 0.360291
+Best params: {"model_type": "gcn", "hidden_dim": 32, "num_layers": 4, "dropout": 0.3128838334867663, "lr": 0.0021424445566577553, "weight_decay": 0.0004344458019971471, "edge_weight_mode": "threshold_0_7"}
+
+Test metrics, threshold=0.5
+  acc: 0.588
+  precision: 0.3061797752808989
+  recall: 0.6374269005847953
+  specificity: 0.5734024179620034
+  f1: 0.4136622390891841
+  balanced_acc: 0.6054146592733993
+  pr_auc: 0.3369107175487595
+  roc_auc: 0.6463983072245958
+  tp: 218
+  tn: 664
+  fp: 494
+  fn: 124
+  threshold: 0.5
+  loss: 0.6580002307891846
+
+Test metrics, threshold tuned on validation F1
+  acc: 0.6193333333333333
+  precision: 0.3168
+  recall: 0.5789473684210527
+  specificity: 0.6312607944732297
+  f1: 0.40951396070320584
+  balanced_acc: 0.6051040814471411
+  pr_auc: 0.3369107175487595
+  roc_auc: 0.6463983072245958
+  tp: 198
+  tn: 731
+  fp: 427
+  fn: 144
+  threshold: 0.52

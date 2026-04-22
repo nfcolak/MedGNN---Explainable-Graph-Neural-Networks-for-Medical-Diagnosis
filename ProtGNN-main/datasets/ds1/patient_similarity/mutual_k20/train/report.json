@@ -1,0 +1,28 @@
+{
+  "best_epoch": 21,
+  "best_val_metric": 0.350004,
+  "epochs_run": 73,
+  "test_metrics": {
+    "loss": 0.6607,
+    "acc": 0.596,
+    "precision": 0.30814,
+    "recall": 0.619883,
+    "specificity": 0.588946,
+    "f1": 0.41165,
+    "balanced_acc": 0.604415,
+    "pr_auc": 0.330979,
+    "roc_auc": 0.642128,
+    "tp": 212,
+    "tn": 682,
+    "fp": 476,
+    "fn": 130
+  },
+  "explanations_requested": 30,
+  "explanations_saved": 30,
+  "explanation_success": {
+    "GradExplainer": 30,
+    "IntegratedGradExplainer": 30,
+    "GNNExplainer": 30
+  },
+  "elapsed_seconds": 29.05
+}

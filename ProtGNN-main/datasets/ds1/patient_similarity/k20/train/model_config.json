@@ -1,0 +1,27 @@
+{
+  "graph_source": "datasets/ds1/patient_similarity/k20/processed/k20_ps_data.pt",
+  "graph_type": "knn",
+  "task": "node_classification",
+  "note": "Patient similarity is one graph. Explanations are saved for 30 test patient nodes and their k-hop subgraphs.",
+  "seed": 7,
+  "hidden_dim": 64,
+  "dropout": 0.4,
+  "learning_rate": 0.005,
+  "weight_decay": 0.0005,
+  "max_epochs": 300,
+  "early_stopping": 50,
+  "explain_n": 30,
+  "explain_hops": 2,
+  "num_nodes": 15000,
+  "num_edges": 300000,
+  "num_features": 22,
+  "split_sizes": {
+    "train": 12000,
+    "val": 1500,
+    "test": 1500
+  },
+  "class_weights": [
+    0.6475285887718201,
+    2.194586753845215
+  ]
+}

@@ -1,0 +1,26 @@
+Patient Similarity GCN Training Report
+============================================
+Best epoch: 20
+Epochs run: 72
+Best validation metric: 0.355515
+
+Test metrics
+  loss: 0.658952
+  acc: 0.585333
+  precision: 0.305014
+  recall: 0.640351
+  specificity: 0.569085
+  f1: 0.413208
+  balanced_acc: 0.604718
+  pr_auc: 0.334938
+  roc_auc: 0.646325
+  tp: 219
+  tn: 659
+  fp: 499
+  fn: 123
+
+GraphXAI explanations
+  saved: 30
+  GradExplainer: 30/30 ok
+  IntegratedGradExplainer: 30/30 ok
+  GNNExplainer: 30/30 ok

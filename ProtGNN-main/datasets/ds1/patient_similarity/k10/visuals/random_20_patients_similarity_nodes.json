@@ -1,0 +1,27 @@
+{
+  "seed": 42,
+  "selected_patients": [
+    1288,
+    1337,
+    1411,
+    1921,
+    3019,
+    6488,
+    6576,
+    6755,
+    7696,
+    7892,
+    9807,
+    10452,
+    10758,
+    11031,
+    11412,
+    11595,
+    11787,
+    12595,
+    12866,
+    14626
+  ],
+  "num_internal_edges": 60,
+  "note": "If the selected random patients had too few direct kNN edges among themselves, nearest selected-neighbor edges were added for visualization only."
+}

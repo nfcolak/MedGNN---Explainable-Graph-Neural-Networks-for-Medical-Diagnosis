@@ -1,0 +1,40 @@
+{
+  "graph_type": "patient_similarity_knn",
+  "description": "Each patient is one node; directed edges connect each patient to its 10 most similar patients using cosine similarity on standardized clinical features.",
+  "source_csv": "datasets/ds1/raw/ds1.csv",
+  "num_patients": 15000,
+  "num_features": 22,
+  "num_edges": 150000,
+  "k": 10,
+  "similarity_metric": "cosine",
+  "node_features": "standardized numeric/categorical ds1 features, excluding ids and mortality_label",
+  "label": "mortality_label from raw ds1.csv; no artificial label overwrite",
+  "class_counts": {
+    "0": 11582,
+    "1": 3418
+  },
+  "feature_columns": [
+    "age",
+    "gender",
+    "admission_type",
+    "comorbidity_score",
+    "heart_rate_mean",
+    "heart_rate_std",
+    "heart_rate_max",
+    "heart_rate_min",
+    "systolic_bp_mean",
+    "systolic_bp_std",
+    "respiratory_rate_mean",
+    "spo2_mean",
+    "temperature_mean",
+    "glucose_mean",
+    "lactate_mean",
+    "urine_output_total",
+    "ventilation_required",
+    "vasopressor_used",
+    "length_of_stay_days",
+    "apache_score",
+    "sofa_score",
+    "sepsis_flag"
+  ]
+}

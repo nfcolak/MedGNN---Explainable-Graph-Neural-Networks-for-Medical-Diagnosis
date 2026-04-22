@@ -1,0 +1,19 @@
+.DS_Store
+~$*
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Runtime outputs and heavy local artifacts
+checkpoint/
+checkpoints/
+log/
+logs/
+runs/
+wandb/
+
+# Editor/system files
+.idea/
+.vscode/
