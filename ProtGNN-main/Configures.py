@@ -1,3 +1,4 @@
+#Configures.py
 import os
 import torch
 from typing import List
@@ -6,7 +7,7 @@ from typing import List
 class DataParser():
     def __init__(self):
         super().__init__()
-        self.dataset_name = 'ds1'
+        self.dataset_name = 'mimic'
         self.dataset_dir = './datasets'
         self.task = None
         self.random_split: bool = True
@@ -78,10 +79,11 @@ class RewardParser():
 class TrainParser():
     def __init__(self):
         super().__init__()
-        self.learning_rate = 0.005
-        self.batch_size = 24
+        self.learning_rate = 0.0001    # Even slower learning for stability
+        self.batch_size = 16           # Smaller batches for a small dataset
         self.weight_decay = 0.0
-        self.max_epochs = 800
+        self.warm_epochs = 50          # Let GNN layers learn for 50 epochs first
+        self.max_epochs = 300          # Give it more time to converge
         self.save_epoch = 10
         self.early_stopping = 80
         self.last_layer_optimizer_lr = 1e-4            # the learning rate of the last layer
