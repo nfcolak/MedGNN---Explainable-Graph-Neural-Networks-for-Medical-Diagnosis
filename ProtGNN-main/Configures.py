@@ -7,7 +7,7 @@ from typing import List
 class DataParser():
     def __init__(self):
         super().__init__()
-        self.dataset_name = 'mimic'
+        self.dataset_name = 'mimic_full/files/mimic-iv-ed/2.2'
         self.dataset_dir = './datasets'
         self.task = None
         self.random_split: bool = True
@@ -79,13 +79,13 @@ class RewardParser():
 class TrainParser():
     def __init__(self):
         super().__init__()
-        self.learning_rate = 0.0001    # Even slower learning for stability
-        self.batch_size = 16           # Smaller batches for a small dataset
-        self.weight_decay = 0.0
-        self.warm_epochs = 50          # Let GNN layers learn for 50 epochs first
-        self.max_epochs = 300          # Give it more time to converge
-        self.save_epoch = 10
-        self.early_stopping = 80
+        self.learning_rate = 0.0005
+        self.batch_size = 32 
+        self.weight_decay = 1e-4
+        self.max_epochs = 200
+        self.warm_epochs = 20 
+        self.proj_epochs = 50 
+        self.early_stopping = 30
         self.last_layer_optimizer_lr = 1e-4            # the learning rate of the last layer
         self.joint_optimizer_lrs = {'features': 1e-4,
                        'add_on_layers': 3e-3,

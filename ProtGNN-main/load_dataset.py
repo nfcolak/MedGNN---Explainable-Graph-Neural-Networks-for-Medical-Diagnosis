@@ -12,94 +12,81 @@ from torch_geometric.utils import dense_to_sparse
 from torch.utils.data import random_split, Subset
 from torch_geometric.data import Data, InMemoryDataset, DataLoader
 
-class MIMICDataset(InMemoryDataset):
+# load_dataset.py (Focusing on MIMIC_ED_Dataset class)
+class MIMIC_ED_Dataset(InMemoryDataset):
     def __init__(self, root, name, transform=None, pre_transform=None):
         self.name = name.lower()
-        super(MIMICDataset, self).__init__(root, transform, pre_transform)
+        super(MIMIC_ED_Dataset, self).__init__(root, transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0])
 
     @property
+    def raw_file_names(self):
+        return ['ed/edstays.csv', 'ed/triage.csv', 'ed/diagnosis.csv', 'ed/medrecon.csv']
+    
+    @property
     def raw_dir(self):
-        return osp.join(self.root, self.name, 'raw')
+        return osp.join(self.root, self.name)
 
     @property
     def processed_dir(self):
         return osp.join(self.root, self.name, 'processed')
 
     @property
-    def raw_file_names(self):
-        # We need these three core tables for the hierarchy
-        return ['hosp/patients.csv', 'hosp/admissions.csv', 'hosp/labevents.csv']
-
-    @property
     def processed_file_names(self):
         return ['data.pt']
 
     def process(self):
-        # 1. Load the relational tables
-        df_p = pd.read_csv(osp.join(self.raw_dir, 'hosp/patients.csv'))
-        df_a = pd.read_csv(osp.join(self.raw_dir, 'hosp/admissions.csv'))
-        df_l = pd.read_csv(osp.join(self.raw_dir, 'hosp/labevents.csv'))
+        # 1. Load Data
+        df_stays = pd.read_csv(osp.join(self.raw_dir, 'ed/edstays.csv'))
+        df_triage = pd.read_csv(osp.join(self.raw_dir, 'ed/triage.csv'))
+        df_diag = pd.read_csv(osp.join(self.raw_dir, 'ed/diagnosis.csv'))
 
-        # 1 if the patient has any admission where deathtime is not null, else 0
-        dead_subjects = df_a[df_a['deathtime'].notnull()]['subject_id'].unique()
-        df_p['label'] = df_p['subject_id'].apply(lambda x: 1 if x in dead_subjects else 0)
+        # 2. Filter for Admission Task (ADMITTED vs HOME)
+        df_stays = df_stays[df_stays['disposition'].isin(['ADMITTED', 'HOME'])].copy()
+        df_stays['label'] = (df_stays['disposition'] == 'ADMITTED').astype(int)
 
-        # 2. Pre-process Labs
-        def check_abnormal(row):
-            try:
-                val = float(row['valuenum'])
-                low = float(row['ref_range_lower'])
-                high = float(row['ref_range_upper'])
-                return 1.0 if (val < low or val > high) else 0.0
-            except:
-                return 0.0
-
-        df_l['is_abnormal'] = df_l.apply(check_abnormal, axis=1)
-        df_l = df_l.dropna(subset=['valuenum'])
-        df_l['valuenum_norm'] = (df_l['valuenum'] - df_l['valuenum'].mean()) / df_l['valuenum'].std()
-
+        # 3. Create Diagnosis Vocabulary for Explainability
+        unique_diags = df_diag['icd_title'].dropna().unique().tolist()
+        diag_to_id = {title: i for i, title in enumerate(unique_diags)}
+        
         data_list = []
 
-        # 3. Hierarchical Graph Building
-        for _, patient in df_p.iterrows():
-            sid = patient['subject_id']
-            p_admissions = df_a[df_a['subject_id'] == sid]
-            p_labs = df_l[df_l['subject_id'] == sid]
-
-            if p_labs.empty: continue 
-
-            adm_ids = p_admissions['hadm_id'].unique().tolist()
-            adm_map = {hid: i + 1 for i, hid in enumerate(adm_ids)}
-            num_adms = len(adm_ids)
-
-            # Node features (Length 3 as discussed)
-            nodes_x = [[1.0, 0.0, 0.0]] # Root
-            for _ in range(num_adms): 
-                nodes_x.append([2.0, 0.0, 0.0]) # Admissions
+        # --- UPDATE THIS LINE ---
+        for i, (_, stay) in enumerate(df_stays.iterrows()):
+            if i >= 5000: break # Only process the first 5000 stays for now
             
+            stid = stay['stay_id']
+            p_triage = df_triage[df_triage['stay_id'] == stid]
+            p_diag = df_diag[df_diag['stay_id'] == stid]
+
+            # Features: [Type_Flag, Value, Abnormal_Flag]
+            nodes_x = [[1.0, 0.0, 0.0]] 
             edges_src, edges_dst = [], []
 
-            for i in range(1, num_adms + 1):
-                edges_src.extend([0, i])
-                edges_dst.extend([i, 0])
+            # Add Triage Vitals
+            if not p_triage.empty:
+                t = p_triage.iloc[0]
+                vitals = {'temp': t['temperature'], 'hr': t['heartrate'], 'o2': t['o2sat']}
+                for name, val in vitals.items():
+                    if pd.notnull(val):
+                        is_abnormal = 1.0 if (name=='hr' and val>100) or (name=='o2' and val<95) else 0.0
+                        nodes_x.append([2.0, float(val)/100.0, is_abnormal]) 
+                        idx = len(nodes_x) - 1
+                        edges_src.extend([0, idx]); edges_dst.extend([idx, 0])
 
-            lab_idx = num_adms + 1
-            for _, lab in p_labs.iterrows():
-                if lab['hadm_id'] in adm_map:
-                    nodes_x.append([3.0, lab['valuenum_norm'], lab['is_abnormal']])
-                    target_adm = adm_map[lab['hadm_id']]
-                    edges_src.extend([target_adm, lab_idx])
-                    edges_dst.extend([lab_idx, target_adm])
-                    lab_idx += 1
+            # Add Diagnosis nodes
+            for _, d in p_diag.iterrows():
+                title = d['icd_title']
+                if title in diag_to_id:
+                    nodes_x.append([3.0, float(diag_to_id[title]), 1.0])
+                    idx = len(nodes_x) - 1
+                    edges_src.extend([0, idx]); edges_dst.extend([idx, 0])
 
-            x = torch.tensor(nodes_x, dtype=torch.float)
-            edge_index = torch.tensor([edges_src, edges_dst], dtype=torch.long)
-            
-            # This line will now work because we added 'label' to df_p above
-            y = torch.tensor([patient['label']], dtype=torch.long)
-
-            data_list.append(Data(x=x, edge_index=edge_index, y=y))
+            data_list.append(Data(
+                x=torch.tensor(nodes_x, dtype=torch.float),
+                edge_index=torch.tensor([edges_src, edges_dst], dtype=torch.long),
+                y=torch.tensor([stay['label']], dtype=torch.long)
+            ))
 
         torch.save(self.collate(data_list), self.processed_paths[0])
 
@@ -336,8 +323,8 @@ def get_dataset(dataset_dir, dataset_name, task=None):
 
     if dataset_name.lower() == 'MUTAG'.lower():
         return load_MUTAG(dataset_dir, 'MUTAG')
-    elif dataset_name.lower() == 'mimic':
-        return MIMICDataset(root=dataset_dir, name='mimic_demo')
+    elif dataset_name.lower() == 'mimic_full/files/mimic-iv-ed/2.2':
+        return MIMIC_ED_Dataset(root=dataset_dir, name=dataset_name)
     elif dataset_name.lower() == 'ds1':
         return load_DS1(dataset_dir, 'ds1')
     elif dataset_name.lower() in sync_dataset_dict.keys():
