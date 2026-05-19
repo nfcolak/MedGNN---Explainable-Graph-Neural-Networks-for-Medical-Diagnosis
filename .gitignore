@@ -12,9 +12,22 @@ checkpoints/
 log/
 logs/
 runs/
+outputs/
 wandb/
 
 # Editor/system files
 .idea/
 .vscode/
-datasets/data/
+# Local/raw data generated outside source control
+data/Original CSVs/
+data/Changes Done/
+data/processed_*/
+data/merged_ed*.csv
+data/rxnorm_mapping.csv
+data/top300_meds.json
+
+# Vendored GraphXAI: keep source code, ignore bundled datasets/results
+external/GraphXAI-main/data/
+external/GraphXAI-main/formal/
+external/GraphXAI-main/examples/
+external/GraphXAI-main/graphxai/datasets/real_world/**/*.npz
