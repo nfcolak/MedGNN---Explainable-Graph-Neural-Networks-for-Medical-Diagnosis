@@ -1,0 +1,165 @@
+TODO - Prototype GNN Medical Diagnosis Project
+==============================================
+
+Current best prototype run
+--------------------------
+- Dataset: 20k MIMIC patient-similarity graph.
+- los_hours: INCLUDED.
+- Prototype learning: REQUIRED.
+- Best tested prototype parameters:
+  - clst = 0.02
+  - sep = 0.0
+- Current best metrics:
+  - PR-AUC: 0.7596
+  - Accuracy: 0.7720
+  - Precision: 0.6893
+  - Recall: 0.7168
+  - Specificity: 0.8053
+  - F1: 0.7027
+  - Balanced accuracy: 0.7610
+  - Threshold: 0.515
+
+
+Immediate next steps
+--------------------
+1. Save and label the current best run clearly.
+   - Mark it as: prototype_los_clst0.02_sep0.0.
+   - Keep the sweep file:
+     outputs/prototype_hpo_los/prototype_loss_weight_sweep.csv
+   - Keep the best report:
+     outputs/results/report.txt
+
+2. Decide how los_hours will be presented.
+   - los_hours improves performance strongly.
+   - But it may be post-outcome information and can be considered leakage.
+   - Report both versions:
+     - no-LOS model: methodologically cleaner
+     - LOS model: stronger but needs leakage caveat
+
+3. Fix explanation generation for the best prototype model.
+   - Current training works.
+   - GraphXAI/GNNExplainer can hit CPU/MPS device mismatch.
+   - Make explanation step device-safe or force explanation to CPU.
+   - Then rerun:
+     PYTHONPATH=src:external/GraphXAI-main:. python3 scripts/train_and_explain.py --clst 0.02 --sep 0.0 --explain_n 10
+
+4. Generate clinical explanations for the best run.
+   - After explanation JSON files are created, run:
+     PYTHONPATH=src:external/GraphXAI-main:. python3 scripts/generate_clinical_explanations.py --limit 10
+   - Check whether prototype evidence is clinically interpretable.
+
+5. Run threshold analysis in the final report.
+   - Use outputs/results/threshold_sensitivity.csv.
+   - Main threshold for current best run is 0.515.
+   - Also report 0.5 threshold metrics.
+
+
+Model improvement tasks
+-----------------------
+6. COMPLETED - Test k values with prototype learning.
+   - Fixed prototype loss weights:
+     - clst = 0.02
+     - sep = 0.0
+   - Tested:
+     - mimic_patient_sim_k5
+     - mimic_patient_sim_k10
+     - mimic_patient_sim_k15
+     - mimic_patient_sim_k20
+   - Results table:
+     - outputs/k_neighbor_sweep/k_neighbor_results.csv
+     - outputs/k_neighbor_sweep/k_neighbor_results.txt
+   - Best by PR-AUC: k=5
+     - PR-AUC: 0.7550
+     - F1: 0.7088
+     - Recall: 0.8125
+     - Specificity: 0.7107
+     - Balanced accuracy: 0.7616
+   - Interpretation:
+     - k=5 gives the strongest PR-AUC and recall.
+     - k=10 is close and more balanced.
+     - k=15 and k=20 increase specificity/accuracy but reduce PR-AUC.
+
+6b. COMPLETED - Try alternative graph structures at k=5.
+   - Added graph variants:
+     - star: original unweighted center-to-neighbor graph
+     - weighted_star: center-to-neighbor graph with cosine-distance edge weights
+     - local_knn: weighted local graph among center and selected neighbors
+   - Results table:
+     - outputs/graph_structure_sweep/graph_structure_results.csv
+     - outputs/graph_structure_sweep/graph_structure_results.txt
+   - Best by PR-AUC in this sweep: star
+     - PR-AUC: 0.7675
+     - F1: 0.7095
+     - Recall: 0.7859
+     - Specificity: 0.7412
+     - Balanced accuracy: 0.7635
+   - weighted_star increased accuracy/specificity but lowered PR-AUC.
+   - local_knn lowered PR-AUC and F1, likely adding noisy neighbor-neighbor propagation.
+
+7. Improve prototype training stability.
+   - sep=0.0 currently performs best.
+   - Do not return to sep=0.1.
+   - Later replace separation loss with a margin-based loss:
+     sep_loss = mean(max(0, margin - wrong_class_distance))
+
+8. Reduce overfitting.
+   - Best epoch is early, around epoch 6.
+   - Try:
+     - stronger dropout
+     - higher weight decay
+     - smaller latent dimensions
+     - fewer GCN layers
+
+9. Add run folders.
+   - Avoid overwriting outputs/results each run.
+   - Save each run under:
+     outputs/runs/YYYY-MM-DD_HH-MM-SS/
+   - Include:
+     - config
+     - test metrics
+     - threshold sensitivity
+     - training metrics
+     - explanations
+     - clinical reports
+
+10. Compare against baselines.
+    - XGBoost with LOS.
+    - XGBoost without LOS.
+    - No-prototype GCN with LOS.
+    - No-prototype GCN without LOS.
+    - Prototype GCN with LOS.
+    - Prototype GCN without LOS.
+
+
+Research/write-up tasks
+-----------------------
+11. Frame prototype learning as mandatory.
+    - The main model must be prototype-enabled.
+    - No-prototype GCN is only an ablation baseline.
+
+12. Report LOS/no-LOS honestly.
+    - If using LOS in the final model, state that it may encode post-admission process information.
+    - If the task is early admission prediction, prefer no-LOS as the primary scientific result.
+    - If the task is retrospective disposition explanation, LOS can be included with caveats.
+
+13. Explain prototype evidence.
+    - For selected patients, show:
+      - predicted class
+      - true class
+      - nearest prototype
+      - prototype class
+      - distance
+      - contribution
+      - top GraphXAI features
+
+14. Add final tables.
+    - Table 1: LOS vs no-LOS performance.
+    - Table 2: prototype vs no-prototype performance.
+    - Table 3: k-neighbor comparison.
+    - Table 4: threshold sensitivity.
+
+15. Add limitations.
+    - Potential LOS leakage.
+    - Random split may include repeated subjects across splits.
+    - Prototype interpretability depends on stable prototype training.
+    - Graph similarity is currently based on feature similarity, not learned clinical similarity.

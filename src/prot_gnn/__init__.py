@@ -1,0 +1,2 @@
+"""ProtGNN project package."""
+
