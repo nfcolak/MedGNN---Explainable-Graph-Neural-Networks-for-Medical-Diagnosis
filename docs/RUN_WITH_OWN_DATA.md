@@ -41,6 +41,12 @@ run. If PyTorch Geometric fails to install, install PyTorch first from the
 official PyTorch selector for your operating system, then rerun the dependency
 installation.
 
+Check the environment:
+
+```bash
+PYTHONPATH=src:external/GraphXAI-main:. python3 scripts/check_environment.py
+```
+
 Generate merged datasets:
 
 ```bash
