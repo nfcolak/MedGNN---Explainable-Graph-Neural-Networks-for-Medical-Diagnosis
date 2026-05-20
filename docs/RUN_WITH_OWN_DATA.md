@@ -28,6 +28,10 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+Recommended Python version: 3.10 or 3.11. If PyTorch Geometric fails to install,
+install PyTorch first from the official PyTorch selector for your operating
+system, then rerun `pip install -r requirements.txt`.
+
 Generate merged datasets:
 
 ```bash
