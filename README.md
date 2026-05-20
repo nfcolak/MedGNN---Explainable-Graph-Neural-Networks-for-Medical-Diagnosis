@@ -25,16 +25,27 @@ The repository has been consolidated into a single clean project structure. The 
 
 ## Requirements
 
-The original ProtGNN baseline expects:
+For a reproducible setup with local MIMIC ED files, use:
 
-```text
-pytorch
-torch-geometric
+```bash
+conda env create -f environment.yml
+conda activate protgnn-mimic
 ```
 
-This project also uses additional experiment dependencies such as `pandas`, `numpy`, `scikit-learn`, `optuna`, `xgboost`, and optionally `graphxai`.
+or:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-lock.txt
+```
+
+`requirements.txt` contains flexible version ranges. `requirements-lock.txt`
+and `environment.yml` contain pinned versions for collaboration.
 
 GraphXAI is kept as external research code under `external/GraphXAI-main/`. The training scripts add this folder to Python's import path automatically.
+
+See `docs/RUN_WITH_OWN_DATA.md` for the full data placement and rerun workflow.
 
 ## Usage
 
@@ -43,7 +54,7 @@ Configuration lives in `configs/config.py`.
 Run the main train-and-explain workflow:
 
 ```bash
-python scripts/train_and_explain.py --explain_n 10 --no_prot
+PYTHONPATH=src:external/GraphXAI-main:. python3 scripts/train_and_explain.py --explain_n 10 --no_prot
 ```
 
 Run with prototype learning enabled:
