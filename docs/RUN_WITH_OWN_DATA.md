@@ -20,17 +20,26 @@ diagnosis.csv
 icd9_to_icd10_mapping.csv
 ```
 
-Install dependencies:
+Install dependencies. Preferred reproducible setup:
+
+```bash
+conda env create -f environment.yml
+conda activate protgnn-mimic
+```
+
+Alternative pip setup:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-lock.txt
 ```
 
-Recommended Python version: 3.10 or 3.11. If PyTorch Geometric fails to install,
-install PyTorch first from the official PyTorch selector for your operating
-system, then rerun `pip install -r requirements.txt`.
+`requirements.txt` contains flexible version ranges. `requirements-lock.txt` and
+`environment.yml` contain the pinned environment used for the current working
+run. If PyTorch Geometric fails to install, install PyTorch first from the
+official PyTorch selector for your operating system, then rerun the dependency
+installation.
 
 Generate merged datasets:
 
