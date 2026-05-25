@@ -91,8 +91,6 @@ class TrainParser():
         self.batch_size = 256              # larger batch → better GPU utilisation on MPS
         self.weight_decay = 1e-4
         self.max_epochs = 300
-        self.warm_epochs = 20
-        self.proj_epochs = 50
         self.early_stopping = 20           # stop sooner if no improvement
         self.last_layer_optimizer_lr = 1e-4            # the learning rate of the last layer
         self.joint_optimizer_lrs = {'features': 1e-4,

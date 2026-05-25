@@ -31,3 +31,17 @@ external/GraphXAI-main/data/
 external/GraphXAI-main/formal/
 external/GraphXAI-main/examples/
 external/GraphXAI-main/graphxai/datasets/real_world/**/*.npz
+# Large datasets inside prot_gnn_core
+prot_gnn_core/datasets/**/*.csv
+prot_gnn_core/datasets/**/*.pt
+prot_gnn_core/datasets/**/*.pth
+prot_gnn_core/datasets/**/*.json
+
+# Processed dataset artifacts
+prot_gnn_core/datasets/**/processed/
+
+# Generated explanations/results
+prot_gnn_core/results/explanations/
+
+# Model weights
+*.pth

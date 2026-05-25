@@ -7,16 +7,367 @@ import pickle
 import numpy as np
 import os.path as osp
 import pandas as pd
+from torch_geometric.utils import k_hop_subgraph
 from torch_geometric.datasets import MoleculeNet
-from torch_geometric.utils import dense_to_sparse
+from torch_geometric.utils import dense_to_sparse, from_networkx
 from torch.utils.data import random_split, Subset
 from torch_geometric.data import Data, InMemoryDataset, DataLoader
+import networkx as nx
+from torch_geometric.data import Data
 
 POST_OUTCOME_COLUMNS = []
 
 
 def _drop_post_outcome_columns(df):
     return df.drop(columns=POST_OUTCOME_COLUMNS, errors='ignore')
+
+
+class SyntheticGraphDataset:
+    """
+    Wraps a list of Data objects and exposes the attributes that
+    GnnNets, get_dataloader, and train_model expect from any dataset.
+
+    Each Data object has:
+        .x             [num_nodes, num_features]  node feature matrix
+        .edge_index    [2, num_edges]              graph connectivity
+        .y             [1]                         graph label (0 or 1)
+        .node_mask     [num_nodes]  float          1.0 = motif node (ground truth)
+        .edge_mask     [num_edges]  float          1.0 = motif edge (ground truth)
+    """
+
+    def __init__(self, data_list: list, name: str = "synthetic"):
+        if not data_list:
+            raise ValueError("SyntheticGraphDataset: data_list is empty")
+
+        self._data = data_list
+        self.name = name
+
+        sample = data_list[0]
+        self._num_node_features = int(sample.x.shape[1])
+
+        all_labels = [int(d.y.view(-1)[0].item()) for d in data_list]
+        self._num_classes = len(set(all_labels))
+
+        self.feature_cols = []
+        self.feature_metadata = {}
+        self.label_mapping = {str(i): str(i) for i in range(self._num_classes)}
+
+    def __len__(self):
+        return len(self._data)
+
+    def __getitem__(self, idx):
+        return self._data[idx]
+
+    def __iter__(self):
+        return iter(self._data)
+
+    @property
+    def num_node_features(self):
+        return self._num_node_features
+
+    @property
+    def num_features(self):
+        return self._num_node_features
+
+    @property
+    def num_classes(self):
+        return self._num_classes
+
+
+# ---- Motif builders — at module level, NOT inside the class ----
+
+def _make_house() -> nx.Graph:
+    """5-node house: square base + triangular roof."""
+    G = nx.Graph()
+    G.add_nodes_from([0, 1, 2, 3, 4])
+    G.add_edges_from([
+        (0, 1), (1, 2), (2, 3), (3, 0),
+        (0, 4), (1, 4),
+    ])
+    return G
+
+
+def _make_cycle(n: int = 6) -> nx.Graph:
+    return nx.cycle_graph(n)
+
+
+def _make_wheel(n: int = 6) -> nx.Graph:
+    return nx.wheel_graph(n)
+
+
+def _make_grid() -> nx.Graph:
+    return nx.grid_2d_graph(2, 3)
+
+
+MOTIF_BUILDERS = {
+    'house': _make_house,
+    'cycle': lambda: _make_cycle(6),
+    'wheel': lambda: _make_wheel(6),
+    'grid':  _make_grid,
+}
+
+def _make_graph(
+    n_base: int,
+    motif_shape: str,
+    label: int,
+    node_feature_dim: int,
+    rng: np.random.Generator,
+) -> Data:
+    """
+    Build one graph.
+ 
+    If label == 1: BA base graph + motif attached at a random base node.
+    If label == 0: BA base graph only.
+ 
+    Node features: Gaussian noise, with a small class-correlated signal
+    injected into the first feature dimension so the model can actually learn.
+    """
+    # Base graph (Barabási-Albert)
+    m = max(1, n_base // 10)           # BA attachment parameter
+    G_base = nx.barabasi_albert_graph(n_base, m, seed=int(rng.integers(1e6)))
+ 
+    n_motif_nodes = 0
+    motif_node_set = set()
+    all_edges = list(G_base.edges())
+ 
+    if label == 1:
+        builder = MOTIF_BUILDERS.get(motif_shape, _make_house)
+        G_motif = builder()
+        n_motif_nodes = G_motif.number_of_nodes()
+ 
+        # Relabel motif nodes to avoid collision with base nodes
+        offset = n_base
+        G_motif = nx.relabel_nodes(G_motif, {i: i + offset for i in G_motif.nodes()})
+        motif_node_set = set(G_motif.nodes())
+ 
+        # Merge
+        G = nx.compose(G_base, G_motif)
+ 
+        # Attach motif to a random base node
+        attach_base = int(rng.integers(n_base))
+        attach_motif = offset  # first motif node
+        G.add_edge(attach_base, attach_motif)
+        all_edges = list(G.edges())
+    else:
+        G = G_base
+ 
+    # Total nodes
+    all_nodes = sorted(G.nodes())
+    n_total = len(all_nodes)
+ 
+    # Node features: Gaussian noise + class signal in dim 0
+    x = rng.standard_normal((n_total, node_feature_dim)).astype(np.float32)
+    # Class signal: motif nodes get +1 in dim 0, base nodes get -1
+    for i, node in enumerate(all_nodes):
+        x[i, 0] = 1.0 if node in motif_node_set else -1.0
+    # Add noise to the signal so it is not trivially separable
+    x[:, 0] += rng.standard_normal(n_total).astype(np.float32) * 0.5
+ 
+    x_tensor = torch.tensor(x, dtype=torch.float)
+ 
+    # Build edge_index with consecutive local node ids
+    node_to_local = {node: i for i, node in enumerate(all_nodes)}
+    src, dst = [], []
+    for u, v in all_edges:
+        lu, lv = node_to_local[u], node_to_local[v]
+        src.extend([lu, lv])  # undirected
+        dst.extend([lv, lu])
+    edge_index = torch.tensor([src, dst], dtype=torch.long)
+ 
+    # Ground truth masks
+    node_mask = torch.tensor(
+        [1.0 if node in motif_node_set else 0.0 for node in all_nodes],
+        dtype=torch.float,
+    )
+    if edge_index.shape[1] > 0:
+        local_src = edge_index[0]
+        local_dst = edge_index[1]
+        edge_mask = ((node_mask[local_src] > 0.5) & (node_mask[local_dst] > 0.5)).float()
+    else:
+        edge_mask = torch.zeros(0, dtype=torch.float)
+ 
+    return Data(
+        x          = x_tensor,
+        edge_index = edge_index,
+        y          = torch.tensor([label], dtype=torch.long),
+        node_mask  = node_mask,
+        edge_mask  = edge_mask,
+    )
+
+def _build_synthetic_dataset(
+    shape: str,
+    base_graph: str,          # currently only 'ba' used; kept for API compat
+    num_graphs: int,
+    avg_nodes: int,
+    node_feature_dim: int = 10,
+    seed: int = 42,
+) -> SyntheticGraphDataset:
+    """
+    Generate a balanced synthetic graph-classification dataset.
+ 
+    Half the graphs have label 1 (motif present), half have label 0.
+    avg_nodes controls the size of the BA base graph (recommended 20-40).
+    """
+    if shape not in MOTIF_BUILDERS:
+        raise ValueError(
+            f"Unknown motif shape '{shape}'. "
+            f"Available: {list(MOTIF_BUILDERS.keys())}"
+        )
+ 
+    rng = np.random.default_rng(seed)
+    n_class1 = num_graphs // 2
+    n_class0 = num_graphs - n_class1
+ 
+    data_list = []
+ 
+    # Class 1: motif present
+    for _ in range(n_class1):
+        n_base = max(10, int(rng.normal(avg_nodes, avg_nodes * 0.15)))
+        data_list.append(_make_graph(n_base, shape, label=1,
+                                     node_feature_dim=node_feature_dim, rng=rng))
+ 
+    # Class 0: no motif
+    for _ in range(n_class0):
+        n_base = max(10, int(rng.normal(avg_nodes, avg_nodes * 0.15)))
+        data_list.append(_make_graph(n_base, shape, label=0,
+                                     node_feature_dim=node_feature_dim, rng=rng))
+ 
+    # Shuffle
+    idx = rng.permutation(len(data_list)).tolist()
+    data_list = [data_list[i] for i in idx]
+ 
+    # Report
+    labels = [int(d.y.item()) for d in data_list]
+    unique, counts = np.unique(labels, return_counts=True)
+    dist = dict(zip(unique.tolist(), counts.tolist()))
+    avg_n = np.mean([d.x.shape[0] for d in data_list])
+    motif_size = MOTIF_BUILDERS[shape]().number_of_nodes()
+ 
+    print(f"  [SyntheticMotif] Built {len(data_list)} graphs: "
+          f"label dist={dist}, avg_nodes={avg_n:.1f}, "
+          f"motif='{shape}' ({motif_size} nodes), "
+          f"motif_ratio={motif_size / avg_n:.2f}")
+ 
+    return SyntheticGraphDataset(data_list, name=f"synthetic_{shape}_{base_graph}")
+
+# Core subgraph extraction
+# ============================================================================
+ 
+def _extract_subgraph_graphs(
+    sg,
+    num_graphs: int,
+    num_hops: int,
+    seed: int,
+    min_motif_in_subgraph: int = 1,
+) -> SyntheticGraphDataset:
+    """
+    Convert a ShapeGGen NodeDataset into a graph-classification dataset.
+ 
+    Strategy
+    --------
+    1. Read the global node feature matrix, edge_index, and motif mask
+       from sg.x, sg.edge_index, sg.graph.shape.
+    2. Identify motif nodes (shape==1) and base nodes (shape==0).
+    3. Sample centre nodes:
+         - half from motif nodes  → graph label 1
+         - half from base nodes   → graph label 0
+    4. For each centre node, extract its num_hops-hop subgraph.
+    5. Assign:
+         node_mask = shape restricted to subgraph nodes
+         edge_mask = 1 if both endpoints are motif nodes
+         y         = shape[centre_node]  (1 = motif, 0 = base)
+ 
+    Parameters
+    ----------
+    min_motif_in_subgraph : discard subgraphs where fewer than this many
+                            motif nodes are captured (prevents degenerate
+                            label-1 graphs with no visible motif).
+    """
+    x_all          = sg.x                    # [N, F]
+    edge_index_all = sg.edge_index           # [2, E]
+    shape_all      = sg.graph.shape.float()  # [N] binary motif mask
+    N              = x_all.shape[0]
+ 
+    motif_nodes = (shape_all == 1).nonzero(as_tuple=True)[0].tolist()
+    base_nodes  = (shape_all == 0).nonzero(as_tuple=True)[0].tolist()
+ 
+    if not motif_nodes:
+        raise RuntimeError(
+            "ShapeGGen produced no motif nodes. "
+            "Increase avg_num_nodes (try >= 100) so the motif fits in the graph."
+        )
+ 
+    rng = np.random.default_rng(seed)
+    half = num_graphs // 2
+ 
+    # Sample with replacement if not enough nodes of a given class
+    n_motif = min(half, len(motif_nodes))
+    n_base  = num_graphs - n_motif
+ 
+    chosen_motif = rng.choice(motif_nodes, size=n_motif, replace=len(motif_nodes) < n_motif).tolist()
+    chosen_base  = rng.choice(base_nodes,  size=n_base,  replace=len(base_nodes)  < n_base ).tolist()
+    centre_nodes = chosen_motif + chosen_base
+    rng.shuffle(centre_nodes)
+ 
+    data_list = []
+    skipped   = 0
+ 
+    for centre in centre_nodes:
+        subset, sub_edge_index, mapping, _ = k_hop_subgraph(
+            node_idx    = int(centre),
+            num_hops    = num_hops,
+            edge_index  = edge_index_all,
+            relabel_nodes = True,
+            num_nodes   = N,
+        )
+        # subset: 1-D tensor of global node indices in this subgraph
+        # mapping: local index of centre node inside subset
+ 
+        x_sub      = x_all[subset]                # [n, F]
+        shape_sub  = shape_all[subset]             # [n]  motif mask, local indices
+ 
+        # Skip if the label-1 subgraph captured no motif nodes
+        # (can happen at graph boundaries)
+        label = int(shape_all[centre].item())
+        if label == 1 and shape_sub.sum().item() < min_motif_in_subgraph:
+            skipped += 1
+            continue
+ 
+        y_graph = torch.tensor([label], dtype=torch.long)
+ 
+        # Edge ground truth: 1 if both endpoints are motif nodes
+        local_src = sub_edge_index[0]
+        local_dst = sub_edge_index[1]
+        edge_gt   = ((shape_sub[local_src] > 0.5) & (shape_sub[local_dst] > 0.5)).float()
+ 
+        data_list.append(Data(
+            x           = x_sub,
+            edge_index  = sub_edge_index,
+            y           = y_graph,
+            node_mask   = shape_sub.float(),
+            edge_mask   = edge_gt,
+            centre_node = mapping.view(1) if torch.is_tensor(mapping) else torch.tensor([mapping]),
+        ))
+ 
+    if skipped:
+        print(f"  [ShapeGGen loader] Skipped {skipped} subgraphs (no motif nodes captured)")
+ 
+    if not data_list:
+        raise RuntimeError(
+            "No valid subgraphs extracted. "
+            "Try increasing avg_num_nodes or decreasing num_hops."
+        )
+ 
+    # Report
+    labels_out = [int(d.y.item()) for d in data_list]
+    unique, counts = np.unique(labels_out, return_counts=True)
+    dist = dict(zip(unique.tolist(), counts.tolist()))
+    avg_nodes = np.mean([d.x.shape[0] for d in data_list])
+    print(f"  [ShapeGGen loader] {len(data_list)} subgraphs extracted, "
+          f"label distribution={dist}, avg_subgraph_nodes={avg_nodes:.1f}, "
+          f"num_hops={num_hops}")
+ 
+    return SyntheticGraphDataset(data_list, name="shapeggen_subgraph")
 
 
 # load_dataset.py (Focusing on MIMIC_ED_Dataset class)
@@ -596,6 +947,8 @@ def get_dataset(dataset_dir, dataset_name, task=None):
     elif dataset_name.lower() == 'mimic_ed_with_icd':
         return MimicEDMergedDataset(root=dataset_dir, name=dataset_name,
                                     csv_filename='merged_ed_with_icd_sample_20k.csv')
+    elif dataset_name.startswith('shapeggen'):
+        return _load_shapeggen(dataset_name)
     elif dataset_name.lower().startswith('mimic_patient_sim'):
         # name format:  mimic_patient_sim[_full][_k<N>]
         # e.g.  mimic_patient_sim          → sample 20k, k=10
@@ -625,7 +978,112 @@ def get_dataset(dataset_dir, dataset_name, task=None):
     elif dataset_name.lower() in sentigraph_names:
         return load_SeniGraph(dataset_dir, dataset_name)
     else:
-        raise NotImplementedError
+        raise ValueError(f"Unknown dataset: {dataset_name}")
+    
+class ShapeGGenWrapper:
+    """
+    A robust dataset wrapper engineered around the verified runtime parameters 
+    of the custom local ShapeGGen object layer.
+    """
+    def __init__(self, shapeggen_dataset):
+        self.dataset = shapeggen_dataset
+        
+        # Pull the unified macro graph via its built-in retrieval method
+        # This resolves train/validation/test masking fields natively
+        self.macro_data = shapeggen_dataset.get_graph(use_fixed_split=True)
+        
+        # ShapeGGen packs multiple subgraphs inside a giant macro data cluster.
+        # We need to expose its node features dimension and labels
+        self.num_node_features = self.macro_data.x.size(1)
+        
+        # Determine number of classes safely from unique targets
+        self.num_classes = len(torch.unique(self.macro_data.y)) if hasattr(self.macro_data, 'y') else 2
+        
+        # Emulate a single-item dataset slice list for train_and_explain.py's iteration requirements
+        self.graphs = [self.macro_data]
+        self.explanations = shapeggen_dataset.explanations
+
+    def __len__(self):
+        return len(self.graphs)
+
+    def __getitem__(self, idx):
+        data = self.graphs[idx]
+        
+        # Attach ground-truth explanation node masks seamlessly if available
+        if not hasattr(data, 'node_mask'):
+            # Safely navigate nested list layout
+            if len(self.explanations) > idx and self.explanations[idx] is not None:
+                exp_entry = self.explanations[idx]
+                
+                # If it's wrapped inside an inner list, pull the primary motif explanation
+                if isinstance(exp_entry, list) and len(exp_entry) > 0:
+                    exp_entry = exp_entry[0]
+                
+                # Double-check that we successfully isolated an actual Explanation instance
+                if hasattr(exp_entry, 'node_imp'):
+                    data.node_mask = exp_entry.node_imp
+                else:
+                    import torch
+                    data.node_mask = torch.zeros(data.x.size(0))
+            else:
+                import torch
+                data.node_mask = torch.zeros(data.x.size(0))
+                
+        return data
+    
+def _load_shapeggen(dataset_name: str) -> SyntheticGraphDataset:
+    """
+    Parse a shapeggen_* dataset name and return a SyntheticGraphDataset.
+ 
+    Name format:
+        shapeggen_<shape>_<base>_n<num_graphs>_nodes<avg_nodes>
+ 
+    Examples:
+        shapeggen_house_ba_n600_nodes30
+        shapeggen_cycle_ba_n400_nodes25
+        shapeggen_wheel_ba_n600_nodes30
+        shapeggen_house_er_n600_nodes30   (er treated same as ba here)
+ 
+    Notes
+    -----
+    nodes<N>: avg number of BA base graph nodes.  Recommended 20-40.
+              The motif adds 5-6 nodes on top, so total graph size
+              is roughly avg_nodes + motif_size.
+              With avg_nodes=30 and house motif (5 nodes), avg total ≈ 35.
+ 
+    n<N>:     Total graphs. Half will be class 1, half class 0.
+              Minimum recommended: 200.
+    """
+    parts = dataset_name.split('_')
+    if len(parts) < 5:
+        raise ValueError(
+            f"Invalid shapeggen name '{dataset_name}'. "
+            "Expected: shapeggen_<shape>_<base>_n<num_graphs>_nodes<avg_nodes> "
+            "e.g. shapeggen_house_ba_n600_nodes30"
+        )
+ 
+    shape      = parts[1]
+    base_graph = parts[2]
+    num_graphs = int(parts[3].replace('n', ''))
+    avg_nodes  = int(parts[4].replace('nodes', ''))
+ 
+    if avg_nodes < 10:
+        raise ValueError(
+            f"nodes={avg_nodes} is too small. Use at least nodes10, "
+            "recommended nodes20 to nodes40."
+        )
+ 
+    print(f"  [SyntheticMotif] Generating: shape={shape}, base={base_graph}, "
+          f"num_graphs={num_graphs}, avg_nodes={avg_nodes}")
+ 
+    return _build_synthetic_dataset(
+        shape          = shape,
+        base_graph     = base_graph,
+        num_graphs     = num_graphs,
+        avg_nodes      = avg_nodes,
+        node_feature_dim = 10,
+        seed           = 42,
+    )
 
 
 class MUTAGDataset(InMemoryDataset):

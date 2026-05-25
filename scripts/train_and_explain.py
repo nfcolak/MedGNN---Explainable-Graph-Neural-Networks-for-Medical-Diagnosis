@@ -446,7 +446,7 @@ def train_model(clst: float, sep: float, use_prot: bool = False) -> tuple:
     train_indices = dataloader["train"].dataset.indices
     eval_indices = dataloader["eval"].dataset.indices
     test_indices = dataloader["test"].dataset.indices
-    train_labels  = np.array([int(dataset[i].y.view(-1)[0].item()) for i in train_indices])
+    train_labels = np.array([int(dataset[i].y.view(-1)[0].item()) for i in train_indices])
     eval_split_labels = np.array([int(dataset[i].y.view(-1)[0].item()) for i in eval_indices])
     test_split_labels = np.array([int(dataset[i].y.view(-1)[0].item()) for i in test_indices])
     class_weights, class_counts = _compute_class_weights(train_labels, output_dim)
@@ -690,6 +690,10 @@ def explain_test_set(
     """
     Run GradExplainer, IntegratedGradExplainer, and GNNExplainer on the test set.
 
+    When the dataset provides ground-truth node masks (ShapeGGen), XAI quality
+    metrics (Accuracy, Fidelity+, Fidelity-, Sparsity) are computed per graph
+    and stored in record["xai_metrics"].
+
     Returns
     -------
     List of dicts, one per graph, with node importance arrays for each explainer.
@@ -725,18 +729,47 @@ def explain_test_set(
         seed=data_args.seed,
     )
 
-    wrapper   = ProtGNNWrapper(gnn_nets)
+    wrapper = ProtGNNWrapper(gnn_nets)
     wrapper.eval()
     criterion = nn.CrossEntropyLoss()
 
-    grad_exp  = GradExplainer(wrapper, criterion=criterion)
-    integ_exp = IntegratedGradExplainer(wrapper, criterion=criterion)
-    gnn_exp   = GNNExplainer(wrapper)
+    # When prototype layers are active, gradients are suppressed by the
+    # prototype distance computation. Use a backbone-only wrapper for
+    # the explainers so gradient signals are clean.
+    prototypes_active = getattr(
+        getattr(gnn_nets, "model", None), "enable_prot", False
+    )
+    if prototypes_active:
+        print("  [INFO] Prototype layers detected — using backbone wrapper for explainers.")
+        from prot_gnn.explainability.graphxai_wrapper import BackboneWrapper
+        explain_wrapper = BackboneWrapper(gnn_nets)
+    else:
+        explain_wrapper = wrapper
+
+    grad_exp  = GradExplainer(explain_wrapper, criterion=criterion)
+    integ_exp = IntegratedGradExplainer(explain_wrapper, criterion=criterion)
+    gnn_exp   = GNNExplainer(explain_wrapper)
 
     print(f"  GNN layers detected (L): {grad_exp.L}")
     print(f"  Explaining {'all' if explain_n < 0 else explain_n} test graphs\n")
 
     feature_names = getattr(dataset, "feature_cols", [])
+
+    # Determine once whether this dataset has ground-truth explanation masks.
+    # ShapeGGen datasets attach node_mask to every Data object; MIMIC datasets
+    # do not.  We check the first test batch rather than the dataset object
+    # itself because the attribute lives on individual Data instances.
+    _first_batch = next(iter(dataloader["test"]))
+    dataset_has_ground_truth = (
+        hasattr(_first_batch, "node_mask")
+        and _first_batch.node_mask is not None
+    )
+    if dataset_has_ground_truth:
+        from prot_gnn.eval_explanations import evaluate_explanation
+        print("  Ground-truth node masks detected — XAI metrics will be computed.\n")
+    else:
+        print("  No ground-truth masks — skipping XAI metric computation (MIMIC mode).\n")
+
     records = []
     n_total = len(dataloader["test"])
     limit   = n_total if explain_n < 0 else min(explain_n, n_total)
@@ -836,6 +869,25 @@ def explain_test_set(
         except Exception as e:
             record["explanations"]["GNNExplainer"] = {"error": str(e)}
 
+        # ---- XAI quality metrics (ShapeGGen only) ----
+        # This block runs inside the loop so every graph gets its own metrics.
+        # For MIMIC data, dataset_has_ground_truth is False and this is skipped.
+        if dataset_has_ground_truth:
+            node_imp_dict = {}
+            for name in ["GradExplainer", "IntegratedGradExplainer", "GNNExplainer"]:
+                exp_result = record["explanations"].get(name, {})
+                if "node_importance" in exp_result:
+                    node_imp_dict[name] = torch.tensor(
+                        exp_result["node_importance"], dtype=torch.float
+                    )
+            if node_imp_dict:
+                # Pass the original batch (not x/edge_index separately) so
+                # evaluate_explanation can access batch.node_mask.
+                batch_cpu = batch.to(explain_device)
+                record["xai_metrics"] = evaluate_explanation(
+                    wrapper, batch_cpu, node_imp_dict
+                )
+
         # Summary print
         status = "CORRECT" if record["correct"] else "WRONG  "
         print(
@@ -852,9 +904,20 @@ def explain_test_set(
                     f"min={res['min']:+.4f}  max={res['max']:+.4f}  "
                     f"mean={res['mean']:+.4f}  std={res['std']:.4f}"
                 )
+        if dataset_has_ground_truth and "xai_metrics" in record:
+            for name, m in record["xai_metrics"].items():
+                acc = m.get("accuracy", {})
+                print(
+                    f"    {name:<28}  "
+                    f"[XAI] F1={acc.get('f1', 0):.3f}  "
+                    f"Fid+={m.get('fidelity_plus', 0):.3f}  "
+                    f"Fid-={m.get('fidelity_minus', 0):.3f}  "
+                    f"Spar={m.get('sparsity', 0):.3f}"
+                )
 
         records.append(record)
 
+    # Restore model to its original device after explanation pass
     gnn_nets.device = previous_gnn_device
     if hasattr(gnn_nets, "model") and previous_model_device is not None:
         gnn_nets.model.device = previous_model_device
