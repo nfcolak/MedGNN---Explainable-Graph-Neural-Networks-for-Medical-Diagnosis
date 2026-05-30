@@ -403,11 +403,15 @@ class PatientSimilarityGraphDataset(InMemoryDataset):
     """
     def __init__(self, root, name, k=10, graph_mode='star',
                  csv_filename='merged_ed_no_icd_sample_20k.csv',
+                 drop_cols=(),
                  transform=None, pre_transform=None):
         self.name = name
         self.k = k
         self.graph_mode = graph_mode
         self.csv_filename = csv_filename
+        # Columns to drop from features (e.g. ['los_hours'] to avoid post-outcome
+        # leakage). Influences the processed-dir name so cached graphs don't mix.
+        self.drop_cols = tuple(drop_cols)
         super().__init__(root, transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0], weights_only=False)
         self._load_metadata()
@@ -423,10 +427,11 @@ class PatientSimilarityGraphDataset(InMemoryDataset):
 
     @property
     def processed_dir(self):
-        # use csv stem + k so different CSVs/k values don't collide
+        # use csv stem + k + drop-cols + graph-mode so different variants don't collide
         csv_stem = self.csv_filename.replace('.csv', '')
+        no_los_suffix = "_no_los" if 'los_hours' in self.drop_cols else ""
         mode_suffix = "" if self.graph_mode == "star" else f"_{self.graph_mode}"
-        return osp.join(self.root, f'processed_patsim_{csv_stem}_k{self.k}{mode_suffix}')
+        return osp.join(self.root, f'processed_patsim_{csv_stem}{no_los_suffix}_k{self.k}{mode_suffix}')
 
     @property
     def raw_file_names(self):
@@ -460,6 +465,9 @@ class PatientSimilarityGraphDataset(InMemoryDataset):
         y_vals = df['disposition'].values.astype(int)
         df = df.drop(columns=['disposition'])
         df = _drop_post_outcome_columns(df)
+        if self.drop_cols:
+            df = df.drop(columns=[c for c in self.drop_cols if c in df.columns],
+                         errors='ignore')
 
         feature_cols = df.columns.tolist()
         raw_df = df.copy()
@@ -574,6 +582,304 @@ class PatientSimilarityGraphDataset(InMemoryDataset):
             }, f, indent=2)
 
 
+class IntraPatientHeteroDataset(InMemoryDataset):
+    """
+    Intra-patient heterogeneous graph (one graph per patient).
+
+    Replaces the patient-similarity star graph (which carried almost no
+    label-relevant topology — k=10 neighbour-label agreement ≈ class prior).
+    Instead, each patient's own clinical record becomes a graph:
+
+        Node types:
+          - PATIENT  (1 per graph): demographics + transport encoded in feature.
+          - VITAL    (one per non-NaN vital): z-scored value + abnormal flag.
+          - MED      (one per medication actually taken, prevalence ≥ med_min_prev).
+
+        Edges:
+          - patient ↔ each vital  (star spokes for direct vital signal)
+          - patient ↔ each med
+          - med    ↔ med           when PMI(med_i, med_j) > pmi_threshold,
+                                   giving the GNN drug-cluster topology
+                                   (cardiac bundle, psych bundle, etc.).
+
+    Node feature layout (same dim D for every node — required by GCN):
+        [type_onehot(3),
+         vital_id_onehot(V_v),     filled only for VITAL nodes
+         med_id_onehot(V_m),       filled only for MED nodes
+         value(1),                 z-scored vital, or 1.0 for MED
+         abnormal(1),              |z|>2 for vitals
+         demo(D_d)]                filled only for PATIENT node
+
+    Prototype learning on this graph means each learned prototype represents
+    a clinically interpretable substructure — e.g.
+    {patient + vital(o2sat↓) + vital(resprate↑) + med(furosemide) + med(metoprolol)}
+    — exactly the kind of evidence TODO #13 asks for.
+    """
+
+    VITAL_COLS = [
+        'temperature', 'heartrate', 'resprate', 'o2sat', 'sbp', 'dbp',
+        'pain', 'acuity',
+        'vs_temperature', 'vs_heartrate', 'vs_resprate', 'vs_o2sat',
+        'vs_sbp', 'vs_dbp', 'vs_count',
+    ]
+    DEMO_COLS = [
+        'gender_F', 'gender_M',
+        'race_ASIAN', 'race_BLACK', 'race_HISPANIC', 'race_NATIVE',
+        'race_OTHER', 'race_WHITE',
+        'transport_AMBULANCE', 'transport_HELICOPTER', 'transport_WALK IN',
+    ]
+    # Clinical clipping ranges to prevent z-score distortion from outliers
+    # (e.g. raw data has temperature=28.89 °C, heartrate=217 bpm).
+    VITAL_CLIP = {
+        'temperature':    (34.0, 42.0),
+        'heartrate':      (30.0, 200.0),
+        'resprate':       (6.0,  45.0),
+        'o2sat':          (60.0, 100.0),
+        'sbp':            (60.0, 250.0),
+        'dbp':            (30.0, 150.0),
+        'pain':           (0.0,  10.0),
+        'acuity':         (1.0,  5.0),
+        'vs_temperature': (34.0, 42.0),
+        'vs_heartrate':   (30.0, 200.0),
+        'vs_resprate':    (6.0,  45.0),
+        'vs_o2sat':       (60.0, 100.0),
+        'vs_sbp':         (60.0, 250.0),
+        'vs_dbp':         (30.0, 150.0),
+        'vs_count':       (1.0,  30.0),
+    }
+
+    def __init__(self, root, name,
+                 csv_filename='merged_ed_no_icd_sample_20k.csv',
+                 med_min_prev=0.01, pmi_threshold=2.0, drop_los=True,
+                 transform=None, pre_transform=None):
+        self.name = name
+        self.csv_filename = csv_filename
+        self.med_min_prev = float(med_min_prev)
+        self.pmi_threshold = float(pmi_threshold)
+        self.drop_los = bool(drop_los)
+        super().__init__(root, transform, pre_transform)
+        self.data, self.slices = torch.load(self.processed_paths[0], weights_only=False)
+        self._load_metadata()
+
+    @property
+    def raw_dir(self):
+        return self.root
+
+    @property
+    def processed_dir(self):
+        csv_stem = self.csv_filename.replace('.csv', '')
+        los_tag = 'noLOS' if self.drop_los else 'LOS'
+        prev_tag = f'prev{int(round(self.med_min_prev * 1000))}'
+        pmi_tag  = f'pmi{self.pmi_threshold:g}'
+        return osp.join(
+            self.root,
+            f'processed_hetero_{csv_stem}_{los_tag}_{prev_tag}_{pmi_tag}',
+        )
+
+    @property
+    def raw_file_names(self):
+        return [self.csv_filename]
+
+    @property
+    def processed_file_names(self):
+        return ['data.pt']
+
+    @property
+    def metadata_path(self):
+        return osp.join(self.processed_dir, 'metadata.json')
+
+    def _load_metadata(self):
+        self.feature_cols = []          # for compatibility with explanation code
+        self.vital_vocab  = []
+        self.med_vocab    = []
+        self.demo_vocab   = []
+        self.feature_metadata = {}
+        self.label_mapping = {"0": "HOME", "1": "ADMITTED"}
+        if osp.isfile(self.metadata_path):
+            with open(self.metadata_path) as f:
+                meta = json.load(f)
+            self.vital_vocab = meta.get("vital_vocab", [])
+            self.med_vocab   = meta.get("med_vocab", [])
+            self.demo_vocab  = meta.get("demo_vocab", [])
+            self.feature_metadata = meta.get("vital_stats", {})
+            self.label_mapping = meta.get("label_mapping", self.label_mapping)
+            # Surface a flat human-readable name list per feature slot for
+            # GraphXAI explanations.
+            self.feature_cols = (
+                [f"type[{t}]" for t in ("patient", "vital", "med")]
+                + [f"vital_id[{v}]" for v in self.vital_vocab]
+                + [f"med_id[{m}]"   for m in self.med_vocab]
+                + ["value", "abnormal_flag"]
+                + [f"demo[{d}]"     for d in self.demo_vocab]
+            )
+
+    def process(self):
+        df = pd.read_csv(osp.join(self.raw_dir, self.csv_filename))
+        df = df.drop(columns=['subject_id'], errors='ignore')
+
+        y_vals = df['disposition'].values.astype(int)
+        df = df.drop(columns=['disposition'])
+        df = _drop_post_outcome_columns(df)
+        if self.drop_los and 'los_hours' in df.columns:
+            df = df.drop(columns=['los_hours'])
+
+        vital_cols = [c for c in self.VITAL_COLS if c in df.columns]
+        demo_cols  = [c for c in self.DEMO_COLS  if c in df.columns]
+        med_cols_all = sorted([c for c in df.columns if c.startswith('med_')])
+
+        # Drop ultra-rare meds (no statistical mass + GNN noise).
+        med_prev = df[med_cols_all].mean()
+        med_cols = [c for c in med_cols_all if med_prev[c] >= self.med_min_prev]
+        print(f"  Vitals: {len(vital_cols)}  |  demo: {len(demo_cols)}  |  "
+              f"meds kept: {len(med_cols)}/{len(med_cols_all)} "
+              f"(prevalence ≥ {self.med_min_prev:.3f})")
+
+        # --- Vital clipping + z-score (clip first so a single extreme value
+        # doesn't break the population mean/std). ---
+        vital_stats = {}
+        for col in vital_cols:
+            lo, hi = self.VITAL_CLIP.get(col, (None, None))
+            if lo is not None:
+                df[col] = df[col].clip(lower=lo, upper=hi)
+            mean = float(df[col].mean())
+            std  = float(df[col].std())
+            vital_stats[col] = {"mean": mean, "std": std,
+                                "clip_lo": lo, "clip_hi": hi}
+            if std > 0:
+                df[col] = (df[col] - mean) / std
+            df[col] = df[col].fillna(0.0)
+
+        # --- Med-med PMI edges (computed once on the full sample for a
+        # stable population statistic; using only training rows would
+        # require a holdout-aware refactor we don't need for this graph
+        # of co-occurrence statistics). ---
+        med_matrix = (df[med_cols].values > 0).astype(np.float32)
+        med_marginals = med_matrix.mean(axis=0)
+        eps = 1e-9
+        co = (med_matrix.T @ med_matrix) / float(len(df))
+        pmi = np.log((co + eps) / (np.outer(med_marginals, med_marginals) + eps))
+        np.fill_diagonal(pmi, 0.0)
+        pmi_pairs = np.argwhere(pmi > self.pmi_threshold)
+        # Deduplicate (i,j) and (j,i) — we'll emit both directions explicitly.
+        pmi_pairs = pmi_pairs[pmi_pairs[:, 0] < pmi_pairs[:, 1]]
+        # med_idx → list of co-occurring med_idxs
+        med_neighbours = [[] for _ in range(len(med_cols))]
+        for a, b in pmi_pairs:
+            a, b = int(a), int(b)
+            med_neighbours[a].append(b)
+            med_neighbours[b].append(a)
+        print(f"  Med-med PMI edges (undirected, PMI > {self.pmi_threshold}): "
+              f"{len(pmi_pairs)}")
+
+        # --- Feature layout ---
+        V_v = len(vital_cols)
+        V_m = len(med_cols)
+        D_d = len(demo_cols)
+        IDX_TYPE_PATIENT = 0
+        IDX_TYPE_VITAL   = 1
+        IDX_TYPE_MED     = 2
+        IDX_VITAL_START  = 3
+        IDX_MED_START    = 3 + V_v
+        IDX_VALUE        = 3 + V_v + V_m
+        IDX_ABNORMAL     = IDX_VALUE + 1
+        IDX_DEMO_START   = IDX_ABNORMAL + 1
+        feat_dim         = IDX_DEMO_START + D_d
+
+        vital_z   = df[vital_cols].values.astype(np.float32)
+        med_taken = med_matrix                                    # (N, V_m)
+        demo_vec  = df[demo_cols].values.astype(np.float32) if demo_cols else \
+                    np.zeros((len(df), 0), dtype=np.float32)
+
+        data_list = []
+        for i in range(len(df)):
+            patient_meds = np.nonzero(med_taken[i])[0]            # indices into med_cols
+            num_med_nodes = int(len(patient_meds))
+            num_nodes = 1 + V_v + num_med_nodes
+            x = np.zeros((num_nodes, feat_dim), dtype=np.float32)
+
+            # Patient node (idx 0)
+            x[0, IDX_TYPE_PATIENT] = 1.0
+            if D_d > 0:
+                x[0, IDX_DEMO_START:IDX_DEMO_START + D_d] = demo_vec[i]
+
+            # Vital nodes
+            for v_idx in range(V_v):
+                n = 1 + v_idx
+                x[n, IDX_TYPE_VITAL] = 1.0
+                x[n, IDX_VITAL_START + v_idx] = 1.0
+                z = vital_z[i, v_idx]
+                x[n, IDX_VALUE] = z
+                if abs(z) > 2.0:
+                    x[n, IDX_ABNORMAL] = 1.0
+
+            # Med nodes
+            local_of_global = {}
+            med_offset = 1 + V_v
+            for k, g_idx in enumerate(patient_meds):
+                g_idx = int(g_idx)
+                n = med_offset + k
+                x[n, IDX_TYPE_MED] = 1.0
+                x[n, IDX_MED_START + g_idx] = 1.0
+                x[n, IDX_VALUE] = 1.0
+                local_of_global[g_idx] = n
+
+            # Edges
+            src, dst = [], []
+            # patient ↔ vital
+            for v_idx in range(V_v):
+                n = 1 + v_idx
+                src += [0, n]; dst += [n, 0]
+            # patient ↔ med
+            for k in range(num_med_nodes):
+                n = med_offset + k
+                src += [0, n]; dst += [n, 0]
+            # med ↔ med via PMI co-occurrence
+            for g_idx in patient_meds:
+                g_idx = int(g_idx)
+                for co_idx in med_neighbours[g_idx]:
+                    if co_idx in local_of_global and g_idx < co_idx:
+                        a = local_of_global[g_idx]
+                        b = local_of_global[co_idx]
+                        src += [a, b]; dst += [b, a]
+            if not src:
+                # Pathological case (no meds AND no vitals) → self-loop on patient.
+                src, dst = [0], [0]
+            edge_index = torch.tensor([src, dst], dtype=torch.long)
+
+            data_list.append(Data(
+                x=torch.from_numpy(x),
+                edge_index=edge_index,
+                y=torch.tensor([y_vals[i]], dtype=torch.long),
+                dataset_index=torch.tensor([i], dtype=torch.long),
+                num_med_nodes=torch.tensor([num_med_nodes], dtype=torch.long),
+                num_total_nodes=torch.tensor([num_nodes], dtype=torch.long),
+            ))
+
+        avg_nodes = np.mean([d.x.shape[0]            for d in data_list])
+        avg_edges = np.mean([d.edge_index.shape[1]   for d in data_list]) / 2
+        avg_meds  = np.mean([int(d.num_med_nodes)    for d in data_list])
+        print(f"  Built {len(data_list)} intra-patient graphs: "
+              f"avg nodes={avg_nodes:.1f}, avg edges={avg_edges:.1f}, "
+              f"avg med-nodes={avg_meds:.1f}, feat_dim={feat_dim}")
+
+        torch.save(self.collate(data_list), self.processed_paths[0])
+        os.makedirs(self.processed_dir, exist_ok=True)
+        with open(self.metadata_path, "w") as f:
+            json.dump({
+                "csv_filename": self.csv_filename,
+                "feature_dim": feat_dim,
+                "vital_vocab": vital_cols,
+                "med_vocab":   med_cols,
+                "demo_vocab":  demo_cols,
+                "med_min_prev": self.med_min_prev,
+                "pmi_threshold": self.pmi_threshold,
+                "n_med_med_edges": int(len(pmi_pairs)),
+                "drop_los": self.drop_los,
+                "vital_stats": vital_stats,
+                "label_mapping": {"0": "HOME", "1": "ADMITTED"},
+            }, f, indent=2)
+
+
 def get_dataset(dataset_dir, dataset_name, task=None):
     sync_dataset_dict = {
         'BA_2Motifs'.lower(): 'BA_2Motifs',
@@ -596,13 +902,40 @@ def get_dataset(dataset_dir, dataset_name, task=None):
     elif dataset_name.lower() == 'mimic_ed_with_icd':
         return MimicEDMergedDataset(root=dataset_dir, name=dataset_name,
                                     csv_filename='merged_ed_with_icd_sample_20k.csv')
-    elif dataset_name.lower().startswith('mimic_patient_sim'):
-        # name format:  mimic_patient_sim[_full][_k<N>]
-        # e.g.  mimic_patient_sim          → sample 20k, k=10
-        #       mimic_patient_sim_k20      → sample 20k, k=20
-        #       mimic_patient_sim_full_k20 → full dataset, k=20
+    elif dataset_name.lower().startswith('mimic_intra_patient'):
+        # Intra-patient heterogeneous graph (Option A).
+        # name format:  mimic_intra_patient[_full][_with_los][_prevN][_pmiX]
+        # e.g.  mimic_intra_patient                → 20k sample, LOS dropped, prev>=1%, PMI>2
+        #       mimic_intra_patient_with_los       → keep los_hours (leakage ablation)
+        #       mimic_intra_patient_full           → full 309k patients
+        #       mimic_intra_patient_prev5_pmi3     → med prev >= 0.5%, PMI > 3
         name_l = dataset_name.lower()
         full   = 'full' in name_l
+        with_los = 'with_los' in name_l
+        csv    = 'merged_ed_no_icd.csv' if full else 'merged_ed_no_icd_sample_20k.csv'
+        prev = 0.01
+        pmi  = 2.0
+        for part in name_l.split('_'):
+            if part.startswith('prev') and part[4:].isdigit():
+                prev = int(part[4:]) / 1000.0
+            elif part.startswith('pmi'):
+                try:
+                    pmi = float(part[3:])
+                except ValueError:
+                    pass
+        return IntraPatientHeteroDataset(
+            root=dataset_dir, name=dataset_name, csv_filename=csv,
+            med_min_prev=prev, pmi_threshold=pmi, drop_los=not with_los,
+        )
+    elif dataset_name.lower().startswith('mimic_patient_sim'):
+        # name format:  mimic_patient_sim[_full][_no_los][_k<N>][_weighted|_local]
+        # e.g.  mimic_patient_sim              → sample 20k, k=10, with LOS
+        #       mimic_patient_sim_no_los       → sample 20k, k=10, LOS dropped
+        #       mimic_patient_sim_no_los_k20   → sample 20k, k=20, LOS dropped
+        #       mimic_patient_sim_full_no_los  → full dataset, LOS dropped
+        name_l = dataset_name.lower()
+        full   = 'full' in name_l
+        no_los = 'no_los' in name_l
         csv    = 'merged_ed_no_icd.csv' if full else 'merged_ed_no_icd_sample_20k.csv'
         k      = 10
         graph_mode = 'star'
@@ -613,8 +946,10 @@ def get_dataset(dataset_dir, dataset_name, task=None):
                 graph_mode = 'weighted_star'
             elif part in {'local', 'local-knn'}:
                 graph_mode = 'local_knn'
+        drop_cols = ['los_hours'] if no_los else []
         return PatientSimilarityGraphDataset(root=dataset_dir, name=dataset_name,
-                                             k=k, graph_mode=graph_mode, csv_filename=csv)
+                                             k=k, graph_mode=graph_mode,
+                                             csv_filename=csv, drop_cols=drop_cols)
     elif dataset_name.lower() == 'ds1':
         return load_DS1(dataset_dir, 'ds1')
     elif dataset_name.lower() in sync_dataset_dict.keys():
