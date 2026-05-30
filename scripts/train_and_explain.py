@@ -36,6 +36,7 @@ import sys
 import json
 import csv
 import argparse
+import random
 import shutil
 import time
 import numpy as np
@@ -397,7 +398,8 @@ def _prototype_record(gnn_nets, batch, output_dim, pred_label=None, top_k=5):
 # Training
 # ===========================================================================
 
-def train_model(clst: float, sep: float, use_prot: bool = False) -> tuple:
+def train_model(clst: float, sep: float, use_prot: bool = False,
+                margin: float = 1.0) -> tuple:
     """
     Train ProtGNN (or a plain GCN when use_prot=False) and save checkpoints.
 
@@ -475,25 +477,31 @@ def train_model(clst: float, sep: float, use_prot: bool = False) -> tuple:
     for epoch in range(train_args.max_epochs):
 
         # --- Prototype projection (every 10 epochs after proj_epochs) ---
-        if use_prot and epoch >= train_args.proj_epochs and epoch % 10 == 0:
+        if use_prot and epoch >= train_args.proj_epochs and (epoch - train_args.proj_epochs) % 10 == 0:
             gnn_nets.eval()
+            # Shuffle train indices once per projection pass so every prototype
+            # sees a different set of candidates instead of the deterministic
+            # `proto_i * 10` offset slice (which biased later prototypes toward
+            # the tail of the training set).
+            proj_candidates = list(train_indices)
+            random.shuffle(proj_candidates)
             for proto_i in range(output_dim * model_args.num_prototypes_per_class):
                 label_cls = proto_i // model_args.num_prototypes_per_class
                 count = 0
                 best_sim = 0.0
                 proj_prot = None
-                for j in range(proto_i * 10, len(train_indices)):
-                    d = dataset[train_indices[j]]
-                    if d.y == label_cls:
+                for j in proj_candidates:
+                    d = dataset[j]
+                    if int(d.y.view(-1)[0].item()) == label_cls:
                         count += 1
                         coalition, sim, prot = mcts(d, gnn_nets, gnn_nets.model.prototype_vectors[proto_i])
                         if sim > best_sim:
                             best_sim = sim
                             proj_prot = prot
-                    if count >= train_args.nearest_graphs:
-                        if proj_prot is not None:
-                            gnn_nets.model.prototype_vectors.data[proto_i] = proj_prot
-                        break
+                        if count >= train_args.nearest_graphs:
+                            break
+                if proj_prot is not None:
+                    gnn_nets.model.prototype_vectors.data[proto_i] = proj_prot
 
         # --- Warm-up vs. joint training ---
         gnn_nets.train()
@@ -522,12 +530,17 @@ def train_model(clst: float, sep: float, use_prot: bool = False) -> tuple:
                               .reshape(-1, model_args.num_prototypes_per_class), dim=1)[0]
                 )
 
-                # Separation loss
+                # Margin-based separation loss: penalise wrong-class prototypes
+                # only when they are closer than `margin`. Bounded in [0, margin]
+                # per sample → far more stable than the unbounded original
+                # `-mean(min_wrong_dist)` formulation (which previously forced
+                # users to set sep=0 to avoid blow-up).
                 prot_wrong = ~prot_correct
-                sep_cost = -torch.mean(
-                    torch.min(min_distances[prot_wrong]
-                              .reshape(-1, (output_dim - 1) * model_args.num_prototypes_per_class), dim=1)[0]
-                )
+                wrong_min_dist = torch.min(
+                    min_distances[prot_wrong]
+                    .reshape(-1, (output_dim - 1) * model_args.num_prototypes_per_class), dim=1
+                )[0]
+                sep_cost = torch.mean(torch.clamp(margin - wrong_min_dist, min=0.0))
 
                 # Sparsity (L1 on cross-class weights)
                 l1_mask = 1 - torch.t(prototype_class_identity).to(min_distances.device)
@@ -610,11 +623,20 @@ def train_model(clst: float, sep: float, use_prot: bool = False) -> tuple:
             print(f"\n  Early stopping triggered at epoch {epoch}.")
             break
 
-    # --- Load best model ---
-    ckpt = torch.load(best, map_location=model_args.device)
+    # --- Load selected model ---
+    selected_ckpt_path = best
+    selected_ckpt_label = "best validation"
+    if use_prot and epoch_rows and epoch_rows[-1]["epoch"] >= train_args.proj_epochs:
+        selected_ckpt_path = latest
+        selected_ckpt_label = "latest post-projection"
+
+    ckpt = torch.load(selected_ckpt_path, map_location=model_args.device)
     gnn_nets.update_state_dict(ckpt["net"])
     gnn_nets.eval()
-    print(f"\n  Best checkpoint: epoch={ckpt['epoch']}, metric={ckpt['acc']:.4f}")
+    print(
+        f"\n  Selected checkpoint ({selected_ckpt_label}): "
+        f"epoch={ckpt['epoch']}, metric={ckpt['acc']:.4f}"
+    )
 
     # --- Calibrate binary decision threshold on validation data ---
     calibrated_threshold = None
@@ -1092,9 +1114,11 @@ def save_results(
 
 def main():
     parser = argparse.ArgumentParser(description="Train ProtGNN and explain with GraphXAI")
-    parser.add_argument("--dataset",   default=None, help="Dataset name, e.g. mimic_patient_sim_k20")
+    parser.add_argument("--dataset",   default=None, help="Dataset name, e.g. mimic_patient_sim_no_los_k20")
     parser.add_argument("--clst",      type=float, default=0.1,  help="Cluster loss weight")
-    parser.add_argument("--sep",       type=float, default=0.1,  help="Separation loss weight")
+    parser.add_argument("--sep",       type=float, default=0.1,  help="Separation loss weight (margin-based)")
+    parser.add_argument("--margin",    type=float, default=1.0,  help="Separation-loss margin (penalty if wrong-class prototype distance < margin)")
+    parser.add_argument("--seed",      type=int,   default=None, help="Override data-split seed for multi-seed runs")
     parser.add_argument("--explain_n", type=int,   default=10,   help="Graphs to explain (-1 = all)")
     parser.add_argument("--no_prot",   action="store_true",      help="Disable prototype layers (standard GCN training)")
     parser.add_argument("--no_archive", action="store_true",     help="Do not copy this run into outputs/runs")
@@ -1103,12 +1127,19 @@ def main():
 
     if args.dataset:
         data_args.dataset_name = args.dataset
+    if args.seed is not None:
+        data_args.seed = args.seed
+        random.seed(args.seed)
+        np.random.seed(args.seed)
+        torch.manual_seed(args.seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(args.seed)
 
     use_prot = not args.no_prot
 
     # Train
     gnn_nets, epoch_rows, test_state, output_dim, epoch_header, threshold, diagnostics = train_model(
-        args.clst, args.sep, use_prot
+        args.clst, args.sep, use_prot, margin=args.margin
     )
 
     # Explain
