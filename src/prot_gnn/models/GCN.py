@@ -55,10 +55,13 @@ class GCNNet(nn.Module):
         self.Softmax = nn.Softmax(dim=-1)
         self.mlp_non_linear = nn.ELU()
 
-        # prototype layers
+        # prototype layers — match graph-embedding dimensionality so that
+        # latent_dim / readout changes don't cause shape mismatches.
         self.enable_prot = model_args.enable_prot
         self.epsilon = 1e-4
-        self.prototype_shape = (output_dim * model_args.num_prototypes_per_class, 128)
+        self.gnn_dropout = nn.Dropout(getattr(model_args, "gnn_dropout", 0.0))
+        prot_dim = self.dense_dim * len(self.readout_layers)
+        self.prototype_shape = (output_dim * model_args.num_prototypes_per_class, prot_dim)
         self.prototype_vectors = nn.Parameter(torch.rand(self.prototype_shape),
                                               requires_grad=True)
         self.num_prototypes = self.prototype_shape[0]
@@ -90,6 +93,7 @@ class GCNNet(nn.Module):
         xp = torch.mm(x, torch.t(self.prototype_vectors))
         distance = -2 * xp + torch.sum(x ** 2, dim=1, keepdim=True) + torch.t(
             torch.sum(self.prototype_vectors ** 2, dim=1, keepdim=True))
+        distance = torch.clamp(distance, min=0.0)
         similarity = torch.log((distance+1) / (distance + self.epsilon))
         return similarity, distance
 
@@ -117,6 +121,7 @@ class GCNNet(nn.Module):
             if self.emb_normlize:
                 x = F.normalize(x, p=2, dim=-1)
             x = self.gnn_non_linear(x)
+            x = self.gnn_dropout(x)
 
         node_emb = x
         pooled = []
@@ -180,7 +185,7 @@ class GCNNet_NC(nn.Module):
 
         self.enable_prot = model_args.enable_prot
         self.epsilon = 1e-4
-        self.prototype_shape = (output_dim * model_args.num_prototypes_per_class, 128)
+        self.prototype_shape = (output_dim * model_args.num_prototypes_per_class, mlp_input_dim)
         self.prototype_vectors = nn.Parameter(torch.rand(self.prototype_shape),
                                               requires_grad=True)
         self.num_prototypes = self.prototype_shape[0]
@@ -212,6 +217,7 @@ class GCNNet_NC(nn.Module):
         xp = torch.mm(x, torch.t(self.prototype_vectors))
         distance = -2 * xp + torch.sum(x ** 2, dim=1, keepdim=True) + torch.t(
             torch.sum(self.prototype_vectors ** 2, dim=1, keepdim=True))
+        distance = torch.clamp(distance, min=0.0)
         similarity = torch.log((distance + 1) / (distance + self.epsilon))
         return similarity, distance
 

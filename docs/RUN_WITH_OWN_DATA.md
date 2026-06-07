@@ -50,7 +50,8 @@ PYTHONPATH=src:external/GraphXAI-main:. python3 scripts/check_environment.py
 Generate merged datasets:
 
 ```bash
-python3 data/merge_ed.py
+python3 scripts/extract_ed_labs.py   # one-time: extract lab panel from labevents
+python3 scripts/merge_ed.py
 ```
 
 Train the model and generate GraphXAI JSON explanations for the full test set:
