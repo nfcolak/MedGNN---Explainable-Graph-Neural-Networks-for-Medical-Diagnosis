@@ -57,19 +57,25 @@ class ModelParser():
         # i.e. drug-cluster information propagates back to the patient node.
         # Width kept modest to prevent the early-epoch overfit seen on the
         # 20k sample.
-        self.latent_dim: List[int] = [128, 96, 64]
-        # 'mean' (or 'sum') is sane for tabular star graphs; 'max' on L2-normalised
-        # embeddings collapses information.
+        # HPO (disease, 20-trial best = Trial 15, val macro-F1=0.4801):
+        #   3 layers × hidden 128, readout=max, dropout=0.51, emb_norm=True,
+        #   lr=0.00179, batch=128, weight_decay=4.3e-5.
+        # Top-5 trials all chose readout=max + emb_norm=True with high dropout.
+        self.latent_dim: List[int] = [128, 128, 128]
+        # HPO chose 'max' (on a 12k plain-GCN), but with prototypes + full data
+        # max+emb_norm gave CATASTROPHIC eval instability (acc swung 0.05–0.28).
+        # Reverted to 'mean' (repo's stable default). A/B-able vs max.
         self.readout: 'str' = 'mean'
         self.mlp_hidden: List[int] = [64]              # one MLP layer before output
-        self.gnn_dropout: float = 0.5                  # regularise message passing
-        self.dropout: float = 0.5
+        self.gnn_dropout: float = 0.5                  # (unused by current model)
+        self.dropout: float = 0.51                     # HPO-selected (disease)
         self.adj_normlize: bool = True
-        # L2-normalised node embeddings + L2 prototype distances squish dynamic range
-        # onto the unit sphere → poor prototype separability. Disabled.
+        # HPO picked True (paired with max), but that combo destabilised eval on
+        # the prototype/full-data run. L2-normalised embeddings + prototype L2
+        # distances squish dynamic range → poor separability. Back to False.
         self.emb_normlize: bool = False
         self.enable_prot = True
-        self.num_prototypes_per_class = 5
+        self.num_prototypes_per_class = 3              # 5→3: faster projection (90 vs 150 prototypes)
         self.gat_dropout = 0.6
         self.gat_heads = 10
         self.gat_hidden = 10
@@ -111,19 +117,21 @@ class RewardParser():
 class TrainParser():
     def __init__(self):
         super().__init__()
-        self.learning_rate = 0.001
-        self.batch_size = 256              # larger batch → better GPU utilisation on MPS
-        self.weight_decay = 5e-4           # stronger L2 regularisation to combat overfit
+        self.learning_rate = 0.00179       # HPO-selected (disease, Trial 15)
+        self.batch_size = 128              # HPO-selected (disease, Trial 15)
+        self.weight_decay = 4.3e-5         # HPO value (5e-4 made eval WORSE+unstable, reverted)
         self.max_epochs = 300
         self.warm_epochs = 20
         self.proj_epochs = 50
-        self.early_stopping = 20           # stop sooner if no improvement
+        self.early_stopping = 10           # patience (epochs without meaningful gain)
+        self.early_stop_min_delta = 0.005  # macro-F1 must improve by >0.5% to reset patience
         self.last_layer_optimizer_lr = 1e-4            # the learning rate of the last layer
         self.joint_optimizer_lrs = {'features': 1e-4,
                        'add_on_layers': 3e-3,
                        'prototype_vectors': 3e-3}      # the learning rates of the joint training optimizer
         self.warm_epochs = 10                          # the number of warm epochs
-        self.proj_epochs = 25                          # the epoch to start mcts
+        self.proj_epochs = 20                          # near the eval peak (~ep13-17), reachable w/ early_stop=20
+        self.proj_interval = 25                        # re-project every N epochs (projection is slow)
         self.sampling_epochs = 100                     # the epoch to start sampling edges
         self.nearest_graphs = 10                       # number of graphs in projection
 

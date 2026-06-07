@@ -135,6 +135,89 @@ def _stratified_split_indices(labels, split_sizes, seed):
     return train_indices, eval_indices, test_indices
 
 
+def _subject_aware_split_indices(labels, groups, split_sizes, seed):
+    """
+    Split graphs into train/eval/test so that all graphs sharing a group id
+    (e.g. the same patient's multiple ED visits) land in EXACTLY ONE split.
+    This prevents subject-level leakage. Stratification is approximated by
+    assigning whole groups in descending size while greedily balancing each
+    split's positive rate toward the global positive rate.
+    """
+    labels = np.asarray(labels)
+    groups = np.asarray(groups)
+    rng = np.random.default_rng(seed)
+
+    # aggregate per group: indices, count, positive count
+    group_to_idx = {}
+    for idx, g in enumerate(groups):
+        group_to_idx.setdefault(int(g), []).append(idx)
+
+    group_ids = list(group_to_idx.keys())
+    rng.shuffle(group_ids)
+
+    n_total = len(labels)
+    target = {
+        "train": split_sizes[0] * n_total,
+        "eval":  split_sizes[1] * n_total,
+        "test":  split_sizes[2] * n_total,
+    }
+    global_pos = labels.mean() if n_total else 0.0
+
+    buckets = {k: {"idx": [], "n": 0, "pos": 0} for k in ("train", "eval", "test")}
+
+    # assign larger groups first → more stable balancing
+    group_ids.sort(key=lambda g: len(group_to_idx[g]), reverse=True)
+
+    for g in group_ids:
+        idxs = group_to_idx[g]
+        g_n = len(idxs)
+        g_pos = int(labels[idxs].sum())
+
+        best_split, best_score = None, None
+        for k in ("train", "eval", "test"):
+            if target[k] <= 0:
+                continue
+            b = buckets[k]
+            # how far below capacity (prefer under-filled splits)
+            room = (target[k] - b["n"]) / target[k]
+            # positive-rate deviation if we add this group
+            new_pos_rate = (b["pos"] + g_pos) / (b["n"] + g_n)
+            balance_pen = abs(new_pos_rate - global_pos)
+            score = room - 0.5 * balance_pen
+            if best_score is None or score > best_score:
+                best_score, best_split = score, k
+
+        b = buckets[best_split]
+        b["idx"].extend(idxs)
+        b["n"] += g_n
+        b["pos"] += g_pos
+
+    train_indices = buckets["train"]["idx"]
+    eval_indices = buckets["eval"]["idx"]
+    test_indices = buckets["test"]["idx"]
+    rng.shuffle(train_indices)
+    rng.shuffle(eval_indices)
+    rng.shuffle(test_indices)
+    return train_indices, eval_indices, test_indices
+
+
+def _extract_graph_groups(dataset, attr="subject_id"):
+    """Return per-graph group ids (e.g. subject_id) if present, else None."""
+    try:
+        first = dataset[0]
+    except Exception:
+        return None
+    if not hasattr(first, attr):
+        return None
+    groups = []
+    for idx in range(len(dataset)):
+        val = getattr(dataset[idx], attr)
+        if torch.is_tensor(val):
+            val = val.view(-1)[0].item()
+        groups.append(int(val))
+    return np.array(groups)
+
+
 def undirected_graph(data):
     data.edge_index = torch.cat([torch.stack([data.edge_index[1], data.edge_index[0]], dim=0),
                                  data.edge_index], dim=1)
@@ -651,12 +734,31 @@ class IntraPatientHeteroDataset(InMemoryDataset):
     def __init__(self, root, name,
                  csv_filename='merged_ed_no_icd_sample_20k.csv',
                  med_min_prev=0.01, pmi_threshold=2.0, drop_los=True,
+                 add_missing_flag=True, icd_min_prev=0.01,
+                 target='disposition',
                  transform=None, pre_transform=None):
         self.name = name
         self.csv_filename = csv_filename
         self.med_min_prev = float(med_min_prev)
         self.pmi_threshold = float(pmi_threshold)
         self.drop_los = bool(drop_los)
+        # Prediction target:
+        #   'disposition' -> binary HOME(0)/ADMITTED(1)
+        #   'disease'     -> single-label primary diagnosis (disease_1), one
+        #                    class per distinct disease category. disease_* and
+        #                    symptom_* columns are then removed from the inputs.
+        self.target = str(target)
+        # If the CSV has an icd_codes column, add ICD diagnosis nodes (4th node
+        # type). Diagnoses are the strongest single signal for admission BUT may
+        # leak for early-prediction framing (codes can be assigned during/after
+        # the admit decision) — report ICD runs with that caveat.
+        self.icd_min_prev = float(icd_min_prev)
+        # Add a per-vital "was this measured?" flag. Without it, a missing vital
+        # is z-scored to 0 (= the population mean) and becomes indistinguishable
+        # from a genuinely average measurement. The fact that a vital was *not*
+        # taken is itself clinical signal (low-acuity patients get fewer
+        # measurements).
+        self.add_missing_flag = bool(add_missing_flag)
         super().__init__(root, transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0], weights_only=False)
         self._load_metadata()
@@ -671,9 +773,12 @@ class IntraPatientHeteroDataset(InMemoryDataset):
         los_tag = 'noLOS' if self.drop_los else 'LOS'
         prev_tag = f'prev{int(round(self.med_min_prev * 1000))}'
         pmi_tag  = f'pmi{self.pmi_threshold:g}'
+        miss_tag = '_miss' if self.add_missing_flag else ''
+        icd_tag  = f'_icd{int(round(self.icd_min_prev * 1000))}' if self.icd_min_prev else ''
+        tgt_tag  = '' if self.target == 'disposition' else f'_{self.target}'
         return osp.join(
             self.root,
-            f'processed_hetero_{csv_stem}_{los_tag}_{prev_tag}_{pmi_tag}',
+            f'processed_hetero_{csv_stem}_{los_tag}_{prev_tag}_{pmi_tag}{miss_tag}{icd_tag}{tgt_tag}',
         )
 
     @property
@@ -692,6 +797,10 @@ class IntraPatientHeteroDataset(InMemoryDataset):
         self.feature_cols = []          # for compatibility with explanation code
         self.vital_vocab  = []
         self.med_vocab    = []
+        self.icd_vocab    = []
+        self.symptom_vocab = []
+        self.cc_vocab     = []
+        self.patient_num_vocab = []
         self.demo_vocab   = []
         self.feature_metadata = {}
         self.label_mapping = {"0": "HOME", "1": "ADMITTED"}
@@ -700,39 +809,189 @@ class IntraPatientHeteroDataset(InMemoryDataset):
                 meta = json.load(f)
             self.vital_vocab = meta.get("vital_vocab", [])
             self.med_vocab   = meta.get("med_vocab", [])
+            self.icd_vocab   = meta.get("icd_vocab", [])
+            self.symptom_vocab = meta.get("symptom_vocab", [])
+            self.cc_vocab    = meta.get("cc_vocab", [])
+            self.patient_num_vocab = meta.get("patient_num_vocab", [])
             self.demo_vocab  = meta.get("demo_vocab", [])
             self.feature_metadata = meta.get("vital_stats", {})
             self.label_mapping = meta.get("label_mapping", self.label_mapping)
             # Surface a flat human-readable name list per feature slot for
-            # GraphXAI explanations.
+            # GraphXAI explanations. MUST match process() layout exactly:
+            # fixed 6 type slots, then id blocks, value/abnormal/missing,
+            # demo block, patient-numeric block.
+            types = ["patient", "vital", "med", "icd", "symptom", "chiefcomplaint"]
             self.feature_cols = (
-                [f"type[{t}]" for t in ("patient", "vital", "med")]
+                [f"type[{t}]" for t in types]
                 + [f"vital_id[{v}]" for v in self.vital_vocab]
                 + [f"med_id[{m}]"   for m in self.med_vocab]
-                + ["value", "abnormal_flag"]
+                + [f"icd_id[{c}]"   for c in self.icd_vocab]
+                + [f"sym_id[{s}]"   for s in self.symptom_vocab]
+                + [f"cc_id[{c}]"    for c in self.cc_vocab]
+                + ["value", "abnormal_flag", "missing_flag"]
                 + [f"demo[{d}]"     for d in self.demo_vocab]
+                + [f"pnum[{p}]"     for p in self.patient_num_vocab]
             )
 
     def process(self):
         df = pd.read_csv(osp.join(self.raw_dir, self.csv_filename))
+        # Keep subject_id so the dataloader can build a SUBJECT-AWARE split
+        # (the same patient appears in multiple ED visits; letting one visit
+        # leak into train and another into test inflates metrics).
+        subject_ids = (df['subject_id'].values.astype(np.int64)
+                       if 'subject_id' in df.columns
+                       else np.arange(len(df), dtype=np.int64))
         df = df.drop(columns=['subject_id'], errors='ignore')
 
-        y_vals = df['disposition'].values.astype(int)
-        df = df.drop(columns=['disposition'])
+        # --- Build the prediction target ---
+        label_names = None
+        if self.target == 'disease':
+            # Single-label primary diagnosis (disease_1). Map each distinct
+            # disease string to an integer class id.
+            diseases = df['disease_1'].fillna('').astype(str)
+            classes = sorted(d for d in diseases.unique() if d)
+            class_to_id = {d: i for i, d in enumerate(classes)}
+            y_vals = diseases.map(class_to_id).fillna(-1).astype(int).values
+            label_names = classes
+            # rows with no usable disease_1 are dropped
+            keep = y_vals >= 0
+        else:
+            y_vals = df['disposition'].values.astype(int)
+            keep = np.ones(len(df), dtype=bool)
+        self._label_names = label_names
+
+        # Capture presenting-complaint columns BEFORE dropping feature columns.
+        #   symptom_*        : doctor-refined ICD R-codes (post-exam)
+        #   chiefcomplaint_* : triage free text (pre-diagnosis, the door)
+        # Both are legitimate model INPUT (complaint -> disease is standard
+        # clinical reasoning, not leakage); each becomes its own node type.
+        symptom_cols = sorted(c for c in df.columns if c.startswith('symptom_'))
+        symptom_lists_raw = (
+            df[symptom_cols].fillna('').astype(str).values.tolist()
+            if symptom_cols else [[] for _ in range(len(df))]
+        )
+        cc_cols = sorted(c for c in df.columns if c.startswith('chiefcomplaint_'))
+        cc_lists_raw = (
+            df[cc_cols].fillna('').astype(str).values.tolist()
+            if cc_cols else [[] for _ in range(len(df))]
+        )
+
+        # Drop only TRUE leakage: the disease target itself (disease_*), the raw
+        # icd_codes it was derived from, and disposition. Symptoms and chief
+        # complaints are KEPT (captured above as node lists).
+        dx_cols = [c for c in df.columns
+                   if c.startswith('disease_') or c.startswith('symptom_')
+                   or c.startswith('chiefcomplaint_')
+                   or c in ('icd_codes', 'disposition')]
+        df = df.drop(columns=dx_cols, errors='ignore')
+
+        if not keep.all():
+            df = df[keep].reset_index(drop=True)
+            y_vals = y_vals[keep]
+            subject_ids = subject_ids[keep]
+            symptom_lists_raw = [symptom_lists_raw[i] for i in np.nonzero(keep)[0]]
+            cc_lists_raw = [cc_lists_raw[i] for i in np.nonzero(keep)[0]]
+
+        def _build_vocab(lists_raw):
+            counter = {}
+            for row in lists_raw:
+                for s in row:
+                    s = s.strip()
+                    if s:
+                        counter[s] = counter.get(s, 0) + 1
+            vocab = sorted(counter.keys())
+            index = {s: j for j, s in enumerate(vocab)}
+            patient_ids = [
+                [index[s.strip()] for s in row if s.strip() in index]
+                for row in lists_raw
+            ]
+            return vocab, patient_ids
+
+        # Build symptom + chief-complaint vocabularies and per-patient id lists.
+        symptom_vocab, patient_symptoms = _build_vocab(symptom_lists_raw)
+        cc_vocab, patient_ccs = _build_vocab(cc_lists_raw)
+        if symptom_vocab:
+            print(f"  Symptom nodes: {len(symptom_vocab)} categories "
+                  f"(avg {np.mean([len(p) for p in patient_symptoms]):.1f} per patient)")
+        if cc_vocab:
+            print(f"  Chief-complaint nodes: {len(cc_vocab)} categories "
+                  f"(avg {np.mean([len(p) for p in patient_ccs]):.1f} per patient)")
+
         df = _drop_post_outcome_columns(df)
         if self.drop_los and 'los_hours' in df.columns:
             df = df.drop(columns=['los_hours'])
 
         vital_cols = [c for c in self.VITAL_COLS if c in df.columns]
         demo_cols  = [c for c in self.DEMO_COLS  if c in df.columns]
-        med_cols_all = sorted([c for c in df.columns if c.startswith('med_')])
+        # Medication nodes = home meds (med_*) AND, if present, ED-dispensed
+        # meds (pyx_*). They share the MED node type; the pyx_ prefix keeps them
+        # distinguishable in the one-hot id block and in explanations, and lets
+        # PMI edges capture home-med ↔ ED-med co-occurrence.
+        med_cols_all = sorted([c for c in df.columns
+                               if c.startswith('med_') or c.startswith('pyx_')])
 
         # Drop ultra-rare meds (no statistical mass + GNN noise).
         med_prev = df[med_cols_all].mean()
         med_cols = [c for c in med_cols_all if med_prev[c] >= self.med_min_prev]
+        n_pyx = sum(c.startswith('pyx_') for c in med_cols)
         print(f"  Vitals: {len(vital_cols)}  |  demo: {len(demo_cols)}  |  "
               f"meds kept: {len(med_cols)}/{len(med_cols_all)} "
-              f"(prevalence ≥ {self.med_min_prev:.3f})")
+              f"({n_pyx} ED-dispensed pyx_, prevalence ≥ {self.med_min_prev:.3f})")
+
+        # --- Patient-level NUMERIC features (folded into the PATIENT node) ---
+        # Scalar signals that describe the whole visit/patient rather than a
+        # single vital/med: ED-utilisation, polypharmacy count, and vital trend
+        # statistics (min/max/std). Kept on the patient node (z-scored) so graph
+        # topology is unchanged. (vs_* MEAN columns already become VITAL nodes.)
+        patient_num_cols = [c for c in df.columns
+                            if c in ('n_ed_visits', 'n_medications', 'age', 'bmi')
+                            or c.startswith('lab_')
+                            or c.startswith('medclass_')
+                            or c.startswith('hx_')
+                            or (c.startswith('vs_') and c.endswith(('_min', '_max', '_std')))]
+        patient_num_cols = sorted(patient_num_cols)
+        patient_num_stats = {}
+        for col in patient_num_cols:
+            mean = float(df[col].mean())
+            std = float(df[col].std())
+            patient_num_stats[col] = {"mean": mean, "std": std}
+            if std > 0:
+                df[col] = (df[col] - mean) / std
+            else:
+                df[col] = 0.0
+            df[col] = df[col].fillna(0.0)
+        if patient_num_cols:
+            print(f"  Patient numeric features: {len(patient_num_cols)} "
+                  f"(n_ed_visits/n_medications/vital-trends, z-scored on patient node)")
+
+        # --- ICD diagnosis vocabulary (4th node type, optional) ---
+        # icd_codes is a ';'-separated string of diagnosis codes per patient.
+        icd_lists = None
+        icd_vocab = []
+        if 'icd_codes' in df.columns and self.icd_min_prev > 0:
+            def _split_icd(v):
+                if pd.isna(v):
+                    return []
+                return [c.strip() for c in str(v).split(';') if c.strip()]
+            icd_lists = df['icd_codes'].apply(_split_icd).tolist()
+            from collections import Counter as _C
+            icd_counter = _C()
+            for codes in icd_lists:
+                icd_counter.update(set(codes))
+            min_count = self.icd_min_prev * len(df)
+            icd_vocab = sorted([c for c, n in icd_counter.items() if n >= min_count])
+            icd_index = {c: j for j, c in enumerate(icd_vocab)}
+            # per-patient kept-ICD index list
+            icd_lists = [[icd_index[c] for c in set(codes) if c in icd_index]
+                         for codes in icd_lists]
+            print(f"  ICD nodes: {len(icd_vocab)} codes kept "
+                  f"(prevalence ≥ {self.icd_min_prev:.3f}) — LEAKAGE CAVEAT")
+        if 'icd_codes' in df.columns:
+            df = df.drop(columns=['icd_codes'])
+
+        # --- Missing-value mask (capture BEFORE imputation) ---
+        # 1.0 = this vital was actually measured, 0.0 = missing.
+        vital_missing = {col: df[col].isna().values.copy() for col in vital_cols}
 
         # --- Vital clipping + z-score (clip first so a single extreme value
         # doesn't break the population mean/std). ---
@@ -741,13 +1000,15 @@ class IntraPatientHeteroDataset(InMemoryDataset):
             lo, hi = self.VITAL_CLIP.get(col, (None, None))
             if lo is not None:
                 df[col] = df[col].clip(lower=lo, upper=hi)
+            # mean/std computed on observed (non-missing) values only
             mean = float(df[col].mean())
             std  = float(df[col].std())
             vital_stats[col] = {"mean": mean, "std": std,
-                                "clip_lo": lo, "clip_hi": hi}
+                                "clip_lo": lo, "clip_hi": hi,
+                                "missing_rate": float(np.mean(vital_missing[col]))}
             if std > 0:
                 df[col] = (df[col] - mean) / std
-            df[col] = df[col].fillna(0.0)
+            df[col] = df[col].fillna(0.0)  # missing → population mean (z=0)
 
         # --- Med-med PMI edges (computed once on the full sample for a
         # stable population statistic; using only training rows would
@@ -756,7 +1017,10 @@ class IntraPatientHeteroDataset(InMemoryDataset):
         med_matrix = (df[med_cols].values > 0).astype(np.float32)
         med_marginals = med_matrix.mean(axis=0)
         eps = 1e-9
-        co = (med_matrix.T @ med_matrix) / float(len(df))
+        # co-occurrence in float64 (float32 matmul triggers spurious BLAS
+        # overflow warnings on some platforms; counts are small integers anyway)
+        _mm = med_matrix.astype(np.float64)
+        co = (_mm.T @ _mm) / float(len(df))
         pmi = np.log((co + eps) / (np.outer(med_marginals, med_marginals) + eps))
         np.fill_diagonal(pmi, 0.0)
         pmi_pairs = np.argwhere(pmi > self.pmi_threshold)
@@ -774,33 +1038,63 @@ class IntraPatientHeteroDataset(InMemoryDataset):
         # --- Feature layout ---
         V_v = len(vital_cols)
         V_m = len(med_cols)
+        V_i = len(icd_vocab)
+        V_s = len(symptom_vocab)
+        V_c = len(cc_vocab)
         D_d = len(demo_cols)
+        P_n = len(patient_num_cols)
+        # type one-hot slots: FIXED 6 slots (stable indices regardless of which
+        # node types are present in this particular dataset variant).
         IDX_TYPE_PATIENT = 0
         IDX_TYPE_VITAL   = 1
         IDX_TYPE_MED     = 2
-        IDX_VITAL_START  = 3
-        IDX_MED_START    = 3 + V_v
-        IDX_VALUE        = 3 + V_v + V_m
+        IDX_TYPE_ICD     = 3                            # only used when V_i > 0
+        IDX_TYPE_SYMPTOM = 4                            # only used when V_s > 0
+        IDX_TYPE_CC      = 5                            # only used when V_c > 0
+        N_TYPES = 6
+        IDX_VITAL_START  = N_TYPES
+        IDX_MED_START    = IDX_VITAL_START + V_v
+        IDX_ICD_START    = IDX_MED_START + V_m          # icd id one-hot block
+        IDX_SYM_START    = IDX_ICD_START + V_i          # symptom id one-hot block
+        IDX_CC_START     = IDX_SYM_START + V_s          # chief-complaint id block
+        IDX_VALUE        = IDX_CC_START + V_c
         IDX_ABNORMAL     = IDX_VALUE + 1
-        IDX_DEMO_START   = IDX_ABNORMAL + 1
-        feat_dim         = IDX_DEMO_START + D_d
+        IDX_MISSING      = IDX_ABNORMAL + 1            # vital "was measured?" flag
+        IDX_DEMO_START   = IDX_MISSING + 1
+        IDX_PNUM_START   = IDX_DEMO_START + D_d         # patient numeric block
+        feat_dim         = IDX_PNUM_START + P_n
 
         vital_z   = df[vital_cols].values.astype(np.float32)
+        # (N, V_v) boolean → 1.0 where the vital was MISSING in the raw data
+        vital_missing_mat = np.stack(
+            [vital_missing[c] for c in vital_cols], axis=1
+        ).astype(np.float32) if V_v else np.zeros((len(df), 0), dtype=np.float32)
         med_taken = med_matrix                                    # (N, V_m)
         demo_vec  = df[demo_cols].values.astype(np.float32) if demo_cols else \
+                    np.zeros((len(df), 0), dtype=np.float32)
+        pnum_vec  = df[patient_num_cols].values.astype(np.float32) if patient_num_cols else \
                     np.zeros((len(df), 0), dtype=np.float32)
 
         data_list = []
         for i in range(len(df)):
             patient_meds = np.nonzero(med_taken[i])[0]            # indices into med_cols
             num_med_nodes = int(len(patient_meds))
-            num_nodes = 1 + V_v + num_med_nodes
+            patient_icds = icd_lists[i] if icd_lists is not None else []
+            num_icd_nodes = len(patient_icds)
+            patient_syms = patient_symptoms[i] if symptom_vocab else []
+            num_sym_nodes = len(patient_syms)
+            patient_cc = patient_ccs[i] if cc_vocab else []
+            num_cc_nodes = len(patient_cc)
+            num_nodes = (1 + V_v + num_med_nodes + num_icd_nodes
+                         + num_sym_nodes + num_cc_nodes)
             x = np.zeros((num_nodes, feat_dim), dtype=np.float32)
 
             # Patient node (idx 0)
             x[0, IDX_TYPE_PATIENT] = 1.0
             if D_d > 0:
                 x[0, IDX_DEMO_START:IDX_DEMO_START + D_d] = demo_vec[i]
+            if P_n > 0:
+                x[0, IDX_PNUM_START:IDX_PNUM_START + P_n] = pnum_vec[i]
 
             # Vital nodes
             for v_idx in range(V_v):
@@ -809,8 +1103,12 @@ class IntraPatientHeteroDataset(InMemoryDataset):
                 x[n, IDX_VITAL_START + v_idx] = 1.0
                 z = vital_z[i, v_idx]
                 x[n, IDX_VALUE] = z
-                if abs(z) > 2.0:
+                is_missing = vital_missing_mat[i, v_idx] > 0
+                # abnormal only meaningful when the value was actually observed
+                if (not is_missing) and abs(z) > 2.0:
                     x[n, IDX_ABNORMAL] = 1.0
+                if self.add_missing_flag and is_missing:
+                    x[n, IDX_MISSING] = 1.0
 
             # Med nodes
             local_of_global = {}
@@ -823,6 +1121,30 @@ class IntraPatientHeteroDataset(InMemoryDataset):
                 x[n, IDX_VALUE] = 1.0
                 local_of_global[g_idx] = n
 
+            # ICD diagnosis nodes
+            icd_offset = 1 + V_v + num_med_nodes
+            for k, g_idx in enumerate(patient_icds):
+                n = icd_offset + k
+                x[n, IDX_TYPE_ICD] = 1.0
+                x[n, IDX_ICD_START + g_idx] = 1.0
+                x[n, IDX_VALUE] = 1.0
+
+            # SYMPTOM (doctor-refined ICD R-code) nodes
+            sym_offset = 1 + V_v + num_med_nodes + num_icd_nodes
+            for k, g_idx in enumerate(patient_syms):
+                n = sym_offset + k
+                x[n, IDX_TYPE_SYMPTOM] = 1.0
+                x[n, IDX_SYM_START + g_idx] = 1.0
+                x[n, IDX_VALUE] = 1.0
+
+            # CHIEF-COMPLAINT (triage free-text) nodes
+            cc_offset = 1 + V_v + num_med_nodes + num_icd_nodes + num_sym_nodes
+            for k, g_idx in enumerate(patient_cc):
+                n = cc_offset + k
+                x[n, IDX_TYPE_CC] = 1.0
+                x[n, IDX_CC_START + g_idx] = 1.0
+                x[n, IDX_VALUE] = 1.0
+
             # Edges
             src, dst = [], []
             # patient ↔ vital
@@ -832,6 +1154,18 @@ class IntraPatientHeteroDataset(InMemoryDataset):
             # patient ↔ med
             for k in range(num_med_nodes):
                 n = med_offset + k
+                src += [0, n]; dst += [n, 0]
+            # patient ↔ icd
+            for k in range(num_icd_nodes):
+                n = icd_offset + k
+                src += [0, n]; dst += [n, 0]
+            # patient ↔ symptom
+            for k in range(num_sym_nodes):
+                n = sym_offset + k
+                src += [0, n]; dst += [n, 0]
+            # patient ↔ chief-complaint
+            for k in range(num_cc_nodes):
+                n = cc_offset + k
                 src += [0, n]; dst += [n, 0]
             # med ↔ med via PMI co-occurrence
             for g_idx in patient_meds:
@@ -851,16 +1185,25 @@ class IntraPatientHeteroDataset(InMemoryDataset):
                 edge_index=edge_index,
                 y=torch.tensor([y_vals[i]], dtype=torch.long),
                 dataset_index=torch.tensor([i], dtype=torch.long),
+                subject_id=torch.tensor([int(subject_ids[i])], dtype=torch.long),
                 num_med_nodes=torch.tensor([num_med_nodes], dtype=torch.long),
+                num_icd_nodes=torch.tensor([num_icd_nodes], dtype=torch.long),
+                num_sym_nodes=torch.tensor([num_sym_nodes], dtype=torch.long),
+                num_cc_nodes=torch.tensor([num_cc_nodes], dtype=torch.long),
                 num_total_nodes=torch.tensor([num_nodes], dtype=torch.long),
             ))
 
         avg_nodes = np.mean([d.x.shape[0]            for d in data_list])
         avg_edges = np.mean([d.edge_index.shape[1]   for d in data_list]) / 2
         avg_meds  = np.mean([int(d.num_med_nodes)    for d in data_list])
+        avg_icds  = np.mean([int(d.num_icd_nodes)    for d in data_list])
+        avg_syms  = np.mean([int(d.num_sym_nodes)    for d in data_list])
+        avg_ccs   = np.mean([int(d.num_cc_nodes)     for d in data_list])
         print(f"  Built {len(data_list)} intra-patient graphs: "
               f"avg nodes={avg_nodes:.1f}, avg edges={avg_edges:.1f}, "
-              f"avg med-nodes={avg_meds:.1f}, feat_dim={feat_dim}")
+              f"avg med-nodes={avg_meds:.1f}, avg icd-nodes={avg_icds:.1f}, "
+              f"avg sym-nodes={avg_syms:.1f}, avg cc-nodes={avg_ccs:.1f}, "
+              f"feat_dim={feat_dim}")
 
         torch.save(self.collate(data_list), self.processed_paths[0])
         os.makedirs(self.processed_dir, exist_ok=True)
@@ -870,13 +1213,25 @@ class IntraPatientHeteroDataset(InMemoryDataset):
                 "feature_dim": feat_dim,
                 "vital_vocab": vital_cols,
                 "med_vocab":   med_cols,
+                "icd_vocab":   icd_vocab,
+                "symptom_vocab": symptom_vocab,
+                "cc_vocab":    cc_vocab,
+                "patient_num_vocab": patient_num_cols,
+                "patient_num_stats": patient_num_stats,
                 "demo_vocab":  demo_cols,
                 "med_min_prev": self.med_min_prev,
+                "icd_min_prev": self.icd_min_prev,
                 "pmi_threshold": self.pmi_threshold,
                 "n_med_med_edges": int(len(pmi_pairs)),
                 "drop_los": self.drop_los,
+                "add_missing_flag": self.add_missing_flag,
                 "vital_stats": vital_stats,
-                "label_mapping": {"0": "HOME", "1": "ADMITTED"},
+                "target": self.target,
+                "label_mapping": (
+                    {str(i): n for i, n in enumerate(self._label_names)}
+                    if getattr(self, "_label_names", None)
+                    else {"0": "HOME", "1": "ADMITTED"}
+                ),
             }, f, indent=2)
 
 
@@ -909,13 +1264,24 @@ def get_dataset(dataset_dir, dataset_name, task=None):
         #       mimic_intra_patient_with_los       → keep los_hours (leakage ablation)
         #       mimic_intra_patient_full           → full 309k patients
         #       mimic_intra_patient_prev5_pmi3     → med prev >= 0.5%, PMI > 3
+        # name format:  mimic_intra_patient[_full][_with_los][_icd][_disease][_prevN][_pmiX]
+        #   ..._disease  → predict primary diagnosis (disease_1) instead of disposition
         name_l = dataset_name.lower()
+        parts  = name_l.split('_')
         full   = 'full' in name_l
         with_los = 'with_los' in name_l
-        csv    = 'merged_ed_no_icd.csv' if full else 'merged_ed_no_icd_sample_20k.csv'
+        use_icd  = 'icd' in parts                       # mimic_intra_patient_icd
+        target   = 'disease' if 'disease' in parts else 'disposition'
+        if use_icd:
+            csv = 'merged_ed_with_icd.csv' if full else 'merged_ed_with_icd_sample_60k.csv'
+        else:
+            csv = 'merged_ed_all_visits.csv' if full else 'merged_ed.csv'
         prev = 0.01
         pmi  = 2.0
-        for part in name_l.split('_'):
+        # diagnoses are far sparser than meds (8000+ distinct codes), so use a
+        # lower default prevalence threshold to keep a useful ICD vocabulary
+        icd_prev = 0.005 if use_icd else 0.0
+        for part in parts:
             if part.startswith('prev') and part[4:].isdigit():
                 prev = int(part[4:]) / 1000.0
             elif part.startswith('pmi'):
@@ -926,6 +1292,7 @@ def get_dataset(dataset_dir, dataset_name, task=None):
         return IntraPatientHeteroDataset(
             root=dataset_dir, name=dataset_name, csv_filename=csv,
             med_min_prev=prev, pmi_threshold=pmi, drop_los=not with_los,
+            icd_min_prev=icd_prev, target=target,
         )
     elif dataset_name.lower().startswith('mimic_patient_sim'):
         # name format:  mimic_patient_sim[_full][_no_los][_k<N>][_weighted|_local]
@@ -1198,12 +1565,18 @@ def get_dataloader(dataset, batch_size, random_split_flag=True, data_split_ratio
         eval = Subset(dataset, dev_indices)
         test = Subset(dataset, test_indices)
     else:
-        # Using labels to create stratified indices
         labels = _extract_graph_labels(dataset)
-        train_indices, eval_indices, test_indices = _stratified_split_indices(
-            labels, data_split_ratio, seed
-        )
-        
+        groups = _extract_graph_groups(dataset, "subject_id")
+        if groups is not None and len(np.unique(groups)) < len(groups):
+            print(f"  [split] subject-aware across {len(np.unique(groups))} subjects")
+            train_indices, eval_indices, test_indices = _subject_aware_split_indices(
+                labels, groups, data_split_ratio, seed
+            )
+        else:
+            train_indices, eval_indices, test_indices = _stratified_split_indices(
+                labels, data_split_ratio, seed
+            )
+
         train = Subset(dataset, train_indices)
         eval = Subset(dataset, eval_indices)
         test = Subset(dataset, test_indices)

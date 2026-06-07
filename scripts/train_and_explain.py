@@ -83,7 +83,10 @@ except Exception as _e:
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-RESULTS_DIR = os.path.join(str(OUTPUTS_DIR), "results")
+RESULTS_BASE = os.path.join(str(OUTPUTS_DIR), "results")  # fixed parent dir
+# RESULTS_DIR is redirected to a timestamped per-run subfolder by
+# _prepare_results_dir() so runs never overwrite each other.
+RESULTS_DIR = RESULTS_BASE
 EXPLAINER_NAMES = ["GradExplainer", "IntegratedGradExplainer", "GNNExplainer"]
 FEATURE_TOP_K = 10
 NODE_TOP_K = 5
@@ -99,24 +102,26 @@ def _mkdir(path: str) -> str:
 
 
 def _prepare_results_dir():
+    """Redirect RESULTS_DIR to a fresh, timestamped + titled per-run subfolder.
+    NEVER deletes previous runs — each run is self-contained under its own
+    folder, e.g.  outputs/results/2026-06-02_17-30_disease_gcn/ ."""
+    global RESULTS_DIR
+    # small, readable title from the dataset + model
+    title = (data_args.dataset_name
+             .replace("mimic_intra_patient_", "")
+             .replace("mimic_patient_sim_", "patsim_")
+             .replace("mimic_", ""))
+    stamp = time.strftime("%Y-%m-%d_%H-%M")
+    RESULTS_DIR = os.path.join(RESULTS_BASE, f"{stamp}_{title}_{model_args.model_name}")
     _mkdir(RESULTS_DIR)
-    for name in (
-        "model_config.json",
-        "dataset_metadata.json",
-        "training_metrics.csv",
-        "test_metrics.json",
-        "evaluation_diagnostics.json",
-        "threshold_sensitivity.csv",
-        "report.txt",
-    ):
-        path = os.path.join(RESULTS_DIR, name)
-        if os.path.exists(path):
-            os.remove(path)
-    for name in ("explanations", "clinical_explanations"):
-        path = os.path.join(RESULTS_DIR, name)
-        if os.path.isdir(path):
-            shutil.rmtree(path)
     _mkdir(os.path.join(RESULTS_DIR, "explanations"))
+    # leave a pointer to the most recent run so summary scripts can find it
+    try:
+        with open(os.path.join(RESULTS_BASE, "latest_run.txt"), "w") as f:
+            f.write(RESULTS_DIR)
+    except Exception:
+        pass
+    print(f"  Run results dir: {RESULTS_DIR}")
 
 
 def _compute_class_weights(labels, num_classes):
@@ -163,6 +168,28 @@ def _binary_metrics(labels, preds, pos_scores):
         "balanced_acc": round((recall + spec) / 2, 6),
         "pr_auc":    round(_average_precision(labels, pos_scores), 6),
     }
+
+
+def _multiclass_metrics(labels, preds, probs):
+    """Multi-class (e.g. 30-disease) metrics: accuracy is added by the caller;
+    here we add balanced accuracy, macro/micro-F1, and top-3/top-5 accuracy."""
+    from sklearn.metrics import (balanced_accuracy_score, f1_score,
+                                 top_k_accuracy_score)
+    labels = np.asarray(labels, dtype=np.int64)
+    preds = np.asarray(preds, dtype=np.int64)
+    out = {
+        "balanced_acc": round(float(balanced_accuracy_score(labels, preds)), 6),
+        "macro_f1": round(float(f1_score(labels, preds, average="macro", zero_division=0)), 6),
+        "micro_f1": round(float(f1_score(labels, preds, average="micro", zero_division=0)), 6),
+    }
+    if probs is not None and probs.ndim == 2:
+        n_cls = probs.shape[1]
+        lab_range = np.arange(n_cls)
+        for k in (3, 5):
+            if n_cls > k:
+                out[f"top{k}_acc"] = round(float(
+                    top_k_accuracy_score(labels, probs, k=k, labels=lab_range)), 6)
+    return out
 
 
 def _confusion_counts(labels, preds):
@@ -244,6 +271,9 @@ def _state_from_predictions(loss, labels_all, argmax_preds, probs_all, threshold
         state["confusion_matrix"] = _confusion_counts(labels_all, preds_all)
         if threshold_used is not None:
             state["threshold"] = round(threshold_used, 6)
+    else:
+        # multi-class (e.g. disease, 30 classes)
+        state.update(_multiclass_metrics(labels_all, preds_all, probs_all))
     return state
 
 
@@ -465,19 +495,22 @@ def train_model(clst: float, sep: float, use_prot: bool = False,
     ckpt_dir = os.path.join(model_args.checkpoint, data_args.dataset_name)
     _mkdir(ckpt_dir)
 
-    best_metric     = float("-inf")
-    early_stop_cnt  = 0
-    epoch_rows      = []
+    best_metric       = float("-inf")   # best ever (for checkpoint)
+    best_for_patience = float("-inf")   # reference for early-stop min_delta
+    early_stop_cnt    = 0
+    epoch_rows        = []
 
     header = ["epoch", "train_loss", "train_acc",
               "eval_loss", "eval_acc", "eval_f1", "eval_pr_auc",
-              "eval_recall", "eval_precision"]
+              "eval_recall", "eval_precision",
+              "eval_macro_f1", "eval_balanced_acc", "eval_top3_acc", "eval_top5_acc"]
 
     t0 = time.time()
     for epoch in range(train_args.max_epochs):
 
-        # --- Prototype projection (every 10 epochs after proj_epochs) ---
-        if use_prot and epoch >= train_args.proj_epochs and (epoch - train_args.proj_epochs) % 10 == 0:
+        # --- Prototype projection (every proj_interval epochs after proj_epochs) ---
+        _proj_interval = getattr(train_args, "proj_interval", 10)
+        if use_prot and epoch >= train_args.proj_epochs and (epoch - train_args.proj_epochs) % _proj_interval == 0:
             gnn_nets.eval()
             # Shuffle train indices once per projection pass so every prototype
             # sees a different set of candidates instead of the deterministic
@@ -485,7 +518,11 @@ def train_model(clst: float, sep: float, use_prot: bool = False,
             # the tail of the training set).
             proj_candidates = list(train_indices)
             random.shuffle(proj_candidates)
-            for proto_i in range(output_dim * model_args.num_prototypes_per_class):
+            n_prot = output_dim * model_args.num_prototypes_per_class
+            proj_t0 = time.time()
+            print(f"\n  Prototype projection (epoch {epoch}): {n_prot} prototypes "
+                  f"(MCTS subgraph search — this is the slow step)...", flush=True)
+            for proto_i in range(n_prot):
                 label_cls = proto_i // model_args.num_prototypes_per_class
                 count = 0
                 best_sim = 0.0
@@ -502,6 +539,14 @@ def train_model(clst: float, sep: float, use_prot: bool = False,
                             break
                 if proj_prot is not None:
                     gnn_nets.model.prototype_vectors.data[proto_i] = proj_prot
+                # --- live progress (updates in place) ---
+                done = proto_i + 1
+                elapsed = time.time() - proj_t0
+                eta = elapsed / done * (n_prot - done)
+                print(f"\r    P{done:3d}/{n_prot} | class {label_cls:2d} | "
+                      f"best_sim={best_sim:.3f} | {elapsed:5.0f}s elapsed | "
+                      f"ETA ~{eta:4.0f}s   ", end="", flush=True)
+            print(f"\n  Projection done in {time.time() - proj_t0:.0f}s.", flush=True)
 
         # --- Warm-up vs. joint training ---
         gnn_nets.train()
@@ -578,18 +623,26 @@ def train_model(clst: float, sep: float, use_prot: bool = False,
         train_acc  = float(np.concatenate(batch_accs).mean())
         eval_state = _evaluate(dataloader["eval"], gnn_nets, criterion)
 
-        sel = eval_state.get("pr_auc", eval_state["acc"])
+        # selection metric: PR-AUC (binary) else macro-F1 (multi-class) else acc
+        sel = eval_state.get("pr_auc")
+        if sel is None:
+            sel = eval_state.get("macro_f1", eval_state["acc"])
         sel = eval_state["acc"] if (isinstance(sel, float) and np.isnan(sel)) else sel
 
-        # Early stopping
-        if sel > best_metric:
-            best_metric    = sel
+        # Early stopping: only a MEANINGFUL improvement (> min_delta) resets the
+        # patience counter — tiny 0.0001 noise bumps no longer keep it alive
+        # forever once the metric has plateaued.
+        min_delta = getattr(train_args, "early_stop_min_delta", 0.0)
+        if sel > best_for_patience + min_delta:
+            best_for_patience = sel
             early_stop_cnt = 0
         else:
             early_stop_cnt += 1
 
-        # Save checkpoint
-        is_best = (sel >= best_metric)
+        # Save checkpoint whenever we hit a new best at all (independent of delta)
+        is_best = (sel > best_metric)
+        if is_best:
+            best_metric = sel
         state = {"net": gnn_nets.state_dict(), "epoch": epoch, "acc": sel}
         latest = os.path.join(ckpt_dir, f"{model_args.model_name}_latest.pth")
         best   = os.path.join(ckpt_dir, f"{model_args.model_name}_best.pth")
@@ -607,6 +660,10 @@ def train_model(clst: float, sep: float, use_prot: bool = False,
             "eval_pr_auc":    eval_state.get("pr_auc", ""),
             "eval_recall":    eval_state.get("recall", ""),
             "eval_precision": eval_state.get("precision", ""),
+            "eval_macro_f1":     eval_state.get("macro_f1", ""),
+            "eval_balanced_acc": eval_state.get("balanced_acc", ""),
+            "eval_top3_acc":     eval_state.get("top3_acc", ""),
+            "eval_top5_acc":     eval_state.get("top5_acc", ""),
         }
         epoch_rows.append(row)
 
@@ -616,6 +673,9 @@ def train_model(clst: float, sep: float, use_prot: bool = False,
             f"Train Loss: {train_loss:.4f}  Acc: {train_acc:.4f} | "
             f"Eval Loss: {eval_state['loss']:.4f}  Acc: {eval_state['acc']:.4f}"
             + (f"  PR-AUC: {eval_state['pr_auc']:.4f}" if "pr_auc" in eval_state else "")
+            + (f"  macroF1: {eval_state['macro_f1']:.4f}"
+               + (f"  top5: {eval_state['top5_acc']:.3f}" if "top5_acc" in eval_state else "")
+               if "macro_f1" in eval_state else "")
             + f"  [{elapsed:.0f}s]"
         )
 
@@ -728,10 +788,14 @@ def explain_test_set(
     print("GRAPHXAI EXPLANATIONS")
     print("=" * 60)
 
-    # GraphXAI explainers can move temporary masks/modules onto CPU. Running
-    # the whole explanation pass on CPU avoids MPS/CPU tensor mismatches while
-    # leaving training free to use the configured accelerator.
-    explain_device = torch.device("cpu")
+    # Explanation device: CPU by default. GNNExplainer moves model weights to
+    # CPU internally, which corrupts the device state for subsequent graphs on
+    # MPS ("weight is on cpu but expected on mps") and crashes the whole pass.
+    # CPU is the reliable path; set EXPLAIN_DEVICE=mps to (try to) use the GPU.
+    _exp_dev = os.environ.get("EXPLAIN_DEVICE", "cpu")
+    explain_device = torch.device(_exp_dev)
+    print(f"  Explanation device: {explain_device} "
+          f"(set EXPLAIN_DEVICE=mps to try GPU)")
     previous_gnn_device = getattr(gnn_nets, "device", model_args.device)
     previous_model_device = getattr(getattr(gnn_nets, "model", None), "device", None)
     gnn_nets.device = explain_device
@@ -781,6 +845,13 @@ def explain_test_set(
             else:
                 pred = logits.argmax(dim=-1).item()
 
+        # Explain the model's DECISION → attribute w.r.t. the PREDICTED class,
+        # not the ground-truth label. (For correct predictions they coincide;
+        # for wrong ones this shows "why the model said pred", which is what a
+        # self-explaining diagnosis tool should surface.)
+        explain_label = torch.tensor([int(pred)], dtype=torch.long,
+                                     device=explain_device)
+
         record = {
             "graph_idx":   idx,
             "dataset_index": _first_or_none(getattr(batch, "dataset_index", None)),
@@ -799,10 +870,10 @@ def explain_test_set(
         # ---- GradExplainer ----
         try:
             exp = grad_exp.get_explanation_graph(
-                x=x, edge_index=edge_index, label=label, forward_kwargs=fwd_kwargs
+                x=x, edge_index=edge_index, label=explain_label, forward_kwargs=fwd_kwargs
             )
             imp = exp.node_imp.detach().cpu().numpy()
-            feature_attr = _grad_feature_attribution(wrapper, x, edge_index, label, fwd_kwargs, criterion)
+            feature_attr = _grad_feature_attribution(wrapper, x, edge_index, explain_label, fwd_kwargs, criterion)
             record["explanations"]["GradExplainer"] = {
                 "node_importance": imp.tolist(),
                 "top_nodes": _top_items(imp, k=NODE_TOP_K),
@@ -818,11 +889,11 @@ def explain_test_set(
         # ---- IntegratedGradExplainer ----
         try:
             exp = integ_exp.get_explanation_graph(
-                x=x, edge_index=edge_index, label=label, forward_kwargs=fwd_kwargs
+                x=x, edge_index=edge_index, label=explain_label, forward_kwargs=fwd_kwargs
             )
             imp = exp.node_imp.detach().cpu().numpy()
             feature_attr = _integrated_grad_feature_attribution(
-                wrapper, x, edge_index, label, fwd_kwargs, criterion
+                wrapper, x, edge_index, explain_label, fwd_kwargs, criterion
             )
             record["explanations"]["IntegratedGradExplainer"] = {
                 "node_importance": imp.tolist(),
@@ -1010,7 +1081,15 @@ def save_results(
 
     # ---- report.txt ----
     total_epochs = len(epoch_rows)
-    best_epoch   = max(epoch_rows, key=lambda r: (r["eval_pr_auc"] or 0) if r["eval_pr_auc"] != "" else r["eval_acc"])
+
+    def _epoch_sel(r):
+        # PR-AUC (binary) > macro-F1 (multi-class) > accuracy
+        if r.get("eval_pr_auc", "") not in ("", None):
+            return r["eval_pr_auc"] or 0
+        if r.get("eval_macro_f1", "") not in ("", None):
+            return r["eval_macro_f1"] or 0
+        return r["eval_acc"]
+    best_epoch   = max(epoch_rows, key=_epoch_sel)
     n_explained  = len(explanation_records)
     n_correct    = sum(1 for r in explanation_records if r["correct"])
     exp_success  = {
@@ -1047,15 +1126,26 @@ def save_results(
         if label_distribution:
             f.write("LABEL DISTRIBUTION\n")
             f.write("-" * 40 + "\n")
-            for split_name in ("train", "eval", "test"):
-                split_dist = label_distribution.get(split_name, {})
-                class_0 = split_dist.get("class_0", {})
-                class_1 = split_dist.get("class_1", {})
-                f.write(
-                    f"  {split_name:<8}: "
-                    f"HOME={class_0.get('count', 0)} ({class_0.get('rate', 0.0):.3f})  "
-                    f"ADMITTED={class_1.get('count', 0)} ({class_1.get('rate', 0.0):.3f})\n"
-                )
+            label_map = config.get("label_mapping", {}) or {}
+            if output_dim == 2:
+                for split_name in ("train", "eval", "test"):
+                    split_dist = label_distribution.get(split_name, {})
+                    class_0 = split_dist.get("class_0", {})
+                    class_1 = split_dist.get("class_1", {})
+                    f.write(
+                        f"  {split_name:<8}: "
+                        f"HOME={class_0.get('count', 0)} ({class_0.get('rate', 0.0):.3f})  "
+                        f"ADMITTED={class_1.get('count', 0)} ({class_1.get('rate', 0.0):.3f})\n"
+                    )
+            else:
+                # multi-class: list per-class train counts (with names if available)
+                train_dist = label_distribution.get("train", {})
+                f.write(f"  {output_dim} classes (train counts):\n")
+                for idx in range(output_dim):
+                    cd = train_dist.get(f"class_{idx}", {})
+                    name = label_map.get(str(idx), f"class_{idx}")
+                    f.write(f"    [{idx:>2}] {name:<40} "
+                            f"{cd.get('count', 0)} ({cd.get('rate', 0.0):.3f})\n")
             f.write("\n")
 
         confusion_matrices = diagnostics.get("confusion_matrices", {})
