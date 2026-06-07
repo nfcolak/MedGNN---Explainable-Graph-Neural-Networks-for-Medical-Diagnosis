@@ -41,24 +41,65 @@ from prot_gnn.models import GnnNets
 from prot_gnn.load_dataset import get_dataset, get_dataloader
 
 OUT_DIR = os.path.join(str(OUTPUTS_DIR), "results", "clinical_explanations")
-LABELS = {0: "HOME", 1: "ADMITTED"}
 
 
-def decode_node(row, Vv, Vm, vital_vocab, med_vocab, demo_vocab):
+def build_layout(ds):
+    """Compute feature-vector offsets for the 6-type intra-patient graph,
+    matching IntraPatientHeteroDataset.process() exactly:
+      [type(6) | vital_id | med_id | icd_id | sym_id | cc_id |
+       value | abnormal | missing | demo | pnum]
+    """
+    vital = list(getattr(ds, "vital_vocab", []))
+    med   = list(getattr(ds, "med_vocab", []))
+    icd   = list(getattr(ds, "icd_vocab", []))
+    sym   = list(getattr(ds, "symptom_vocab", []))
+    cc    = list(getattr(ds, "cc_vocab", []))
+    demo  = list(getattr(ds, "demo_vocab", []))
+    Vv, Vm, Vi, Vs, Vc, Dd = len(vital), len(med), len(icd), len(sym), len(cc), len(demo)
+    N_TYPES = 6
+    IV = N_TYPES
+    IM = IV + Vv
+    II = IM + Vm
+    IS = II + Vi
+    IC = IS + Vs
+    IDX_VAL = IC + Vc
+    return {
+        "Vv": Vv, "Vm": Vm, "Vi": Vi, "Vs": Vs, "Vc": Vc, "Dd": Dd,
+        "vital": IV, "med": IM, "icd": II, "sym": IS, "cc": IC,
+        "value": IDX_VAL, "abn": IDX_VAL + 1, "miss": IDX_VAL + 2,
+        "demo": IDX_VAL + 3,
+        "vital_vocab": vital, "med_vocab": med, "icd_vocab": icd,
+        "sym_vocab": sym, "cc_vocab": cc, "demo_vocab": demo,
+    }
+
+
+def decode_node(row, lay):
+    """Human-readable token for one node row (6-type layout)."""
     row = np.asarray(row, dtype=float)
-    IDX_VAL = 3 + Vv + Vm
-    IDX_ABN = IDX_VAL + 1
-    if row[0] == 1:
-        demos = [demo_vocab[i] for i in range(len(demo_vocab)) if row[IDX_ABN + 1 + i] != 0]
+    t = int(np.argmax(row[:6]))     # 0 pat,1 vital,2 med,3 icd,4 sym,5 cc
+    IDX_VAL, IDX_ABN = lay["value"], lay["abn"]
+    if t == 0:
+        dv, di = lay["demo_vocab"], lay["demo"]
+        demos = [dv[i] for i in range(len(dv)) if row[di + i] != 0]
         return "patient(" + ", ".join(d.replace("_", " ") for d in demos) + ")"
-    if row[1] == 1:
-        vid = int(np.argmax(row[3:3 + Vv]))
+    if t == 1 and lay["Vv"]:
+        vid = int(np.argmax(row[lay["vital"]:lay["vital"] + lay["Vv"]]))
         z = row[IDX_VAL]
         abn = " ABNORMAL" if row[IDX_ABN] == 1 else ""
-        return f"{vital_vocab[vid]}{'↑' if z > 0 else '↓'}(z={z:+.1f}{abn})"
-    if row[2] == 1:
-        mid = int(np.argmax(row[3 + Vv:3 + Vv + Vm]))
-        return med_vocab[mid].replace("med_", "")
+        return f"{lay['vital_vocab'][vid]}{'↑' if z > 0 else '↓'}(z={z:+.1f}{abn})"
+    if t == 2 and lay["Vm"]:
+        mid = int(np.argmax(row[lay["med"]:lay["med"] + lay["Vm"]]))
+        nm = lay["med_vocab"][mid]
+        return "ED:" + nm[4:] if nm.startswith("pyx_") else nm.replace("med_", "")
+    if t == 3 and lay["Vi"]:
+        iid = int(np.argmax(row[lay["icd"]:lay["icd"] + lay["Vi"]]))
+        return f"icd[{lay['icd_vocab'][iid]}]"
+    if t == 4 and lay["Vs"]:
+        sid = int(np.argmax(row[lay["sym"]:lay["sym"] + lay["Vs"]]))
+        return f"sym[{lay['sym_vocab'][sid]}]"
+    if t == 5 and lay["Vc"]:
+        cid = int(np.argmax(row[lay["cc"]:lay["cc"] + lay["Vc"]]))
+        return f"cc[{lay['cc_vocab'][cid]}]"
     return "?"
 
 
@@ -79,10 +120,11 @@ def main():
     dl = get_dataloader(ds, 1, random_split_flag=data_args.random_split,
                         data_split_ratio=data_args.data_split_ratio, seed=data_args.seed)
 
-    vital_vocab = list(getattr(ds, "vital_vocab", []))
-    med_vocab = list(getattr(ds, "med_vocab", []))
-    demo_vocab = list(getattr(ds, "demo_vocab", []))
-    Vv, Vm = len(vital_vocab), len(med_vocab)
+    lay = build_layout(ds)
+    # class id -> human name (disease names for 30-class, HOME/ADMITTED for binary)
+    _lm = getattr(ds, "label_mapping", {"0": "HOME", "1": "ADMITTED"})
+    def label_name(i):
+        return _lm.get(str(int(i)), f"class_{int(i)}")
 
     gnn = GnnNets(ds.num_node_features, ds.num_classes, model_args)
     gnn.to_device()
@@ -134,8 +176,7 @@ def main():
             order = np.argsort(-sal)[:args.top_nodes]
             xrows = batch.x.detach().cpu().numpy()
             for ni in order:
-                node_tokens.append(decode_node(xrows[int(ni)], Vv, Vm,
-                                                vital_vocab, med_vocab, demo_vocab))
+                node_tokens.append(decode_node(xrows[int(ni)], lay))
                 # importance = this node's share of the graph's total saliency (%)
                 node_importance.append(round(100.0 * float(sal[int(ni)]) / total_sal, 1))
         except Exception as e:
@@ -153,10 +194,10 @@ def main():
         row = {
             "graph": i,
             "patient_row": di,
-            "prediction": LABELS[pred],
-            "actual": LABELS[true_l],
+            "prediction": label_name(pred),
+            "actual": label_name(true_l),
             "result": "correct" if pred == true_l else "wrong",
-            "p_admitted": round(float(probs_np[1]) if probs_np.shape[0] == 2 else float("nan"), 4),
+            "p_pred": round(float(probs_np[pred]), 4),
             "num_nodes": int(batch.x.shape[0]),
         }
         # dynamic key-factor columns + their importance (% of graph saliency)
@@ -165,10 +206,10 @@ def main():
             row[f"key_factor_{j+1}_importance_%"] = node_importance[j] if j < len(node_importance) else ""
         row.update({
             "nearest_prototype": f"P{nearest_i}",
-            "nearest_prototype_class": LABELS[nearest_i // num_per_class],
+            "nearest_prototype_class": label_name(nearest_i // num_per_class),
             "nearest_prototype_distance": round(float(dist[nearest_i]), 4),
             "supporting_prototype": f"P{support_i}",
-            "supporting_prototype_class": LABELS[support_i // num_per_class],
+            "supporting_prototype_class": label_name(support_i // num_per_class),
             "supporting_prototype_contribution": round(float(contrib[support_i]), 4),
         })
         rows.append(row)

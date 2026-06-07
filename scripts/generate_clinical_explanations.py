@@ -658,7 +658,13 @@ def main():
     output_dir = results_dir / "clinical_explanations"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    _load_metadata(results_dir)
+    meta = _load_metadata(results_dir)
+    # Use the trained dataset's label_mapping (e.g. 30 disease names) instead of
+    # the binary HOME/ADMITTED default, so multi-class predictions are named.
+    _lm = (meta or {}).get("label_mapping") or {}
+    if _lm:
+        LABELS.clear()
+        LABELS.update({int(k): v for k, v in _lm.items()})
     df = pd.read_csv(args.csv)
     graph_paths = sorted(
         (Path(p) for p in glob.glob(str(explanations_dir / "graph_*.json"))),

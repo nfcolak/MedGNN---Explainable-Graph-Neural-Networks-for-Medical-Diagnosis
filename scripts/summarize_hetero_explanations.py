@@ -36,28 +36,8 @@ from prot_gnn.load_dataset import get_dataset
 RESULTS_DIR = os.path.join(str(OUTPUTS_DIR), "results")
 EXPL_DIR = os.path.join(RESULTS_DIR, "explanations")
 OUT_DIR = os.path.join(RESULTS_DIR, "clinical_explanations")
-LABELS = {0: "HOME", 1: "ADMITTED"}
-
-
-def decode_node(row, Vv, Vm, vital_vocab, med_vocab, demo_vocab):
-    """Map a node feature row to a human-readable clinical token."""
-    row = np.asarray(row, dtype=float)
-    IDX_VAL = 3 + Vv + Vm
-    IDX_ABN = IDX_VAL + 1
-    if row[0] == 1:  # PATIENT
-        demos = [demo_vocab[i] for i in range(len(demo_vocab))
-                 if row[IDX_ABN + 1 + i] != 0]
-        return "patient(" + ", ".join(d.replace("_", " ") for d in demos) + ")"
-    if row[1] == 1:  # VITAL
-        vid = int(np.argmax(row[3:3 + Vv]))
-        z = row[IDX_VAL]
-        abn = " ABNORMAL" if row[IDX_ABN] == 1 else ""
-        arrow = "↑" if z > 0 else "↓"
-        return f"{vital_vocab[vid]}{arrow}(z={z:+.1f}{abn})"
-    if row[2] == 1:  # MED
-        mid = int(np.argmax(row[3 + Vv:3 + Vv + Vm]))
-        return med_vocab[mid].replace("med_", "")
-    return "?"
+# Shared 6-type layout decoder (cc/symptom/pnum aware) + offsets.
+from summarize_all_test import build_layout, decode_node  # noqa: E402
 
 
 def main():
@@ -76,11 +56,12 @@ def main():
         sys.exit(f"No explanation JSONs in {EXPL_DIR}. Run explain_checkpoint.py first.")
 
     ds = get_dataset(data_args.dataset_dir, data_args.dataset_name)
-    vital_vocab = list(getattr(ds, "vital_vocab", []))
-    med_vocab = list(getattr(ds, "med_vocab", []))
-    demo_vocab = list(getattr(ds, "demo_vocab", []))
-    Vv, Vm = len(vital_vocab), len(med_vocab)
-    print(f"Decoding with {Vv} vitals, {Vm} meds, {len(demo_vocab)} demo flags")
+    lay = build_layout(ds)
+    _lm = getattr(ds, "label_mapping", {"0": "HOME", "1": "ADMITTED"})
+    def label_name(i):
+        return _lm.get(str(int(i)), f"class_{int(i)}")
+    print(f"Decoding 6-type graph: {lay['Vv']} vitals, {lay['Vm']} meds, "
+          f"{lay['Vs']} symptoms, {lay['Vc']} chief-complaints, {lay['Dd']} demo flags")
 
     rows = []
     for fp in files:
@@ -100,22 +81,21 @@ def main():
             for item in top[:args.top_nodes]:
                 ni = int(item["index"])
                 if 0 <= ni < x.shape[0]:
-                    node_tokens.append(decode_node(x[ni], Vv, Vm,
-                                                   vital_vocab, med_vocab, demo_vocab))
+                    node_tokens.append(decode_node(x[ni], lay))
 
         # --- prototype evidence ---
         pe = d.get("prototype_evidence", {}) or {}
         nearest = (pe.get("top_closest") or [None])[0]
         support = (pe.get("top_contributors") or [None])[0]
         np_proto = f"P{nearest['prototype_index']}" if nearest else ""
-        np_class = LABELS.get(nearest["prototype_class"], "") if nearest else ""
+        np_class = label_name(nearest["prototype_class"]) if nearest else ""
         np_dist = round(nearest["distance"], 4) if nearest else ""
         sp_proto = f"P{support['prototype_index']}" if support else ""
-        sp_class = LABELS.get(support["prototype_class"], "") if support else ""
+        sp_class = label_name(support["prototype_class"]) if support else ""
         sp_contrib = round(support["contribution_to_pred"], 4) if support else ""
 
         signals = ", ".join(node_tokens) if node_tokens else "(no node attributions)"
-        reason = (f"{LABELS[pred_l]} (true {LABELS[true_l]}, {result}): "
+        reason = (f"{label_name(pred_l)} (true {label_name(true_l)}, {result}): "
                   f"key factors = {signals}; "
                   f"nearest prototype {np_proto} [{np_class}] dist={np_dist}; "
                   f"strongest prototype {sp_proto} [{sp_class}] contrib={sp_contrib}")
@@ -123,8 +103,8 @@ def main():
         rows.append({
             "graph": gi,
             "patient_row": di if di is not None else "",
-            "prediction": LABELS[pred_l],
-            "actual": LABELS[true_l],
+            "prediction": label_name(pred_l),
+            "actual": label_name(true_l),
             "result": result,
             "num_nodes": d.get("num_nodes", ""),
             "key_factor_1": node_tokens[0] if len(node_tokens) > 0 else "",

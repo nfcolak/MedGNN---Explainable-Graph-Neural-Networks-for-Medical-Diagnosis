@@ -1,3 +1,4 @@
+import os
 import torch
 try:
     import ipdb
@@ -246,7 +247,10 @@ class GNNExplainer(_BaseExplainer):
 
             return loss
 
-        num_epochs = 200 # TODO: make more general
+        # mask-optimisation iterations per graph. Env-overridable so a large
+        # full-test-set pass (6000 graphs) can trade a little fidelity for speed:
+        #   GNNEXP_EPOCHS=50  →  ~4x faster GNNExplainer.
+        num_epochs = int(os.environ.get("GNNEXP_EPOCHS", 200))
         for epoch in range(1, num_epochs + 1):
             optimizer.zero_grad()
             h = x * self.feature_mask.sigmoid()

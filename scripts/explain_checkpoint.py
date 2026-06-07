@@ -178,12 +178,13 @@ def main():
         clst=args.clst, sep=args.sep, output_dim=output_dim,
         use_prot=model_args.enable_prot, threshold=calibrated_threshold,
     )
-    print(f"\nWrote results to {TE.RESULTS_DIR}/ (old explanations cleared)")
+    print(f"\nWrote results to {TE.RESULTS_DIR}/ (timestamped run, prior runs kept)")
 
     # --- Clinical summary (summary.csv / .xlsx / .md) ---
     if not args.skip_clinical:
         limit = args.clinical_limit if args.clinical_limit is not None else max(args.explain_n, 1)
-        cmd = [sys.executable, os.path.join(_ROOT, "scripts", "generate_clinical_explanations.py")]
+        cmd = [sys.executable, os.path.join(_ROOT, "scripts", "generate_clinical_explanations.py"),
+               "--results_dir", TE.RESULTS_DIR]
         if args.explain_n != -1:
             cmd += ["--limit", str(limit)]
         env = dict(os.environ)
