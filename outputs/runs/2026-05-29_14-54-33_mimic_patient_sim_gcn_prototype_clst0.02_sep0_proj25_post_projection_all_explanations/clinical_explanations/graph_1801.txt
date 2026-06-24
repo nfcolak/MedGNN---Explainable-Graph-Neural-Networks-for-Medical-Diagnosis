@@ -1,0 +1,35 @@
+Graph 1801 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: HOME
+Model outcome: incorrectly classified
+Patient row index: 4938
+
+Patient-level signals
+---------------------
+The model emphasized walk in arrival transport indicator, lisinopril medication indicator, and gender m indicator.
+
+Highest-attribution clinical features:
+- transport_WALK IN: True (walk in arrival transport indicator)
+- med_lisinopril: 1 (lisinopril medication indicator)
+- gender_M: True (gender m indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 4 -> patient row 6669, node 9 -> patient row 2401, node 7 -> patient row 15200.
+Among those similar patients, the model-highlighted patterns included:
+- walk in arrival transport indicator in 3/3 influential similar patients
+- prednisone medication indicator in 1/3 influential similar patients
+- lisinopril medication indicator in 2/3 influential similar patients
+- gender m indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0503).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 3.4234), prototype 7 (ADMITTED, contribution 2.3511), prototype 5 (ADMITTED, contribution 2.0843).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

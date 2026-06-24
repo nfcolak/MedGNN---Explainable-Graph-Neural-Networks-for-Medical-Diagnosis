@@ -1,0 +1,38 @@
+Graph 1817 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 18519
+
+Patient-level signals
+---------------------
+The model emphasized elevated heart rate, lower oxygen saturation, elevated respiratory rate, race white indicator, acetaminophen medication indicator, and gender m indicator.
+
+Highest-attribution clinical features:
+- heartrate: 120.0 (elevated heart rate)
+- vs_o2sat: 92.2857 (lower oxygen saturation)
+- resprate: 26.0 (elevated respiratory rate)
+- race_WHITE: True (race white indicator)
+- med_acetaminophen: 1 (acetaminophen medication indicator)
+- gender_M: True (gender m indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 10 -> patient row 18127, node 6 -> patient row 19550, node 7 -> patient row 16638.
+Among those similar patients, the model-highlighted patterns included:
+- elevated heart rate in 2/3 influential similar patients
+- lower oxygen saturation in 2/3 influential similar patients
+- elevated respiratory rate in 3/3 influential similar patients
+- gender m indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.1228).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 2.4934), prototype 7 (ADMITTED, contribution 1.6043), prototype 6 (ADMITTED, contribution 1.5638).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

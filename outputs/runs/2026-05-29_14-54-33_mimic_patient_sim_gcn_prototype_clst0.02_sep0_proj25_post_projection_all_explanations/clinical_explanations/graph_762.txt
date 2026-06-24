@@ -1,0 +1,38 @@
+Graph 762 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 18809
+
+Patient-level signals
+---------------------
+The model emphasized abnormal diastolic blood pressure, gender m indicator, race white indicator, ambulance arrival transport indicator, lisinopril medication indicator, and aspirin medication indicator.
+
+Highest-attribution clinical features:
+- dbp: 51.0 (abnormal diastolic blood pressure)
+- gender_M: True (gender m indicator)
+- race_WHITE: True (race white indicator)
+- transport_AMBULANCE: True (ambulance arrival transport indicator)
+- med_lisinopril: 1 (lisinopril medication indicator)
+- med_aspirin: 1 (aspirin medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 17041, node 3 -> patient row 16575, node 7 -> patient row 18561.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal diastolic blood pressure in 3/3 influential similar patients
+- gender m indicator in 3/3 influential similar patients
+- race white indicator in 2/3 influential similar patients
+- aspirin medication indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.3417).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 1.5546), prototype 0 (HOME, contribution 1.4196), prototype 2 (HOME, contribution 1.2535).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

@@ -1,0 +1,92 @@
+/Users/necatifurkancolak/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+/Users/necatifurkancolak/Library/Python/3.9/lib/python/site-packages/torch_geometric/deprecation.py:26: UserWarning: 'data.DataLoader' is deprecated, use 'loader.DataLoader' instead
+  warnings.warn(out)
+============================================================
+TRAINING
+============================================================
+  [INFO] Prototype layers ENABLED.
+  Dataset : mimic_patient_sim
+  Graphs  : 20000  |  avg nodes: 11.0  |  avg edges: 10.0
+  Classes : 2  |  input_dim: 326
+  Class counts (train): [9983, 6017]
+  Class counts (eval) : [1248, 752]
+  Class counts (test) : [1248, 752]
+  Class weights       : [0.8014, 1.3296]
+  clst=0.001  sep=0.0001  lr=0.001
+
+  Epoch    0 | Train Loss: 0.7136  Acc: 0.6009 | Eval Loss: 0.6867  Acc: 0.6905  PR-AUC: 0.6766  [2s]
+  Epoch    1 | Train Loss: 0.7007  Acc: 0.7156 | Eval Loss: 0.6772  Acc: 0.6990  PR-AUC: 0.6336  [3s]
+  Epoch    2 | Train Loss: 0.6809  Acc: 0.7312 | Eval Loss: 0.6564  Acc: 0.7315  PR-AUC: 0.6417  [4s]
+  Epoch    3 | Train Loss: 0.6416  Acc: 0.7477 | Eval Loss: 0.6139  Acc: 0.7435  PR-AUC: 0.6538  [6s]
+  Epoch    4 | Train Loss: 0.5692  Acc: 0.7546 | Eval Loss: 0.5575  Acc: 0.7390  PR-AUC: 0.6559  [7s]
+  Epoch    5 | Train Loss: 0.5066  Acc: 0.7609 | Eval Loss: 0.5442  Acc: 0.7270  PR-AUC: 0.6938  [8s]
+  Epoch    6 | Train Loss: 0.4779  Acc: 0.7728 | Eval Loss: 0.5567  Acc: 0.7400  PR-AUC: 0.6907  [10s]
+  Epoch    7 | Train Loss: 0.4539  Acc: 0.7845 | Eval Loss: 0.5586  Acc: 0.7425  PR-AUC: 0.6954  [11s]
+  Epoch    8 | Train Loss: 0.4308  Acc: 0.7927 | Eval Loss: 0.5797  Acc: 0.7240  PR-AUC: 0.6844  [12s]
+  Epoch    9 | Train Loss: 0.4057  Acc: 0.8024 | Eval Loss: 0.5816  Acc: 0.7475  PR-AUC: 0.6955  [14s]
+  Epoch   10 | Train Loss: 0.3816  Acc: 0.8146 | Eval Loss: 0.6051  Acc: 0.7435  PR-AUC: 0.6907  [15s]
+  Epoch   11 | Train Loss: 0.3572  Acc: 0.8256 | Eval Loss: 0.6224  Acc: 0.7380  PR-AUC: 0.6863  [16s]
+  Epoch   12 | Train Loss: 0.3336  Acc: 0.8400 | Eval Loss: 0.6651  Acc: 0.7190  PR-AUC: 0.6589  [18s]
+  Epoch   13 | Train Loss: 0.3076  Acc: 0.8528 | Eval Loss: 0.7101  Acc: 0.7360  PR-AUC: 0.6764  [19s]
+  Epoch   14 | Train Loss: 0.2904  Acc: 0.8658 | Eval Loss: 0.6398  Acc: 0.7295  PR-AUC: 0.6590  [20s]
+  Epoch   15 | Train Loss: 0.2656  Acc: 0.8769 | Eval Loss: 0.7655  Acc: 0.7120  PR-AUC: 0.6485  [22s]
+  Epoch   16 | Train Loss: 0.2423  Acc: 0.8864 | Eval Loss: 0.7767  Acc: 0.7160  PR-AUC: 0.6422  [23s]
+  Epoch   17 | Train Loss: 0.2169  Acc: 0.9036 | Eval Loss: 0.7858  Acc: 0.7175  PR-AUC: 0.6510  [25s]
+  Epoch   18 | Train Loss: 0.2021  Acc: 0.9117 | Eval Loss: 0.9244  Acc: 0.7005  PR-AUC: 0.6405  [26s]
+  Epoch   19 | Train Loss: 0.2012  Acc: 0.9106 | Eval Loss: 0.9143  Acc: 0.7155  PR-AUC: 0.6488  [27s]
+  Epoch   20 | Train Loss: 0.1691  Acc: 0.9255 | Eval Loss: 1.0264  Acc: 0.7195  PR-AUC: 0.6413  [29s]
+  Epoch   21 | Train Loss: 0.1603  Acc: 0.9320 | Eval Loss: 1.1280  Acc: 0.7250  PR-AUC: 0.6554  [30s]
+  Epoch   22 | Train Loss: 0.1362  Acc: 0.9429 | Eval Loss: 1.0694  Acc: 0.7180  PR-AUC: 0.6432  [31s]
+  Epoch   23 | Train Loss: 0.1475  Acc: 0.9384 | Eval Loss: 1.1902  Acc: 0.7325  PR-AUC: 0.6531  [33s]
+  Epoch   24 | Train Loss: 0.1221  Acc: 0.9523 | Eval Loss: 1.2374  Acc: 0.7110  PR-AUC: 0.6340  [34s]
+  Epoch   25 | Train Loss: 0.1051  Acc: 0.9585 | Eval Loss: 1.1992  Acc: 0.7060  PR-AUC: 0.6351  [35s]
+  Epoch   26 | Train Loss: 0.1040  Acc: 0.9581 | Eval Loss: 1.3389  Acc: 0.7105  PR-AUC: 0.6399  [37s]
+  Epoch   27 | Train Loss: 0.0981  Acc: 0.9631 | Eval Loss: 1.3816  Acc: 0.6965  PR-AUC: 0.6229  [38s]
+  Epoch   28 | Train Loss: 0.0853  Acc: 0.9677 | Eval Loss: 1.3910  Acc: 0.6950  PR-AUC: 0.6263  [40s]
+  Epoch   29 | Train Loss: 0.0722  Acc: 0.9728 | Eval Loss: 1.6845  Acc: 0.7160  PR-AUC: 0.6348  [41s]
+  Epoch   30 | Train Loss: 0.0866  Acc: 0.9671 | Eval Loss: 1.4037  Acc: 0.7025  PR-AUC: 0.6429  [42s]
+
+  Early stopping triggered at epoch 30.
+
+  Best checkpoint: epoch=9, metric=0.6955
+
+  Calibrated decision threshold: 0.445 (validation balanced_acc=0.7360)
+
+  TEST RESULTS
+    loss              : 0.580878
+    acc               : 0.7385
+    precision         : 0.632065
+    recall            : 0.728723
+    specificity       : 0.744391
+    f1                : 0.676961
+    balanced_acc      : 0.736557
+    pr_auc            : 0.672459
+    confusion_matrix  : {'tn': 929, 'fp': 319, 'fn': 204, 'tp': 548}
+    threshold         : 0.445
+
+  THRESHOLD SENSITIVITY (test set)
+    t=0.300 | precision=0.580 recall=0.852 specificity=0.627 f1=0.690 | TP=641 FP=465 TN=783 FN=111
+    t=0.360 | precision=0.608 recall=0.799 specificity=0.689 f1=0.690 | TP=601 FP=388 TN=860 FN=151
+    t=0.400 | precision=0.618 recall=0.761 specificity=0.716 f1=0.682 | TP=572 FP=354 TN=894 FN=180
+    t=0.445 | precision=0.632 recall=0.729 specificity=0.744 f1=0.677 | TP=548 FP=319 TN=929 FN=204
+    t=0.500 | precision=0.653 recall=0.674 specificity=0.784 f1=0.663 | TP=507 FP=270 TN=978 FN=245
+    t=0.600 | precision=0.685 recall=0.573 specificity=0.841 f1=0.624 | TP=431 FP=198 TN=1050 FN=321
+    t=0.700 | precision=0.700 recall=0.449 specificity=0.884 f1=0.547 | TP=338 FP=145 TN=1103 FN=414
+
+============================================================
+GRAPHXAI EXPLANATIONS
+============================================================
+  GNN layers detected (L): 3
+  Explaining 0 test graphs
+
+
+============================================================
+SAVING RESULTS
+============================================================
+
+  Saved report to /Users/necatifurkancolak/MP---Self-Explainable-Graph-Neural-Networks-via-Prototype-Learning-for-Medical-Diagnosis/outputs/results/report.txt
+
+  All results written to: /Users/necatifurkancolak/MP---Self-Explainable-Graph-Neural-Networks-via-Prototype-Learning-for-Medical-Diagnosis/outputs/results/
+
+Done.

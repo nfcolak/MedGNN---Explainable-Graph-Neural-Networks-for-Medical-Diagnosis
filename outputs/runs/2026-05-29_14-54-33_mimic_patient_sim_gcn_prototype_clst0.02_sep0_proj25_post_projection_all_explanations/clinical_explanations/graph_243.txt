@@ -1,0 +1,34 @@
+Graph 243 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 7700
+
+Patient-level signals
+---------------------
+The model emphasized elevated heart rate, race white indicator, and gender m indicator.
+
+Highest-attribution clinical features:
+- heartrate: 120.0 (elevated heart rate)
+- race_WHITE: True (race white indicator)
+- gender_M: True (gender m indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 13016, node 7 -> patient row 6487, node 2 -> patient row 7571.
+Among those similar patients, the model-highlighted patterns included:
+- elevated heart rate in 3/3 influential similar patients
+- race white indicator in 3/3 influential similar patients
+- gender m indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.1492).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 2.3204), prototype 0 (HOME, contribution 1.9404), prototype 2 (HOME, contribution 1.4596).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

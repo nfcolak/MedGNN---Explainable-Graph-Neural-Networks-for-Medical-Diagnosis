@@ -1,0 +1,32 @@
+Graph 662 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 5577
+
+Patient-level signals
+---------------------
+The model emphasized elevated heart rate, walk in arrival transport indicator, and hydrochlorothiazide medication indicator.
+
+Highest-attribution clinical features:
+- heartrate: 106.0 (elevated heart rate)
+- transport_WALK IN: True (walk in arrival transport indicator)
+- med_hydrochlorothiazide: 1 (hydrochlorothiazide medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 3 -> patient row 2138, node 4 -> patient row 2135, node 9 -> patient row 4251.
+Among those similar patients, the model-highlighted patterns included:
+- walk in arrival transport indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.2447).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 1.6262), prototype 0 (HOME, contribution 0.3113), prototype 8 (ADMITTED, contribution -0.1990).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

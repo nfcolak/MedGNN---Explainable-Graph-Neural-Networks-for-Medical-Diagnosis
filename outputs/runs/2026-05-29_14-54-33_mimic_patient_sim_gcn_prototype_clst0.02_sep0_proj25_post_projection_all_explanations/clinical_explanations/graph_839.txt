@@ -1,0 +1,31 @@
+Graph 839 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: HOME
+Model outcome: incorrectly classified
+Patient row index: 162
+
+Patient-level signals
+---------------------
+The model emphasized walk in arrival transport indicator, and lorazepam medication indicator.
+
+Highest-attribution clinical features:
+- transport_WALK IN: True (walk in arrival transport indicator)
+- med_lorazepam: 1 (lorazepam medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 7 -> patient row 7426, node 9 -> patient row 5576, node 8 -> patient row 4009.
+Among those similar patients, the model-highlighted patterns included:
+- walk in arrival transport indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0809).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 2.9196), prototype 7 (ADMITTED, contribution 1.7564), prototype 5 (ADMITTED, contribution 1.6338).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

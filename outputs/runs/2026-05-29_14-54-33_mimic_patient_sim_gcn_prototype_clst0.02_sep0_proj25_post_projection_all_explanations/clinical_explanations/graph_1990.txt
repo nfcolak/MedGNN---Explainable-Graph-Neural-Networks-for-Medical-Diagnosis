@@ -1,0 +1,35 @@
+Graph 1990 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 14843
+
+Patient-level signals
+---------------------
+The model emphasized abnormal temperature, gender m indicator, and pantoprazole medication indicator.
+
+Highest-attribution clinical features:
+- temperature: 35.5556 (abnormal temperature)
+- gender_M: True (gender m indicator)
+- med_pantoprazole: 1 (pantoprazole medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 2 -> patient row 17456, node 10 -> patient row 6681, node 3 -> patient row 19567.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal diastolic blood pressure in 2/3 influential similar patients
+- abnormal temperature in 2/3 influential similar patients
+- gender m indicator in 2/3 influential similar patients
+- pantoprazole medication indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0733).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 3.0232), prototype 7 (ADMITTED, contribution 2.5005), prototype 6 (ADMITTED, contribution 2.3048).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

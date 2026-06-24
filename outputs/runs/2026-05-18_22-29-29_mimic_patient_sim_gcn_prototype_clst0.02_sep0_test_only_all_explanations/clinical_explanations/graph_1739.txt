@@ -1,0 +1,35 @@
+Graph 1739 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 6063
+
+Patient-level signals
+---------------------
+The model emphasized gender f indicator, fluticasone medication indicator, and loratadine medication indicator.
+
+Highest-attribution clinical features:
+- gender_F: True (gender f indicator)
+- med_fluticasone: 1 (fluticasone medication indicator)
+- med_loratadine: 1 (loratadine medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 3 -> patient row 4077, node 7 -> patient row 4415, node 4 -> patient row 19544.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal diastolic blood pressure in 2/3 influential similar patients
+- gender f indicator in 3/3 influential similar patients
+- fluticasone medication indicator in 1/3 influential similar patients
+- loratadine medication indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.2118).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 1.7436), prototype 0 (HOME, contribution 0.3403), prototype 8 (ADMITTED, contribution -0.2015).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

@@ -1,0 +1,34 @@
+Graph 463 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 13140
+
+Patient-level signals
+---------------------
+The model emphasized abnormal systolic blood pressure, lisinopril medication indicator, gender m indicator, and walk in arrival transport indicator.
+
+Highest-attribution clinical features:
+- vs_sbp: 86.0 (abnormal systolic blood pressure)
+- med_lisinopril: 1 (lisinopril medication indicator)
+- gender_M: True (gender m indicator)
+- transport_WALK IN: True (walk in arrival transport indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 8 -> patient row 18279, node 9 -> patient row 19293, node 1 -> patient row 18905.
+Among those similar patients, the model-highlighted patterns included:
+- lisinopril medication indicator in 3/3 influential similar patients
+- gender m indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.1459).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 2.3423), prototype 0 (HOME, contribution 2.3096), prototype 3 (HOME, contribution 1.8110).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

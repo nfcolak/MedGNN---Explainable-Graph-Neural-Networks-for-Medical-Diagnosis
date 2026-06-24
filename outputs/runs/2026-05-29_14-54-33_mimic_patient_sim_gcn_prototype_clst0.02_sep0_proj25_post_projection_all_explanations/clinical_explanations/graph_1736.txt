@@ -1,0 +1,35 @@
+Graph 1736 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 19357
+
+Patient-level signals
+---------------------
+The model emphasized montelukast medication indicator, lorazepam medication indicator, and abnormal diastolic blood pressure.
+
+Highest-attribution clinical features:
+- med_montelukast: 1 (montelukast medication indicator)
+- med_lorazepam: 1 (lorazepam medication indicator)
+- vs_dbp: 59.3333 (abnormal diastolic blood pressure)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 18239, node 6 -> patient row 14218, node 3 -> patient row 18496.
+Among those similar patients, the model-highlighted patterns included:
+- montelukast medication indicator in 1/3 influential similar patients
+- lorazepam medication indicator in 2/3 influential similar patients
+- abnormal temperature in 1/3 influential similar patients
+- fluticasone medication indicator in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0590).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 3.2519), prototype 7 (ADMITTED, contribution 2.2942), prototype 6 (ADMITTED, contribution 2.1428).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

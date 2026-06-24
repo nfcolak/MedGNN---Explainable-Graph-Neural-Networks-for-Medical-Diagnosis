@@ -1,0 +1,37 @@
+Graph 1859 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 10470
+
+Patient-level signals
+---------------------
+The model emphasized fluticasone medication indicator, mirtazapine medication indicator, sertraline medication indicator, gender f indicator, and fluticasone salmeterol medication indicator.
+
+Highest-attribution clinical features:
+- med_fluticasone: 1 (fluticasone medication indicator)
+- med_mirtazapine: 1 (mirtazapine medication indicator)
+- med_sertraline: 1 (sertraline medication indicator)
+- gender_F: True (gender f indicator)
+- med_fluticasone_salmeterol: 1 (fluticasone salmeterol medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 2 -> patient row 14242, node 9 -> patient row 10006, node 10 -> patient row 12055.
+Among those similar patients, the model-highlighted patterns included:
+- fluticasone medication indicator in 3/3 influential similar patients
+- mirtazapine medication indicator in 1/3 influential similar patients
+- sertraline medication indicator in 2/3 influential similar patients
+- gender f indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.6643).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 0.9183), prototype 8 (ADMITTED, contribution -0.2871), prototype 0 (HOME, contribution 0.2579).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

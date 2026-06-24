@@ -1,0 +1,33 @@
+Graph 1869 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 19323
+
+Patient-level signals
+---------------------
+The model emphasized abnormal diastolic blood pressure, abnormal temperature, and gender f indicator.
+
+Highest-attribution clinical features:
+- vs_dbp: 58.2 (abnormal diastolic blood pressure)
+- temperature: 35.5556 (abnormal temperature)
+- gender_F: True (gender f indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 1 -> patient row 13571, node 3 -> patient row 18998, node 4 -> patient row 9945.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal temperature in 2/3 influential similar patients
+- gender f indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.7271).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 0.8650), prototype 4 (HOME, contribution -0.3128), prototype 7 (ADMITTED, contribution 0.2135).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

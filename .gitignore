@@ -11,8 +11,6 @@ checkpoint/
 checkpoints/
 log/
 logs/
-runs/
-outputs/
 wandb/
 
 # Editor/system files

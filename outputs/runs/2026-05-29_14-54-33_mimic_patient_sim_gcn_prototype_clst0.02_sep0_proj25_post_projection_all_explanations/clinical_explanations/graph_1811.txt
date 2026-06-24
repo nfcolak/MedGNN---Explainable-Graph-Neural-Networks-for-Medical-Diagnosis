@@ -1,0 +1,35 @@
+Graph 1811 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 16626
+
+Patient-level signals
+---------------------
+The model emphasized elevated heart rate, elevated respiratory rate, and gender m indicator.
+
+Highest-attribution clinical features:
+- vs_heartrate: 127.6667 (elevated heart rate)
+- vs_resprate: 20.8889 (elevated respiratory rate)
+- gender_M: True (gender m indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 7 -> patient row 12673, node 4 -> patient row 15026, node 2 -> patient row 18118.
+Among those similar patients, the model-highlighted patterns included:
+- elevated heart rate in 3/3 influential similar patients
+- elevated respiratory rate in 3/3 influential similar patients
+- metformin medication indicator in 1/3 influential similar patients
+- gender m indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0851).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 2.8674), prototype 7 (ADMITTED, contribution 2.3674), prototype 6 (ADMITTED, contribution 2.1750).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

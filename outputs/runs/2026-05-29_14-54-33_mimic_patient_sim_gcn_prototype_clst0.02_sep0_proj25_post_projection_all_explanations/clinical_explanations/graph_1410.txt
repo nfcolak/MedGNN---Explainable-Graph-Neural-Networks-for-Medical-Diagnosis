@@ -1,0 +1,36 @@
+Graph 1410 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 13789
+
+Patient-level signals
+---------------------
+The model emphasized abnormal systolic blood pressure, gender f indicator, race white indicator, and simvastatin medication indicator.
+
+Highest-attribution clinical features:
+- sbp: 190.0 (abnormal systolic blood pressure)
+- gender_F: True (gender f indicator)
+- race_WHITE: True (race white indicator)
+- med_simvastatin: 1 (simvastatin medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 5 -> patient row 15180, node 9 -> patient row 16536, node 4 -> patient row 692.
+Among those similar patients, the model-highlighted patterns included:
+- gender f indicator in 3/3 influential similar patients
+- nystatin medication indicator in 1/3 influential similar patients
+- levothyroxine medication indicator in 2/3 influential similar patients
+- race white indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.0865).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 2.8752), prototype 0 (HOME, contribution 2.5463), prototype 3 (HOME, contribution 1.8845).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

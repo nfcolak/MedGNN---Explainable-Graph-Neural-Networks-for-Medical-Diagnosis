@@ -1,0 +1,5 @@
+k,dataset,pr_auc,acc,precision,recall,specificity,f1,balanced_acc,threshold,tn,fp,fn,tp,run_dir
+5,mimic_patient_sim_k5,0.754966,0.749,0.628601,0.8125,0.710737,0.708817,0.761619,0.505,887,361,141,611,outputs/runs/2026-05-18_13-21-45_mimic_patient_sim_k5_gcn_prototype_clst0.02_sep0_k-neighbor-sweep
+10,mimic_patient_sim_k10,0.748368,0.759,0.652027,0.769947,0.752404,0.706098,0.761175,0.48,939,309,173,579,outputs/runs/2026-05-18_13-22-31_mimic_patient_sim_k10_gcn_prototype_clst0.02_sep0_k-neighbor-sweep
+15,mimic_patient_sim_k15,0.734843,0.7665,0.672727,0.738032,0.783654,0.703868,0.760843,0.525,978,270,197,555,outputs/runs/2026-05-18_13-23-20_mimic_patient_sim_k15_gcn_prototype_clst0.02_sep0_k-neighbor-sweep
+20,mimic_patient_sim_k20,0.747938,0.763,0.664692,0.746011,0.773237,0.703008,0.759624,0.52,965,283,191,561,outputs/runs/2026-05-18_13-24-21_mimic_patient_sim_k20_gcn_prototype_clst0.02_sep0_k-neighbor-sweep

@@ -1,0 +1,33 @@
+Graph 90 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 14860
+
+Patient-level signals
+---------------------
+The model emphasized ambulance arrival transport indicator, spironolactone medication indicator, isosorbide mononitrate medication indicator, and aspirin medication indicator.
+
+Highest-attribution clinical features:
+- transport_AMBULANCE: True (ambulance arrival transport indicator)
+- med_spironolactone: 1 (spironolactone medication indicator)
+- med_isosorbide_mononitrate: 1 (isosorbide mononitrate medication indicator)
+- med_aspirin: 1 (aspirin medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 5 -> patient row 13939, node 7 -> patient row 15962, node 2 -> patient row 14838.
+Among those similar patients, the model-highlighted patterns included:
+- ambulance arrival transport indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 0 (HOME prototype, distance 16.0445).
+The strongest prototype-level contributors to the prediction were prototype 0 (HOME, contribution -0.0320), prototype 3 (HOME, contribution -0.0278), prototype 9 (ADMITTED, contribution 0.0066).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

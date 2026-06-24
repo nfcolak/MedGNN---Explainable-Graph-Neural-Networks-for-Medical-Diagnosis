@@ -1,0 +1,38 @@
+Graph 1404 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 5535
+
+Patient-level signals
+---------------------
+The model emphasized elevated heart rate, ondansetron medication indicator, polyethylene glycol 3350 medication indicator, walk in arrival transport indicator, oxycodone medication indicator, and albuterol medication indicator.
+
+Highest-attribution clinical features:
+- heartrate: 126.0 (elevated heart rate)
+- med_ondansetron: 1 (ondansetron medication indicator)
+- med_polyethylene_glycol_3350: 1 (polyethylene glycol 3350 medication indicator)
+- transport_WALK IN: True (walk in arrival transport indicator)
+- med_oxycodone: 1 (oxycodone medication indicator)
+- med_albuterol: 1 (albuterol medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 1 -> patient row 15416, node 8 -> patient row 2645, node 4 -> patient row 101.
+Among those similar patients, the model-highlighted patterns included:
+- elevated heart rate in 3/3 influential similar patients
+- ondansetron medication indicator in 1/3 influential similar patients
+- polyethylene glycol 3350 medication indicator in 2/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.7209).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 0.8699), prototype 8 (ADMITTED, contribution -0.3243), prototype 0 (HOME, contribution 0.2455).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

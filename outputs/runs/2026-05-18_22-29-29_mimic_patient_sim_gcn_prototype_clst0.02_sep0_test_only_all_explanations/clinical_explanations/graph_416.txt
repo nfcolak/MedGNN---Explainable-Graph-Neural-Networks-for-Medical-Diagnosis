@@ -1,0 +1,36 @@
+Graph 416 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 6746
+
+Patient-level signals
+---------------------
+The model emphasized walk in arrival transport indicator, race white indicator, simvastatin medication indicator, and gender m indicator.
+
+Highest-attribution clinical features:
+- transport_WALK IN: True (walk in arrival transport indicator)
+- race_WHITE: True (race white indicator)
+- med_simvastatin: 1 (simvastatin medication indicator)
+- gender_M: True (gender m indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 4 -> patient row 16599, node 6 -> patient row 6147, node 9 -> patient row 18865.
+Among those similar patients, the model-highlighted patterns included:
+- walk in arrival transport indicator in 3/3 influential similar patients
+- race white indicator in 3/3 influential similar patients
+- simvastatin medication indicator in 1/3 influential similar patients
+- gender m indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.6417).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 0.9393), prototype 8 (ADMITTED, contribution -0.3065), prototype 0 (HOME, contribution 0.2534).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

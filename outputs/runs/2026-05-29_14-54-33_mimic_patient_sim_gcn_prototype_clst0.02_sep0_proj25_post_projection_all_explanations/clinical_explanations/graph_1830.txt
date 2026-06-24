@@ -1,0 +1,31 @@
+Graph 1830 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 4540
+
+Patient-level signals
+---------------------
+The model emphasized abnormal systolic blood pressure, and omeprazole medication indicator.
+
+Highest-attribution clinical features:
+- sbp: 184.0 (abnormal systolic blood pressure)
+- med_omeprazole: 1 (omeprazole medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 1 -> patient row 4343, node 5 -> patient row 9585, node 3 -> patient row 18853.
+Among those similar patients, the model-highlighted patterns included:
+- omeprazole medication indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 0 (HOME prototype, distance 0.1160).
+The strongest prototype-level contributors to the prediction were prototype 0 (HOME, contribution 2.6105), prototype 4 (HOME, contribution 2.3742), prototype 3 (HOME, contribution 2.1624).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

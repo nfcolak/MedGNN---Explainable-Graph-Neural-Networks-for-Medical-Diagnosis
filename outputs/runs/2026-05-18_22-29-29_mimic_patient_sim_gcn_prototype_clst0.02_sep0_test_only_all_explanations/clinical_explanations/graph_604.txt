@@ -1,0 +1,34 @@
+Graph 604 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 15391
+
+Patient-level signals
+---------------------
+The model emphasized abnormal diastolic blood pressure, bisacodyl medication indicator, and sulfamethoxazole trimethoprim medication indicator.
+
+Highest-attribution clinical features:
+- vs_dbp: 49.6667 (abnormal diastolic blood pressure)
+- med_bisacodyl: 1 (bisacodyl medication indicator)
+- med_sulfamethoxazole_trimethoprim: 1 (sulfamethoxazole trimethoprim medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 1 -> patient row 13142, node 9 -> patient row 16353, node 3 -> patient row 16034.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal diastolic blood pressure in 2/3 influential similar patients
+- bisacodyl medication indicator in 1/3 influential similar patients
+- sulfamethoxazole trimethoprim medication indicator in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.3361).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 1.3799), prototype 7 (ADMITTED, contribution 0.2354), prototype 6 (ADMITTED, contribution 0.2244).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

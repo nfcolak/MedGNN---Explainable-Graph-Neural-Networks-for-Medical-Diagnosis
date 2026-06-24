@@ -1,0 +1,36 @@
+Graph 1295 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: HOME
+Model outcome: incorrectly classified
+Patient row index: 7908
+
+Patient-level signals
+---------------------
+The model emphasized rosuvastatin medication indicator, gender f indicator, race white indicator, and walk in arrival transport indicator.
+
+Highest-attribution clinical features:
+- med_rosuvastatin: 1 (rosuvastatin medication indicator)
+- gender_F: True (gender f indicator)
+- race_WHITE: True (race white indicator)
+- transport_WALK IN: True (walk in arrival transport indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 2 -> patient row 19459, node 9 -> patient row 14560, node 5 -> patient row 8375.
+Among those similar patients, the model-highlighted patterns included:
+- rosuvastatin medication indicator in 1/3 influential similar patients
+- azithromycin medication indicator in 1/3 influential similar patients
+- gender f indicator in 3/3 influential similar patients
+- multivitamin medication indicator in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0261).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 4.1331), prototype 7 (ADMITTED, contribution 2.5255), prototype 5 (ADMITTED, contribution 2.2939).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

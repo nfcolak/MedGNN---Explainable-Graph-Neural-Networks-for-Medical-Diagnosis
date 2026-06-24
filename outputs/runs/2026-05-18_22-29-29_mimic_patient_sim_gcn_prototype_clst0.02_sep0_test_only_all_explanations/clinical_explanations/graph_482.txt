@@ -1,0 +1,33 @@
+Graph 482 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 10273
+
+Patient-level signals
+---------------------
+The model emphasized abnormal systolic blood pressure, walk in arrival transport indicator, and gender f indicator.
+
+Highest-attribution clinical features:
+- vs_sbp: 196.8 (abnormal systolic blood pressure)
+- transport_WALK IN: True (walk in arrival transport indicator)
+- gender_F: True (gender f indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 4 -> patient row 1936, node 8 -> patient row 12006, node 7 -> patient row 4148.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal systolic blood pressure in 3/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.4425).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 1.1814), prototype 0 (HOME, contribution 0.2674), prototype 8 (ADMITTED, contribution -0.2477).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

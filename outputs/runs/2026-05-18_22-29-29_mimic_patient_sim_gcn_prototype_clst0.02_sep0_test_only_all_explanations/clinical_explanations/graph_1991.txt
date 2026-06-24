@@ -1,0 +1,32 @@
+Graph 1991 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 8860
+
+Patient-level signals
+---------------------
+The model emphasized abnormal systolic blood pressure, simvastatin medication indicator, and race white indicator.
+
+Highest-attribution clinical features:
+- sbp: 193.0 (abnormal systolic blood pressure)
+- med_simvastatin: 1 (simvastatin medication indicator)
+- race_WHITE: True (race white indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 4 -> patient row 1986, node 9 -> patient row 10997, node 7 -> patient row 12937.
+Among those similar patients, the model-highlighted patterns included:
+- race white indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.3188).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 1.4196), prototype 0 (HOME, contribution 0.3008), prototype 8 (ADMITTED, contribution -0.2172).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

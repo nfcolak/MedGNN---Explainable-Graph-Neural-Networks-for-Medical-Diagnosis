@@ -1,0 +1,89 @@
+/Users/necatifurkancolak/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+/Users/necatifurkancolak/Library/Python/3.9/lib/python/site-packages/torch_geometric/deprecation.py:26: UserWarning: 'data.DataLoader' is deprecated, use 'loader.DataLoader' instead
+  warnings.warn(out)
+============================================================
+TRAINING
+============================================================
+  [INFO] Prototype layers ENABLED.
+  Dataset : mimic_patient_sim
+  Graphs  : 20000  |  avg nodes: 11.0  |  avg edges: 10.0
+  Classes : 2  |  input_dim: 326
+  Class counts (train): [9983, 6017]
+  Class counts (eval) : [1248, 752]
+  Class counts (test) : [1248, 752]
+  Class weights       : [0.8014, 1.3296]
+  clst=0.005  sep=0.0  lr=0.001
+
+  Epoch    0 | Train Loss: 0.8128  Acc: 0.4957 | Eval Loss: 0.6892  Acc: 0.6155  PR-AUC: 0.7038  [2s]
+  Epoch    1 | Train Loss: 0.7698  Acc: 0.7144 | Eval Loss: 0.6813  Acc: 0.7230  PR-AUC: 0.7008  [3s]
+  Epoch    2 | Train Loss: 0.7363  Acc: 0.7395 | Eval Loss: 0.6666  Acc: 0.7250  PR-AUC: 0.6703  [4s]
+  Epoch    3 | Train Loss: 0.6948  Acc: 0.7486 | Eval Loss: 0.6369  Acc: 0.7395  PR-AUC: 0.6757  [6s]
+  Epoch    4 | Train Loss: 0.6206  Acc: 0.7562 | Eval Loss: 0.5742  Acc: 0.7345  PR-AUC: 0.6619  [7s]
+  Epoch    5 | Train Loss: 0.5234  Acc: 0.7619 | Eval Loss: 0.5489  Acc: 0.7275  PR-AUC: 0.6956  [8s]
+  Epoch    6 | Train Loss: 0.4832  Acc: 0.7777 | Eval Loss: 0.5449  Acc: 0.7370  PR-AUC: 0.7069  [10s]
+  Epoch    7 | Train Loss: 0.4525  Acc: 0.7908 | Eval Loss: 0.5544  Acc: 0.7395  PR-AUC: 0.7069  [11s]
+  Epoch    8 | Train Loss: 0.4273  Acc: 0.8033 | Eval Loss: 0.5738  Acc: 0.7255  PR-AUC: 0.6950  [12s]
+  Epoch    9 | Train Loss: 0.3960  Acc: 0.8150 | Eval Loss: 0.5859  Acc: 0.7405  PR-AUC: 0.6959  [14s]
+  Epoch   10 | Train Loss: 0.3762  Acc: 0.8262 | Eval Loss: 0.6322  Acc: 0.7365  PR-AUC: 0.6979  [15s]
+  Epoch   11 | Train Loss: 0.3480  Acc: 0.8381 | Eval Loss: 0.6356  Acc: 0.7370  PR-AUC: 0.6990  [17s]
+  Epoch   12 | Train Loss: 0.3182  Acc: 0.8548 | Eval Loss: 0.6506  Acc: 0.7140  PR-AUC: 0.6622  [18s]
+  Epoch   13 | Train Loss: 0.3035  Acc: 0.8639 | Eval Loss: 0.6681  Acc: 0.7340  PR-AUC: 0.6787  [20s]
+  Epoch   14 | Train Loss: 0.2750  Acc: 0.8792 | Eval Loss: 0.7485  Acc: 0.7350  PR-AUC: 0.6626  [21s]
+  Epoch   15 | Train Loss: 0.2518  Acc: 0.8885 | Eval Loss: 0.7301  Acc: 0.7050  PR-AUC: 0.6602  [22s]
+  Epoch   16 | Train Loss: 0.2263  Acc: 0.9018 | Eval Loss: 0.8472  Acc: 0.7145  PR-AUC: 0.6508  [24s]
+  Epoch   17 | Train Loss: 0.2008  Acc: 0.9163 | Eval Loss: 0.8337  Acc: 0.6905  PR-AUC: 0.6401  [25s]
+  Epoch   18 | Train Loss: 0.1760  Acc: 0.9283 | Eval Loss: 0.9267  Acc: 0.6970  PR-AUC: 0.6542  [26s]
+  Epoch   19 | Train Loss: 0.1623  Acc: 0.9336 | Eval Loss: 1.1291  Acc: 0.7275  PR-AUC: 0.6628  [28s]
+  Epoch   20 | Train Loss: 0.1529  Acc: 0.9376 | Eval Loss: 0.9774  Acc: 0.7250  PR-AUC: 0.6536  [29s]
+  Epoch   21 | Train Loss: 0.1500  Acc: 0.9398 | Eval Loss: 1.0855  Acc: 0.7165  PR-AUC: 0.6465  [31s]
+  Epoch   22 | Train Loss: 0.1241  Acc: 0.9530 | Eval Loss: 1.0733  Acc: 0.6910  PR-AUC: 0.6273  [32s]
+  Epoch   23 | Train Loss: 0.1232  Acc: 0.9523 | Eval Loss: 1.1467  Acc: 0.7010  PR-AUC: 0.6305  [33s]
+  Epoch   24 | Train Loss: 0.1039  Acc: 0.9603 | Eval Loss: 1.1694  Acc: 0.7095  PR-AUC: 0.6447  [35s]
+  Epoch   25 | Train Loss: 0.1203  Acc: 0.9531 | Eval Loss: 1.1540  Acc: 0.7005  PR-AUC: 0.6439  [36s]
+  Epoch   26 | Train Loss: 0.1223  Acc: 0.9533 | Eval Loss: 1.2755  Acc: 0.7185  PR-AUC: 0.6524  [37s]
+  Epoch   27 | Train Loss: 0.0798  Acc: 0.9724 | Eval Loss: 1.3606  Acc: 0.7105  PR-AUC: 0.6353  [39s]
+
+  Early stopping triggered at epoch 27.
+
+  Best checkpoint: epoch=6, metric=0.7069
+
+  Calibrated decision threshold: 0.485 (validation balanced_acc=0.7381)
+
+  TEST RESULTS
+    loss              : 0.542045
+    acc               : 0.744
+    precision         : 0.63245
+    recall            : 0.761968
+    specificity       : 0.733173
+    f1                : 0.691194
+    balanced_acc      : 0.747571
+    pr_auc            : 0.675878
+    confusion_matrix  : {'tn': 915, 'fp': 333, 'fn': 179, 'tp': 573}
+    threshold         : 0.485
+
+  THRESHOLD SENSITIVITY (test set)
+    t=0.300 | precision=0.550 recall=0.890 specificity=0.561 f1=0.680 | TP=669 FP=548 TN=700 FN=83
+    t=0.360 | precision=0.577 recall=0.848 specificity=0.625 f1=0.687 | TP=638 FP=468 TN=780 FN=114
+    t=0.400 | precision=0.591 recall=0.822 specificity=0.658 f1=0.688 | TP=618 FP=427 TN=821 FN=134
+    t=0.485 | precision=0.632 recall=0.762 specificity=0.733 f1=0.691 | TP=573 FP=333 TN=915 FN=179
+    t=0.500 | precision=0.633 recall=0.746 specificity=0.740 f1=0.685 | TP=561 FP=325 TN=923 FN=191
+    t=0.600 | precision=0.662 recall=0.616 specificity=0.811 f1=0.638 | TP=463 FP=236 TN=1012 FN=289
+    t=0.700 | precision=0.693 recall=0.492 specificity=0.869 f1=0.575 | TP=370 FP=164 TN=1084 FN=382
+
+============================================================
+GRAPHXAI EXPLANATIONS
+============================================================
+  GNN layers detected (L): 3
+  Explaining 0 test graphs
+
+
+============================================================
+SAVING RESULTS
+============================================================
+
+  Saved report to /Users/necatifurkancolak/MP---Self-Explainable-Graph-Neural-Networks-via-Prototype-Learning-for-Medical-Diagnosis/outputs/results/report.txt
+
+  All results written to: /Users/necatifurkancolak/MP---Self-Explainable-Graph-Neural-Networks-via-Prototype-Learning-for-Medical-Diagnosis/outputs/results/
+
+Done.

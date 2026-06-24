@@ -1,0 +1,35 @@
+Graph 1194 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: HOME
+Model outcome: incorrectly classified
+Patient row index: 12305
+
+Patient-level signals
+---------------------
+The model emphasized elevated heart rate, abnormal temperature, ambulance arrival transport indicator, and gender f indicator.
+
+Highest-attribution clinical features:
+- vs_heartrate: 109.0 (elevated heart rate)
+- vs_temperature: 38.1597 (abnormal temperature)
+- transport_AMBULANCE: True (ambulance arrival transport indicator)
+- gender_F: True (gender f indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 3 -> patient row 18218, node 9 -> patient row 15324, node 7 -> patient row 16793.
+Among those similar patients, the model-highlighted patterns included:
+- elevated heart rate in 3/3 influential similar patients
+- abnormal temperature in 3/3 influential similar patients
+- walk in arrival transport indicator in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0538).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 3.3506), prototype 7 (ADMITTED, contribution 1.9117), prototype 6 (ADMITTED, contribution 1.7457).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

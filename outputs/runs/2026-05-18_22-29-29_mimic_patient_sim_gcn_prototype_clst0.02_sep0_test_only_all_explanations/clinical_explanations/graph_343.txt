@@ -1,0 +1,38 @@
+Graph 343 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: HOME
+Model outcome: incorrectly classified
+Patient row index: 7983
+
+Patient-level signals
+---------------------
+The model emphasized elevated heart rate, gender f indicator, race black indicator, insulin glargine medication indicator, ambulance arrival transport indicator, and insulin lispro medication indicator.
+
+Highest-attribution clinical features:
+- heartrate: 111.0 (elevated heart rate)
+- gender_F: True (gender f indicator)
+- race_BLACK: True (race black indicator)
+- med_insulin_glargine: 1 (insulin glargine medication indicator)
+- transport_AMBULANCE: True (ambulance arrival transport indicator)
+- med_insulin_lispro: 1 (insulin lispro medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 4 -> patient row 16315, node 1 -> patient row 10735, node 6 -> patient row 3549.
+Among those similar patients, the model-highlighted patterns included:
+- gender f indicator in 3/3 influential similar patients
+- race black indicator in 3/3 influential similar patients
+- insulin glargine medication indicator in 2/3 influential similar patients
+- ambulance arrival transport indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.5808).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 1.0011), prototype 7 (ADMITTED, contribution 0.2169), prototype 6 (ADMITTED, contribution 0.2067).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

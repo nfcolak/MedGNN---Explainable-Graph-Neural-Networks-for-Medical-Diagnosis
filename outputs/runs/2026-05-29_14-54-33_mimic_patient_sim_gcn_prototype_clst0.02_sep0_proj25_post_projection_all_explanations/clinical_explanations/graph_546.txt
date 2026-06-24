@@ -1,0 +1,33 @@
+Graph 546 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 14433
+
+Patient-level signals
+---------------------
+The model emphasized abnormal temperature, and walk in arrival transport indicator.
+
+Highest-attribution clinical features:
+- temperature: 38.0556 (abnormal temperature)
+- transport_WALK IN: True (walk in arrival transport indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 5 -> patient row 11381, node 10 -> patient row 15355, node 9 -> patient row 16358.
+Among those similar patients, the model-highlighted patterns included:
+- gender m indicator in 2/3 influential similar patients
+- race white indicator in 2/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 0 (HOME prototype, distance 0.1336).
+The strongest prototype-level contributors to the prediction were prototype 0 (HOME, contribution 2.4660), prototype 4 (HOME, contribution 2.3593), prototype 3 (HOME, contribution 1.7526).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

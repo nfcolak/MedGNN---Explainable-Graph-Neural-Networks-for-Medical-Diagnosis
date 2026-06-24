@@ -1,0 +1,35 @@
+Graph 1397 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 4299
+
+Patient-level signals
+---------------------
+The model emphasized lisinopril medication indicator, lower oxygen saturation, and gender f indicator.
+
+Highest-attribution clinical features:
+- med_lisinopril: 1 (lisinopril medication indicator)
+- o2sat: 94.0 (lower oxygen saturation)
+- gender_F: True (gender f indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 1641, node 3 -> patient row 14753, node 4 -> patient row 17845.
+Among those similar patients, the model-highlighted patterns included:
+- lower oxygen saturation in 2/3 influential similar patients
+- lisinopril medication indicator in 3/3 influential similar patients
+- abnormal diastolic blood pressure in 2/3 influential similar patients
+- race white indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.1114).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 2.6137), prototype 0 (HOME, contribution 2.3954), prototype 2 (HOME, contribution 1.8578).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

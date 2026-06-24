@@ -1,0 +1,38 @@
+Graph 58 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 14492
+
+Patient-level signals
+---------------------
+The model emphasized gender f indicator, furosemide medication indicator, walk in arrival transport indicator, metoprolol medication indicator, lisinopril medication indicator, and atorvastatin medication indicator.
+
+Highest-attribution clinical features:
+- gender_F: True (gender f indicator)
+- med_furosemide: 1 (furosemide medication indicator)
+- transport_WALK IN: True (walk in arrival transport indicator)
+- med_metoprolol: 1 (metoprolol medication indicator)
+- med_lisinopril: 1 (lisinopril medication indicator)
+- med_atorvastatin: 1 (atorvastatin medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 17626, node 10 -> patient row 10680, node 2 -> patient row 10271.
+Among those similar patients, the model-highlighted patterns included:
+- gender f indicator in 3/3 influential similar patients
+- furosemide medication indicator in 2/3 influential similar patients
+- walk in arrival transport indicator in 2/3 influential similar patients
+- atorvastatin medication indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.0745).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 3.0324), prototype 0 (HOME, contribution 2.9894), prototype 3 (HOME, contribution 2.2438).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

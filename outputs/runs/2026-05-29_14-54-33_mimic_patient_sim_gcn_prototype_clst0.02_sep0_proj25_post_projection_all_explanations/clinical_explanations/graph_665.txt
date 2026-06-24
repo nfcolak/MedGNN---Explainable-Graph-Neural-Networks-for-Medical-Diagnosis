@@ -1,0 +1,33 @@
+Graph 665 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: HOME
+Model outcome: incorrectly classified
+Patient row index: 6278
+
+Patient-level signals
+---------------------
+The model emphasized abnormal diastolic blood pressure, and abnormal temperature.
+
+Highest-attribution clinical features:
+- dbp: 45.0 (abnormal diastolic blood pressure)
+- temperature: 35.7222 (abnormal temperature)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 1 -> patient row 408, node 9 -> patient row 10221, node 8 -> patient row 11719.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal diastolic blood pressure in 2/3 influential similar patients
+- probiotic medication indicator in 1/3 influential similar patients
+- abnormal temperature in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.1354).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 2.3959), prototype 7 (ADMITTED, contribution 1.7350), prototype 6 (ADMITTED, contribution 1.6366).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

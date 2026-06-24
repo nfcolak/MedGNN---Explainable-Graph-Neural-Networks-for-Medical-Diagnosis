@@ -1,0 +1,34 @@
+Graph 77 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 7745
+
+Patient-level signals
+---------------------
+The model emphasized race white indicator, walk in arrival transport indicator, and gender f indicator.
+
+Highest-attribution clinical features:
+- race_WHITE: True (race white indicator)
+- transport_WALK IN: True (walk in arrival transport indicator)
+- gender_F: True (gender f indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 6 -> patient row 10739, node 3 -> patient row 4560, node 2 -> patient row 10849.
+Among those similar patients, the model-highlighted patterns included:
+- race white indicator in 3/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+- gender f indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.0850).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 2.8938), prototype 0 (HOME, contribution 2.6815), prototype 2 (HOME, contribution 1.7146).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

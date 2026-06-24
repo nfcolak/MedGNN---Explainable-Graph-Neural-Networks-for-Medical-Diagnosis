@@ -1,0 +1,35 @@
+Graph 1080 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 18989
+
+Patient-level signals
+---------------------
+The model emphasized abnormal diastolic blood pressure, lower oxygen saturation, and omeprazole medication indicator.
+
+Highest-attribution clinical features:
+- vs_dbp: 56.3333 (abnormal diastolic blood pressure)
+- vs_o2sat: 94.5 (lower oxygen saturation)
+- med_omeprazole: 1 (omeprazole medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 8 -> patient row 15674, node 5 -> patient row 16083, node 6 -> patient row 17978.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal diastolic blood pressure in 3/3 influential similar patients
+- lower oxygen saturation in 2/3 influential similar patients
+- omeprazole medication indicator in 2/3 influential similar patients
+- losartan medication indicator in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.1012).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 2.6888), prototype 7 (ADMITTED, contribution 2.0859), prototype 6 (ADMITTED, contribution 1.9100).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

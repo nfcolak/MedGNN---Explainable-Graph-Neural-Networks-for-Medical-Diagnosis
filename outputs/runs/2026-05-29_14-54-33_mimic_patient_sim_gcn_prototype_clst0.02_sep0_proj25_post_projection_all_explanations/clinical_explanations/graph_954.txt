@@ -1,0 +1,33 @@
+Graph 954 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 5749
+
+Patient-level signals
+---------------------
+The model emphasized race other indicator, elevated heart rate, and gender f indicator.
+
+Highest-attribution clinical features:
+- race_OTHER: True (race other indicator)
+- heartrate: 102.0 (elevated heart rate)
+- gender_F: True (gender f indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 3 -> patient row 7404, node 2 -> patient row 7134, node 8 -> patient row 17759.
+Among those similar patients, the model-highlighted patterns included:
+- race other indicator in 3/3 influential similar patients
+- gender f indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.0738).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 3.0425), prototype 0 (HOME, contribution 2.9979), prototype 3 (HOME, contribution 2.0804).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

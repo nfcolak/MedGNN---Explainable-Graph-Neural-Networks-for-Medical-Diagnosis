@@ -1,0 +1,36 @@
+Graph 1519 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 18911
+
+Patient-level signals
+---------------------
+The model emphasized elevated heart rate, midodrine medication indicator, race white indicator, and spironolactone medication indicator.
+
+Highest-attribution clinical features:
+- heartrate: 136.0 (elevated heart rate)
+- med_midodrine: 1 (midodrine medication indicator)
+- race_WHITE: True (race white indicator)
+- med_spironolactone: 1 (spironolactone medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 14870, node 4 -> patient row 5401, node 6 -> patient row 17677.
+Among those similar patients, the model-highlighted patterns included:
+- elevated heart rate in 3/3 influential similar patients
+- midodrine medication indicator in 1/3 influential similar patients
+- elevated respiratory rate in 2/3 influential similar patients
+- race white indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.5109).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 1.0841), prototype 4 (HOME, contribution -0.2750), prototype 7 (ADMITTED, contribution 0.2201).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

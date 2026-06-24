@@ -1,0 +1,33 @@
+Graph 1847 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: HOME
+Model outcome: incorrectly classified
+Patient row index: 4928
+
+Patient-level signals
+---------------------
+The model emphasized ambulance arrival transport indicator, gender f indicator, and lorazepam medication indicator.
+
+Highest-attribution clinical features:
+- transport_AMBULANCE: True (ambulance arrival transport indicator)
+- gender_F: True (gender f indicator)
+- med_lorazepam: 1 (lorazepam medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 8 -> patient row 2153, node 7 -> patient row 13438, node 2 -> patient row 1167.
+Among those similar patients, the model-highlighted patterns included:
+- ambulance arrival transport indicator in 3/3 influential similar patients
+- gender f indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0963).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 2.7400), prototype 7 (ADMITTED, contribution 1.7740), prototype 5 (ADMITTED, contribution 1.7371).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

@@ -1,0 +1,36 @@
+Graph 775 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 19846
+
+Patient-level signals
+---------------------
+The model emphasized multivitamin medication indicator, race white indicator, sevelamer carbonate medication indicator, and levothyroxine medication indicator.
+
+Highest-attribution clinical features:
+- med_multivitamin: 1 (multivitamin medication indicator)
+- race_WHITE: True (race white indicator)
+- med_sevelamer_carbonate: 1 (sevelamer carbonate medication indicator)
+- med_levothyroxine: 1 (levothyroxine medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 8 -> patient row 14677, node 6 -> patient row 12709, node 1 -> patient row 19891.
+Among those similar patients, the model-highlighted patterns included:
+- elevated heart rate in 1/3 influential similar patients
+- abnormal temperature in 3/3 influential similar patients
+- race white indicator in 3/3 influential similar patients
+- levothyroxine medication indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.4124).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 1.2308), prototype 7 (ADMITTED, contribution 0.2306), prototype 6 (ADMITTED, contribution 0.2161).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

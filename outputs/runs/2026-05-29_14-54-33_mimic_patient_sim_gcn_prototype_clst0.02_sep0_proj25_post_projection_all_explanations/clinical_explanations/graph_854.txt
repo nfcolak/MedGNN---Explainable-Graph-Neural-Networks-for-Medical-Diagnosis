@@ -1,0 +1,31 @@
+Graph 854 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 1940
+
+Patient-level signals
+---------------------
+The model emphasized abnormal systolic blood pressure.
+
+Highest-attribution clinical features:
+- sbp: 185.0 (abnormal systolic blood pressure)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 3 -> patient row 2022, node 6 -> patient row 2692, node 9 -> patient row 5731.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal systolic blood pressure in 3/3 influential similar patients
+- walk in arrival transport indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.1475).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 2.3318), prototype 0 (HOME, contribution 2.0996), prototype 2 (HOME, contribution 1.7127).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

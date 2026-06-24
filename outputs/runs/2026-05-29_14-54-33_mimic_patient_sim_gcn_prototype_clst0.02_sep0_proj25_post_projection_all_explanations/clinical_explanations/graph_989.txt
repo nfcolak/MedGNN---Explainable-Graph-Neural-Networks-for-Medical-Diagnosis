@@ -1,0 +1,38 @@
+Graph 989 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 17491
+
+Patient-level signals
+---------------------
+The model emphasized abnormal diastolic blood pressure, gender f indicator, acetaminophen medication indicator, cholecalciferol medication indicator, metoprolol medication indicator, and ambulance arrival transport indicator.
+
+Highest-attribution clinical features:
+- vs_dbp: 57.8571 (abnormal diastolic blood pressure)
+- gender_F: True (gender f indicator)
+- med_acetaminophen: 1 (acetaminophen medication indicator)
+- med_cholecalciferol: 1 (cholecalciferol medication indicator)
+- med_metoprolol: 1 (metoprolol medication indicator)
+- transport_AMBULANCE: True (ambulance arrival transport indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 8 -> patient row 16712, node 10 -> patient row 15560, node 4 -> patient row 16713.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal diastolic blood pressure in 2/3 influential similar patients
+- gender f indicator in 3/3 influential similar patients
+- acetaminophen medication indicator in 3/3 influential similar patients
+- cholecalciferol medication indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.1690).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 2.1792), prototype 7 (ADMITTED, contribution 1.9173), prototype 6 (ADMITTED, contribution 1.8700).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

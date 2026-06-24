@@ -1,0 +1,36 @@
+Graph 450 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: HOME
+Model outcome: incorrectly classified
+Patient row index: 11378
+
+Patient-level signals
+---------------------
+The model emphasized elevated heart rate, abnormal temperature, lorazepam medication indicator, walk in arrival transport indicator, and birth control medication indicator.
+
+Highest-attribution clinical features:
+- vs_heartrate: 121.5 (elevated heart rate)
+- vs_temperature: 38.4444 (abnormal temperature)
+- med_lorazepam: 1 (lorazepam medication indicator)
+- transport_WALK IN: True (walk in arrival transport indicator)
+- med_birth_control: 1 (birth control medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 5 -> patient row 15136, node 3 -> patient row 8978, node 9 -> patient row 14800.
+Among those similar patients, the model-highlighted patterns included:
+- elevated heart rate in 2/3 influential similar patients
+- abnormal temperature in 1/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.7220).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 0.8691), prototype 4 (HOME, contribution -0.3557), prototype 6 (ADMITTED, contribution 0.2030).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.
