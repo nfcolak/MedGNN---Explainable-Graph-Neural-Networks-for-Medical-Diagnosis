@@ -1,0 +1,34 @@
+Graph 1939 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 6511
+
+Patient-level signals
+---------------------
+The model emphasized lorazepam medication indicator, and race white indicator.
+
+Highest-attribution clinical features:
+- med_lorazepam: 1 (lorazepam medication indicator)
+- race_WHITE: True (race white indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 7 -> patient row 4551, node 9 -> patient row 1349, node 10 -> patient row 16286.
+Among those similar patients, the model-highlighted patterns included:
+- lorazepam medication indicator in 2/3 influential similar patients
+- cholecalciferol medication indicator in 2/3 influential similar patients
+- abnormal diastolic blood pressure in 1/3 influential similar patients
+- race white indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 0 (HOME prototype, distance 0.0839).
+The strongest prototype-level contributors to the prediction were prototype 0 (HOME, contribution 2.9503), prototype 4 (HOME, contribution 2.7440), prototype 3 (HOME, contribution 2.0227).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

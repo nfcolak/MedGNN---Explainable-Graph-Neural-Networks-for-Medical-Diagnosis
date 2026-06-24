@@ -1,0 +1,31 @@
+Graph 1062 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 14331
+
+Patient-level signals
+---------------------
+The model emphasized one daily multivitamin medication indicator, and apixaban medication indicator.
+
+Highest-attribution clinical features:
+- med_one_daily_multivitamin: 1 (one daily multivitamin medication indicator)
+- med_apixaban: 1 (apixaban medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 7 -> patient row 12493, node 6 -> patient row 544, node 5 -> patient row 7421.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal diastolic blood pressure in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.8667).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 0.7671), prototype 4 (HOME, contribution -0.3061), prototype 7 (ADMITTED, contribution 0.1951).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

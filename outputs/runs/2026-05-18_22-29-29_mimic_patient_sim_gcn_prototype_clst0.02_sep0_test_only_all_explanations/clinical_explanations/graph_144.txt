@@ -1,0 +1,37 @@
+Graph 144 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 19289
+
+Patient-level signals
+---------------------
+The model emphasized elevated heart rate, tramadol medication indicator, albuterol medication indicator, metformin medication indicator, and gender f indicator.
+
+Highest-attribution clinical features:
+- heartrate: 109.0 (elevated heart rate)
+- med_tramadol: 1 (tramadol medication indicator)
+- med_albuterol: 1 (albuterol medication indicator)
+- med_metformin: 1 (metformin medication indicator)
+- gender_F: True (gender f indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 7 -> patient row 18958, node 8 -> patient row 11137, node 10 -> patient row 5346.
+Among those similar patients, the model-highlighted patterns included:
+- elevated heart rate in 1/3 influential similar patients
+- tramadol medication indicator in 1/3 influential similar patients
+- metformin medication indicator in 2/3 influential similar patients
+- gender f indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.7325).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 0.8607), prototype 8 (ADMITTED, contribution -0.3404), prototype 0 (HOME, contribution 0.2377).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

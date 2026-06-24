@@ -1,0 +1,37 @@
+Graph 1824 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: HOME
+Model outcome: incorrectly classified
+Patient row index: 12242
+
+Patient-level signals
+---------------------
+The model emphasized abnormal systolic blood pressure, walk in arrival transport indicator, abnormal diastolic blood pressure, gender f indicator, and race white indicator.
+
+Highest-attribution clinical features:
+- sbp: 85.0 (abnormal systolic blood pressure)
+- transport_WALK IN: True (walk in arrival transport indicator)
+- dbp: 51.0 (abnormal diastolic blood pressure)
+- gender_F: True (gender f indicator)
+- race_WHITE: True (race white indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 870, node 7 -> patient row 1841, node 2 -> patient row 9092.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal diastolic blood pressure in 3/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+- gender f indicator in 3/3 influential similar patients
+- race white indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.1315).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 2.4248), prototype 7 (ADMITTED, contribution 1.6320), prototype 6 (ADMITTED, contribution 1.5338).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

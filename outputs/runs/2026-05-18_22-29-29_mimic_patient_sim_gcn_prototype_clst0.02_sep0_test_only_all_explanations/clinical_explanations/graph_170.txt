@@ -1,0 +1,38 @@
+Graph 170 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 14750
+
+Patient-level signals
+---------------------
+The model emphasized elevated heart rate, abnormal temperature, abnormal diastolic blood pressure, race white indicator, abnormal systolic blood pressure, and walk in arrival transport indicator.
+
+Highest-attribution clinical features:
+- heartrate: 104.0 (elevated heart rate)
+- vs_temperature: 38.0778 (abnormal temperature)
+- vs_dbp: 51.6667 (abnormal diastolic blood pressure)
+- race_WHITE: True (race white indicator)
+- vs_sbp: 88.5556 (abnormal systolic blood pressure)
+- transport_WALK IN: True (walk in arrival transport indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 3 -> patient row 13777, node 4 -> patient row 14480, node 7 -> patient row 13629.
+Among those similar patients, the model-highlighted patterns included:
+- elevated heart rate in 2/3 influential similar patients
+- abnormal temperature in 2/3 influential similar patients
+- abnormal diastolic blood pressure in 2/3 influential similar patients
+- race white indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.5652).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 1.0184), prototype 4 (HOME, contribution -0.3213), prototype 7 (ADMITTED, contribution 0.2126).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

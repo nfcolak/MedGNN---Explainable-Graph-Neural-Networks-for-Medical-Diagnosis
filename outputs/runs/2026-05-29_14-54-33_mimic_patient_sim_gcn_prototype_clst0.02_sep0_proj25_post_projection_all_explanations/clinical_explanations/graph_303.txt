@@ -1,0 +1,33 @@
+Graph 303 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 2471
+
+Patient-level signals
+---------------------
+The model emphasized higher triage acuity, and gender f indicator.
+
+Highest-attribution clinical features:
+- acuity: 3 (higher triage acuity)
+- gender_F: True (gender f indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 3 -> patient row 10926, node 9 -> patient row 4526, node 4 -> patient row 6773.
+Among those similar patients, the model-highlighted patterns included:
+- elevated heart rate in 3/3 influential similar patients
+- higher triage acuity in 1/3 influential similar patients
+- gender f indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.0795).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 2.9645), prototype 0 (HOME, contribution 2.7171), prototype 3 (HOME, contribution 2.0868).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

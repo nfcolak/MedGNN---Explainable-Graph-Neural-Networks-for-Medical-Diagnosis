@@ -1,0 +1,36 @@
+Graph 1677 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 12481
+
+Patient-level signals
+---------------------
+The model emphasized elevated heart rate, lower oxygen saturation, ambulance arrival transport indicator, and race white indicator.
+
+Highest-attribution clinical features:
+- vs_heartrate: 110.7 (elevated heart rate)
+- o2sat: 91.0 (lower oxygen saturation)
+- transport_AMBULANCE: True (ambulance arrival transport indicator)
+- race_WHITE: True (race white indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 19660, node 10 -> patient row 15288, node 1 -> patient row 15832.
+Among those similar patients, the model-highlighted patterns included:
+- lower oxygen saturation in 3/3 influential similar patients
+- race white indicator in 2/3 influential similar patients
+- elevated respiratory rate in 1/3 influential similar patients
+- lorazepam medication indicator in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.4823).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 1.1226), prototype 7 (ADMITTED, contribution 0.2250), prototype 6 (ADMITTED, contribution 0.2159).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

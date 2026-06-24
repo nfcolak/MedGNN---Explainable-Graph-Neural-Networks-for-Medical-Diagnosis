@@ -1,0 +1,33 @@
+Graph 734 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: HOME
+Model outcome: incorrectly classified
+Patient row index: 4150
+
+Patient-level signals
+---------------------
+The model emphasized elevated heart rate, elevated respiratory rate, and race white indicator.
+
+Highest-attribution clinical features:
+- heartrate: 120.0 (elevated heart rate)
+- resprate: 21.0 (elevated respiratory rate)
+- race_WHITE: True (race white indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 7 -> patient row 14593, node 6 -> patient row 4019, node 4 -> patient row 15126.
+Among those similar patients, the model-highlighted patterns included:
+- elevated heart rate in 3/3 influential similar patients
+- race white indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0991).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 2.7101), prototype 7 (ADMITTED, contribution 1.6804), prototype 5 (ADMITTED, contribution 1.5721).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

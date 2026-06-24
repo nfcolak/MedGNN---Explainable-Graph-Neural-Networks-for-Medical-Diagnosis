@@ -1,0 +1,36 @@
+Graph 118 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 12705
+
+Patient-level signals
+---------------------
+The model emphasized midodrine medication indicator, b complex vitamin c folic acid medication indicator, cinacalcet medication indicator, and gender f indicator.
+
+Highest-attribution clinical features:
+- med_midodrine: 1 (midodrine medication indicator)
+- med_b_complex_vitamin_c_folic_acid: 1 (b complex vitamin c folic acid medication indicator)
+- med_cinacalcet: 1 (cinacalcet medication indicator)
+- gender_F: True (gender f indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 4 -> patient row 13386, node 10 -> patient row 17882, node 8 -> patient row 14287.
+Among those similar patients, the model-highlighted patterns included:
+- midodrine medication indicator in 1/3 influential similar patients
+- abnormal systolic blood pressure in 1/3 influential similar patients
+- b complex vitamin c folic acid medication indicator in 1/3 influential similar patients
+- sevelamer carbonate medication indicator in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.3784).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 1.2925), prototype 7 (ADMITTED, contribution 0.2446), prototype 6 (ADMITTED, contribution 0.2314).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

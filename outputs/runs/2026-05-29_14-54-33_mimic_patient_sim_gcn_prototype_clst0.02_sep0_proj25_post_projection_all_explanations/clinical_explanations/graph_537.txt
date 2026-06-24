@@ -1,0 +1,30 @@
+Graph 537 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 15991
+
+Patient-level signals
+---------------------
+The model emphasized lower oxygen saturation.
+
+Highest-attribution clinical features:
+- o2sat: 94.0 (lower oxygen saturation)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 6 -> patient row 14697, node 8 -> patient row 19712, node 1 -> patient row 17305.
+Among those similar patients, the model-highlighted patterns included:
+- azithromycin medication indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.1216).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 2.5029), prototype 7 (ADMITTED, contribution 2.0335), prototype 6 (ADMITTED, contribution 1.8048).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

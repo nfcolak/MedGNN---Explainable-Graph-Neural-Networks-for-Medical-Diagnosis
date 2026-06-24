@@ -1,0 +1,36 @@
+Graph 1819 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: HOME
+Model outcome: incorrectly classified
+Patient row index: 603
+
+Patient-level signals
+---------------------
+The model emphasized abnormal temperature, ambulance arrival transport indicator, elevated heart rate, gender m indicator, and lower oxygen saturation.
+
+Highest-attribution clinical features:
+- temperature: 35.5556 (abnormal temperature)
+- transport_AMBULANCE: True (ambulance arrival transport indicator)
+- heartrate: 106.0 (elevated heart rate)
+- gender_M: True (gender m indicator)
+- o2sat: 94.0 (lower oxygen saturation)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 7 -> patient row 17341, node 4 -> patient row 17969, node 1 -> patient row 4699.
+Among those similar patients, the model-highlighted patterns included:
+- ambulance arrival transport indicator in 3/3 influential similar patients
+- elevated heart rate in 2/3 influential similar patients
+- gender m indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0678).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 3.1060), prototype 7 (ADMITTED, contribution 1.8039), prototype 5 (ADMITTED, contribution 1.6844).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

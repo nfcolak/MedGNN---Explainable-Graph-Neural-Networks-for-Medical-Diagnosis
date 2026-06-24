@@ -1,0 +1,36 @@
+Graph 624 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 18629
+
+Patient-level signals
+---------------------
+The model emphasized race white indicator, abnormal diastolic blood pressure, elevated respiratory rate, and gender f indicator.
+
+Highest-attribution clinical features:
+- race_WHITE: True (race white indicator)
+- vs_dbp: 49.6667 (abnormal diastolic blood pressure)
+- vs_resprate: 20.8333 (elevated respiratory rate)
+- gender_F: True (gender f indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 10 -> patient row 14778, node 7 -> patient row 18235, node 9 -> patient row 12797.
+Among those similar patients, the model-highlighted patterns included:
+- race white indicator in 3/3 influential similar patients
+- abnormal diastolic blood pressure in 3/3 influential similar patients
+- methylphenidate medication indicator in 1/3 influential similar patients
+- gender f indicator in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.2021).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 2.0090), prototype 7 (ADMITTED, contribution 1.3577), prototype 5 (ADMITTED, contribution 1.3064).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

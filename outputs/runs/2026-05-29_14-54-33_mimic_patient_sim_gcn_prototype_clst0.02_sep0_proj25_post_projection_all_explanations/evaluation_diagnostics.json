@@ -1,0 +1,191 @@
+{
+  "label_distribution": {
+    "train": {
+      "class_0": {
+        "count": 9983,
+        "rate": 0.623938
+      },
+      "class_1": {
+        "count": 6017,
+        "rate": 0.376063
+      }
+    },
+    "eval": {
+      "class_0": {
+        "count": 1248,
+        "rate": 0.624
+      },
+      "class_1": {
+        "count": 752,
+        "rate": 0.376
+      }
+    },
+    "test": {
+      "class_0": {
+        "count": 1248,
+        "rate": 0.624
+      },
+      "class_1": {
+        "count": 752,
+        "rate": 0.376
+      }
+    }
+  },
+  "threshold_sensitivity": [
+    {
+      "threshold": 0.295,
+      "tn": 827,
+      "fp": 421,
+      "fn": 189,
+      "tp": 563,
+      "predicted_admitted": 984,
+      "predicted_home": 1016,
+      "precision": 0.572154,
+      "recall": 0.74867,
+      "specificity": 0.66266,
+      "f1": 0.648618,
+      "balanced_acc": 0.705665,
+      "pr_auc": 0.650613
+    },
+    {
+      "threshold": 0.3,
+      "tn": 828,
+      "fp": 420,
+      "fn": 189,
+      "tp": 563,
+      "predicted_admitted": 983,
+      "predicted_home": 1017,
+      "precision": 0.572737,
+      "recall": 0.74867,
+      "specificity": 0.663462,
+      "f1": 0.648991,
+      "balanced_acc": 0.706066,
+      "pr_auc": 0.650613
+    },
+    {
+      "threshold": 0.36,
+      "tn": 853,
+      "fp": 395,
+      "fn": 201,
+      "tp": 551,
+      "predicted_admitted": 946,
+      "predicted_home": 1054,
+      "precision": 0.582452,
+      "recall": 0.732713,
+      "specificity": 0.683494,
+      "f1": 0.648999,
+      "balanced_acc": 0.708103,
+      "pr_auc": 0.650613
+    },
+    {
+      "threshold": 0.4,
+      "tn": 867,
+      "fp": 381,
+      "fn": 208,
+      "tp": 544,
+      "predicted_admitted": 925,
+      "predicted_home": 1075,
+      "precision": 0.588108,
+      "recall": 0.723404,
+      "specificity": 0.694712,
+      "f1": 0.648778,
+      "balanced_acc": 0.709058,
+      "pr_auc": 0.650613
+    },
+    {
+      "threshold": 0.5,
+      "tn": 897,
+      "fp": 351,
+      "fn": 237,
+      "tp": 515,
+      "predicted_admitted": 866,
+      "predicted_home": 1134,
+      "precision": 0.594688,
+      "recall": 0.68484,
+      "specificity": 0.71875,
+      "f1": 0.636588,
+      "balanced_acc": 0.701795,
+      "pr_auc": 0.650613
+    },
+    {
+      "threshold": 0.6,
+      "tn": 917,
+      "fp": 331,
+      "fn": 253,
+      "tp": 499,
+      "predicted_admitted": 830,
+      "predicted_home": 1170,
+      "precision": 0.601205,
+      "recall": 0.663564,
+      "specificity": 0.734776,
+      "f1": 0.630847,
+      "balanced_acc": 0.69917,
+      "pr_auc": 0.650613
+    },
+    {
+      "threshold": 0.7,
+      "tn": 945,
+      "fp": 303,
+      "fn": 278,
+      "tp": 474,
+      "predicted_admitted": 777,
+      "predicted_home": 1223,
+      "precision": 0.610039,
+      "recall": 0.630319,
+      "specificity": 0.757212,
+      "f1": 0.620013,
+      "balanced_acc": 0.693765,
+      "pr_auc": 0.650613
+    }
+  ],
+  "confusion_matrices": {
+    "argmax": {
+      "tn": 897,
+      "fp": 351,
+      "fn": 237,
+      "tp": 515
+    },
+    "threshold_0_295": {
+      "tn": 827,
+      "fp": 421,
+      "fn": 189,
+      "tp": 563
+    },
+    "threshold_0_3": {
+      "tn": 828,
+      "fp": 420,
+      "fn": 189,
+      "tp": 563
+    },
+    "threshold_0_36": {
+      "tn": 853,
+      "fp": 395,
+      "fn": 201,
+      "tp": 551
+    },
+    "threshold_0_4": {
+      "tn": 867,
+      "fp": 381,
+      "fn": 208,
+      "tp": 544
+    },
+    "threshold_0_5": {
+      "tn": 897,
+      "fp": 351,
+      "fn": 237,
+      "tp": 515
+    },
+    "threshold_0_6": {
+      "tn": 917,
+      "fp": 331,
+      "fn": 253,
+      "tp": 499
+    },
+    "threshold_0_7": {
+      "tn": 945,
+      "fp": 303,
+      "fn": 278,
+      "tp": 474
+    }
+  }
+}

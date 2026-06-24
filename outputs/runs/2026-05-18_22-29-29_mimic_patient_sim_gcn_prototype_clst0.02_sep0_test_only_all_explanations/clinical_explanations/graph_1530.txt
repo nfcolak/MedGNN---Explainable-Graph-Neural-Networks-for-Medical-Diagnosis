@@ -1,0 +1,35 @@
+Graph 1530 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 15546
+
+Patient-level signals
+---------------------
+The model emphasized elevated respiratory rate, elevated heart rate, lower oxygen saturation, abnormal systolic blood pressure, and gender f indicator.
+
+Highest-attribution clinical features:
+- resprate: 28.0 (elevated respiratory rate)
+- heartrate: 102.0 (elevated heart rate)
+- vs_o2sat: 94.3333 (lower oxygen saturation)
+- sbp: 188.0 (abnormal systolic blood pressure)
+- gender_F: True (gender f indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 2694, node 2 -> patient row 13258, node 5 -> patient row 3840.
+Among those similar patients, the model-highlighted patterns included:
+- elevated respiratory rate in 3/3 influential similar patients
+- elevated heart rate in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.6261).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 0.9542), prototype 4 (HOME, contribution -0.3069), prototype 7 (ADMITTED, contribution 0.2116).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

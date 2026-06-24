@@ -1,0 +1,36 @@
+Graph 1525 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 18332
+
+Patient-level signals
+---------------------
+The model emphasized abnormal temperature, abnormal diastolic blood pressure, elevated respiratory rate, and race white indicator.
+
+Highest-attribution clinical features:
+- vs_temperature: 38.1944 (abnormal temperature)
+- vs_dbp: 52.0 (abnormal diastolic blood pressure)
+- vs_resprate: 23.5 (elevated respiratory rate)
+- race_WHITE: True (race white indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 7 -> patient row 13274, node 10 -> patient row 12914, node 3 -> patient row 19122.
+Among those similar patients, the model-highlighted patterns included:
+- elevated heart rate in 2/3 influential similar patients
+- abnormal temperature in 3/3 influential similar patients
+- abnormal diastolic blood pressure in 1/3 influential similar patients
+- elevated respiratory rate in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.4210).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 1.2163), prototype 4 (HOME, contribution -0.2673), prototype 7 (ADMITTED, contribution 0.2211).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

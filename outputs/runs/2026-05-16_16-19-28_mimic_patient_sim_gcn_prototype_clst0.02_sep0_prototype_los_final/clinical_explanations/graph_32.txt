@@ -1,0 +1,34 @@
+Graph 32 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 5819
+
+Patient-level signals
+---------------------
+The model emphasized gender f indicator, walk in arrival transport indicator, and race white indicator.
+
+Highest-attribution clinical features:
+- gender_F: True (gender f indicator)
+- transport_WALK IN: True (walk in arrival transport indicator)
+- race_WHITE: True (race white indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 2 -> patient row 1637, node 4 -> patient row 8204, node 3 -> patient row 4220.
+Among those similar patients, the model-highlighted patterns included:
+- gender f indicator in 3/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+- race white indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 0 (HOME prototype, distance 1.9539).
+The strongest prototype-level contributors to the prediction were prototype 0 (HOME, contribution 0.4391), prototype 3 (HOME, contribution 0.2333), prototype 2 (HOME, contribution 0.0260).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

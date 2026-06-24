@@ -1,0 +1,34 @@
+Graph 464 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 12690
+
+Patient-level signals
+---------------------
+The model emphasized levothyroxine medication indicator, abnormal diastolic blood pressure, and metoprolol medication indicator.
+
+Highest-attribution clinical features:
+- med_levothyroxine: 1 (levothyroxine medication indicator)
+- vs_dbp: 57.6667 (abnormal diastolic blood pressure)
+- med_metoprolol: 1 (metoprolol medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 3 -> patient row 13272, node 1 -> patient row 15397, node 10 -> patient row 15979.
+Among those similar patients, the model-highlighted patterns included:
+- levothyroxine medication indicator in 3/3 influential similar patients
+- multivitamin medication indicator in 2/3 influential similar patients
+- metoprolol medication indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.3933).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 1.2645), prototype 7 (ADMITTED, contribution 0.2439), prototype 6 (ADMITTED, contribution 0.2354).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

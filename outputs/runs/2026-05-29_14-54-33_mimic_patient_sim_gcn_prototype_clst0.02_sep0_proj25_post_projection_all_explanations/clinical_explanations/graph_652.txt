@@ -1,0 +1,34 @@
+Graph 652 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 17436
+
+Patient-level signals
+---------------------
+The model emphasized lower oxygen saturation, elevated respiratory rate, and albuterol medication indicator.
+
+Highest-attribution clinical features:
+- vs_o2sat: 94.3333 (lower oxygen saturation)
+- vs_resprate: 24.0 (elevated respiratory rate)
+- med_albuterol: 1 (albuterol medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 17566, node 7 -> patient row 17366, node 8 -> patient row 13468.
+Among those similar patients, the model-highlighted patterns included:
+- lower oxygen saturation in 3/3 influential similar patients
+- elevated respiratory rate in 3/3 influential similar patients
+- albuterol medication indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0310).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 3.9449), prototype 7 (ADMITTED, contribution 2.3639), prototype 5 (ADMITTED, contribution 2.1482).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

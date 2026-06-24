@@ -1,0 +1,36 @@
+Graph 144 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 19289
+
+Patient-level signals
+---------------------
+The model emphasized elevated heart rate, gender f indicator, metformin medication indicator, walk in arrival transport indicator, and lisinopril medication indicator.
+
+Highest-attribution clinical features:
+- heartrate: 109.0 (elevated heart rate)
+- gender_F: True (gender f indicator)
+- med_metformin: 1 (metformin medication indicator)
+- transport_WALK IN: True (walk in arrival transport indicator)
+- med_lisinopril: 1 (lisinopril medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 6 -> patient row 6847, node 7 -> patient row 18958, node 4 -> patient row 6296.
+Among those similar patients, the model-highlighted patterns included:
+- gender f indicator in 3/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+- lisinopril medication indicator in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0765).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 2.9789), prototype 7 (ADMITTED, contribution 1.9015), prototype 6 (ADMITTED, contribution 1.7720).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

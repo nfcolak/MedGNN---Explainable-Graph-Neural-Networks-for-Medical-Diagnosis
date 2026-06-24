@@ -1,0 +1,37 @@
+Graph 81 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 14902
+
+Patient-level signals
+---------------------
+The model emphasized valproic acid medication indicator, ambulance arrival transport indicator, clonazepam medication indicator, atenolol medication indicator, and diphenhydramine medication indicator.
+
+Highest-attribution clinical features:
+- med_valproic_acid: 1 (valproic acid medication indicator)
+- transport_AMBULANCE: True (ambulance arrival transport indicator)
+- med_clonazepam: 1 (clonazepam medication indicator)
+- med_atenolol: 1 (atenolol medication indicator)
+- med_diphenhydramine: 1 (diphenhydramine medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 16732, node 10 -> patient row 10922, node 3 -> patient row 2993.
+Among those similar patients, the model-highlighted patterns included:
+- ambulance arrival transport indicator in 3/3 influential similar patients
+- elevated heart rate in 2/3 influential similar patients
+- clonazepam medication indicator in 1/3 influential similar patients
+- diphenhydramine medication indicator in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 0 (HOME prototype, distance 4.3468).
+The strongest prototype-level contributors to the prediction were prototype 0 (HOME, contribution 0.2200), prototype 3 (HOME, contribution 0.1555), prototype 2 (HOME, contribution 0.0230).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

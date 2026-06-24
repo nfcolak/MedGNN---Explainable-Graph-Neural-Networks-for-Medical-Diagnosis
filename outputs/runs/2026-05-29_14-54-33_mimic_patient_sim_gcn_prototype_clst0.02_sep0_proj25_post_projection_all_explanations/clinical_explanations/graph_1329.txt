@@ -1,0 +1,28 @@
+Graph 1329 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 3093
+
+Patient-level signals
+---------------------
+The model emphasized elevated heart rate.
+
+Highest-attribution clinical features:
+- heartrate: 120.0 (elevated heart rate)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 2 -> patient row 4732, node 1 -> patient row 3302, node 5 -> patient row 12307.
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.0874).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 2.8647), prototype 0 (HOME, contribution 2.4444), prototype 2 (HOME, contribution 1.8721).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

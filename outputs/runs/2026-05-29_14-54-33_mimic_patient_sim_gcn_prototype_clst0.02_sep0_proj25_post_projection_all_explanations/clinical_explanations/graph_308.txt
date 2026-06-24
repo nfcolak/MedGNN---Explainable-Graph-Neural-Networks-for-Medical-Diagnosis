@@ -1,0 +1,25 @@
+Graph 308 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 6714
+
+Patient-level signals
+---------------------
+The model emphasized no clearly abnormal high-attribution clinical signals.
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 8 -> patient row 6920, node 9 -> patient row 4891, node 10 -> patient row 903.
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.0503).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 3.4526), prototype 0 (HOME, contribution 2.8464), prototype 2 (HOME, contribution 2.1672).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

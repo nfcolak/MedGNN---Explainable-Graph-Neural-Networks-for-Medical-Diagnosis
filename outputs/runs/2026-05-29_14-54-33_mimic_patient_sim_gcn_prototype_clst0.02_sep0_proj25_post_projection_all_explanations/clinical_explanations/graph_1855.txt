@@ -1,0 +1,37 @@
+Graph 1855 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 33
+
+Patient-level signals
+---------------------
+The model emphasized walk in arrival transport indicator, simvastatin medication indicator, multivitamin medication indicator, aspirin medication indicator, and gender f indicator.
+
+Highest-attribution clinical features:
+- transport_WALK IN: True (walk in arrival transport indicator)
+- med_simvastatin: 1 (simvastatin medication indicator)
+- med_multivitamin: 1 (multivitamin medication indicator)
+- med_aspirin: 1 (aspirin medication indicator)
+- gender_F: True (gender f indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 3872, node 1 -> patient row 5553, node 2 -> patient row 5428.
+Among those similar patients, the model-highlighted patterns included:
+- lower oxygen saturation in 1/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+- simvastatin medication indicator in 3/3 influential similar patients
+- multivitamin medication indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 0 (HOME prototype, distance 0.0604).
+The strongest prototype-level contributors to the prediction were prototype 0 (HOME, contribution 3.3035), prototype 4 (HOME, contribution 3.2005), prototype 2 (HOME, contribution 2.5322).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

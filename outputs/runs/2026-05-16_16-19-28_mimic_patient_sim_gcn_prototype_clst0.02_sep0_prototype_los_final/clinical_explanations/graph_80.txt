@@ -1,0 +1,32 @@
+Graph 80 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 3158
+
+Patient-level signals
+---------------------
+The model emphasized walk in arrival transport indicator, and race white indicator.
+
+Highest-attribution clinical features:
+- transport_WALK IN: True (walk in arrival transport indicator)
+- race_WHITE: True (race white indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 6 -> patient row 9115, node 1 -> patient row 962, node 2 -> patient row 324.
+Among those similar patients, the model-highlighted patterns included:
+- walk in arrival transport indicator in 3/3 influential similar patients
+- race white indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 0 (HOME prototype, distance 2.4423).
+The strongest prototype-level contributors to the prediction were prototype 0 (HOME, contribution 0.3646), prototype 3 (HOME, contribution 0.2123), prototype 2 (HOME, contribution 0.0250).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

@@ -1,0 +1,33 @@
+Graph 541 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: HOME
+Model outcome: incorrectly classified
+Patient row index: 3768
+
+Patient-level signals
+---------------------
+The model emphasized abnormal temperature, abnormal systolic blood pressure, gender f indicator, and walk in arrival transport indicator.
+
+Highest-attribution clinical features:
+- vs_temperature: 31.6389 (abnormal temperature)
+- sbp: 183.0 (abnormal systolic blood pressure)
+- gender_F: True (gender f indicator)
+- transport_WALK IN: True (walk in arrival transport indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 5 -> patient row 14649, node 10 -> patient row 7466, node 7 -> patient row 6171.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal temperature in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.9518).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 0.7181), prototype 4 (HOME, contribution -0.2989), prototype 7 (ADMITTED, contribution 0.1900).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

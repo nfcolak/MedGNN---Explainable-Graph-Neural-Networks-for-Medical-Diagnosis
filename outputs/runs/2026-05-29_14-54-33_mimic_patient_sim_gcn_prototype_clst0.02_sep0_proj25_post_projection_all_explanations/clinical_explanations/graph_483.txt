@@ -1,0 +1,35 @@
+Graph 483 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 18218
+
+Patient-level signals
+---------------------
+The model emphasized elevated heart rate, abnormal temperature, race white indicator, and walk in arrival transport indicator.
+
+Highest-attribution clinical features:
+- heartrate: 107.0 (elevated heart rate)
+- vs_temperature: 38.2361 (abnormal temperature)
+- race_WHITE: True (race white indicator)
+- transport_WALK IN: True (walk in arrival transport indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 7 -> patient row 2601, node 2 -> patient row 12647, node 10 -> patient row 16697.
+Among those similar patients, the model-highlighted patterns included:
+- elevated heart rate in 3/3 influential similar patients
+- abnormal temperature in 1/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.1050).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 2.6747), prototype 0 (HOME, contribution 2.4593), prototype 2 (HOME, contribution 1.8665).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

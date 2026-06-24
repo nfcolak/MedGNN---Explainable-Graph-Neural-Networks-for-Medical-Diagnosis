@@ -1,0 +1,35 @@
+Graph 1501 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: HOME
+Model outcome: incorrectly classified
+Patient row index: 4302
+
+Patient-level signals
+---------------------
+The model emphasized race other indicator, gender f indicator, walk in arrival transport indicator, and gabapentin medication indicator.
+
+Highest-attribution clinical features:
+- race_OTHER: True (race other indicator)
+- gender_F: True (gender f indicator)
+- transport_WALK IN: True (walk in arrival transport indicator)
+- med_gabapentin: 1 (gabapentin medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 5 -> patient row 13207, node 6 -> patient row 3418, node 8 -> patient row 5871.
+Among those similar patients, the model-highlighted patterns included:
+- race other indicator in 1/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+- gender m indicator in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0862).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 2.8538), prototype 7 (ADMITTED, contribution 1.6905), prototype 5 (ADMITTED, contribution 1.5872).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

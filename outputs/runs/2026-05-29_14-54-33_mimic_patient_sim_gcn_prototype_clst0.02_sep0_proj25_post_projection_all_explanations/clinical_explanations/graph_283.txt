@@ -1,0 +1,36 @@
+Graph 283 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 19146
+
+Patient-level signals
+---------------------
+The model emphasized abnormal diastolic blood pressure, gender f indicator, sertraline medication indicator, and race white indicator.
+
+Highest-attribution clinical features:
+- dbp: 56.0 (abnormal diastolic blood pressure)
+- gender_F: True (gender f indicator)
+- med_sertraline: 1 (sertraline medication indicator)
+- race_WHITE: True (race white indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 3 -> patient row 17909, node 6 -> patient row 13531, node 9 -> patient row 6621.
+Among those similar patients, the model-highlighted patterns included:
+- simvastatin medication indicator in 1/3 influential similar patients
+- gender f indicator in 3/3 influential similar patients
+- sertraline medication indicator in 2/3 influential similar patients
+- race white indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.1129).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 2.5782), prototype 7 (ADMITTED, contribution 2.0304), prototype 6 (ADMITTED, contribution 1.9191).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

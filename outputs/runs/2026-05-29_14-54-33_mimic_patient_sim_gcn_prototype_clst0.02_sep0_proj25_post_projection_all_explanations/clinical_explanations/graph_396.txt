@@ -1,0 +1,28 @@
+Graph 396 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 772
+
+Patient-level signals
+---------------------
+The model emphasized no clearly abnormal high-attribution clinical signals.
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 10 -> patient row 2990, node 9 -> patient row 9362, node 4 -> patient row 4378.
+Among those similar patients, the model-highlighted patterns included:
+- clonidine medication indicator in 1/3 influential similar patients
+- walk in arrival transport indicator in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.2274).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 1.9162), prototype 0 (HOME, contribution 1.6725), prototype 2 (HOME, contribution 1.3045).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

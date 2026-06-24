@@ -1,0 +1,34 @@
+Graph 435 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 13107
+
+Patient-level signals
+---------------------
+The model emphasized walk in arrival transport indicator, race white indicator, levonorgestrel medication indicator, and oxycodone medication indicator.
+
+Highest-attribution clinical features:
+- transport_WALK IN: True (walk in arrival transport indicator)
+- race_WHITE: True (race white indicator)
+- med_levonorgestrel: 1 (levonorgestrel medication indicator)
+- med_oxycodone: 1 (oxycodone medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 1 -> patient row 7295, node 4 -> patient row 557, node 10 -> patient row 12013.
+Among those similar patients, the model-highlighted patterns included:
+- walk in arrival transport indicator in 3/3 influential similar patients
+- race white indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.4649).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 1.1475), prototype 8 (ADMITTED, contribution -0.2679), prototype 0 (HOME, contribution 0.2611).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

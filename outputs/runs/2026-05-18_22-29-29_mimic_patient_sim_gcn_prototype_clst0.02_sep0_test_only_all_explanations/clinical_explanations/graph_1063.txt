@@ -1,0 +1,33 @@
+Graph 1063 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 18739
+
+Patient-level signals
+---------------------
+The model emphasized higher triage acuity, and gender m indicator.
+
+Highest-attribution clinical features:
+- acuity: 3 (higher triage acuity)
+- gender_M: True (gender m indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 6 -> patient row 5364, node 3 -> patient row 14524, node 5 -> patient row 608.
+Among those similar patients, the model-highlighted patterns included:
+- higher triage acuity in 2/3 influential similar patients
+- walk in arrival transport indicator in 1/3 influential similar patients
+- gender m indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.6392).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 0.9416), prototype 8 (ADMITTED, contribution -0.3031), prototype 0 (HOME, contribution 0.2457).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

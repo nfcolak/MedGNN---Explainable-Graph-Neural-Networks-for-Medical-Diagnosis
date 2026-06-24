@@ -1,0 +1,35 @@
+Graph 1060 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 10750
+
+Patient-level signals
+---------------------
+The model emphasized gender f indicator, race white indicator, walk in arrival transport indicator, and budesonide medication indicator.
+
+Highest-attribution clinical features:
+- gender_F: True (gender f indicator)
+- race_WHITE: True (race white indicator)
+- transport_WALK IN: True (walk in arrival transport indicator)
+- med_budesonide: 1 (budesonide medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 4 -> patient row 854, node 6 -> patient row 9214, node 2 -> patient row 1637.
+Among those similar patients, the model-highlighted patterns included:
+- gender f indicator in 3/3 influential similar patients
+- race white indicator in 3/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.0357).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 3.8258), prototype 0 (HOME, contribution 3.0439), prototype 2 (HOME, contribution 2.2711).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

@@ -1,0 +1,32 @@
+Graph 1082 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 18553
+
+Patient-level signals
+---------------------
+The model emphasized race asian indicator, and gender m indicator.
+
+Highest-attribution clinical features:
+- race_ASIAN: True (race asian indicator)
+- gender_M: True (gender m indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 3 -> patient row 8946, node 9 -> patient row 10828, node 4 -> patient row 6123.
+Among those similar patients, the model-highlighted patterns included:
+- race asian indicator in 2/3 influential similar patients
+- gender m indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0662).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 3.1305), prototype 7 (ADMITTED, contribution 1.9315), prototype 5 (ADMITTED, contribution 1.7949).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.
