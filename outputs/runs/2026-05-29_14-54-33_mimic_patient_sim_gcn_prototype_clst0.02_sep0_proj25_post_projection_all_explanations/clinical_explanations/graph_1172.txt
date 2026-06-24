@@ -1,0 +1,33 @@
+Graph 1172 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 19438
+
+Patient-level signals
+---------------------
+The model emphasized abnormal diastolic blood pressure, race white indicator, and ambulance arrival transport indicator.
+
+Highest-attribution clinical features:
+- vs_dbp: 56.3333 (abnormal diastolic blood pressure)
+- race_WHITE: True (race white indicator)
+- transport_AMBULANCE: True (ambulance arrival transport indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 4 -> patient row 3746, node 3 -> patient row 14429, node 10 -> patient row 17455.
+Among those similar patients, the model-highlighted patterns included:
+- race white indicator in 3/3 influential similar patients
+- ambulance arrival transport indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.1111).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 2.4616), prototype 0 (HOME, contribution 2.3546), prototype 2 (HOME, contribution 1.6104).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

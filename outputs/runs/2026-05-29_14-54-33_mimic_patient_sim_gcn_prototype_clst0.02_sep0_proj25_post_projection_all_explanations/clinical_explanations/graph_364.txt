@@ -1,0 +1,35 @@
+Graph 364 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 17399
+
+Patient-level signals
+---------------------
+The model emphasized lower oxygen saturation, gender f indicator, and abnormal diastolic blood pressure.
+
+Highest-attribution clinical features:
+- vs_o2sat: 90.2857 (lower oxygen saturation)
+- gender_F: True (gender f indicator)
+- vs_dbp: 45.4 (abnormal diastolic blood pressure)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 3 -> patient row 14511, node 4 -> patient row 7805, node 6 -> patient row 14424.
+Among those similar patients, the model-highlighted patterns included:
+- lower oxygen saturation in 3/3 influential similar patients
+- gender f indicator in 3/3 influential similar patients
+- abnormal diastolic blood pressure in 3/3 influential similar patients
+- race white indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0341).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 3.8410), prototype 7 (ADMITTED, contribution 2.6823), prototype 6 (ADMITTED, contribution 2.4964).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

@@ -1,0 +1,36 @@
+Graph 1601 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 18639
+
+Patient-level signals
+---------------------
+The model emphasized abnormal temperature, dextroamphetamine amphetamine medication indicator, walk in arrival transport indicator, and gender m indicator.
+
+Highest-attribution clinical features:
+- temperature: 35.6111 (abnormal temperature)
+- med_dextroamphetamine_amphetamine: 1 (dextroamphetamine amphetamine medication indicator)
+- transport_WALK IN: True (walk in arrival transport indicator)
+- gender_M: True (gender m indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 7 -> patient row 5712, node 8 -> patient row 19526, node 6 -> patient row 1280.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal temperature in 1/3 influential similar patients
+- dextroamphetamine amphetamine medication indicator in 1/3 influential similar patients
+- walk in arrival transport indicator in 2/3 influential similar patients
+- gender m indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.4298).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 1.2017), prototype 0 (HOME, contribution 0.2883), prototype 8 (ADMITTED, contribution -0.2413).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

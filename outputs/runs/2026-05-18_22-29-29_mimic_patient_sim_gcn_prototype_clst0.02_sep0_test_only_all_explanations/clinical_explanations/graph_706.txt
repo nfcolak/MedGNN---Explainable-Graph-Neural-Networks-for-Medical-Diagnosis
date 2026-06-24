@@ -1,0 +1,31 @@
+Graph 706 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 4159
+
+Patient-level signals
+---------------------
+The model emphasized gender f indicator, and metoprolol medication indicator.
+
+Highest-attribution clinical features:
+- gender_F: True (gender f indicator)
+- med_metoprolol: 1 (metoprolol medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 1 -> patient row 19313, node 6 -> patient row 3921, node 7 -> patient row 19876.
+Among those similar patients, the model-highlighted patterns included:
+- gender f indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.6363).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 0.9443), prototype 8 (ADMITTED, contribution -0.2763), prototype 0 (HOME, contribution 0.2487).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

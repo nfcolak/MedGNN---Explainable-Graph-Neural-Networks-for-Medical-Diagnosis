@@ -1,0 +1,32 @@
+Graph 92 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 13502
+
+Patient-level signals
+---------------------
+The model emphasized gender m indicator, and higher triage acuity.
+
+Highest-attribution clinical features:
+- gender_M: True (gender m indicator)
+- acuity: 3 (higher triage acuity)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 7 -> patient row 11606, node 3 -> patient row 13832, node 9 -> patient row 3858.
+Among those similar patients, the model-highlighted patterns included:
+- gender m indicator in 3/3 influential similar patients
+- higher triage acuity in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 0 (HOME prototype, distance 2.2814).
+The strongest prototype-level contributors to the prediction were prototype 0 (HOME, contribution 0.3861), prototype 3 (HOME, contribution 0.2210), prototype 2 (HOME, contribution 0.0256).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

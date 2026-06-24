@@ -1,0 +1,13 @@
+{
+  "macro_f1": 0.48011953085008563,
+  "params": {
+    "lr": 0.0017924552115135492,
+    "batch_size": 128,
+    "n_layers": 3,
+    "hidden_dim": 128,
+    "dropout": 0.5069992725096958,
+    "readout": "max",
+    "emb_norm": true,
+    "weight_decay": 4.3460184000163536e-05
+  }
+}

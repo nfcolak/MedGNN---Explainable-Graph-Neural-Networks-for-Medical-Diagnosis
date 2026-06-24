@@ -1,0 +1,38 @@
+Graph 990 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: HOME
+Model outcome: incorrectly classified
+Patient row index: 1466
+
+Patient-level signals
+---------------------
+The model emphasized gender f indicator, losartan medication indicator, acetaminophen medication indicator, metoprolol medication indicator, ambulance arrival transport indicator, and cholecalciferol medication indicator.
+
+Highest-attribution clinical features:
+- gender_F: True (gender f indicator)
+- med_losartan: 1 (losartan medication indicator)
+- med_acetaminophen: 1 (acetaminophen medication indicator)
+- med_metoprolol: 1 (metoprolol medication indicator)
+- transport_AMBULANCE: True (ambulance arrival transport indicator)
+- med_cholecalciferol: 1 (cholecalciferol medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 8 -> patient row 7586, node 9 -> patient row 19306, node 1 -> patient row 14217.
+Among those similar patients, the model-highlighted patterns included:
+- gender f indicator in 3/3 influential similar patients
+- acetaminophen medication indicator in 2/3 influential similar patients
+- metoprolol medication indicator in 2/3 influential similar patients
+- ambulance arrival transport indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.1295).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 2.4398), prototype 7 (ADMITTED, contribution 1.8143), prototype 6 (ADMITTED, contribution 1.6978).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

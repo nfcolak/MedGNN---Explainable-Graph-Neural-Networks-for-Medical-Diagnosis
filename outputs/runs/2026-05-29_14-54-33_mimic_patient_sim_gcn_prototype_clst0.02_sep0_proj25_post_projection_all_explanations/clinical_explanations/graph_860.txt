@@ -1,0 +1,32 @@
+Graph 860 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: HOME
+Model outcome: incorrectly classified
+Patient row index: 5776
+
+Patient-level signals
+---------------------
+The model emphasized gender m indicator, and race white indicator.
+
+Highest-attribution clinical features:
+- gender_M: True (gender m indicator)
+- race_WHITE: True (race white indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 5 -> patient row 9379, node 10 -> patient row 4470, node 8 -> patient row 9021.
+Among those similar patients, the model-highlighted patterns included:
+- gender m indicator in 2/3 influential similar patients
+- race white indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0999).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 2.7021), prototype 7 (ADMITTED, contribution 1.4899), prototype 6 (ADMITTED, contribution 1.4062).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

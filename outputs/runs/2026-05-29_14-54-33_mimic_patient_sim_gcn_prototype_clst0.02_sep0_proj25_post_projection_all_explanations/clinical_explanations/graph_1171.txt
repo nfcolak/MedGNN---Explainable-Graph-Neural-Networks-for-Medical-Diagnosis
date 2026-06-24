@@ -1,0 +1,37 @@
+Graph 1171 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 17557
+
+Patient-level signals
+---------------------
+The model emphasized abnormal temperature, elevated heart rate, race white indicator, walk in arrival transport indicator, and gender m indicator.
+
+Highest-attribution clinical features:
+- temperature: 40.2778 (abnormal temperature)
+- vs_heartrate: 104.5 (elevated heart rate)
+- race_WHITE: True (race white indicator)
+- transport_WALK IN: True (walk in arrival transport indicator)
+- gender_M: True (gender m indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 4 -> patient row 19782, node 1 -> patient row 876, node 9 -> patient row 13826.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal temperature in 3/3 influential similar patients
+- elevated heart rate in 3/3 influential similar patients
+- race white indicator in 2/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.2882).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 1.6870), prototype 7 (ADMITTED, contribution 1.0890), prototype 6 (ADMITTED, contribution 1.0532).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

@@ -1,0 +1,33 @@
+Graph 532 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 18343
+
+Patient-level signals
+---------------------
+The model emphasized race white indicator, ambulance arrival transport indicator, and abnormal diastolic blood pressure.
+
+Highest-attribution clinical features:
+- race_WHITE: True (race white indicator)
+- transport_AMBULANCE: True (ambulance arrival transport indicator)
+- dbp: 59.0 (abnormal diastolic blood pressure)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 3 -> patient row 12147, node 5 -> patient row 7415, node 4 -> patient row 18957.
+Among those similar patients, the model-highlighted patterns included:
+- race white indicator in 3/3 influential similar patients
+- ambulance arrival transport indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.1153).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 2.5567), prototype 7 (ADMITTED, contribution 1.5602), prototype 6 (ADMITTED, contribution 1.4679).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

@@ -1,0 +1,37 @@
+Graph 700 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 11673
+
+Patient-level signals
+---------------------
+The model emphasized walk in arrival transport indicator, aspirin medication indicator, race black indicator, higher triage acuity, and elevated respiratory rate.
+
+Highest-attribution clinical features:
+- transport_WALK IN: True (walk in arrival transport indicator)
+- med_aspirin: 1 (aspirin medication indicator)
+- race_BLACK: True (race black indicator)
+- acuity: 3 (higher triage acuity)
+- resprate: 22.0 (elevated respiratory rate)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 6209, node 6 -> patient row 9111, node 1 -> patient row 19863.
+Among those similar patients, the model-highlighted patterns included:
+- walk in arrival transport indicator in 3/3 influential similar patients
+- aspirin medication indicator in 2/3 influential similar patients
+- race black indicator in 3/3 influential similar patients
+- elevated respiratory rate in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 3 (HOME prototype, distance 0.2164).
+The strongest prototype-level contributors to the prediction were prototype 0 (HOME, contribution 1.9880), prototype 4 (HOME, contribution 1.7865), prototype 3 (HOME, contribution 1.7310).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

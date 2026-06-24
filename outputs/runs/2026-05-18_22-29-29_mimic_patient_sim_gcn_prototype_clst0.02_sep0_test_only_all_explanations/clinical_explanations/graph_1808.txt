@@ -1,0 +1,34 @@
+Graph 1808 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 13167
+
+Patient-level signals
+---------------------
+The model emphasized lower oxygen saturation, elevated heart rate, and spironolactone medication indicator.
+
+Highest-attribution clinical features:
+- vs_o2sat: 73.25 (lower oxygen saturation)
+- heartrate: 112.0 (elevated heart rate)
+- med_spironolactone: 1 (spironolactone medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 1 -> patient row 2320, node 2 -> patient row 7039, node 5 -> patient row 16860.
+Among those similar patients, the model-highlighted patterns included:
+- lower oxygen saturation in 3/3 influential similar patients
+- elevated heart rate in 1/3 influential similar patients
+- higher triage acuity in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.7205).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 0.8703), prototype 4 (HOME, contribution -0.2340), prototype 7 (ADMITTED, contribution 0.2003).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

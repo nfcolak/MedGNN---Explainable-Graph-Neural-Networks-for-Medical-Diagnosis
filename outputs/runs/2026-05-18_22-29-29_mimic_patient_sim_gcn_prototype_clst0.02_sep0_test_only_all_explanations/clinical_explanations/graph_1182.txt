@@ -1,0 +1,35 @@
+Graph 1182 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 19761
+
+Patient-level signals
+---------------------
+The model emphasized atenolol medication indicator, elevated respiratory rate, and gender m indicator.
+
+Highest-attribution clinical features:
+- med_atenolol: 1 (atenolol medication indicator)
+- vs_resprate: 23.75 (elevated respiratory rate)
+- gender_M: True (gender m indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 7 -> patient row 17731, node 2 -> patient row 18127, node 5 -> patient row 18519.
+Among those similar patients, the model-highlighted patterns included:
+- lower oxygen saturation in 3/3 influential similar patients
+- atenolol medication indicator in 1/3 influential similar patients
+- elevated respiratory rate in 3/3 influential similar patients
+- gender m indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.1727).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 1.9148), prototype 7 (ADMITTED, contribution 0.2588), prototype 6 (ADMITTED, contribution 0.2402).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

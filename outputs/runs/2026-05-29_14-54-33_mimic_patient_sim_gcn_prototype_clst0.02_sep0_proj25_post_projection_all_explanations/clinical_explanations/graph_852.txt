@@ -1,0 +1,35 @@
+Graph 852 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 1813
+
+Patient-level signals
+---------------------
+The model emphasized fluticasone medication indicator, race hispanic indicator, metformin medication indicator, and gender m indicator.
+
+Highest-attribution clinical features:
+- med_fluticasone: 1 (fluticasone medication indicator)
+- race_HISPANIC: True (race hispanic indicator)
+- med_metformin: 1 (metformin medication indicator)
+- gender_M: True (gender m indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 2 -> patient row 13279, node 5 -> patient row 11488, node 10 -> patient row 15213.
+Among those similar patients, the model-highlighted patterns included:
+- fluticasone medication indicator in 2/3 influential similar patients
+- metformin medication indicator in 2/3 influential similar patients
+- gender m indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 0 (HOME prototype, distance 0.1316).
+The strongest prototype-level contributors to the prediction were prototype 0 (HOME, contribution 2.4807), prototype 4 (HOME, contribution 2.4363), prototype 3 (HOME, contribution 1.9159).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

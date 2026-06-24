@@ -1,0 +1,37 @@
+Graph 389 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 844
+
+Patient-level signals
+---------------------
+The model emphasized hydrochlorothiazide medication indicator, omeprazole medication indicator, fluticasone medication indicator, gender m indicator, and zonisamide medication indicator.
+
+Highest-attribution clinical features:
+- med_hydrochlorothiazide: 1 (hydrochlorothiazide medication indicator)
+- med_omeprazole: 1 (omeprazole medication indicator)
+- med_fluticasone: 1 (fluticasone medication indicator)
+- gender_M: True (gender m indicator)
+- med_zonisamide: 1 (zonisamide medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 3 -> patient row 14052, node 2 -> patient row 4519, node 10 -> patient row 1296.
+Among those similar patients, the model-highlighted patterns included:
+- hydrochlorothiazide medication indicator in 2/3 influential similar patients
+- omeprazole medication indicator in 2/3 influential similar patients
+- fluticasone medication indicator in 2/3 influential similar patients
+- gender m indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.0749).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 3.0270), prototype 0 (HOME, contribution 2.7231), prototype 2 (HOME, contribution 2.4857).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

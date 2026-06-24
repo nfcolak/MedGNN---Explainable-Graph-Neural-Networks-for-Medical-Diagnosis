@@ -1,0 +1,35 @@
+Graph 1759 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 12649
+
+Patient-level signals
+---------------------
+The model emphasized ambulance arrival transport indicator, spironolactone medication indicator, gender f indicator, and race white indicator.
+
+Highest-attribution clinical features:
+- transport_AMBULANCE: True (ambulance arrival transport indicator)
+- med_spironolactone: 1 (spironolactone medication indicator)
+- gender_F: True (gender f indicator)
+- race_WHITE: True (race white indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 4 -> patient row 9205, node 2 -> patient row 12966, node 8 -> patient row 12684.
+Among those similar patients, the model-highlighted patterns included:
+- ambulance arrival transport indicator in 3/3 influential similar patients
+- gender f indicator in 3/3 influential similar patients
+- race white indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0728).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 3.0299), prototype 7 (ADMITTED, contribution 2.1270), prototype 9 (ADMITTED, contribution 1.9971).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

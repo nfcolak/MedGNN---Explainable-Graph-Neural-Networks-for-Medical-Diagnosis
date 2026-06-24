@@ -1,0 +1,32 @@
+Graph 918 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 19212
+
+Patient-level signals
+---------------------
+The model emphasized abnormal systolic blood pressure, and gender m indicator.
+
+Highest-attribution clinical features:
+- sbp: 188.0 (abnormal systolic blood pressure)
+- gender_M: True (gender m indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 7 -> patient row 5735, node 4 -> patient row 19598, node 10 -> patient row 17844.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal systolic blood pressure in 3/3 influential similar patients
+- gender m indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0817).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 2.9101), prototype 7 (ADMITTED, contribution 2.0523), prototype 5 (ADMITTED, contribution 1.8392).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

@@ -1,0 +1,33 @@
+Graph 912 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 6446
+
+Patient-level signals
+---------------------
+The model emphasized walk in arrival transport indicator, race black indicator, and hydrochlorothiazide medication indicator.
+
+Highest-attribution clinical features:
+- transport_WALK IN: True (walk in arrival transport indicator)
+- race_BLACK: True (race black indicator)
+- med_hydrochlorothiazide: 1 (hydrochlorothiazide medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 4690, node 4 -> patient row 644, node 6 -> patient row 5437.
+Among those similar patients, the model-highlighted patterns included:
+- walk in arrival transport indicator in 3/3 influential similar patients
+- race black indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.0285).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 4.0740), prototype 0 (HOME, contribution 3.2932), prototype 2 (HOME, contribution 2.4098).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

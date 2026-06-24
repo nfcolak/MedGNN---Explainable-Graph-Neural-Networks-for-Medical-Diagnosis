@@ -1,0 +1,34 @@
+Graph 302 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 13889
+
+Patient-level signals
+---------------------
+The model emphasized race white indicator, and walk in arrival transport indicator.
+
+Highest-attribution clinical features:
+- race_WHITE: True (race white indicator)
+- transport_WALK IN: True (walk in arrival transport indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 7 -> patient row 14088, node 2 -> patient row 18311, node 6 -> patient row 4303.
+Among those similar patients, the model-highlighted patterns included:
+- atenolol medication indicator in 1/3 influential similar patients
+- race white indicator in 3/3 influential similar patients
+- calcium 600 d medication indicator in 1/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.5801).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 1.0019), prototype 4 (HOME, contribution -0.2999), prototype 7 (ADMITTED, contribution 0.2149).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

@@ -1,0 +1,29 @@
+/Users/necatifurkancolak/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+============================================================
+TRAINING
+============================================================
+  [INFO] Prototype layers ENABLED.
+/Users/necatifurkancolak/Library/Python/3.9/lib/python/site-packages/torch_geometric/deprecation.py:26: UserWarning: 'data.DataLoader' is deprecated, use 'loader.DataLoader' instead
+  warnings.warn(out)
+  Dataset : mimic_intra_patient
+  Graphs  : 20000  |  avg nodes: 20.6  |  avg edges: 19.8
+  Classes : 2  |  input_dim: 164
+  Class counts (train): [9983, 6017]
+  Class counts (eval) : [1248, 752]
+  Class counts (test) : [1248, 752]
+  Class weights       : [0.8014, 1.3296]
+  clst=0.02  sep=0.1  lr=0.001
+
+  Epoch    0 | Train Loss: 0.8190  Acc: 0.5391 | Eval Loss: 0.6420  Acc: 0.6215  PR-AUC: 0.5635  [11s]
+  Epoch    1 | Train Loss: 0.6781  Acc: 0.6742 | Eval Loss: 0.6492  Acc: 0.6795  PR-AUC: 0.6173  [21s]
+  Epoch    2 | Train Loss: 0.6440  Acc: 0.6938 | Eval Loss: 0.6894  Acc: 0.7000  PR-AUC: 0.6252  [32s]
+  Epoch    3 | Train Loss: 0.6253  Acc: 0.7096 | Eval Loss: 0.6368  Acc: 0.7075  PR-AUC: 0.6411  [45s]
+  Epoch    4 | Train Loss: 0.6104  Acc: 0.7171 | Eval Loss: 0.6050  Acc: 0.7010  PR-AUC: 0.6542  [57s]
+  Epoch    5 | Train Loss: 0.5990  Acc: 0.7184 | Eval Loss: 0.6404  Acc: 0.7195  PR-AUC: 0.6649  [70s]
+  Epoch    6 | Train Loss: 0.5830  Acc: 0.7272 | Eval Loss: 0.6016  Acc: 0.7190  PR-AUC: 0.6740  [82s]
+  Epoch    7 | Train Loss: 0.5766  Acc: 0.7281 | Eval Loss: 0.6293  Acc: 0.7255  PR-AUC: 0.6800  [97s]
+  Epoch    8 | Train Loss: 0.5740  Acc: 0.7272 | Eval Loss: 0.5747  Acc: 0.7225  PR-AUC: 0.6808  [115s]
+  Epoch    9 | Train Loss: 0.5701  Acc: 0.7256 | Eval Loss: 0.5944  Acc: 0.7290  PR-AUC: 0.6847  [129s]
+  Epoch   10 | Train Loss: 0.5635  Acc: 0.7309 | Eval Loss: 0.5678  Acc: 0.7310  PR-AUC: 0.6884  [144s]
+  Epoch   11 | Train Loss: 0.5643  Acc: 0.7305 | Eval Loss: 0.5979  Acc: 0.7320  PR-AUC: 0.6885  [157s]

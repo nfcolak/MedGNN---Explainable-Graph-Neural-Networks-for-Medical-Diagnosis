@@ -1,0 +1,34 @@
+Graph 1729 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 17662
+
+Patient-level signals
+---------------------
+The model emphasized walk in arrival transport indicator, gender f indicator, and race black indicator.
+
+Highest-attribution clinical features:
+- transport_WALK IN: True (walk in arrival transport indicator)
+- gender_F: True (gender f indicator)
+- race_BLACK: True (race black indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 8 -> patient row 18654, node 2 -> patient row 4449, node 5 -> patient row 1111.
+Among those similar patients, the model-highlighted patterns included:
+- walk in arrival transport indicator in 3/3 influential similar patients
+- gender f indicator in 3/3 influential similar patients
+- race black indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.0934).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 2.7961), prototype 0 (HOME, contribution 2.4749), prototype 2 (HOME, contribution 1.7869).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

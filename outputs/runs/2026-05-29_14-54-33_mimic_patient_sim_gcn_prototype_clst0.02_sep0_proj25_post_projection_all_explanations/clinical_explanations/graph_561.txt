@@ -1,0 +1,32 @@
+Graph 561 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 2647
+
+Patient-level signals
+---------------------
+The model emphasized gender m indicator, and race white indicator.
+
+Highest-attribution clinical features:
+- gender_M: True (gender m indicator)
+- race_WHITE: True (race white indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 6 -> patient row 6549, node 5 -> patient row 6546, node 3 -> patient row 5103.
+Among those similar patients, the model-highlighted patterns included:
+- gender m indicator in 3/3 influential similar patients
+- race white indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.1004).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 2.7212), prototype 0 (HOME, contribution 2.3889), prototype 2 (HOME, contribution 1.8146).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

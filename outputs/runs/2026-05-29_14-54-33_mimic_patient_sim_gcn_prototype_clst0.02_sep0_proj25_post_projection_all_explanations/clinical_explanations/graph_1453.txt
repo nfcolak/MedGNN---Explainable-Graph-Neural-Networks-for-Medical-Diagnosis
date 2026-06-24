@@ -1,0 +1,32 @@
+Graph 1453 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: HOME
+Model outcome: incorrectly classified
+Patient row index: 28
+
+Patient-level signals
+---------------------
+The model emphasized gender m indicator, and walk in arrival transport indicator.
+
+Highest-attribution clinical features:
+- gender_M: True (gender m indicator)
+- transport_WALK IN: True (walk in arrival transport indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 10 -> patient row 15518, node 6 -> patient row 4090, node 4 -> patient row 3464.
+Among those similar patients, the model-highlighted patterns included:
+- gender m indicator in 3/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.1963).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 2.0365), prototype 7 (ADMITTED, contribution 1.3487), prototype 6 (ADMITTED, contribution 1.3169).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

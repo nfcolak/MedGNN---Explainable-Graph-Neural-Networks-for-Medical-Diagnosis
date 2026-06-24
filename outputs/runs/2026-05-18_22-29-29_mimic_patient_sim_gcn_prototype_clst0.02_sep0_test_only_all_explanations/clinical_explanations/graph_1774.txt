@@ -1,0 +1,31 @@
+Graph 1774 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: HOME
+Model outcome: incorrectly classified
+Patient row index: 5106
+
+Patient-level signals
+---------------------
+The model emphasized abnormal diastolic blood pressure, and race hispanic indicator.
+
+Highest-attribution clinical features:
+- dbp: 45.0 (abnormal diastolic blood pressure)
+- race_HISPANIC: True (race hispanic indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 16345, node 3 -> patient row 10297, node 5 -> patient row 14810.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal diastolic blood pressure in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.9479).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 0.7202), prototype 4 (HOME, contribution -0.3507), prototype 6 (ADMITTED, contribution 0.1904).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

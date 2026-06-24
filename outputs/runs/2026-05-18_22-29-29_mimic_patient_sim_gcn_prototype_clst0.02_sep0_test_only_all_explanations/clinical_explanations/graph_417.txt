@@ -1,0 +1,36 @@
+Graph 417 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: HOME
+Model outcome: incorrectly classified
+Patient row index: 11798
+
+Patient-level signals
+---------------------
+The model emphasized race white indicator, nitroglycerin medication indicator, blood sugar diagnostic medication indicator, and abnormal diastolic blood pressure.
+
+Highest-attribution clinical features:
+- race_WHITE: True (race white indicator)
+- med_nitroglycerin: 1 (nitroglycerin medication indicator)
+- med_blood_sugar_diagnostic: 1 (blood sugar diagnostic medication indicator)
+- dbp: 59.0 (abnormal diastolic blood pressure)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 2 -> patient row 17058, node 3 -> patient row 5914, node 1 -> patient row 2681.
+Among those similar patients, the model-highlighted patterns included:
+- race white indicator in 3/3 influential similar patients
+- lower oxygen saturation in 3/3 influential similar patients
+- nitroglycerin medication indicator in 2/3 influential similar patients
+- blood sugar diagnostic medication indicator in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.5005).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 1.0977), prototype 4 (HOME, contribution -0.2900), prototype 6 (ADMITTED, contribution 0.2231).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

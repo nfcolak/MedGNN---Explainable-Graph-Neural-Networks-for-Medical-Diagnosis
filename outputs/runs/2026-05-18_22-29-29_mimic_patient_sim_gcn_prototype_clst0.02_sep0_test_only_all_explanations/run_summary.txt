@@ -1,0 +1,52 @@
+RUN SUMMARY
+===========
+Run id: 2026-05-18_22-29-29_mimic_patient_sim_gcn_prototype_clst0.02_sep0_test_only_all_explanations
+Created at: 2026-05-18T22:29:30
+Source results dir: /Users/necatifurkancolak/MP---Self-Explainable-Graph-Neural-Networks-via-Prototype-Learning-for-Medical-Diagnosis/outputs/results
+Command: /Library/Developer/CommandLineTools/usr/bin/python3 scripts/train_and_explain.py --clst 0.02 --sep 0.0 --explain_n -1 --archive_tag test_only_all_explanations
+
+MODEL
+-----
+Dataset: mimic_patient_sim
+Model: gcn
+Prototype enabled: True
+LOS included: True
+Input dim: 327
+Output dim: 2
+Latent dim: [256, 256, 128]
+MLP hidden: [64]
+Readout: max
+
+PARAMETERS
+----------
+learning_rate: 0.001
+batch_size: 256
+weight_decay: 0.0001
+dropout: 0.3
+max_epochs: 300
+early_stopping: 20
+warm_epochs: 10
+proj_epochs: 100
+num_prototypes_per_class: 5
+clst_weight: 0.02
+sep_weight: 0.0
+decision_threshold: 0.5249999999999999
+seed: 1
+
+TEST METRICS
+------------
+loss: 0.48934
+accuracy: 0.7685
+precision: 0.686934
+recall: 0.706117
+specificity: 0.80609
+f1: 0.696393
+balanced_acc: 0.756103
+pr_auc: 0.753688
+threshold_used: 0.525
+
+ARTEFACTS
+---------
+Copied files: 2008
+Explanation files: 2001
+Clinical explanation files: 0

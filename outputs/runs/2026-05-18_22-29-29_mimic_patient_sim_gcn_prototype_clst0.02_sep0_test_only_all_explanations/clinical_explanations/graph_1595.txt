@@ -1,0 +1,33 @@
+Graph 1595 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 3402
+
+Patient-level signals
+---------------------
+The model emphasized topiramate medication indicator, and gender f indicator.
+
+Highest-attribution clinical features:
+- med_topiramate: 1 (topiramate medication indicator)
+- gender_F: True (gender f indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 2 -> patient row 10724, node 9 -> patient row 17738, node 4 -> patient row 9983.
+Among those similar patients, the model-highlighted patterns included:
+- topiramate medication indicator in 1/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+- gender f indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.7153).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 0.8745), prototype 8 (ADMITTED, contribution -0.2964), prototype 0 (HOME, contribution 0.2582).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

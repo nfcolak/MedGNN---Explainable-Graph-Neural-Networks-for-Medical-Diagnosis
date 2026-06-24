@@ -1,0 +1,4 @@
+graph_mode,dataset,k,pr_auc,acc,precision,recall,specificity,f1,balanced_acc,threshold,tn,fp,fn,tp,run_dir
+star,mimic_patient_sim_k5,5,0.767486,0.758,0.646608,0.785904,0.741186,0.709484,0.763545,0.525,925,323,161,591,outputs/runs/2026-05-18_13-30-00_mimic_patient_sim_k5_gcn_prototype_clst0.02_sep0_graph-structure-sweep
+weighted_star,mimic_patient_sim_weighted_k5,5,0.744182,0.7715,0.683686,0.730053,0.796474,0.706109,0.763264,0.51,994,254,203,549,outputs/runs/2026-05-18_13-30-49_mimic_patient_sim_weighted_k5_gcn_prototype_clst0.02_sep0_graph-structure-sweep
+local_knn,mimic_patient_sim_local_k5,5,0.728866,0.748,0.636564,0.768617,0.735577,0.696386,0.752097,0.505,918,330,174,578,outputs/runs/2026-05-18_13-31-34_mimic_patient_sim_local_k5_gcn_prototype_clst0.02_sep0_graph-structure-sweep

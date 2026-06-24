@@ -1,0 +1,36 @@
+Graph 164 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 18955
+
+Patient-level signals
+---------------------
+The model emphasized walk in arrival transport indicator, b complex vitamin c folic acid medication indicator, race hispanic indicator, and gender f indicator.
+
+Highest-attribution clinical features:
+- transport_WALK IN: True (walk in arrival transport indicator)
+- med_b_complex_vitamin_c_folic_acid: 1 (b complex vitamin c folic acid medication indicator)
+- race_HISPANIC: True (race hispanic indicator)
+- gender_F: True (gender f indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 4 -> patient row 4148, node 1 -> patient row 13425, node 2 -> patient row 11508.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal systolic blood pressure in 2/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+- race hispanic indicator in 2/3 influential similar patients
+- gender f indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.0296).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 4.0292), prototype 0 (HOME, contribution 3.6717), prototype 2 (HOME, contribution 2.7315).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

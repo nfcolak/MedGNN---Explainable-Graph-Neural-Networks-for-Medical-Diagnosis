@@ -1,0 +1,38 @@
+Graph 379 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: HOME
+Model outcome: incorrectly classified
+Patient row index: 2386
+
+Patient-level signals
+---------------------
+The model emphasized elevated heart rate, race white indicator, lower oxygen saturation, gender f indicator, omeprazole medication indicator, and ambulance arrival transport indicator.
+
+Highest-attribution clinical features:
+- vs_heartrate: 104.3333 (elevated heart rate)
+- race_WHITE: True (race white indicator)
+- vs_o2sat: 93.0 (lower oxygen saturation)
+- gender_F: True (gender f indicator)
+- med_omeprazole: 1 (omeprazole medication indicator)
+- transport_AMBULANCE: True (ambulance arrival transport indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 2 -> patient row 3469, node 3 -> patient row 1347, node 4 -> patient row 16681.
+Among those similar patients, the model-highlighted patterns included:
+- elevated heart rate in 2/3 influential similar patients
+- race white indicator in 3/3 influential similar patients
+- gender m indicator in 2/3 influential similar patients
+- omeprazole medication indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.1172).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 2.5405), prototype 7 (ADMITTED, contribution 1.6133), prototype 5 (ADMITTED, contribution 1.4863).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

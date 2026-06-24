@@ -1,0 +1,32 @@
+Graph 1910 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 7531
+
+Patient-level signals
+---------------------
+The model emphasized walk in arrival transport indicator, and cephalexin medication indicator.
+
+Highest-attribution clinical features:
+- transport_WALK IN: True (walk in arrival transport indicator)
+- med_cephalexin: 1 (cephalexin medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 34, node 3 -> patient row 2536, node 10 -> patient row 16893.
+Among those similar patients, the model-highlighted patterns included:
+- walk in arrival transport indicator in 2/3 influential similar patients
+- abnormal diastolic blood pressure in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.0807).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 2.9486), prototype 0 (HOME, contribution 2.7001), prototype 2 (HOME, contribution 1.8682).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

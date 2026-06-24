@@ -1,0 +1,36 @@
+Graph 1348 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 14643
+
+Patient-level signals
+---------------------
+The model emphasized race white indicator, elevated heart rate, gender m indicator, and ambulance arrival transport indicator.
+
+Highest-attribution clinical features:
+- race_WHITE: True (race white indicator)
+- vs_heartrate: 124.0714 (elevated heart rate)
+- gender_M: True (gender m indicator)
+- transport_AMBULANCE: True (ambulance arrival transport indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 3 -> patient row 10878, node 7 -> patient row 17984, node 5 -> patient row 5637.
+Among those similar patients, the model-highlighted patterns included:
+- race white indicator in 3/3 influential similar patients
+- elevated heart rate in 2/3 influential similar patients
+- ambulance arrival transport indicator in 2/3 influential similar patients
+- timolol medication indicator in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.4763).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 1.2577), prototype 7 (ADMITTED, contribution 0.9970), prototype 6 (ADMITTED, contribution 0.9369).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

@@ -1,0 +1,35 @@
+Graph 587 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 1432
+
+Patient-level signals
+---------------------
+The model emphasized lorazepam medication indicator, race black indicator, and gender f indicator.
+
+Highest-attribution clinical features:
+- med_lorazepam: 1 (lorazepam medication indicator)
+- race_BLACK: True (race black indicator)
+- gender_F: True (gender f indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 5991, node 1 -> patient row 16793, node 7 -> patient row 7022.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal temperature in 2/3 influential similar patients
+- elevated heart rate in 2/3 influential similar patients
+- race black indicator in 3/3 influential similar patients
+- gender f indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.0839).
+The strongest prototype-level contributors to the prediction were prototype 0 (HOME, contribution 2.9316), prototype 4 (HOME, contribution 2.9077), prototype 3 (HOME, contribution 2.2588).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

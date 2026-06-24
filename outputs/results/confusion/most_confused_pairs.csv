@@ -1,0 +1,564 @@
+true,pred,count,pct_of_true_class
+Back or spine pain,Limb injury or pain,183,10.4
+Skin or soft-tissue infection,Limb injury or pain,174,19.9
+Limb injury or pain,Head injury,108,5.6
+Limb injury or pain,Back or spine pain,96,4.9
+Head injury,Limb injury or pain,90,8.0
+Athscl heart disease of native coronary artery w/o ang pctrs,Cardiovascular risk factor,88,58.7
+Limb injury or pain,Skin or soft-tissue infection,87,4.5
+UTI or pyelonephritis,Cardiovascular risk factor,85,9.9
+Cardiovascular risk factor,Limb injury or pain,82,6.1
+Limb injury or pain,Cardiovascular risk factor,74,3.8
+Back or spine pain,Head injury,72,4.1
+Back or spine pain,Cardiovascular risk factor,69,3.9
+Head injury,Back or spine pain,65,5.8
+Laceration w/o fb of l idx fngr w/o damage to nail,Limb injury or pain,57,18.8
+Unspecified atrial fibrillation,Cardiovascular risk factor,57,15.4
+Lower respiratory disease,Cardiovascular risk factor,49,6.5
+UTI or pyelonephritis,Diabetes mellitus,49,5.7
+Heart failure,Lower respiratory disease,49,27.7
+Diabetes mellitus,Cardiovascular risk factor,49,5.7
+Multiple fractures of ribs,Head injury,48,32.7
+Head injury,Cardiovascular risk factor,48,4.3
+Cardiovascular risk factor,Back or spine pain,48,3.6
+Limb injury or pain,Diabetes mellitus,47,2.4
+Head injury,Laceration w/o fb of l idx fngr w/o damage to nail,46,4.1
+UTI or pyelonephritis,Limb injury or pain,46,5.4
+Back or spine pain,UTI or pyelonephritis,45,2.5
+Lower respiratory disease,UTI or pyelonephritis,44,5.9
+Skin or soft-tissue infection,Diabetes mellitus,43,4.9
+Laceration w/o fb of l idx fngr w/o damage to nail,Head injury,42,13.9
+Diabetes mellitus,Skin or soft-tissue infection,41,4.8
+UTI or pyelonephritis,Back or spine pain,41,4.8
+Dehydration,Cardiovascular risk factor,39,14.9
+Skin or soft-tissue infection,Cardiovascular risk factor,39,4.5
+Cardiovascular risk factor,Head injury,38,2.8
+Cardiovascular risk factor,Diabetes mellitus,38,2.8
+Unspecified asthma with (acute) exacerbation,Lower respiratory disease,38,16.8
+UTI or pyelonephritis,Lower respiratory disease,38,4.4
+Cardiovascular risk factor,UTI or pyelonephritis,37,2.8
+Cardiovascular risk factor,Lower respiratory disease,33,2.5
+Diabetes mellitus,Limb injury or pain,33,3.9
+Back or spine pain,Diabetes mellitus,32,1.8
+GI bleed,Anemia,32,5.2
+Anxiety disorder,Limb injury or pain,30,10.5
+Acute upper respiratory infection,Lower respiratory disease,30,17.1
+Dehydration,UTI or pyelonephritis,29,11.1
+UTI or pyelonephritis,Head injury,27,3.2
+Hypothyroidism,Cardiovascular risk factor,27,20.8
+Skin or soft-tissue infection,UTI or pyelonephritis,26,3.0
+UTI or pyelonephritis,Skin or soft-tissue infection,26,3.0
+Limb injury or pain,Laceration w/o fb of l idx fngr w/o damage to nail,26,1.3
+Anxiety disorder,Cardiovascular risk factor,26,9.1
+Limb injury or pain,Lower respiratory disease,25,1.3
+Multiple fractures of ribs,Back or spine pain,25,17.0
+Cardiovascular risk factor,Skin or soft-tissue infection,25,1.9
+Lower respiratory disease,Heart failure,25,3.3
+Lower respiratory disease,Diabetes mellitus,24,3.2
+UTI or pyelonephritis,Acute kidney failure,24,2.8
+Sepsis,UTI or pyelonephritis,23,27.4
+Acute kidney failure,UTI or pyelonephritis,23,9.0
+Unsp intestnl obst,Cardiovascular risk factor,23,9.7
+Diabetes mellitus,Lower respiratory disease,23,2.7
+Skin or soft-tissue infection,Lower respiratory disease,23,2.6
+Alcohol abuse with intoxication,Major depressive disorder,23,3.2
+Hypokalemia,Cardiovascular risk factor,23,8.9
+Lower respiratory disease,Back or spine pain,22,2.9
+GI bleed,Cardiovascular risk factor,22,3.6
+Alcohol abuse with intoxication,Head injury,21,2.9
+Cardiovascular risk factor,Unspecified atrial fibrillation,21,1.6
+Anemia,GI bleed,21,8.8
+Major depressive disorder,Anxiety disorder,21,3.8
+Acute upper respiratory infection,Limb injury or pain,20,11.4
+Hypokalemia,Diabetes mellitus,20,7.8
+Back or spine pain,Skin or soft-tissue infection,20,1.1
+Anxiety disorder,Major depressive disorder,20,7.0
+Acute upper respiratory infection,Acute pharyngitis,19,10.9
+Acute pharyngitis,Limb injury or pain,19,5.5
+Acute upper respiratory infection,Cardiovascular risk factor,19,10.9
+Diabetes mellitus,UTI or pyelonephritis,19,2.2
+Dehydration,Lower respiratory disease,18,6.9
+Limb injury or pain,UTI or pyelonephritis,18,0.9
+Hypokalemia,Lower respiratory disease,18,7.0
+Unspecified asthma with (acute) exacerbation,Cardiovascular risk factor,18,8.0
+Lower respiratory disease,Acute upper respiratory infection,18,2.4
+Head injury,Alcohol abuse with intoxication,18,1.6
+Acute kidney failure,Diabetes mellitus,17,6.6
+Multiple fractures of ribs,Limb injury or pain,16,10.9
+Acute kidney failure,Hypokalemia,16,6.2
+Unsp intestnl obst,UTI or pyelonephritis,16,6.8
+Sepsis,Lower respiratory disease,16,19.0
+Skin or soft-tissue infection,Back or spine pain,16,1.8
+Dehydration,Diabetes mellitus,15,5.7
+Cardiovascular risk factor,Unsp intestnl obst,15,1.1
+Unspecified atrial fibrillation,Lower respiratory disease,15,4.0
+Hypokalemia,Acute kidney failure,15,5.8
+Cardiovascular risk factor,GI bleed,15,1.1
+GI bleed,UTI or pyelonephritis,15,2.4
+Lower respiratory disease,Limb injury or pain,15,2.0
+Hypothyroidism,Limb injury or pain,15,11.5
+Diabetes mellitus,Back or spine pain,15,1.8
+Diabetes mellitus,Head injury,14,1.6
+Diabetes mellitus,Acute kidney failure,14,1.6
+Hypotension,Cardiovascular risk factor,13,13.3
+Unspecified atrial fibrillation,Diabetes mellitus,13,3.5
+Lower respiratory disease,Skin or soft-tissue infection,13,1.7
+Head injury,Skin or soft-tissue infection,13,1.2
+Heart failure,Unspecified atrial fibrillation,13,7.3
+Alcohol abuse with intoxication,Cardiovascular risk factor,13,1.8
+Dehydration,Head injury,13,5.0
+Cardiovascular risk factor,Acute kidney failure,13,1.0
+UTI or pyelonephritis,Dehydration,13,1.5
+Heart failure,Cardiovascular risk factor,12,6.8
+Unspecified atrial fibrillation,Head injury,12,3.2
+Major depressive disorder,Alcohol abuse with intoxication,12,2.2
+Dehydration,Hypokalemia,12,4.6
+UTI or pyelonephritis,Unsp intestnl obst,12,1.4
+Unspecified asthma with (acute) exacerbation,Acute upper respiratory infection,12,5.3
+Lower respiratory disease,Unspecified asthma with (acute) exacerbation,12,1.6
+Dehydration,Limb injury or pain,12,4.6
+Unspecified atrial fibrillation,Heart failure,11,3.0
+Athscl heart disease of native coronary artery w/o ang pctrs,Diabetes mellitus,11,7.3
+Multiple fractures of ribs,Cardiovascular risk factor,11,7.5
+Lower respiratory disease,Acute kidney failure,11,1.5
+Dehydration,Acute kidney failure,11,4.2
+Hypothyroidism,UTI or pyelonephritis,11,8.5
+GI bleed,Back or spine pain,11,1.8
+Cardiovascular risk factor,Hypokalemia,11,0.8
+Hypokalemia,Limb injury or pain,10,3.9
+Acute pharyngitis,UTI or pyelonephritis,10,2.9
+Hypotension,Lower respiratory disease,10,10.2
+Laceration w/o fb of l idx fngr w/o damage to nail,Cardiovascular risk factor,10,3.3
+Head injury,Diabetes mellitus,10,0.9
+GI bleed,Limb injury or pain,10,1.6
+Alcohol abuse with intoxication,Back or spine pain,9,1.3
+Cardiovascular risk factor,Athscl heart disease of native coronary artery w/o ang pctrs,9,0.7
+Unspecified asthma with (acute) exacerbation,Limb injury or pain,9,4.0
+Diabetes mellitus,Unsp intestnl obst,9,1.1
+Hypokalemia,UTI or pyelonephritis,9,3.5
+Heart failure,Limb injury or pain,9,5.1
+Epilepsy,Cardiovascular risk factor,9,4.6
+End stage renal disease,Cardiovascular risk factor,9,9.9
+Laceration w/o fb of l idx fngr w/o damage to nail,Skin or soft-tissue infection,9,3.0
+Skin or soft-tissue infection,Head injury,9,1.0
+GI bleed,Diabetes mellitus,9,1.5
+Lower respiratory disease,Head injury,9,1.2
+Major depressive disorder,Head injury,9,1.6
+Acute upper respiratory infection,Back or spine pain,9,5.1
+Cardiovascular risk factor,Major depressive disorder,9,0.7
+Acute kidney failure,Cardiovascular risk factor,9,3.5
+Diabetes mellitus,Hypokalemia,9,1.1
+Alcohol abuse with intoxication,Lower respiratory disease,9,1.3
+Acute pharyngitis,Skin or soft-tissue infection,9,2.6
+Unspecified atrial fibrillation,Limb injury or pain,9,2.4
+Anemia,Diabetes mellitus,9,3.8
+Lower respiratory disease,Unspecified atrial fibrillation,9,1.2
+Alcohol abuse with intoxication,Limb injury or pain,8,1.1
+End stage renal disease,Acute kidney failure,8,8.8
+Head injury,Multiple fractures of ribs,8,0.7
+Anemia,Lower respiratory disease,8,3.3
+Back or spine pain,Lower respiratory disease,8,0.5
+Unspecified atrial fibrillation,UTI or pyelonephritis,8,2.2
+Anemia,UTI or pyelonephritis,8,3.3
+Limb injury or pain,Unspecified asthma with (acute) exacerbation,8,0.4
+UTI or pyelonephritis,Hypothyroidism,8,0.9
+Limb injury or pain,Dehydration,8,0.4
+Acute kidney failure,Hypotension,8,3.1
+Acute pharyngitis,Back or spine pain,8,2.3
+Major depressive disorder,Diabetes mellitus,8,1.5
+Major depressive disorder,Limb injury or pain,8,1.5
+Alcohol abuse with intoxication,Anxiety disorder,7,1.0
+Cardiovascular risk factor,Heart failure,7,0.5
+Limb injury or pain,Multiple fractures of ribs,7,0.4
+Acute kidney failure,Lower respiratory disease,7,2.7
+Acute kidney failure,Unspecified atrial fibrillation,7,2.7
+Limb injury or pain,Alcohol abuse with intoxication,7,0.4
+Cardiovascular risk factor,Anxiety disorder,7,0.5
+Epilepsy,Back or spine pain,7,3.6
+Lower respiratory disease,Hypokalemia,7,0.9
+Limb injury or pain,Unspecified atrial fibrillation,7,0.4
+Unspecified atrial fibrillation,GI bleed,7,1.9
+Cardiovascular risk factor,Anemia,7,0.5
+Head injury,Lower respiratory disease,7,0.6
+Anxiety disorder,Head injury,7,2.4
+UTI or pyelonephritis,GI bleed,7,0.8
+Anemia,Cardiovascular risk factor,7,2.9
+Cardiovascular risk factor,Dehydration,7,0.5
+Back or spine pain,Alcohol abuse with intoxication,7,0.4
+Acute pharyngitis,Acute upper respiratory infection,7,2.0
+Acute upper respiratory infection,Skin or soft-tissue infection,7,4.0
+UTI or pyelonephritis,Anemia,7,0.8
+Limb injury or pain,Hypothyroidism,7,0.4
+Heart failure,Diabetes mellitus,7,4.0
+Multiple fractures of ribs,Lower respiratory disease,7,4.8
+Acute upper respiratory infection,Unspecified asthma with (acute) exacerbation,7,4.0
+Major depressive disorder,Cardiovascular risk factor,7,1.3
+Lower respiratory disease,Anemia,7,0.9
+Alcohol abuse with intoxication,Diabetes mellitus,6,0.8
+Epilepsy,UTI or pyelonephritis,6,3.0
+GI bleed,Lower respiratory disease,6,1.0
+GI bleed,Acute kidney failure,6,1.0
+Dehydration,Skin or soft-tissue infection,6,2.3
+Acute pharyngitis,Lower respiratory disease,6,1.7
+Hypokalemia,GI bleed,6,2.3
+Heart failure,UTI or pyelonephritis,6,3.4
+Hypokalemia,Back or spine pain,6,2.3
+Skin or soft-tissue infection,Unsp intestnl obst,6,0.7
+Acute kidney failure,Skin or soft-tissue infection,6,2.3
+GI bleed,Dehydration,6,1.0
+Alcohol abuse with intoxication,Dehydration,6,0.8
+Hypokalemia,End stage renal disease,6,2.3
+Athscl heart disease of native coronary artery w/o ang pctrs,Lower respiratory disease,6,4.0
+Anxiety disorder,Back or spine pain,6,2.1
+UTI or pyelonephritis,Acute pharyngitis,6,0.7
+Sepsis,GI bleed,6,7.1
+Hypothyroidism,Dehydration,6,4.6
+Lower respiratory disease,Dehydration,6,0.8
+Acute kidney failure,Limb injury or pain,6,2.3
+Hypothyroidism,Back or spine pain,6,4.6
+Hypotension,Acute kidney failure,5,5.1
+Unspecified atrial fibrillation,Back or spine pain,5,1.3
+Acute upper respiratory infection,Head injury,5,2.9
+Diabetes mellitus,Dehydration,5,0.6
+Anemia,Limb injury or pain,5,2.1
+Hypotension,Hypokalemia,5,5.1
+Heart failure,Acute kidney failure,5,2.8
+End stage renal disease,Diabetes mellitus,5,5.5
+Limb injury or pain,Anemia,5,0.3
+Hypotension,Sepsis,5,5.1
+Back or spine pain,Multiple fractures of ribs,5,0.3
+GI bleed,Head injury,5,0.8
+Epilepsy,Limb injury or pain,5,2.5
+Limb injury or pain,Hypokalemia,5,0.3
+Limb injury or pain,End stage renal disease,5,0.3
+Athscl heart disease of native coronary artery w/o ang pctrs,Unspecified atrial fibrillation,5,3.3
+Anemia,Acute kidney failure,5,2.1
+Acute kidney failure,End stage renal disease,5,2.0
+Epilepsy,Anxiety disorder,5,2.5
+Limb injury or pain,Anxiety disorder,5,0.3
+Skin or soft-tissue infection,Hypokalemia,5,0.6
+Acute kidney failure,Back or spine pain,5,2.0
+Anxiety disorder,Alcohol abuse with intoxication,5,1.7
+End stage renal disease,Lower respiratory disease,5,5.5
+Back or spine pain,Anxiety disorder,5,0.3
+Unsp intestnl obst,GI bleed,5,2.1
+UTI or pyelonephritis,Unspecified atrial fibrillation,5,0.6
+GI bleed,Unsp intestnl obst,5,0.8
+GI bleed,Skin or soft-tissue infection,5,0.8
+Acute kidney failure,Dehydration,5,2.0
+Lower respiratory disease,Acute pharyngitis,5,0.7
+Head injury,Hypothyroidism,5,0.4
+Unspecified asthma with (acute) exacerbation,Diabetes mellitus,5,2.2
+Unsp intestnl obst,Limb injury or pain,5,2.1
+Dehydration,Anxiety disorder,5,1.9
+Hypotension,Diabetes mellitus,5,5.1
+Hypotension,Head injury,5,5.1
+Hypokalemia,Head injury,5,1.9
+Hypothyroidism,Anxiety disorder,5,3.8
+Unsp intestnl obst,Acute kidney failure,5,2.1
+Back or spine pain,Dehydration,5,0.3
+End stage renal disease,Limb injury or pain,5,5.5
+Skin or soft-tissue infection,Hypothyroidism,5,0.6
+Hypokalemia,Dehydration,5,1.9
+Diabetes mellitus,GI bleed,5,0.6
+Acute pharyngitis,Unspecified asthma with (acute) exacerbation,4,1.2
+Athscl heart disease of native coronary artery w/o ang pctrs,Limb injury or pain,4,2.7
+Diabetes mellitus,End stage renal disease,4,0.5
+UTI or pyelonephritis,Alcohol abuse with intoxication,4,0.5
+Acute kidney failure,Unsp intestnl obst,4,1.6
+UTI or pyelonephritis,Major depressive disorder,4,0.5
+Epilepsy,Head injury,4,2.0
+Unsp intestnl obst,Diabetes mellitus,4,1.7
+Unspecified atrial fibrillation,Acute kidney failure,4,1.1
+Head injury,Acute upper respiratory infection,4,0.4
+Dehydration,Hypotension,4,1.5
+UTI or pyelonephritis,Hypokalemia,4,0.5
+Lower respiratory disease,Hypotension,4,0.5
+Heart failure,Anemia,4,2.3
+Hypokalemia,Anemia,4,1.6
+Unsp intestnl obst,Back or spine pain,4,1.7
+Limb injury or pain,Major depressive disorder,4,0.2
+Limb injury or pain,Acute kidney failure,4,0.2
+Athscl heart disease of native coronary artery w/o ang pctrs,Acute kidney failure,4,2.7
+Skin or soft-tissue infection,Alcohol abuse with intoxication,4,0.5
+Head injury,Unspecified atrial fibrillation,4,0.4
+Dehydration,Alcohol abuse with intoxication,4,1.5
+GI bleed,Hypokalemia,4,0.6
+Skin or soft-tissue infection,Laceration w/o fb of l idx fngr w/o damage to nail,4,0.5
+Diabetes mellitus,Anemia,4,0.5
+Diabetes mellitus,Alcohol abuse with intoxication,4,0.5
+Skin or soft-tissue infection,Anemia,4,0.5
+Anxiety disorder,Diabetes mellitus,4,1.4
+Back or spine pain,Acute kidney failure,4,0.2
+Acute upper respiratory infection,UTI or pyelonephritis,4,2.3
+Unsp intestnl obst,Skin or soft-tissue infection,4,1.7
+Athscl heart disease of native coronary artery w/o ang pctrs,UTI or pyelonephritis,4,2.7
+Acute pharyngitis,Diabetes mellitus,4,1.2
+Dehydration,Unsp intestnl obst,4,1.5
+Diabetes mellitus,Athscl heart disease of native coronary artery w/o ang pctrs,4,0.5
+Anxiety disorder,Dehydration,4,1.4
+Hypothyroidism,Diabetes mellitus,4,3.1
+Limb injury or pain,Acute upper respiratory infection,4,0.2
+Skin or soft-tissue infection,Acute kidney failure,4,0.5
+Acute kidney failure,Heart failure,4,1.6
+Unsp intestnl obst,Dehydration,4,1.7
+Acute pharyngitis,Cardiovascular risk factor,3,0.9
+Cardiovascular risk factor,Alcohol abuse with intoxication,3,0.2
+Athscl heart disease of native coronary artery w/o ang pctrs,Back or spine pain,3,2.0
+Epilepsy,Alcohol abuse with intoxication,3,1.5
+Dehydration,Acute pharyngitis,3,1.1
+Hypokalemia,Alcohol abuse with intoxication,3,1.2
+Back or spine pain,Unspecified atrial fibrillation,3,0.2
+Lower respiratory disease,Sepsis,3,0.4
+Acute kidney failure,GI bleed,3,1.2
+Alcohol abuse with intoxication,UTI or pyelonephritis,3,0.4
+Hypotension,Unspecified atrial fibrillation,3,3.1
+Lower respiratory disease,GI bleed,3,0.4
+Sepsis,Hypotension,3,3.6
+Lower respiratory disease,Alcohol abuse with intoxication,3,0.4
+Epilepsy,Diabetes mellitus,3,1.5
+Skin or soft-tissue infection,Anxiety disorder,3,0.3
+UTI or pyelonephritis,Epilepsy,3,0.4
+Multiple fractures of ribs,Alcohol abuse with intoxication,3,2.0
+Hypotension,Heart failure,3,3.1
+Hypothyroidism,GI bleed,3,2.3
+Anemia,Dehydration,3,1.2
+Heart failure,Hypokalemia,3,1.7
+End stage renal disease,Hypokalemia,3,3.3
+Acute kidney failure,Anemia,3,1.2
+Cardiovascular risk factor,Acute pharyngitis,3,0.2
+Multiple fractures of ribs,UTI or pyelonephritis,3,2.0
+Sepsis,Unspecified atrial fibrillation,3,3.6
+Cardiovascular risk factor,Unspecified asthma with (acute) exacerbation,3,0.2
+Head injury,Major depressive disorder,3,0.3
+Acute kidney failure,Sepsis,3,1.2
+Laceration w/o fb of l idx fngr w/o damage to nail,Major depressive disorder,3,1.0
+Unspecified atrial fibrillation,Athscl heart disease of native coronary artery w/o ang pctrs,3,0.8
+Athscl heart disease of native coronary artery w/o ang pctrs,Head injury,3,2.0
+Back or spine pain,Major depressive disorder,3,0.2
+Anemia,Head injury,3,1.2
+Skin or soft-tissue infection,GI bleed,3,0.3
+GI bleed,Hypotension,3,0.5
+Unspecified atrial fibrillation,Skin or soft-tissue infection,3,0.8
+Hypokalemia,Heart failure,3,1.2
+Dehydration,GI bleed,3,1.1
+Limb injury or pain,Acute pharyngitis,3,0.2
+Unsp intestnl obst,Lower respiratory disease,3,1.3
+Hypothyroidism,Lower respiratory disease,3,2.3
+Diabetes mellitus,Unspecified atrial fibrillation,3,0.4
+Head injury,Epilepsy,3,0.3
+Lower respiratory disease,Unsp intestnl obst,3,0.4
+Dehydration,Unspecified asthma with (acute) exacerbation,3,1.1
+Multiple fractures of ribs,Unspecified atrial fibrillation,3,2.0
+Sepsis,Skin or soft-tissue infection,3,3.6
+UTI or pyelonephritis,Unspecified asthma with (acute) exacerbation,3,0.4
+Back or spine pain,Acute pharyngitis,3,0.2
+Cardiovascular risk factor,Multiple fractures of ribs,3,0.2
+GI bleed,Unspecified atrial fibrillation,3,0.5
+Cardiovascular risk factor,Hypothyroidism,3,0.2
+Acute upper respiratory infection,Diabetes mellitus,3,1.7
+Athscl heart disease of native coronary artery w/o ang pctrs,Heart failure,3,2.0
+Lower respiratory disease,End stage renal disease,3,0.4
+Back or spine pain,Laceration w/o fb of l idx fngr w/o damage to nail,3,0.2
+Head injury,UTI or pyelonephritis,3,0.3
+Diabetes mellitus,Heart failure,3,0.4
+Laceration w/o fb of l idx fngr w/o damage to nail,Dehydration,2,0.7
+Epilepsy,Lower respiratory disease,2,1.0
+Limb injury or pain,GI bleed,2,0.1
+Head injury,Unspecified asthma with (acute) exacerbation,2,0.2
+Dehydration,Unspecified atrial fibrillation,2,0.8
+GI bleed,Anxiety disorder,2,0.3
+Back or spine pain,Unsp intestnl obst,2,0.1
+Sepsis,Acute kidney failure,2,2.4
+Cardiovascular risk factor,Acute upper respiratory infection,2,0.1
+Hypothyroidism,Major depressive disorder,2,1.5
+Unspecified asthma with (acute) exacerbation,Skin or soft-tissue infection,2,0.9
+Unsp intestnl obst,Hypothyroidism,2,0.8
+UTI or pyelonephritis,Hypotension,2,0.2
+Hypotension,End stage renal disease,2,2.0
+Dehydration,Anemia,2,0.8
+Skin or soft-tissue infection,Dehydration,2,0.2
+Hypokalemia,Unsp intestnl obst,2,0.8
+Head injury,Dehydration,2,0.2
+Epilepsy,Skin or soft-tissue infection,2,1.0
+Unspecified asthma with (acute) exacerbation,UTI or pyelonephritis,2,0.9
+Unspecified atrial fibrillation,Hypotension,2,0.5
+Epilepsy,Hypokalemia,2,1.0
+Athscl heart disease of native coronary artery w/o ang pctrs,Anemia,2,1.3
+Epilepsy,Unsp intestnl obst,2,1.0
+Unspecified asthma with (acute) exacerbation,Head injury,2,0.9
+Epilepsy,Major depressive disorder,2,1.0
+Anxiety disorder,Skin or soft-tissue infection,2,0.7
+Skin or soft-tissue infection,Hypotension,2,0.2
+Head injury,Hypokalemia,2,0.2
+Unspecified atrial fibrillation,Unsp intestnl obst,2,0.5
+Major depressive disorder,UTI or pyelonephritis,2,0.4
+Head injury,Acute kidney failure,2,0.2
+Acute pharyngitis,Head injury,2,0.6
+UTI or pyelonephritis,Sepsis,2,0.2
+Hypothyroidism,Unspecified atrial fibrillation,2,1.5
+Heart failure,Skin or soft-tissue infection,2,1.1
+Hypotension,GI bleed,2,2.0
+Anemia,Hypokalemia,2,0.8
+Hypotension,Limb injury or pain,2,2.0
+Sepsis,Hypokalemia,2,2.4
+Athscl heart disease of native coronary artery w/o ang pctrs,Hypokalemia,2,1.3
+Back or spine pain,Hypokalemia,2,0.1
+Acute pharyngitis,Hypothyroidism,2,0.6
+Alcohol abuse with intoxication,Skin or soft-tissue infection,2,0.3
+Skin or soft-tissue infection,End stage renal disease,2,0.2
+Back or spine pain,Anemia,2,0.1
+Unspecified atrial fibrillation,Hypokalemia,2,0.5
+Unspecified asthma with (acute) exacerbation,Back or spine pain,2,0.9
+End stage renal disease,GI bleed,2,2.2
+Hypothyroidism,Unsp intestnl obst,2,1.5
+Diabetes mellitus,Epilepsy,2,0.2
+Anemia,Back or spine pain,2,0.8
+Hypokalemia,Unspecified atrial fibrillation,2,0.8
+Lower respiratory disease,Hypothyroidism,2,0.3
+Hypothyroidism,Unspecified asthma with (acute) exacerbation,2,1.5
+Heart failure,Acute pharyngitis,2,1.1
+Unspecified asthma with (acute) exacerbation,Laceration w/o fb of l idx fngr w/o damage to nail,2,0.9
+Dehydration,Back or spine pain,2,0.8
+Unsp intestnl obst,Hypotension,2,0.8
+Alcohol abuse with intoxication,GI bleed,2,0.3
+Hypotension,UTI or pyelonephritis,2,2.0
+End stage renal disease,Dehydration,2,2.2
+Major depressive disorder,Back or spine pain,2,0.4
+UTI or pyelonephritis,End stage renal disease,2,0.2
+End stage renal disease,UTI or pyelonephritis,2,2.2
+Unspecified asthma with (acute) exacerbation,Unspecified atrial fibrillation,2,0.9
+Acute upper respiratory infection,GI bleed,2,1.1
+Hypothyroidism,Head injury,2,1.5
+Skin or soft-tissue infection,Unspecified asthma with (acute) exacerbation,2,0.2
+GI bleed,End stage renal disease,2,0.3
+Sepsis,Unsp intestnl obst,2,2.4
+Diabetes mellitus,Laceration w/o fb of l idx fngr w/o damage to nail,2,0.2
+Unspecified asthma with (acute) exacerbation,Dehydration,2,0.9
+Anxiety disorder,UTI or pyelonephritis,2,0.7
+Acute pharyngitis,Dehydration,2,0.6
+Head injury,GI bleed,2,0.2
+Unspecified atrial fibrillation,Multiple fractures of ribs,1,0.3
+Hypothyroidism,Skin or soft-tissue infection,1,0.8
+Alcohol abuse with intoxication,Laceration w/o fb of l idx fngr w/o damage to nail,1,0.1
+Major depressive disorder,Unspecified atrial fibrillation,1,0.2
+Skin or soft-tissue infection,Sepsis,1,0.1
+Sepsis,Diabetes mellitus,1,1.2
+Lower respiratory disease,Anxiety disorder,1,0.1
+Hypotension,Skin or soft-tissue infection,1,1.0
+Acute upper respiratory infection,Acute kidney failure,1,0.6
+Unspecified atrial fibrillation,Hypothyroidism,1,0.3
+Dehydration,Acute upper respiratory infection,1,0.4
+Unspecified atrial fibrillation,Anxiety disorder,1,0.3
+Unspecified asthma with (acute) exacerbation,Heart failure,1,0.4
+Unspecified atrial fibrillation,Epilepsy,1,0.3
+Epilepsy,Hypotension,1,0.5
+Diabetes mellitus,Acute upper respiratory infection,1,0.1
+Lower respiratory disease,Epilepsy,1,0.1
+GI bleed,Alcohol abuse with intoxication,1,0.2
+Acute kidney failure,Head injury,1,0.4
+Cardiovascular risk factor,Sepsis,1,0.1
+Laceration w/o fb of l idx fngr w/o damage to nail,Alcohol abuse with intoxication,1,0.3
+Sepsis,Anemia,1,1.2
+Dehydration,Epilepsy,1,0.4
+Alcohol abuse with intoxication,Multiple fractures of ribs,1,0.1
+Anxiety disorder,Laceration w/o fb of l idx fngr w/o damage to nail,1,0.3
+Sepsis,Head injury,1,1.2
+UTI or pyelonephritis,Athscl heart disease of native coronary artery w/o ang pctrs,1,0.1
+Heart failure,Sepsis,1,0.6
+Hypothyroidism,Anemia,1,0.8
+Major depressive disorder,Dehydration,1,0.2
+Acute kidney failure,Major depressive disorder,1,0.4
+End stage renal disease,Anemia,1,1.1
+Epilepsy,GI bleed,1,0.5
+End stage renal disease,Skin or soft-tissue infection,1,1.1
+Anemia,Epilepsy,1,0.4
+Hypokalemia,Sepsis,1,0.4
+Back or spine pain,GI bleed,1,0.1
+Back or spine pain,Sepsis,1,0.1
+Limb injury or pain,Athscl heart disease of native coronary artery w/o ang pctrs,1,0.1
+Laceration w/o fb of l idx fngr w/o damage to nail,Diabetes mellitus,1,0.3
+Multiple fractures of ribs,End stage renal disease,1,0.7
+Hypotension,Dehydration,1,1.0
+Unspecified atrial fibrillation,Anemia,1,0.3
+Hypothyroidism,Heart failure,1,0.8
+Athscl heart disease of native coronary artery w/o ang pctrs,Laceration w/o fb of l idx fngr w/o damage to nail,1,0.7
+Alcohol abuse with intoxication,Acute kidney failure,1,0.1
+Diabetes mellitus,Multiple fractures of ribs,1,0.1
+UTI or pyelonephritis,Anxiety disorder,1,0.1
+Lower respiratory disease,Multiple fractures of ribs,1,0.1
+Anemia,Hypothyroidism,1,0.4
+Multiple fractures of ribs,Hypokalemia,1,0.7
+Skin or soft-tissue infection,Major depressive disorder,1,0.1
+Alcohol abuse with intoxication,Hypokalemia,1,0.1
+Major depressive disorder,Epilepsy,1,0.2
+Heart failure,Hypotension,1,0.6
+Diabetes mellitus,Acute pharyngitis,1,0.1
+End stage renal disease,Back or spine pain,1,1.1
+Multiple fractures of ribs,Skin or soft-tissue infection,1,0.7
+UTI or pyelonephritis,Multiple fractures of ribs,1,0.1
+Hypothyroidism,Epilepsy,1,0.8
+Sepsis,Back or spine pain,1,1.2
+Unspecified atrial fibrillation,Dehydration,1,0.3
+Athscl heart disease of native coronary artery w/o ang pctrs,GI bleed,1,0.7
+Diabetes mellitus,Hypotension,1,0.1
+Anemia,Heart failure,1,0.4
+Alcohol abuse with intoxication,Epilepsy,1,0.1
+UTI or pyelonephritis,Laceration w/o fb of l idx fngr w/o damage to nail,1,0.1
+Dehydration,Major depressive disorder,1,0.4
+End stage renal disease,Head injury,1,1.1
+Heart failure,Back or spine pain,1,0.6
+Hypokalemia,Major depressive disorder,1,0.4
+Hypokalemia,Hypotension,1,0.4
+Hypokalemia,Anxiety disorder,1,0.4
+Anemia,Skin or soft-tissue infection,1,0.4
+UTI or pyelonephritis,Heart failure,1,0.1
+Athscl heart disease of native coronary artery w/o ang pctrs,Unspecified asthma with (acute) exacerbation,1,0.7
+Unsp intestnl obst,Hypokalemia,1,0.4
+End stage renal disease,Unsp intestnl obst,1,1.1
+Limb injury or pain,Heart failure,1,0.1
+Head injury,Anxiety disorder,1,0.1
+Anxiety disorder,Hypothyroidism,1,0.3
+Diabetes mellitus,Anxiety disorder,1,0.1
+Alcohol abuse with intoxication,Acute upper respiratory infection,1,0.1
+Athscl heart disease of native coronary artery w/o ang pctrs,Acute pharyngitis,1,0.7
+Unspecified atrial fibrillation,Sepsis,1,0.3
+Hypokalemia,Skin or soft-tissue infection,1,0.4
+Unspecified atrial fibrillation,End stage renal disease,1,0.3
+End stage renal disease,Heart failure,1,1.1
+Multiple fractures of ribs,Diabetes mellitus,1,0.7
+UTI or pyelonephritis,Acute upper respiratory infection,1,0.1
+Anxiety disorder,Anemia,1,0.3
+Dehydration,Hypothyroidism,1,0.4
+Anemia,Hypotension,1,0.4
+Anemia,Sepsis,1,0.4
+Anemia,End stage renal disease,1,0.4
+Anxiety disorder,Lower respiratory disease,1,0.3
+Laceration w/o fb of l idx fngr w/o damage to nail,UTI or pyelonephritis,1,0.3
+Major depressive disorder,End stage renal disease,1,0.2
+Skin or soft-tissue infection,Acute pharyngitis,1,0.1
+Unspecified asthma with (acute) exacerbation,Acute pharyngitis,1,0.4
+Athscl heart disease of native coronary artery w/o ang pctrs,Skin or soft-tissue infection,1,0.7
+Alcohol abuse with intoxication,Unspecified asthma with (acute) exacerbation,1,0.1
+Limb injury or pain,Epilepsy,1,0.1
+Dehydration,End stage renal disease,1,0.4
+Head injury,Anemia,1,0.1
+Back or spine pain,Hypotension,1,0.1
+Diabetes mellitus,Major depressive disorder,1,0.1
+Acute pharyngitis,Anxiety disorder,1,0.3
+GI bleed,Major depressive disorder,1,0.2
+Laceration w/o fb of l idx fngr w/o damage to nail,Anxiety disorder,1,0.3
+Acute pharyngitis,Laceration w/o fb of l idx fngr w/o damage to nail,1,0.3
+Unspecified atrial fibrillation,Alcohol abuse with intoxication,1,0.3
+Diabetes mellitus,Sepsis,1,0.1
+Heart failure,Head injury,1,0.6
+Acute upper respiratory infection,Hypothyroidism,1,0.6
+Anxiety disorder,Hypokalemia,1,0.3
+Anemia,Alcohol abuse with intoxication,1,0.4
+Diabetes mellitus,Hypothyroidism,1,0.1
+Hypotension,Alcohol abuse with intoxication,1,1.0
+Diabetes mellitus,Unspecified asthma with (acute) exacerbation,1,0.1
+Anxiety disorder,Unspecified asthma with (acute) exacerbation,1,0.3
+Acute upper respiratory infection,Anxiety disorder,1,0.6
+Cardiovascular risk factor,Hypotension,1,0.1
+Acute kidney failure,Multiple fractures of ribs,1,0.4

@@ -1,0 +1,37 @@
+Graph 1697 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: HOME
+Model outcome: incorrectly classified
+Patient row index: 119
+
+Patient-level signals
+---------------------
+The model emphasized multivitamin medication indicator, gender m indicator, race white indicator, docusate medication indicator, abnormal diastolic blood pressure, and elevated heart rate.
+
+Highest-attribution clinical features:
+- med_multivitamin: 1 (multivitamin medication indicator)
+- gender_M: True (gender m indicator)
+- race_WHITE: True (race white indicator)
+- med_docusate: 1 (docusate medication indicator)
+- dbp: 59.0 (abnormal diastolic blood pressure)
+- heartrate: 108.0 (elevated heart rate)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 1 -> patient row 16383, node 7 -> patient row 19657, node 9 -> patient row 7540.
+Among those similar patients, the model-highlighted patterns included:
+- gender m indicator in 3/3 influential similar patients
+- race white indicator in 3/3 influential similar patients
+- abnormal diastolic blood pressure in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0706).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 3.0623), prototype 7 (ADMITTED, contribution 1.6824), prototype 5 (ADMITTED, contribution 1.6039).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

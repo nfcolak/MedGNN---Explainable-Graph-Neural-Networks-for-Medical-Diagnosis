@@ -1,0 +1,38 @@
+Graph 1811 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 16626
+
+Patient-level signals
+---------------------
+The model emphasized elevated heart rate, metoprolol medication indicator, elevated respiratory rate, gender m indicator, race white indicator, and ambulance arrival transport indicator.
+
+Highest-attribution clinical features:
+- vs_heartrate: 127.6667 (elevated heart rate)
+- med_metoprolol: 1 (metoprolol medication indicator)
+- vs_resprate: 20.8889 (elevated respiratory rate)
+- gender_M: True (gender m indicator)
+- race_WHITE: True (race white indicator)
+- transport_AMBULANCE: True (ambulance arrival transport indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 7 -> patient row 12673, node 4 -> patient row 15026, node 10 -> patient row 13411.
+Among those similar patients, the model-highlighted patterns included:
+- elevated heart rate in 3/3 influential similar patients
+- spironolactone medication indicator in 1/3 influential similar patients
+- metoprolol medication indicator in 2/3 influential similar patients
+- sitagliptin medication indicator in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.2968).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 1.4741), prototype 7 (ADMITTED, contribution 0.2477), prototype 6 (ADMITTED, contribution 0.2323).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

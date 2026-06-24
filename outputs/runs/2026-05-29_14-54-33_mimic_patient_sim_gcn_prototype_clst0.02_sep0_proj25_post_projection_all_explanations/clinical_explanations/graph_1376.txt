@@ -1,0 +1,34 @@
+Graph 1376 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 3006
+
+Patient-level signals
+---------------------
+The model emphasized walk in arrival transport indicator, race hispanic indicator, and gender f indicator.
+
+Highest-attribution clinical features:
+- transport_WALK IN: True (walk in arrival transport indicator)
+- race_HISPANIC: True (race hispanic indicator)
+- gender_F: True (gender f indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 4 -> patient row 2575, node 9 -> patient row 7528, node 7 -> patient row 7606.
+Among those similar patients, the model-highlighted patterns included:
+- walk in arrival transport indicator in 3/3 influential similar patients
+- race hispanic indicator in 2/3 influential similar patients
+- gender f indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.0483).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 3.4964), prototype 0 (HOME, contribution 3.2206), prototype 3 (HOME, contribution 2.0918).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

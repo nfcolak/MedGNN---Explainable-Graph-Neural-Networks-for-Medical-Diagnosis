@@ -1,0 +1,35 @@
+Graph 1383 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 18231
+
+Patient-level signals
+---------------------
+The model emphasized abnormal diastolic blood pressure, levothyroxine medication indicator, and torsemide medication indicator.
+
+Highest-attribution clinical features:
+- dbp: 58.0 (abnormal diastolic blood pressure)
+- med_levothyroxine: 1 (levothyroxine medication indicator)
+- med_torsemide: 1 (torsemide medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 1 -> patient row 5909, node 3 -> patient row 17130, node 5 -> patient row 13234.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal diastolic blood pressure in 1/3 influential similar patients
+- senna laxative medication indicator in 1/3 influential similar patients
+- divalproex medication indicator in 1/3 influential similar patients
+- levothyroxine medication indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.0796).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 2.9627), prototype 0 (HOME, contribution 2.7558), prototype 2 (HOME, contribution 1.8660).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

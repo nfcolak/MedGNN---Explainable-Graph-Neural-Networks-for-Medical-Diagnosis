@@ -1,0 +1,35 @@
+Graph 677 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: HOME
+Model outcome: incorrectly classified
+Patient row index: 9929
+
+Patient-level signals
+---------------------
+The model emphasized abnormal systolic blood pressure, blood sugar diagnostic medication indicator, and metoprolol medication indicator.
+
+Highest-attribution clinical features:
+- sbp: 188.0 (abnormal systolic blood pressure)
+- med_blood_sugar_diagnostic: 1 (blood sugar diagnostic medication indicator)
+- med_metoprolol: 1 (metoprolol medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 16505, node 5 -> patient row 13101, node 10 -> patient row 6628.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal systolic blood pressure in 1/3 influential similar patients
+- lower oxygen saturation in 1/3 influential similar patients
+- blood sugar diagnostic medication indicator in 1/3 influential similar patients
+- levetiracetam medication indicator in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.4521).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 1.1666), prototype 7 (ADMITTED, contribution 0.2230), prototype 4 (HOME, contribution -0.2165).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

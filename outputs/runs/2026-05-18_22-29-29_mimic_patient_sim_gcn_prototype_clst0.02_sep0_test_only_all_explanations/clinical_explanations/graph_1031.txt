@@ -1,0 +1,31 @@
+Graph 1031 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 4636
+
+Patient-level signals
+---------------------
+The model emphasized higher triage acuity.
+
+Highest-attribution clinical features:
+- acuity: 3 (higher triage acuity)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 6 -> patient row 12033, node 8 -> patient row 11851, node 7 -> patient row 19926.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal temperature in 2/3 influential similar patients
+- higher triage acuity in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.4226).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 1.2136), prototype 0 (HOME, contribution 0.2807), prototype 8 (ADMITTED, contribution -0.2476).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

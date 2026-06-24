@@ -1,0 +1,33 @@
+Graph 365 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 16880
+
+Patient-level signals
+---------------------
+The model emphasized cholecalciferol medication indicator, gender f indicator, and ambulance arrival transport indicator.
+
+Highest-attribution clinical features:
+- med_cholecalciferol: 1 (cholecalciferol medication indicator)
+- gender_F: True (gender f indicator)
+- transport_AMBULANCE: True (ambulance arrival transport indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 2574, node 2 -> patient row 12151, node 7 -> patient row 1417.
+Among those similar patients, the model-highlighted patterns included:
+- gender f indicator in 3/3 influential similar patients
+- walk in arrival transport indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.0772).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 2.9950), prototype 0 (HOME, contribution 2.7650), prototype 2 (HOME, contribution 2.1075).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

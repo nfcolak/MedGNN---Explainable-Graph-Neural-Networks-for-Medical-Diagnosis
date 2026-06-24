@@ -1,0 +1,98 @@
+================================================================
+ProtGNN + GraphXAI — Run Report
+================================================================
+
+MODEL CONFIGURATION
+----------------------------------------
+  dataset                       : mimic_patient_sim_k20
+  model                         : gcn
+  input_dim                     : from dataset
+  output_dim                    : 2
+  latent_dim                    : [256, 256, 128]
+  mlp_hidden                    : [64]
+  readout                       : max
+  dropout                       : 0.3
+  adj_normalize                 : True
+  emb_normalize                 : True
+  enable_prototypes             : True
+  num_prototypes_per_class      : 5
+  learning_rate                 : 0.001
+  batch_size                    : 256
+  weight_decay                  : 0.0001
+  max_epochs                    : 300
+  early_stopping                : 20
+  warm_epochs                   : 10
+  proj_epochs                   : 100
+  clst_weight                   : 0.02
+  sep_weight                    : 0.0
+  decision_threshold            : 0.5199999999999999
+  data_split_ratio              : [0.8, 0.1, 0.1]
+  seed                          : 1
+
+TRAINING SUMMARY
+----------------------------------------
+  Total epochs run         : 29
+  Best epoch               : 7
+  Best eval acc            : 0.756
+  Best eval PR-AUC         : 0.743141
+
+TEST SET PERFORMANCE
+----------------------------------------
+  loss                    : 0.498385
+  acc                     : 0.763
+  precision               : 0.664692
+  recall                  : 0.746011
+  specificity             : 0.773237
+  f1                      : 0.703008
+  balanced_acc            : 0.759624
+  pr_auc                  : 0.747938
+  confusion_matrix        : {'tn': 965, 'fp': 283, 'fn': 191, 'tp': 561}
+  threshold               : 0.52
+
+LABEL DISTRIBUTION
+----------------------------------------
+  train   : HOME=9983 (0.624)  ADMITTED=6017 (0.376)
+  eval    : HOME=1248 (0.624)  ADMITTED=752 (0.376)
+  test    : HOME=1248 (0.624)  ADMITTED=752 (0.376)
+
+CONFUSION MATRICES
+----------------------------------------
+  argmax            : TN=954  FP=294  FN=175  TP=577
+  threshold_0_3     : TN=764  FP=484  FN=91  TP=661
+  threshold_0_36    : TN=837  FP=411  FN=115  TP=637
+  threshold_0_4     : TN=877  FP=371  FN=135  TP=617
+  threshold_0_5     : TN=954  FP=294  FN=175  TP=577
+  threshold_0_52    : TN=965  FP=283  FN=191  TP=561
+  threshold_0_6     : TN=1021  FP=227  FN=246  TP=506
+  threshold_0_7     : TN=1087  FP=161  FN=319  TP=433
+
+THRESHOLD SENSITIVITY
+----------------------------------------
+  threshold  precision  recall  specificity  f1      balanced_acc  TP  FP  TN  FN
+  0.300      0.577      0.879   0.612        0.697   0.746         661  484  764  91
+  0.360      0.608      0.847   0.671        0.708   0.759         637  411  837  115
+  0.400      0.624      0.820   0.703        0.709   0.762         617  371  877  135
+  0.500      0.662      0.767   0.764        0.711   0.766         577  294  954  175
+  0.520      0.665      0.746   0.773        0.703   0.760         561  283  965  191
+  0.600      0.690      0.673   0.818        0.681   0.745         506  227  1021  246
+  0.700      0.729      0.576   0.871        0.643   0.723         433  161  1087  319
+
+GRAPHXAI EXPLANATION SUMMARY
+----------------------------------------
+  Graphs explained         : 0
+  Model correct (on those) : 0 / 0
+  GradExplainer               : 0 / 0 successful
+  IntegratedGradExplainer     : 0 / 0 successful
+  GNNExplainer                : 0 / 0 successful
+
+OUTPUT FILES
+----------------------------------------
+  outputs/results/model_config.json
+  outputs/results/dataset_metadata.json
+  outputs/results/training_metrics.csv          (29 rows)
+  outputs/results/test_metrics.json
+  outputs/results/evaluation_diagnostics.json
+  outputs/results/threshold_sensitivity.csv
+  outputs/results/explanations/graph_<i>.json   (0 files)
+  outputs/results/explanations/explanations_summary.csv
+  outputs/results/report.txt
