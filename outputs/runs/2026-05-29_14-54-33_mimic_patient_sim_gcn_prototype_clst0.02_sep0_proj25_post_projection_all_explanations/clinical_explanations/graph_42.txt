@@ -1,0 +1,33 @@
+Graph 42 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 13497
+
+Patient-level signals
+---------------------
+The model emphasized elevated heart rate, cyclosporine medication indicator, levothyroxine medication indicator, and lamotrigine medication indicator.
+
+Highest-attribution clinical features:
+- heartrate: 120.0 (elevated heart rate)
+- med_cyclosporine: 1 (cyclosporine medication indicator)
+- med_levothyroxine: 1 (levothyroxine medication indicator)
+- med_lamotrigine: 1 (lamotrigine medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 8 -> patient row 1548, node 4 -> patient row 15918, node 1 -> patient row 11875.
+Among those similar patients, the model-highlighted patterns included:
+- elevated heart rate in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.1733).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 2.0169), prototype 0 (HOME, contribution 1.9828), prototype 2 (HOME, contribution 1.5036).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

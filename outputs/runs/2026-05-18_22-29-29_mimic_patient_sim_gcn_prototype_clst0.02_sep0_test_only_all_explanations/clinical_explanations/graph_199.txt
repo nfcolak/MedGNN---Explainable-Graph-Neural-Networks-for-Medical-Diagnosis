@@ -1,0 +1,34 @@
+Graph 199 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 1590
+
+Patient-level signals
+---------------------
+The model emphasized gender m indicator, higher triage acuity, and race white indicator.
+
+Highest-attribution clinical features:
+- gender_M: True (gender m indicator)
+- acuity: 3 (higher triage acuity)
+- race_WHITE: True (race white indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 8 -> patient row 8093, node 9 -> patient row 6144, node 1 -> patient row 9581.
+Among those similar patients, the model-highlighted patterns included:
+- walk in arrival transport indicator in 3/3 influential similar patients
+- gender m indicator in 3/3 influential similar patients
+- higher triage acuity in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.5205).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 1.0718), prototype 0 (HOME, contribution 0.2717), prototype 8 (ADMITTED, contribution -0.2028).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

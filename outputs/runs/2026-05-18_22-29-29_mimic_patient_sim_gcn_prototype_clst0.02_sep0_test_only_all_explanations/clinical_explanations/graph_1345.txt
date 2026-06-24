@@ -1,0 +1,34 @@
+Graph 1345 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 12680
+
+Patient-level signals
+---------------------
+The model emphasized walk in arrival transport indicator, fluticasone medication indicator, blood sugar diagnostic medication indicator, and sulfamethoxazole trimethoprim medication indicator.
+
+Highest-attribution clinical features:
+- transport_WALK IN: True (walk in arrival transport indicator)
+- med_fluticasone: 1 (fluticasone medication indicator)
+- med_blood_sugar_diagnostic: 1 (blood sugar diagnostic medication indicator)
+- med_sulfamethoxazole_trimethoprim: 1 (sulfamethoxazole trimethoprim medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 6 -> patient row 8287, node 5 -> patient row 14269, node 3 -> patient row 17892.
+Among those similar patients, the model-highlighted patterns included:
+- walk in arrival transport indicator in 3/3 influential similar patients
+- fluticasone medication indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.6097).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 0.9707), prototype 8 (ADMITTED, contribution -0.3111), prototype 0 (HOME, contribution 0.2625).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

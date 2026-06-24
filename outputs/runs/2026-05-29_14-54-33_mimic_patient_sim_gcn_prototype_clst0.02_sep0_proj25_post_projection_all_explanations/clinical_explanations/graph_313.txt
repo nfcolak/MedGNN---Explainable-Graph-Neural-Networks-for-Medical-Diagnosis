@@ -1,0 +1,38 @@
+Graph 313 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: HOME
+Model outcome: incorrectly classified
+Patient row index: 2274
+
+Patient-level signals
+---------------------
+The model emphasized abnormal systolic blood pressure, walk in arrival transport indicator, aspirin medication indicator, race white indicator, clopidogrel medication indicator, and atorvastatin medication indicator.
+
+Highest-attribution clinical features:
+- vs_sbp: 194.0 (abnormal systolic blood pressure)
+- transport_WALK IN: True (walk in arrival transport indicator)
+- med_aspirin: 1 (aspirin medication indicator)
+- race_WHITE: True (race white indicator)
+- med_clopidogrel: 1 (clopidogrel medication indicator)
+- med_atorvastatin: 1 (atorvastatin medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 16062, node 5 -> patient row 11408, node 3 -> patient row 7713.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal systolic blood pressure in 1/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+- race white indicator in 3/3 influential similar patients
+- clopidogrel medication indicator in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.1021).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 2.6798), prototype 7 (ADMITTED, contribution 1.8863), prototype 5 (ADMITTED, contribution 1.6946).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

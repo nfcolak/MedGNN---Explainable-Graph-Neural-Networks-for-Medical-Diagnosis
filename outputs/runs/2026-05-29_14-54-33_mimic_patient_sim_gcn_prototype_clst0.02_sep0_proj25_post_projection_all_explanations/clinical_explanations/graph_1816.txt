@@ -1,0 +1,38 @@
+Graph 1816 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 13865
+
+Patient-level signals
+---------------------
+The model emphasized losartan medication indicator, metoprolol medication indicator, nitroglycerin medication indicator, aspirin medication indicator, atorvastatin medication indicator, and walk in arrival transport indicator.
+
+Highest-attribution clinical features:
+- med_losartan: 1 (losartan medication indicator)
+- med_metoprolol: 1 (metoprolol medication indicator)
+- med_nitroglycerin: 1 (nitroglycerin medication indicator)
+- med_aspirin: 1 (aspirin medication indicator)
+- med_atorvastatin: 1 (atorvastatin medication indicator)
+- transport_WALK IN: True (walk in arrival transport indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 6 -> patient row 14138, node 7 -> patient row 13361, node 3 -> patient row 2160.
+Among those similar patients, the model-highlighted patterns included:
+- losartan medication indicator in 2/3 influential similar patients
+- metoprolol medication indicator in 2/3 influential similar patients
+- aspirin medication indicator in 3/3 influential similar patients
+- atorvastatin medication indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0498).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 3.4328), prototype 7 (ADMITTED, contribution 2.0438), prototype 5 (ADMITTED, contribution 1.8779).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

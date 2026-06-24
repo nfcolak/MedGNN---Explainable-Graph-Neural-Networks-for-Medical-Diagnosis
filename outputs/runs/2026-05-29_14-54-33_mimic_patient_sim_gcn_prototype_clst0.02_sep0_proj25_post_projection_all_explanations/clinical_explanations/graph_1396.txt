@@ -1,0 +1,37 @@
+Graph 1396 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 19182
+
+Patient-level signals
+---------------------
+The model emphasized elevated respiratory rate, lower oxygen saturation, elevated heart rate, race white indicator, and risperidone medication indicator.
+
+Highest-attribution clinical features:
+- vs_resprate: 28.8571 (elevated respiratory rate)
+- vs_o2sat: 93.7143 (lower oxygen saturation)
+- vs_heartrate: 118.7143 (elevated heart rate)
+- race_WHITE: True (race white indicator)
+- med_risperidone: 1 (risperidone medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 1 -> patient row 18519, node 2 -> patient row 12654, node 8 -> patient row 15389.
+Among those similar patients, the model-highlighted patterns included:
+- elevated respiratory rate in 3/3 influential similar patients
+- lower oxygen saturation in 2/3 influential similar patients
+- elevated heart rate in 3/3 influential similar patients
+- race white indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0511).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 3.4049), prototype 7 (ADMITTED, contribution 2.1163), prototype 6 (ADMITTED, contribution 1.9928).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

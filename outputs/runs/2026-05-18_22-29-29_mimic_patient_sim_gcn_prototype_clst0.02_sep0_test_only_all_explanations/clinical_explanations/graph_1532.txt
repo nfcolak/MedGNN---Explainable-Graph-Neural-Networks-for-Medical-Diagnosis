@@ -1,0 +1,36 @@
+Graph 1532 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: HOME
+Model outcome: incorrectly classified
+Patient row index: 6103
+
+Patient-level signals
+---------------------
+The model emphasized elevated heart rate, lorazepam medication indicator, gender f indicator, and walk in arrival transport indicator.
+
+Highest-attribution clinical features:
+- vs_heartrate: 106.5 (elevated heart rate)
+- med_lorazepam: 1 (lorazepam medication indicator)
+- gender_F: True (gender f indicator)
+- transport_WALK IN: True (walk in arrival transport indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 1 -> patient row 12535, node 10 -> patient row 19317, node 9 -> patient row 16091.
+Among those similar patients, the model-highlighted patterns included:
+- lorazepam medication indicator in 1/3 influential similar patients
+- gender f indicator in 2/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+- suboxone medication indicator in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.5080).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 1.0878), prototype 4 (HOME, contribution -0.2835), prototype 7 (ADMITTED, contribution 0.2289).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

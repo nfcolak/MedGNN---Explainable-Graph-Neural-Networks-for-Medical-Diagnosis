@@ -1,0 +1,35 @@
+Graph 389 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 844
+
+Patient-level signals
+---------------------
+The model emphasized diclofenac medication indicator, fluticasone medication indicator, albuterol medication indicator, and folic acid medication indicator.
+
+Highest-attribution clinical features:
+- med_diclofenac: 1 (diclofenac medication indicator)
+- med_fluticasone: 1 (fluticasone medication indicator)
+- med_albuterol: 1 (albuterol medication indicator)
+- med_folic_acid: 1 (folic acid medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 3 -> patient row 14052, node 8 -> patient row 17451, node 6 -> patient row 16156.
+Among those similar patients, the model-highlighted patterns included:
+- fluticasone medication indicator in 2/3 influential similar patients
+- albuterol medication indicator in 2/3 influential similar patients
+- folic acid medication indicator in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.5085).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 1.0872), prototype 0 (HOME, contribution 0.2696), prototype 8 (ADMITTED, contribution -0.2529).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

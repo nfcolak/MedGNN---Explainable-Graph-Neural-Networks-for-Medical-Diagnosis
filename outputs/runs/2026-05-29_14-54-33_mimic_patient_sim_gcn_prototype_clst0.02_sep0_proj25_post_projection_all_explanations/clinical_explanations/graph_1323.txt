@@ -1,0 +1,34 @@
+Graph 1323 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 17339
+
+Patient-level signals
+---------------------
+The model emphasized abnormal systolic blood pressure, and walk in arrival transport indicator.
+
+Highest-attribution clinical features:
+- sbp: 197.0 (abnormal systolic blood pressure)
+- transport_WALK IN: True (walk in arrival transport indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 7 -> patient row 3650, node 4 -> patient row 967, node 2 -> patient row 15698.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal systolic blood pressure in 1/3 influential similar patients
+- insulin glargine medication indicator in 2/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+- sevelamer carbonate medication indicator in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0673).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 3.1129), prototype 7 (ADMITTED, contribution 2.2798), prototype 6 (ADMITTED, contribution 2.0446).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

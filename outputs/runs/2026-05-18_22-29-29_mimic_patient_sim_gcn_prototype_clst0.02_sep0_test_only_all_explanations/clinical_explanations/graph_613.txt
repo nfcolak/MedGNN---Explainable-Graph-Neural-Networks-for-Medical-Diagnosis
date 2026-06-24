@@ -1,0 +1,34 @@
+Graph 613 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 8818
+
+Patient-level signals
+---------------------
+The model emphasized walk in arrival transport indicator, race white indicator, and higher triage acuity.
+
+Highest-attribution clinical features:
+- transport_WALK IN: True (walk in arrival transport indicator)
+- race_WHITE: True (race white indicator)
+- acuity: 4 (higher triage acuity)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 11355, node 8 -> patient row 10168, node 5 -> patient row 11029.
+Among those similar patients, the model-highlighted patterns included:
+- walk in arrival transport indicator in 3/3 influential similar patients
+- race white indicator in 3/3 influential similar patients
+- higher triage acuity in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.1810).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 1.8753), prototype 0 (HOME, contribution 0.3068), prototype 8 (ADMITTED, contribution -0.1820).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

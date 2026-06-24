@@ -1,0 +1,32 @@
+Graph 647 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 10282
+
+Patient-level signals
+---------------------
+The model emphasized hydrocortisone medication indicator, and fluticasone medication indicator.
+
+Highest-attribution clinical features:
+- med_hydrocortisone: 1 (hydrocortisone medication indicator)
+- med_fluticasone: 1 (fluticasone medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 5 -> patient row 6804, node 4 -> patient row 313, node 9 -> patient row 9585.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal systolic blood pressure in 2/3 influential similar patients
+- walk in arrival transport indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.5199).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 1.0726), prototype 0 (HOME, contribution 0.2587), prototype 8 (ADMITTED, contribution -0.2398).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

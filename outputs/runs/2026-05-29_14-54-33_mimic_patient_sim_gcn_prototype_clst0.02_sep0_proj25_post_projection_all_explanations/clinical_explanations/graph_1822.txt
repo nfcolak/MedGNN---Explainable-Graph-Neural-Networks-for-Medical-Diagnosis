@@ -1,0 +1,36 @@
+Graph 1822 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 13399
+
+Patient-level signals
+---------------------
+The model emphasized abnormal systolic blood pressure, abnormal diastolic blood pressure, race white indicator, and spironolactone medication indicator.
+
+Highest-attribution clinical features:
+- sbp: 82.0 (abnormal systolic blood pressure)
+- vs_dbp: 49.9231 (abnormal diastolic blood pressure)
+- race_WHITE: True (race white indicator)
+- med_spironolactone: 1 (spironolactone medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 10 -> patient row 18294, node 3 -> patient row 16028, node 1 -> patient row 13015.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal systolic blood pressure in 3/3 influential similar patients
+- abnormal diastolic blood pressure in 3/3 influential similar patients
+- race white indicator in 3/3 influential similar patients
+- spironolactone medication indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0337).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 3.8547), prototype 7 (ADMITTED, contribution 2.4177), prototype 5 (ADMITTED, contribution 2.1816).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

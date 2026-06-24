@@ -1,0 +1,35 @@
+Graph 400 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 13330
+
+Patient-level signals
+---------------------
+The model emphasized abnormal diastolic blood pressure, lower oxygen saturation, and race white indicator.
+
+Highest-attribution clinical features:
+- vs_dbp: 55.0 (abnormal diastolic blood pressure)
+- vs_o2sat: 93.2 (lower oxygen saturation)
+- race_WHITE: True (race white indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 3 -> patient row 13940, node 2 -> patient row 15564, node 5 -> patient row 17922.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal diastolic blood pressure in 3/3 influential similar patients
+- lower oxygen saturation in 3/3 influential similar patients
+- abnormal temperature in 1/3 influential similar patients
+- race white indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.3164).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 1.4252), prototype 7 (ADMITTED, contribution 0.2388), prototype 6 (ADMITTED, contribution 0.2296).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

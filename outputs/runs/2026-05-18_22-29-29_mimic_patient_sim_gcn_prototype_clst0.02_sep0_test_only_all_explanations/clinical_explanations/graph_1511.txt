@@ -1,0 +1,36 @@
+Graph 1511 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 17783
+
+Patient-level signals
+---------------------
+The model emphasized elevated heart rate, abnormal diastolic blood pressure, albuterol medication indicator, elevated respiratory rate, ambulance arrival transport indicator, and b complex vitamin c folic acid medication indicator.
+
+Highest-attribution clinical features:
+- heartrate: 104.0 (elevated heart rate)
+- dbp: 48.0 (abnormal diastolic blood pressure)
+- med_albuterol: 1 (albuterol medication indicator)
+- vs_resprate: 21.2857 (elevated respiratory rate)
+- transport_AMBULANCE: True (ambulance arrival transport indicator)
+- med_b_complex_vitamin_c_folic_acid: 1 (b complex vitamin c folic acid medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 7 -> patient row 18934, node 1 -> patient row 15955, node 6 -> patient row 14455.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal diastolic blood pressure in 2/3 influential similar patients
+- ambulance arrival transport indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.3590).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 1.3309), prototype 7 (ADMITTED, contribution 0.2334), prototype 6 (ADMITTED, contribution 0.2204).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

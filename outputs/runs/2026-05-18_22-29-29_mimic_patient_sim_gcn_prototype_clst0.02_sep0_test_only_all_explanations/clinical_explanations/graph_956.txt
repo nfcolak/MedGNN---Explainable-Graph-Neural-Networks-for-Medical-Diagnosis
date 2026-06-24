@@ -1,0 +1,35 @@
+Graph 956 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 5032
+
+Patient-level signals
+---------------------
+The model emphasized race white indicator, abnormal temperature, gender m indicator, and ambulance arrival transport indicator.
+
+Highest-attribution clinical features:
+- race_WHITE: True (race white indicator)
+- temperature: 35.0 (abnormal temperature)
+- gender_M: True (gender m indicator)
+- transport_AMBULANCE: True (ambulance arrival transport indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 10 -> patient row 2949, node 1 -> patient row 846, node 8 -> patient row 463.
+Among those similar patients, the model-highlighted patterns included:
+- race white indicator in 3/3 influential similar patients
+- ambulance arrival transport indicator in 3/3 influential similar patients
+- gender f indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.4690).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 1.1415), prototype 0 (HOME, contribution 0.2704), prototype 8 (ADMITTED, contribution -0.2236).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

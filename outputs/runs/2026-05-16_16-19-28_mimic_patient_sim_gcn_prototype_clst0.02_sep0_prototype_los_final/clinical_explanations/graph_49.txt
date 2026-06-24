@@ -1,0 +1,35 @@
+Graph 49 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 13675
+
+Patient-level signals
+---------------------
+The model emphasized simvastatin medication indicator, race hispanic indicator, and ambulance arrival transport indicator.
+
+Highest-attribution clinical features:
+- med_simvastatin: 1 (simvastatin medication indicator)
+- race_HISPANIC: True (race hispanic indicator)
+- transport_AMBULANCE: True (ambulance arrival transport indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 1 -> patient row 2295, node 6 -> patient row 6472, node 2 -> patient row 546.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal systolic blood pressure in 1/3 influential similar patients
+- simvastatin medication indicator in 1/3 influential similar patients
+- abnormal temperature in 1/3 influential similar patients
+- race hispanic indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 0 (HOME prototype, distance 3.5994).
+The strongest prototype-level contributors to the prediction were prototype 0 (HOME, contribution 0.2604), prototype 3 (HOME, contribution 0.1710), prototype 2 (HOME, contribution 0.0236).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

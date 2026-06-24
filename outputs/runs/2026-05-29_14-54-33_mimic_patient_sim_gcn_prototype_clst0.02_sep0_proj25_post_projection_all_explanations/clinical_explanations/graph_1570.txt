@@ -1,0 +1,36 @@
+Graph 1570 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 13684
+
+Patient-level signals
+---------------------
+The model emphasized elevated heart rate, lower oxygen saturation, abnormal diastolic blood pressure, race white indicator, and acetaminophen medication indicator.
+
+Highest-attribution clinical features:
+- heartrate: 110.0 (elevated heart rate)
+- vs_o2sat: 93.5714 (lower oxygen saturation)
+- vs_dbp: 52.0 (abnormal diastolic blood pressure)
+- race_WHITE: True (race white indicator)
+- med_acetaminophen: 1 (acetaminophen medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 5 -> patient row 15535, node 8 -> patient row 18588, node 1 -> patient row 19160.
+Among those similar patients, the model-highlighted patterns included:
+- lower oxygen saturation in 2/3 influential similar patients
+- abnormal diastolic blood pressure in 3/3 influential similar patients
+- race white indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0576).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 3.2780), prototype 7 (ADMITTED, contribution 2.3919), prototype 5 (ADMITTED, contribution 2.1432).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

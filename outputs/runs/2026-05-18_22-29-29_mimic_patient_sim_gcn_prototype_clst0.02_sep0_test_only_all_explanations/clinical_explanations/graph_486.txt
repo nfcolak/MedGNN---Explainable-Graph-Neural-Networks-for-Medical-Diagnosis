@@ -1,0 +1,33 @@
+Graph 486 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 16088
+
+Patient-level signals
+---------------------
+The model emphasized race white indicator, melatonin medication indicator, and methadone medication indicator.
+
+Highest-attribution clinical features:
+- race_WHITE: True (race white indicator)
+- med_melatonin: 1 (melatonin medication indicator)
+- med_methadone: 1 (methadone medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 18862, node 3 -> patient row 18320, node 8 -> patient row 16938.
+Among those similar patients, the model-highlighted patterns included:
+- race white indicator in 3/3 influential similar patients
+- melatonin medication indicator in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.3747).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 1.2995), prototype 7 (ADMITTED, contribution 0.2328), prototype 4 (HOME, contribution -0.2276).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

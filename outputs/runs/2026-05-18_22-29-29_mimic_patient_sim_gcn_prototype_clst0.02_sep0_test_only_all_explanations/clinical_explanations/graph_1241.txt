@@ -1,0 +1,33 @@
+Graph 1241 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 5872
+
+Patient-level signals
+---------------------
+The model emphasized lower oxygen saturation, abnormal diastolic blood pressure, losartan medication indicator, and gender m indicator.
+
+Highest-attribution clinical features:
+- o2sat: 93.0 (lower oxygen saturation)
+- dbp: 53.0 (abnormal diastolic blood pressure)
+- med_losartan: 1 (losartan medication indicator)
+- gender_M: True (gender m indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 1183, node 3 -> patient row 6564, node 5 -> patient row 8464.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal diastolic blood pressure in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.4983).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 1.1006), prototype 0 (HOME, contribution 0.2798), prototype 8 (ADMITTED, contribution -0.2362).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

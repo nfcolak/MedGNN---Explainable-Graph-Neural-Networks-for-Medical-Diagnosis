@@ -1,0 +1,33 @@
+Graph 420 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: HOME
+Model outcome: incorrectly classified
+Patient row index: 8475
+
+Patient-level signals
+---------------------
+The model emphasized lorazepam medication indicator, gender f indicator, and naproxen medication indicator.
+
+Highest-attribution clinical features:
+- med_lorazepam: 1 (lorazepam medication indicator)
+- gender_F: True (gender f indicator)
+- med_naproxen: 1 (naproxen medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 4 -> patient row 17249, node 9 -> patient row 11050, node 1 -> patient row 7939.
+Among those similar patients, the model-highlighted patterns included:
+- lorazepam medication indicator in 3/3 influential similar patients
+- gender f indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.2079).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 1.9824), prototype 7 (ADMITTED, contribution 1.7841), prototype 6 (ADMITTED, contribution 1.6406).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

@@ -1,0 +1,31 @@
+disease,precision,recall,f1,support
+Athscl heart disease of native coronary artery w/o ang pctrs,0.357,0.067,0.112,150
+Multiple fractures of ribs,0.482,0.184,0.266,147
+Sepsis,0.488,0.238,0.32,84
+Dehydration,0.413,0.264,0.322,261
+Acute upper respiratory infection,0.48,0.269,0.344,175
+Hypothyroidism,0.474,0.277,0.35,130
+Hypotension,0.471,0.337,0.393,98
+Heart failure,0.484,0.345,0.403,177
+Hypokalemia,0.53,0.447,0.485,257
+Acute kidney failure,0.452,0.477,0.464,256
+End stage renal disease,0.55,0.484,0.515,91
+UTI or pyelonephritis,0.531,0.504,0.517,855
+Unspecified atrial fibrillation,0.681,0.563,0.617,371
+Unspecified asthma with (acute) exacerbation,0.719,0.566,0.634,226
+Skin or soft-tissue infection,0.627,0.566,0.595,874
+Laceration w/o fb of l idx fngr w/o damage to nail,0.667,0.581,0.621,303
+Lower respiratory disease,0.522,0.601,0.559,752
+Anxiety disorder,0.703,0.61,0.653,287
+Anemia,0.641,0.662,0.652,240
+Cardiovascular risk factor,0.51,0.669,0.579,1334
+Unsp intestnl obst,0.69,0.669,0.68,236
+Diabetes mellitus,0.596,0.684,0.637,857
+Head injury,0.626,0.698,0.66,1123
+Limb injury or pain,0.609,0.71,0.655,1945
+Epilepsy,0.899,0.726,0.803,197
+Back or spine pain,0.755,0.73,0.743,1766
+GI bleed,0.821,0.76,0.789,616
+Acute pharyngitis,0.849,0.775,0.81,347
+Alcohol abuse with intoxication,0.876,0.839,0.857,719
+Major depressive disorder,0.857,0.866,0.862,546

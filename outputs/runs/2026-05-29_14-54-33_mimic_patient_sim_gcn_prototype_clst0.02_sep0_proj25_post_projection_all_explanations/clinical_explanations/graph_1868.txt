@@ -1,0 +1,36 @@
+Graph 1868 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 17573
+
+Patient-level signals
+---------------------
+The model emphasized race white indicator, dicyclomine medication indicator, gender f indicator, and walk in arrival transport indicator.
+
+Highest-attribution clinical features:
+- race_WHITE: True (race white indicator)
+- med_dicyclomine: 1 (dicyclomine medication indicator)
+- gender_F: True (gender f indicator)
+- transport_WALK IN: True (walk in arrival transport indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 3 -> patient row 1141, node 9 -> patient row 16829, node 8 -> patient row 8886.
+Among those similar patients, the model-highlighted patterns included:
+- race white indicator in 2/3 influential similar patients
+- dicyclomine medication indicator in 1/3 influential similar patients
+- gender f indicator in 3/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.1246).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 2.5001), prototype 0 (HOME, contribution 2.2685), prototype 3 (HOME, contribution 1.5566).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

@@ -1,0 +1,35 @@
+Graph 1050 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 15000
+
+Patient-level signals
+---------------------
+The model emphasized race white indicator, walk in arrival transport indicator, and gender m indicator.
+
+Highest-attribution clinical features:
+- race_WHITE: True (race white indicator)
+- transport_WALK IN: True (walk in arrival transport indicator)
+- gender_M: True (gender m indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 8868, node 2 -> patient row 18570, node 5 -> patient row 786.
+Among those similar patients, the model-highlighted patterns included:
+- race white indicator in 3/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+- gender m indicator in 3/3 influential similar patients
+- abnormal temperature in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.2051).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 2.0128), prototype 0 (HOME, contribution 1.8475), prototype 3 (HOME, contribution 1.5192).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

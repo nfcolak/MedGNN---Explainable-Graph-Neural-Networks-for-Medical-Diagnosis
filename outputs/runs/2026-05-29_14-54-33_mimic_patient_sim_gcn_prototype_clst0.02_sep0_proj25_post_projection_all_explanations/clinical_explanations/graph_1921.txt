@@ -1,0 +1,37 @@
+Graph 1921 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 18722
+
+Patient-level signals
+---------------------
+The model emphasized race white indicator, gender m indicator, aspirin medication indicator, amlodipine medication indicator, and allopurinol medication indicator.
+
+Highest-attribution clinical features:
+- race_WHITE: True (race white indicator)
+- gender_M: True (gender m indicator)
+- med_aspirin: 1 (aspirin medication indicator)
+- med_amlodipine: 1 (amlodipine medication indicator)
+- med_allopurinol: 1 (allopurinol medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 6 -> patient row 7397, node 10 -> patient row 9533, node 2 -> patient row 16119.
+Among those similar patients, the model-highlighted patterns included:
+- race white indicator in 2/3 influential similar patients
+- gender m indicator in 2/3 influential similar patients
+- fluticasone medication indicator in 1/3 influential similar patients
+- aspirin medication indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 0 (HOME prototype, distance 0.1058).
+The strongest prototype-level contributors to the prediction were prototype 0 (HOME, contribution 2.7063), prototype 4 (HOME, contribution 2.6266), prototype 2 (HOME, contribution 1.9441).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

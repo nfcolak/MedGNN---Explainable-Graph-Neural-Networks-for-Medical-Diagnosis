@@ -1,0 +1,34 @@
+Graph 1011 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 14393
+
+Patient-level signals
+---------------------
+The model emphasized walk in arrival transport indicator, gender f indicator, and lidocaine medication indicator.
+
+Highest-attribution clinical features:
+- transport_WALK IN: True (walk in arrival transport indicator)
+- gender_F: True (gender f indicator)
+- med_lidocaine: 1 (lidocaine medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 7 -> patient row 10915, node 1 -> patient row 14699, node 4 -> patient row 5624.
+Among those similar patients, the model-highlighted patterns included:
+- walk in arrival transport indicator in 3/3 influential similar patients
+- elevated heart rate in 1/3 influential similar patients
+- gender f indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.0635).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 3.1742), prototype 7 (ADMITTED, contribution 2.0454), prototype 6 (ADMITTED, contribution 1.9171).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

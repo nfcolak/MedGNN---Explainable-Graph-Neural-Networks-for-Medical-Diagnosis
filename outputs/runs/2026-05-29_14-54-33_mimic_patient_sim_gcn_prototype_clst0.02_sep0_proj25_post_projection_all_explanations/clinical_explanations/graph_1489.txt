@@ -1,0 +1,34 @@
+Graph 1489 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 18167
+
+Patient-level signals
+---------------------
+The model emphasized elevated heart rate, gender m indicator, race hispanic indicator, and ambulance arrival transport indicator.
+
+Highest-attribution clinical features:
+- heartrate: 112.0 (elevated heart rate)
+- gender_M: True (gender m indicator)
+- race_HISPANIC: True (race hispanic indicator)
+- transport_AMBULANCE: True (ambulance arrival transport indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 3 -> patient row 6656, node 2 -> patient row 1770, node 10 -> patient row 3988.
+Among those similar patients, the model-highlighted patterns included:
+- gender m indicator in 3/3 influential similar patients
+- race hispanic indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 0 (HOME prototype, distance 0.0479).
+The strongest prototype-level contributors to the prediction were prototype 0 (HOME, contribution 3.5557), prototype 4 (HOME, contribution 3.3336), prototype 2 (HOME, contribution 2.3448).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

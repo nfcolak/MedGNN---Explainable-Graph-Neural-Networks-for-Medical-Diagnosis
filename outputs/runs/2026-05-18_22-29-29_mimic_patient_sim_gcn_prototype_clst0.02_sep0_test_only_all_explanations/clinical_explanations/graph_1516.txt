@@ -1,0 +1,30 @@
+Graph 1516 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 19626
+
+Patient-level signals
+---------------------
+The model emphasized walk in arrival transport indicator.
+
+Highest-attribution clinical features:
+- transport_WALK IN: True (walk in arrival transport indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 5 -> patient row 16943, node 1 -> patient row 15567, node 3 -> patient row 10474.
+Among those similar patients, the model-highlighted patterns included:
+- walk in arrival transport indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.9097).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 0.7415), prototype 4 (HOME, contribution -0.3575), prototype 7 (ADMITTED, contribution 0.1951).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

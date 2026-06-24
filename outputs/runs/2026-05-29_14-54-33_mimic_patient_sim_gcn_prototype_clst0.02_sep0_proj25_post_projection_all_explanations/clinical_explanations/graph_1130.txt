@@ -1,0 +1,33 @@
+Graph 1130 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 8676
+
+Patient-level signals
+---------------------
+The model emphasized sodium bicarbonate medication indicator, simvastatin medication indicator, race hispanic indicator, and sodium polystyrene sulfonate medication indicator.
+
+Highest-attribution clinical features:
+- med_sodium_bicarbonate: 1 (sodium bicarbonate medication indicator)
+- med_simvastatin: 1 (simvastatin medication indicator)
+- race_HISPANIC: True (race hispanic indicator)
+- med_sodium_polystyrene_sulfonate: 1 (sodium polystyrene sulfonate medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 4 -> patient row 1406, node 1 -> patient row 7577, node 10 -> patient row 8267.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal systolic blood pressure in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 3 (HOME prototype, distance 0.1887).
+The strongest prototype-level contributors to the prediction were prototype 0 (HOME, contribution 2.1093), prototype 4 (HOME, contribution 1.8728), prototype 3 (HOME, contribution 1.8451).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

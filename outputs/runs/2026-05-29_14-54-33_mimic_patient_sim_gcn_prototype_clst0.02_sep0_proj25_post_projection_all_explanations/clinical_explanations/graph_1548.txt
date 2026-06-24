@@ -1,0 +1,34 @@
+Graph 1548 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 3010
+
+Patient-level signals
+---------------------
+The model emphasized walk in arrival transport indicator, clonazepam medication indicator, and levothyroxine medication indicator.
+
+Highest-attribution clinical features:
+- transport_WALK IN: True (walk in arrival transport indicator)
+- med_clonazepam: 1 (clonazepam medication indicator)
+- med_levothyroxine: 1 (levothyroxine medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 1 -> patient row 4682, node 6 -> patient row 12040, node 8 -> patient row 9808.
+Among those similar patients, the model-highlighted patterns included:
+- walk in arrival transport indicator in 3/3 influential similar patients
+- clonazepam medication indicator in 1/3 influential similar patients
+- levothyroxine medication indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.0366).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 3.7993), prototype 0 (HOME, contribution 3.4176), prototype 2 (HOME, contribution 2.9433).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

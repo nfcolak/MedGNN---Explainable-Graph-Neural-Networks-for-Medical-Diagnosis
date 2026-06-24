@@ -1,0 +1,12 @@
+# k-neighbor sweep
+
+Fixed configuration: prototype GCN, clst=0.02, sep=0.0, LOS included, explain_n=0.
+
+| k | PR-AUC | F1 | Recall | Specificity | Balanced Acc | Accuracy | Threshold | Run |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 5 | 0.754966 | 0.708817 | 0.812500 | 0.710737 | 0.761619 | 0.749000 | 0.505000 | outputs/runs/2026-05-18_13-21-45_mimic_patient_sim_k5_gcn_prototype_clst0.02_sep0_k-neighbor-sweep |
+| 10 | 0.748368 | 0.706098 | 0.769947 | 0.752404 | 0.761175 | 0.759000 | 0.480000 | outputs/runs/2026-05-18_13-22-31_mimic_patient_sim_k10_gcn_prototype_clst0.02_sep0_k-neighbor-sweep |
+| 15 | 0.734843 | 0.703868 | 0.738032 | 0.783654 | 0.760843 | 0.766500 | 0.525000 | outputs/runs/2026-05-18_13-23-20_mimic_patient_sim_k15_gcn_prototype_clst0.02_sep0_k-neighbor-sweep |
+| 20 | 0.747938 | 0.703008 | 0.746011 | 0.773237 | 0.759624 | 0.763000 | 0.520000 | outputs/runs/2026-05-18_13-24-21_mimic_patient_sim_k20_gcn_prototype_clst0.02_sep0_k-neighbor-sweep |
+
+Best by PR-AUC: k=5 (0.754966).

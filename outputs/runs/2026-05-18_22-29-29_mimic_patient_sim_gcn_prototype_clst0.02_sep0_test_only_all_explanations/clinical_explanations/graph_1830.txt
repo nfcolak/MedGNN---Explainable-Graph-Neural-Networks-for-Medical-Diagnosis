@@ -1,0 +1,35 @@
+Graph 1830 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 4540
+
+Patient-level signals
+---------------------
+The model emphasized spironolactone medication indicator, abnormal systolic blood pressure, gender f indicator, and lamotrigine medication indicator.
+
+Highest-attribution clinical features:
+- med_spironolactone: 1 (spironolactone medication indicator)
+- sbp: 184.0 (abnormal systolic blood pressure)
+- gender_F: True (gender f indicator)
+- med_lamotrigine: 1 (lamotrigine medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 3 -> patient row 18853, node 1 -> patient row 4343, node 6 -> patient row 17315.
+Among those similar patients, the model-highlighted patterns included:
+- spironolactone medication indicator in 1/3 influential similar patients
+- abnormal systolic blood pressure in 2/3 influential similar patients
+- gender f indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.6614).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 0.9209), prototype 8 (ADMITTED, contribution -0.2824), prototype 0 (HOME, contribution 0.2590).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

@@ -1,0 +1,34 @@
+Graph 1801 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 4938
+
+Patient-level signals
+---------------------
+The model emphasized walk in arrival transport indicator, race white indicator, and gender m indicator.
+
+Highest-attribution clinical features:
+- transport_WALK IN: True (walk in arrival transport indicator)
+- race_WHITE: True (race white indicator)
+- gender_M: True (gender m indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 1 -> patient row 9008, node 3 -> patient row 9341, node 5 -> patient row 806.
+Among those similar patients, the model-highlighted patterns included:
+- walk in arrival transport indicator in 3/3 influential similar patients
+- race white indicator in 3/3 influential similar patients
+- gender m indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.4079).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 1.2387), prototype 0 (HOME, contribution 0.2877), prototype 8 (ADMITTED, contribution -0.2408).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

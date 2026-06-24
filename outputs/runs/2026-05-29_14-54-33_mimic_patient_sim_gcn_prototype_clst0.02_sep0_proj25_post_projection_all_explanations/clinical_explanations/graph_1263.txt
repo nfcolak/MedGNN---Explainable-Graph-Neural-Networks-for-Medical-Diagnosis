@@ -1,0 +1,36 @@
+Graph 1263 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 15728
+
+Patient-level signals
+---------------------
+The model emphasized elevated heart rate, abnormal systolic blood pressure, lower oxygen saturation, and gender m indicator.
+
+Highest-attribution clinical features:
+- heartrate: 108.0 (elevated heart rate)
+- vs_sbp: 187.3333 (abnormal systolic blood pressure)
+- vs_o2sat: 94.0 (lower oxygen saturation)
+- gender_M: True (gender m indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 5 -> patient row 2313, node 8 -> patient row 14151, node 2 -> patient row 13694.
+Among those similar patients, the model-highlighted patterns included:
+- elevated heart rate in 3/3 influential similar patients
+- abnormal systolic blood pressure in 2/3 influential similar patients
+- abnormal diastolic blood pressure in 1/3 influential similar patients
+- gender m indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.1055).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 2.6464), prototype 7 (ADMITTED, contribution 1.4715), prototype 6 (ADMITTED, contribution 1.4115).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

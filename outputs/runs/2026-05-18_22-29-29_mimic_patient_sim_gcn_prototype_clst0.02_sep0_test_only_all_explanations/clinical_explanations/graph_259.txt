@@ -1,0 +1,36 @@
+Graph 259 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 17093
+
+Patient-level signals
+---------------------
+The model emphasized simvastatin medication indicator, walk in arrival transport indicator, gender m indicator, and race white indicator.
+
+Highest-attribution clinical features:
+- med_simvastatin: 1 (simvastatin medication indicator)
+- transport_WALK IN: True (walk in arrival transport indicator)
+- gender_M: True (gender m indicator)
+- race_WHITE: True (race white indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 8 -> patient row 12352, node 2 -> patient row 13646, node 3 -> patient row 11986.
+Among those similar patients, the model-highlighted patterns included:
+- simvastatin medication indicator in 2/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+- gender m indicator in 3/3 influential similar patients
+- race white indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.6224).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 0.9579), prototype 4 (HOME, contribution -0.2790), prototype 7 (ADMITTED, contribution 0.2185).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

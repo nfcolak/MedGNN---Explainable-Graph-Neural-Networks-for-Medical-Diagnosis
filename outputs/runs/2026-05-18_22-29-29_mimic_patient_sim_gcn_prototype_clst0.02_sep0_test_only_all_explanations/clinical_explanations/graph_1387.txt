@@ -1,0 +1,35 @@
+Graph 1387 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 15816
+
+Patient-level signals
+---------------------
+The model emphasized ambulance arrival transport indicator, lisinopril medication indicator, and abnormal diastolic blood pressure.
+
+Highest-attribution clinical features:
+- transport_AMBULANCE: True (ambulance arrival transport indicator)
+- med_lisinopril: 1 (lisinopril medication indicator)
+- dbp: 59.0 (abnormal diastolic blood pressure)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 2 -> patient row 18952, node 8 -> patient row 13271, node 6 -> patient row 9197.
+Among those similar patients, the model-highlighted patterns included:
+- ambulance arrival transport indicator in 3/3 influential similar patients
+- simvastatin medication indicator in 2/3 influential similar patients
+- lisinopril medication indicator in 1/3 influential similar patients
+- abnormal diastolic blood pressure in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.4261).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 1.2078), prototype 7 (ADMITTED, contribution 0.2339), prototype 4 (HOME, contribution -0.2332).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

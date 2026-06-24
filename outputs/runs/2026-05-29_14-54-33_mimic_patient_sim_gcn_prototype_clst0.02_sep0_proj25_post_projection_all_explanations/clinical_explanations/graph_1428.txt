@@ -1,0 +1,34 @@
+Graph 1428 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 12433
+
+Patient-level signals
+---------------------
+The model emphasized walk in arrival transport indicator, econazole medication indicator, and gender m indicator.
+
+Highest-attribution clinical features:
+- transport_WALK IN: True (walk in arrival transport indicator)
+- med_econazole: 1 (econazole medication indicator)
+- gender_M: True (gender m indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 2 -> patient row 478, node 10 -> patient row 14644, node 8 -> patient row 6480.
+Among those similar patients, the model-highlighted patterns included:
+- walk in arrival transport indicator in 2/3 influential similar patients
+- econazole medication indicator in 1/3 influential similar patients
+- gender m indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 0 (HOME prototype, distance 0.1175).
+The strongest prototype-level contributors to the prediction were prototype 0 (HOME, contribution 2.5972), prototype 4 (HOME, contribution 2.3575), prototype 3 (HOME, contribution 2.2362).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

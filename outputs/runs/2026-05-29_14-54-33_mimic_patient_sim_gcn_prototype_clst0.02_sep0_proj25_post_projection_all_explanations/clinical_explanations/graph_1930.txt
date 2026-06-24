@@ -1,0 +1,37 @@
+Graph 1930 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 9393
+
+Patient-level signals
+---------------------
+The model emphasized race black indicator, fluticasone medication indicator, gender f indicator, hydrochlorothiazide medication indicator, and metformin medication indicator.
+
+Highest-attribution clinical features:
+- race_BLACK: True (race black indicator)
+- med_fluticasone: 1 (fluticasone medication indicator)
+- gender_F: True (gender f indicator)
+- med_hydrochlorothiazide: 1 (hydrochlorothiazide medication indicator)
+- med_metformin: 1 (metformin medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 1 -> patient row 10605, node 6 -> patient row 935, node 8 -> patient row 12448.
+Among those similar patients, the model-highlighted patterns included:
+- race black indicator in 3/3 influential similar patients
+- gender f indicator in 3/3 influential similar patients
+- insulin regular human medication indicator in 1/3 influential similar patients
+- metformin medication indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.0677).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 3.1345), prototype 0 (HOME, contribution 3.1060), prototype 2 (HOME, contribution 2.8827).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

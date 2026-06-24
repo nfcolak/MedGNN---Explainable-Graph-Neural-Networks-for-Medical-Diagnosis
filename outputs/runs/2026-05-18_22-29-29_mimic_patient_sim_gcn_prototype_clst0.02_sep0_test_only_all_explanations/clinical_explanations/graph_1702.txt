@@ -1,0 +1,36 @@
+Graph 1702 Clinical Explanation
+========================================
+Prediction: HOME
+True label: HOME
+Model outcome: correctly classified
+Patient row index: 3291
+
+Patient-level signals
+---------------------
+The model emphasized race other indicator, walk in arrival transport indicator, oxycodone medication indicator, and amoxicillin pot clavulanate medication indicator.
+
+Highest-attribution clinical features:
+- race_OTHER: True (race other indicator)
+- transport_WALK IN: True (walk in arrival transport indicator)
+- med_oxycodone: 1 (oxycodone medication indicator)
+- med_amoxicillin_pot_clavulanate: 1 (amoxicillin pot clavulanate medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 9 -> patient row 11224, node 2 -> patient row 4276, node 10 -> patient row 7773.
+Among those similar patients, the model-highlighted patterns included:
+- elevated heart rate in 1/3 influential similar patients
+- race other indicator in 3/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+- melatonin medication indicator in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.2090).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 1.7548), prototype 0 (HOME, contribution 0.3202), prototype 8 (ADMITTED, contribution -0.1854).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

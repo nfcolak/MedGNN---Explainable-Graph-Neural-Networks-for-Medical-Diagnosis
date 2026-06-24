@@ -1,0 +1,36 @@
+Graph 655 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 19203
+
+Patient-level signals
+---------------------
+The model emphasized race black indicator, carvedilol medication indicator, warfarin medication indicator, and cholecalciferol medication indicator.
+
+Highest-attribution clinical features:
+- race_BLACK: True (race black indicator)
+- med_carvedilol: 1 (carvedilol medication indicator)
+- med_warfarin: 1 (warfarin medication indicator)
+- med_cholecalciferol: 1 (cholecalciferol medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 3 -> patient row 17715, node 5 -> patient row 18999, node 9 -> patient row 19253.
+Among those similar patients, the model-highlighted patterns included:
+- elevated heart rate in 1/3 influential similar patients
+- lower oxygen saturation in 2/3 influential similar patients
+- race black indicator in 2/3 influential similar patients
+- cholecalciferol medication indicator in 3/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.5125).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 1.0820), prototype 4 (HOME, contribution -0.2597), prototype 7 (ADMITTED, contribution 0.2291).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

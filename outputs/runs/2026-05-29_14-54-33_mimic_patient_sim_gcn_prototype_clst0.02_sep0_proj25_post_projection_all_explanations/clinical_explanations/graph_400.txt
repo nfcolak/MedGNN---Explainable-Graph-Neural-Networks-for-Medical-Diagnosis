@@ -1,0 +1,36 @@
+Graph 400 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 13330
+
+Patient-level signals
+---------------------
+The model emphasized race white indicator, lower oxygen saturation, gender m indicator, abnormal diastolic blood pressure, and walk in arrival transport indicator.
+
+Highest-attribution clinical features:
+- race_WHITE: True (race white indicator)
+- vs_o2sat: 93.2 (lower oxygen saturation)
+- gender_M: True (gender m indicator)
+- vs_dbp: 55.0 (abnormal diastolic blood pressure)
+- transport_WALK IN: True (walk in arrival transport indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 5 -> patient row 17922, node 4 -> patient row 12483, node 6 -> patient row 17165.
+Among those similar patients, the model-highlighted patterns included:
+- race white indicator in 3/3 influential similar patients
+- lower oxygen saturation in 2/3 influential similar patients
+- abnormal diastolic blood pressure in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.1252).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 2.4953), prototype 0 (HOME, contribution 2.0978), prototype 2 (HOME, contribution 1.5312).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

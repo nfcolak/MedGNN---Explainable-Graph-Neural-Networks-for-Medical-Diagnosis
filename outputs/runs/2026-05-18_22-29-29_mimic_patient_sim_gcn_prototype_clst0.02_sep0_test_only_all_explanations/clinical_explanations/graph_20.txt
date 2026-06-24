@@ -1,0 +1,33 @@
+Graph 20 Clinical Explanation
+========================================
+Prediction: HOME
+True label: ADMITTED
+Model outcome: incorrectly classified
+Patient row index: 17476
+
+Patient-level signals
+---------------------
+The model emphasized ambulance arrival transport indicator, and gender f indicator.
+
+Highest-attribution clinical features:
+- transport_AMBULANCE: True (ambulance arrival transport indicator)
+- gender_F: True (gender f indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 7 -> patient row 1659, node 10 -> patient row 17657, node 6 -> patient row 9945.
+Among those similar patients, the model-highlighted patterns included:
+- birth control medication indicator in 1/3 influential similar patients
+- ambulance arrival transport indicator in 3/3 influential similar patients
+- gender f indicator in 2/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 4 (HOME prototype, distance 0.6720).
+The strongest prototype-level contributors to the prediction were prototype 4 (HOME, contribution 0.9114), prototype 8 (ADMITTED, contribution -0.2931), prototype 0 (HOME, contribution 0.2534).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.

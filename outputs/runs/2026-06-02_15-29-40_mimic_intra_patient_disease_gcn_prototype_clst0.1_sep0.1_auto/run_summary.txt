@@ -1,0 +1,52 @@
+RUN SUMMARY
+===========
+Run id: 2026-06-02_15-29-40_mimic_intra_patient_disease_gcn_prototype_clst0.1_sep0.1_auto
+Created at: 2026-06-02T15:29:40
+Source results dir: /Users/necatifurkancolak/MP---Self-Explainable-Graph-Neural-Networks-via-Prototype-Learning-for-Medical-Diagnosis/outputs/results
+Command: /Library/Developer/CommandLineTools/usr/bin/python3 scripts/train_and_explain.py --dataset mimic_intra_patient_disease
+
+MODEL
+-----
+Dataset: mimic_intra_patient_disease
+Model: gcn
+Prototype enabled: True
+LOS included: False
+Input dim: 373
+Output dim: 30
+Latent dim: [128, 128, 128]
+MLP hidden: [64]
+Readout: mean
+
+PARAMETERS
+----------
+learning_rate: 0.00179
+batch_size: 128
+weight_decay: 4.3e-05
+dropout: 0.51
+max_epochs: 300
+early_stopping: 10
+warm_epochs: 10
+proj_epochs: 20
+num_prototypes_per_class: 3
+clst_weight: 0.1
+sep_weight: 0.1
+decision_threshold: None
+seed: 1
+
+TEST METRICS
+------------
+loss: 1.799157
+accuracy: 0.536833
+precision: unknown
+recall: unknown
+specificity: unknown
+f1: unknown
+balanced_acc: 0.525537
+pr_auc: unknown
+threshold_used: unknown
+
+ARTEFACTS
+---------
+Copied files: 18
+Explanation files: 11
+Clinical explanation files: 0

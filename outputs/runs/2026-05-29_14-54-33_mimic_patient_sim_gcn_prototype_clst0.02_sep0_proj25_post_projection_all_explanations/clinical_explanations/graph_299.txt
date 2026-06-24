@@ -1,0 +1,37 @@
+Graph 299 Clinical Explanation
+========================================
+Prediction: ADMITTED
+True label: ADMITTED
+Model outcome: correctly classified
+Patient row index: 15046
+
+Patient-level signals
+---------------------
+The model emphasized abnormal diastolic blood pressure, elevated heart rate, walk in arrival transport indicator, gender f indicator, and multivitamin medication indicator.
+
+Highest-attribution clinical features:
+- dbp: 50.0 (abnormal diastolic blood pressure)
+- heartrate: 101.0 (elevated heart rate)
+- transport_WALK IN: True (walk in arrival transport indicator)
+- gender_F: True (gender f indicator)
+- med_multivitamin: 1 (multivitamin medication indicator)
+
+Similar-patient context
+-----------------------
+The most influential similar patients were node 10 -> patient row 9265, node 4 -> patient row 14844, node 7 -> patient row 11928.
+Among those similar patients, the model-highlighted patterns included:
+- abnormal diastolic blood pressure in 1/3 influential similar patients
+- walk in arrival transport indicator in 3/3 influential similar patients
+- gender f indicator in 3/3 influential similar patients
+- multivitamin medication indicator in 1/3 influential similar patients
+
+Prototype evidence
+------------------
+The nearest learned prototype was prototype 8 (ADMITTED prototype, distance 0.1325).
+The strongest prototype-level contributors to the prediction were prototype 8 (ADMITTED, contribution 2.4174), prototype 7 (ADMITTED, contribution 1.9987), prototype 5 (ADMITTED, contribution 1.8058).
+This prototype evidence describes similarity in the model embedding space, not a direct clinical diagnosis match.
+
+Interpretation
+--------------
+This suggests the model associated the prediction with the highlighted clinical profile and its similar-patient neighborhood.
+The explanation should not be interpreted as causal clinical evidence or as a standalone medical decision rule.
