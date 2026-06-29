@@ -44,20 +44,20 @@ installation.
 Check the environment:
 
 ```bash
-PYTHONPATH=src:external/GraphXAI-main:. python3 scripts/check_environment.py
+PYTHONPATH=.:external/GraphXAI-main python3 protgnn_analysis/scripts/check_environment.py
 ```
 
 Generate merged datasets:
 
 ```bash
-python3 scripts/extract_ed_labs.py   # one-time: extract lab panel from labevents
-python3 scripts/merge_ed.py
+python3 shared/data_prep/extract_ed_labs.py   # one-time: extract lab panel from labevents
+python3 shared/data_prep/merge_ed.py
 ```
 
 Train the model and generate GraphXAI JSON explanations for the full test set:
 
 ```bash
-PYTHONPATH=src:external/GraphXAI-main:. python3 scripts/train_and_explain.py \
+PYTHONPATH=.:external/GraphXAI-main python3 protgnn_analysis/train.py \
   --clst 0.02 \
   --sep 0.0 \
   --explain_n -1 \
@@ -67,7 +67,7 @@ PYTHONPATH=src:external/GraphXAI-main:. python3 scripts/train_and_explain.py \
 Generate the readable clinical summary from the archived run:
 
 ```bash
-PYTHONPATH=src:external/GraphXAI-main:. python3 scripts/generate_clinical_explanations.py \
+PYTHONPATH=.:external/GraphXAI-main python3 protgnn_analysis/scripts/generate_clinical_explanations.py \
   --results_dir outputs/runs/<RUN_FOLDER>
 ```
 

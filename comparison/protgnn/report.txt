@@ -1,0 +1,100 @@
+================================================================
+ProtGNN + GraphXAI — Run Report
+================================================================
+
+MODEL CONFIGURATION
+----------------------------------------
+  dataset                       : mimic_intra_patient_disease
+  model                         : gcn
+  input_dim                     : from dataset
+  output_dim                    : 30
+  latent_dim                    : [128, 128, 128]
+  mlp_hidden                    : [64]
+  readout                       : mean
+  dropout                       : 0.51
+  adj_normalize                 : True
+  emb_normalize                 : False
+  enable_prototypes             : True
+  num_prototypes_per_class      : 3
+  learning_rate                 : 0.00179
+  batch_size                    : 128
+  weight_decay                  : 4.3e-05
+  max_epochs                    : 300
+  early_stopping                : 10
+  warm_epochs                   : 10
+  proj_epochs                   : 20
+  clst_weight                   : 0.1
+  sep_weight                    : 0.1
+  decision_threshold            : None
+  data_split_ratio              : [0.8, 0.1, 0.1]
+  seed                          : 1
+
+TRAINING SUMMARY
+----------------------------------------
+  Total epochs run         : 25
+  Best epoch               : 13
+  Best eval acc            : 0.572368
+  Best eval PR-AUC         : 
+
+TEST SET PERFORMANCE
+----------------------------------------
+  loss                    : 1.888899
+  acc                     : 0.547613
+  balanced_acc            : 0.572121
+  macro_f1                : 0.496265
+  micro_f1                : 0.547613
+  top3_acc                : 0.748927
+  top5_acc                : 0.821888
+
+LABEL DISTRIBUTION
+----------------------------------------
+  30 classes (train counts):
+    [ 0] class_0                                  1025 (0.017)
+    [ 1] class_1                                  1346 (0.023)
+    [ 2] class_2                                  656 (0.011)
+    [ 3] class_3                                  2755 (0.046)
+    [ 4] class_4                                  913 (0.015)
+    [ 5] class_5                                  1103 (0.019)
+    [ 6] class_6                                  6841 (0.115)
+    [ 7] class_7                                  5986 (0.100)
+    [ 8] class_8                                  1027 (0.017)
+    [ 9] class_9                                  3395 (0.057)
+    [10] class_10                                 346 (0.006)
+    [11] class_11                                 774 (0.013)
+    [12] class_12                                 2417 (0.041)
+    [13] class_13                                 4016 (0.067)
+    [14] class_14                                 680 (0.011)
+    [15] class_15                                 1012 (0.017)
+    [16] class_16                                 381 (0.006)
+    [17] class_17                                 515 (0.009)
+    [18] class_18                                 971 (0.016)
+    [19] class_19                                 7224 (0.121)
+    [20] class_20                                 2952 (0.050)
+    [21] class_21                                 2141 (0.036)
+    [22] class_22                                 558 (0.009)
+    [23] class_23                                 577 (0.010)
+    [24] class_24                                 322 (0.005)
+    [25] class_25                                 3114 (0.052)
+    [26] class_26                                 3298 (0.055)
+    [27] class_27                                 940 (0.016)
+    [28] class_28                                 894 (0.015)
+    [29] class_29                                 1428 (0.024)
+
+GRAPHXAI EXPLANATION SUMMARY
+----------------------------------------
+  Graphs explained         : 0
+  Model correct (on those) : 0 / 0
+  GradExplainer               : 0 / 0 successful
+  IntegratedGradExplainer     : 0 / 0 successful
+  GNNExplainer                : 0 / 0 successful
+
+OUTPUT FILES
+----------------------------------------
+  outputs/results/model_config.json
+  outputs/results/dataset_metadata.json
+  outputs/results/training_metrics.csv          (25 rows)
+  outputs/results/test_metrics.json
+  outputs/results/evaluation_diagnostics.json
+  outputs/results/explanations/graph_<i>.json   (0 files)
+  outputs/results/explanations/explanations_summary.csv
+  outputs/results/report.txt

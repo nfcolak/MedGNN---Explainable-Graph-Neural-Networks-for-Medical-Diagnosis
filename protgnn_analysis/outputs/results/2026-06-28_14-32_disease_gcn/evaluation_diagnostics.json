@@ -1,0 +1,370 @@
+{
+  "label_distribution": {
+    "train": {
+      "class_0": {
+        "count": 1025,
+        "rate": 0.017196
+      },
+      "class_1": {
+        "count": 1346,
+        "rate": 0.022581
+      },
+      "class_2": {
+        "count": 656,
+        "rate": 0.011005
+      },
+      "class_3": {
+        "count": 2755,
+        "rate": 0.046219
+      },
+      "class_4": {
+        "count": 913,
+        "rate": 0.015317
+      },
+      "class_5": {
+        "count": 1103,
+        "rate": 0.018505
+      },
+      "class_6": {
+        "count": 6841,
+        "rate": 0.114768
+      },
+      "class_7": {
+        "count": 5986,
+        "rate": 0.100424
+      },
+      "class_8": {
+        "count": 1027,
+        "rate": 0.01723
+      },
+      "class_9": {
+        "count": 3395,
+        "rate": 0.056956
+      },
+      "class_10": {
+        "count": 346,
+        "rate": 0.005805
+      },
+      "class_11": {
+        "count": 774,
+        "rate": 0.012985
+      },
+      "class_12": {
+        "count": 2417,
+        "rate": 0.040549
+      },
+      "class_13": {
+        "count": 4016,
+        "rate": 0.067375
+      },
+      "class_14": {
+        "count": 680,
+        "rate": 0.011408
+      },
+      "class_15": {
+        "count": 1012,
+        "rate": 0.016978
+      },
+      "class_16": {
+        "count": 381,
+        "rate": 0.006392
+      },
+      "class_17": {
+        "count": 515,
+        "rate": 0.00864
+      },
+      "class_18": {
+        "count": 971,
+        "rate": 0.01629
+      },
+      "class_19": {
+        "count": 7224,
+        "rate": 0.121194
+      },
+      "class_20": {
+        "count": 2952,
+        "rate": 0.049524
+      },
+      "class_21": {
+        "count": 2141,
+        "rate": 0.035919
+      },
+      "class_22": {
+        "count": 558,
+        "rate": 0.009361
+      },
+      "class_23": {
+        "count": 577,
+        "rate": 0.00968
+      },
+      "class_24": {
+        "count": 322,
+        "rate": 0.005402
+      },
+      "class_25": {
+        "count": 3114,
+        "rate": 0.052242
+      },
+      "class_26": {
+        "count": 3298,
+        "rate": 0.055329
+      },
+      "class_27": {
+        "count": 940,
+        "rate": 0.01577
+      },
+      "class_28": {
+        "count": 894,
+        "rate": 0.014998
+      },
+      "class_29": {
+        "count": 1428,
+        "rate": 0.023957
+      }
+    },
+    "eval": {
+      "class_0": {
+        "count": 128,
+        "rate": 0.017186
+      },
+      "class_1": {
+        "count": 168,
+        "rate": 0.022556
+      },
+      "class_2": {
+        "count": 82,
+        "rate": 0.01101
+      },
+      "class_3": {
+        "count": 344,
+        "rate": 0.046187
+      },
+      "class_4": {
+        "count": 114,
+        "rate": 0.015306
+      },
+      "class_5": {
+        "count": 138,
+        "rate": 0.018528
+      },
+      "class_6": {
+        "count": 855,
+        "rate": 0.114796
+      },
+      "class_7": {
+        "count": 748,
+        "rate": 0.10043
+      },
+      "class_8": {
+        "count": 128,
+        "rate": 0.017186
+      },
+      "class_9": {
+        "count": 424,
+        "rate": 0.056928
+      },
+      "class_10": {
+        "count": 43,
+        "rate": 0.005773
+      },
+      "class_11": {
+        "count": 97,
+        "rate": 0.013024
+      },
+      "class_12": {
+        "count": 302,
+        "rate": 0.040548
+      },
+      "class_13": {
+        "count": 502,
+        "rate": 0.067401
+      },
+      "class_14": {
+        "count": 85,
+        "rate": 0.011412
+      },
+      "class_15": {
+        "count": 126,
+        "rate": 0.016917
+      },
+      "class_16": {
+        "count": 48,
+        "rate": 0.006445
+      },
+      "class_17": {
+        "count": 64,
+        "rate": 0.008593
+      },
+      "class_18": {
+        "count": 121,
+        "rate": 0.016246
+      },
+      "class_19": {
+        "count": 903,
+        "rate": 0.121241
+      },
+      "class_20": {
+        "count": 369,
+        "rate": 0.049544
+      },
+      "class_21": {
+        "count": 268,
+        "rate": 0.035983
+      },
+      "class_22": {
+        "count": 70,
+        "rate": 0.009398
+      },
+      "class_23": {
+        "count": 72,
+        "rate": 0.009667
+      },
+      "class_24": {
+        "count": 40,
+        "rate": 0.005371
+      },
+      "class_25": {
+        "count": 389,
+        "rate": 0.052229
+      },
+      "class_26": {
+        "count": 412,
+        "rate": 0.055317
+      },
+      "class_27": {
+        "count": 118,
+        "rate": 0.015843
+      },
+      "class_28": {
+        "count": 112,
+        "rate": 0.015038
+      },
+      "class_29": {
+        "count": 178,
+        "rate": 0.023899
+      }
+    },
+    "test": {
+      "class_0": {
+        "count": 128,
+        "rate": 0.017167
+      },
+      "class_1": {
+        "count": 168,
+        "rate": 0.022532
+      },
+      "class_2": {
+        "count": 82,
+        "rate": 0.010998
+      },
+      "class_3": {
+        "count": 345,
+        "rate": 0.046271
+      },
+      "class_4": {
+        "count": 114,
+        "rate": 0.01529
+      },
+      "class_5": {
+        "count": 138,
+        "rate": 0.018509
+      },
+      "class_6": {
+        "count": 855,
+        "rate": 0.114673
+      },
+      "class_7": {
+        "count": 749,
+        "rate": 0.100456
+      },
+      "class_8": {
+        "count": 129,
+        "rate": 0.017302
+      },
+      "class_9": {
+        "count": 425,
+        "rate": 0.057001
+      },
+      "class_10": {
+        "count": 44,
+        "rate": 0.005901
+      },
+      "class_11": {
+        "count": 97,
+        "rate": 0.01301
+      },
+      "class_12": {
+        "count": 302,
+        "rate": 0.040504
+      },
+      "class_13": {
+        "count": 502,
+        "rate": 0.067328
+      },
+      "class_14": {
+        "count": 85,
+        "rate": 0.0114
+      },
+      "class_15": {
+        "count": 127,
+        "rate": 0.017033
+      },
+      "class_16": {
+        "count": 47,
+        "rate": 0.006304
+      },
+      "class_17": {
+        "count": 65,
+        "rate": 0.008718
+      },
+      "class_18": {
+        "count": 122,
+        "rate": 0.016363
+      },
+      "class_19": {
+        "count": 903,
+        "rate": 0.121111
+      },
+      "class_20": {
+        "count": 369,
+        "rate": 0.04949
+      },
+      "class_21": {
+        "count": 267,
+        "rate": 0.03581
+      },
+      "class_22": {
+        "count": 70,
+        "rate": 0.009388
+      },
+      "class_23": {
+        "count": 72,
+        "rate": 0.009657
+      },
+      "class_24": {
+        "count": 41,
+        "rate": 0.005499
+      },
+      "class_25": {
+        "count": 389,
+        "rate": 0.052173
+      },
+      "class_26": {
+        "count": 413,
+        "rate": 0.055392
+      },
+      "class_27": {
+        "count": 117,
+        "rate": 0.015692
+      },
+      "class_28": {
+        "count": 112,
+        "rate": 0.015021
+      },
+      "class_29": {
+        "count": 179,
+        "rate": 0.024008
+      }
+    }
+  }
+}
