@@ -1,0 +1,29 @@
+  patients kept=74511 | train/val/test=59607/7448/7456 | classes=30
+  epoch   0 | val macro_f1 0.4206 | val acc 0.5555 | 11s
+  epoch   1 | val macro_f1 0.4294 | val acc 0.5591 | 22s
+  epoch   2 | val macro_f1 0.4443 | val acc 0.5616 | 33s
+  epoch   3 | val macro_f1 0.4387 | val acc 0.5589 | 44s
+  epoch   4 | val macro_f1 0.4536 | val acc 0.5706 | 56s
+  epoch   5 | val macro_f1 0.4517 | val acc 0.5705 | 67s
+  epoch   6 | val macro_f1 0.4373 | val acc 0.5724 | 78s
+  epoch   7 | val macro_f1 0.4490 | val acc 0.5736 | 88s
+  epoch   8 | val macro_f1 0.4439 | val acc 0.5728 | 100s
+  epoch   9 | val macro_f1 0.4567 | val acc 0.5769 | 111s
+  epoch  10 | val macro_f1 0.4570 | val acc 0.5706 | 122s
+  epoch  11 | val macro_f1 0.4572 | val acc 0.5802 | 133s
+  epoch  12 | val macro_f1 0.4524 | val acc 0.5751 | 144s
+  epoch  13 | val macro_f1 0.4536 | val acc 0.5713 | 155s
+  epoch  14 | val macro_f1 0.4711 | val acc 0.5810 | 166s
+  epoch  15 | val macro_f1 0.4580 | val acc 0.5745 | 177s
+  epoch  16 | val macro_f1 0.4596 | val acc 0.5767 | 188s
+  epoch  17 | val macro_f1 0.4637 | val acc 0.5768 | 199s
+  epoch  18 | val macro_f1 0.4512 | val acc 0.5773 | 210s
+  epoch  19 | val macro_f1 0.4582 | val acc 0.5772 | 221s
+  epoch  20 | val macro_f1 0.4580 | val acc 0.5784 | 232s
+  epoch  21 | val macro_f1 0.4521 | val acc 0.5819 | 243s
+  epoch  22 | val macro_f1 0.4658 | val acc 0.5832 | 254s
+  epoch  23 | val macro_f1 0.4553 | val acc 0.5780 | 265s
+  epoch  24 | val macro_f1 0.4529 | val acc 0.5765 | 276s
+  early stop @ epoch 24
+  TEST macro_f1 0.4704 | micro_f1 0.5775 | acc 0.5775
+  wrote comparison/graphcare/report.txt

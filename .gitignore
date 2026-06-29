@@ -29,3 +29,13 @@ external/GraphXAI-main/data/
 external/GraphXAI-main/formal/
 external/GraphXAI-main/examples/
 external/GraphXAI-main/graphxai/datasets/real_world/**/*.npz
+
+# GraphCare isolated env
+.venv-graphcare/
+
+# Vendored GraphCare (third-party clone; obtain via graphcare_analysis/README.md)
+external/GraphCare/
+# GraphXAI bundled extras (not part of this work)
+external/GraphXAI-main/graphxai_flowchart.pptx
+external/GraphXAI-main/img/
+external/GraphXAI-main/test_scripts/
