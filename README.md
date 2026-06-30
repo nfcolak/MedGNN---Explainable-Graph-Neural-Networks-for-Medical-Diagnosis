@@ -2,25 +2,35 @@
 
 This project adapts ProtGNN-style prototype learning for medical diagnosis experiments, with patient-similarity graph construction and optional GraphXAI explanation workflows.
 
-The repository has been consolidated into a single clean project structure. The previous duplicate `ProtGNN-main` and `prot_gnn_core` folders have been merged into the layout below.
+The repository is split into **two self-contained analyses** that share the same
+data and evaluation protocol (see `STRUCTURE.md`):
+
+* `protgnn_analysis/`   — Method A, the intra-patient ProtGNN (current work).
+* `graphcare_analysis/` — Method B, the GraphCare (KG + BAT-GNN) comparison.
 
 ## Project Structure
 
 ```text
 .
-├── configs/                  Shared experiment configuration
-├── data/                     Local datasets and dataset metadata
-├── docs/                     Literature, figures, and project references
+├── data/                     Shared raw + processed data (merged_ed.csv)
+├── shared/                   Code shared by BOTH analyses
+│   ├── data_prep/            MIMIC-IV-ED -> merged_ed.csv (merge_ed.py + standardizers)
+│   └── lib/                  Split / metrics / config base (identical across methods)
+├── protgnn_analysis/         METHOD A — intra-patient ProtGNN (current)
+│   ├── config.py             Hyperparameters
+│   ├── load_dataset.py       IntraPatientHeteroDataset + graph builders
+│   ├── models/               GCN / GAT / GIN + GnnNets
+│   ├── my_mcts.py            Prototype subgraph projection (MCTS)
+│   ├── explainability/       GraphXAI wrappers
+│   ├── train.py              Train + explain entry point
+│   ├── scripts/              eval / summarize / confusion / hpo / ...
+│   └── outputs/              Checkpoints, runs, results
+├── graphcare_analysis/       METHOD B — GraphCare (KG + BAT-GNN); model vendored upstream
+│   ├── config.py  adapter.py  build_kg.py  run.py
+│   └── outputs/
+├── baselines/                Tabular baseline (XGBoost / HistGB), shared by both
 ├── external/                 External research code, including GraphXAI
-├── notebooks/                Exploratory notebooks or scratch analysis
-├── outputs/                  Generated checkpoints, metrics, and reports
-├── scripts/                  Runnable training, HPO, testing, and baseline scripts
-└── src/prot_gnn/             Main Python package
-    ├── explainability/       GraphXAI integration wrappers
-    ├── models/               GCN, GAT, GIN, and ProtGNN model code
-    ├── load_dataset.py       Dataset loaders and graph builders
-    ├── my_mcts.py            Prototype subgraph search
-    └── utils.py              Plotting and helper utilities
+└── docs/                     Literature, figures, and project references
 ```
 
 ## Requirements
@@ -49,18 +59,31 @@ See `docs/RUN_WITH_OWN_DATA.md` for the full data placement and rerun workflow.
 
 ## Usage
 
-Configuration lives in `configs/config.py`.
+All commands run from the repo root with the repo root on `PYTHONPATH`
+(so the `protgnn_analysis` / `graphcare_analysis` / `shared` packages resolve).
+
+### Method A — ProtGNN (current)
+
+Configuration lives in `protgnn_analysis/config.py`.
 
 Run the main train-and-explain workflow:
 
 ```bash
-PYTHONPATH=src:external/GraphXAI-main:. python3 scripts/train_and_explain.py --explain_n 10 --no_prot
+PYTHONPATH=.:external/GraphXAI-main python3 protgnn_analysis/train.py --explain_n 10 --no_prot
 ```
 
 Run with prototype learning enabled:
 
 ```bash
-PYTHONPATH=src:external/GraphXAI-main:. python scripts/train_and_explain.py --explain_n 100
+PYTHONPATH=.:external/GraphXAI-main python3 protgnn_analysis/train.py --explain_n 100
+```
+
+### Method B — GraphCare (comparison)
+
+Clone the upstream model first (see `external/GraphCare/README.md`), then:
+
+```bash
+PYTHONPATH=.:external/GraphCare python3 graphcare_analysis/run.py
 ```
 
 When prototypes are enabled, each enriched explanation JSON includes
@@ -70,19 +93,19 @@ activation, and contribution to the predicted class.
 Run hyperparameter optimization:
 
 ```bash
-python scripts/hyperparameter_opt.py --n_trials 50 --max_epochs 80
+PYTHONPATH=.:external/GraphXAI-main python3 protgnn_analysis/scripts/hyperparameter_opt.py --n_trials 50 --max_epochs 80
 ```
 
 Run the older training loop:
 
 ```bash
-python scripts/train_gnns.py
+PYTHONPATH=.:external/GraphXAI-main python3 protgnn_analysis/scripts/train_gnns.py
 ```
 
 Generate English clinical-language explanations from the latest GraphXAI outputs:
 
 ```bash
-PYTHONPATH=src:external/GraphXAI-main:. python scripts/generate_clinical_explanations.py --limit 5
+PYTHONPATH=.:external/GraphXAI-main python3 protgnn_analysis/scripts/generate_clinical_explanations.py --limit 5
 ```
 
 Clinical explanation files include patient-level GraphXAI signals, similar-patient

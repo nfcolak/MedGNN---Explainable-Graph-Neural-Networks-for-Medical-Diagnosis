@@ -1,0 +1,73 @@
+/Users/necatifurkancolak/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+/Users/necatifurkancolak/Library/Python/3.9/lib/python/site-packages/torch_geometric/deprecation.py:26: UserWarning: 'data.DataLoader' is deprecated, use 'loader.DataLoader' instead
+  warnings.warn(out)
+============================================================
+TRAINING
+============================================================
+  [INFO] Prototype layers ENABLED.
+  [split] CANONICAL: train=59607 val=7448 test=7456 (excluded 3186)
+  Dataset : mimic_intra_patient_disease
+  Graphs  : 77697  |  avg nodes: 21.1  |  avg edges: 20.3
+  Classes : 30  |  input_dim: 415
+  Class counts (train): [1025, 1346, 656, 2755, 913, 1103, 6841, 5986, 1027, 3395, 346, 774, 2417, 4016, 680, 1012, 381, 515, 971, 7224, 2952, 2141, 558, 577, 322, 3114, 3298, 940, 894, 1428]
+  Class counts (eval) : [128, 168, 82, 344, 114, 138, 855, 748, 128, 424, 43, 97, 302, 502, 85, 126, 48, 64, 121, 903, 369, 268, 70, 72, 40, 389, 412, 118, 112, 178]
+  Class counts (test) : [128, 168, 82, 345, 114, 138, 855, 749, 129, 425, 44, 97, 302, 502, 85, 127, 47, 65, 122, 903, 369, 267, 70, 72, 41, 389, 413, 117, 112, 179]
+  Class weights       : [1.9384, 1.4762, 3.0288, 0.7212, 2.1762, 1.8014, 0.2904, 0.3319, 1.9347, 0.5852, 5.7425, 2.5671, 0.8221, 0.4947, 2.9219, 1.9633, 5.215, 3.8581, 2.0462, 0.275, 0.6731, 0.928, 3.5608, 3.4435, 6.1705, 0.6381, 0.6025, 2.1137, 2.2225, 1.3914]
+  clst=0.1  sep=0.1  lr=0.00179
+
+  Epoch    0 | Train Loss: 4.3755  Acc: 0.1963 | Eval Loss: 2.6285  Acc: 0.2963  macroF1: 0.2397  top5: 0.679  [31s]
+  Epoch    1 | Train Loss: 3.3213  Acc: 0.3339 | Eval Loss: 2.0314  Acc: 0.4599  macroF1: 0.4362  top5: 0.762  [58s]
+  Epoch    2 | Train Loss: 2.7339  Acc: 0.4619 | Eval Loss: 1.8567  Acc: 0.5254  macroF1: 0.4847  top5: 0.802  [82s]
+  Epoch    3 | Train Loss: 2.4913  Acc: 0.5142 | Eval Loss: 1.8277  Acc: 0.5389  macroF1: 0.4967  top5: 0.809  [107s]
+  Epoch    4 | Train Loss: 2.3659  Acc: 0.5347 | Eval Loss: 1.7897  Acc: 0.5458  macroF1: 0.5009  top5: 0.819  [136s]
+  Epoch    5 | Train Loss: 2.2835  Acc: 0.5503 | Eval Loss: 1.7509  Acc: 0.5447  macroF1: 0.5015  top5: 0.816  [164s]
+  Epoch    6 | Train Loss: 2.2247  Acc: 0.5611 | Eval Loss: 1.7625  Acc: 0.5506  macroF1: 0.5051  top5: 0.820  [192s]
+  Epoch    7 | Train Loss: 2.1828  Acc: 0.5702 | Eval Loss: 1.7448  Acc: 0.5560  macroF1: 0.5134  top5: 0.822  [219s]
+  Epoch    8 | Train Loss: 2.1433  Acc: 0.5764 | Eval Loss: 1.7197  Acc: 0.5514  macroF1: 0.5070  top5: 0.831  [245s]
+  Epoch    9 | Train Loss: 2.1085  Acc: 0.5827 | Eval Loss: 1.7047  Acc: 0.5569  macroF1: 0.5084  top5: 0.830  [267s]
+  Epoch   10 | Train Loss: 2.0813  Acc: 0.5816 | Eval Loss: 1.7233  Acc: 0.5593  macroF1: 0.5135  top5: 0.835  [290s]
+  Epoch   11 | Train Loss: 2.0103  Acc: 0.5896 | Eval Loss: 1.7130  Acc: 0.5576  macroF1: 0.5125  top5: 0.831  [314s]
+  Epoch   12 | Train Loss: 1.9484  Acc: 0.5919 | Eval Loss: 1.7261  Acc: 0.5630  macroF1: 0.5091  top5: 0.844  [339s]
+  Epoch   13 | Train Loss: 1.8861  Acc: 0.5927 | Eval Loss: 1.8066  Acc: 0.5724  macroF1: 0.5211  top5: 0.844  [364s]
+  Epoch   14 | Train Loss: 1.8190  Acc: 0.5979 | Eval Loss: 1.7429  Acc: 0.5647  macroF1: 0.5154  top5: 0.833  [386s]
+  Epoch   15 | Train Loss: 1.7665  Acc: 0.6004 | Eval Loss: 1.7364  Acc: 0.5695  macroF1: 0.5157  top5: 0.845  [408s]
+  Epoch   16 | Train Loss: 1.7109  Acc: 0.6023 | Eval Loss: 1.7884  Acc: 0.5529  macroF1: 0.5007  top5: 0.835  [431s]
+  Epoch   17 | Train Loss: 1.6512  Acc: 0.6041 | Eval Loss: 1.7860  Acc: 0.5595  macroF1: 0.5098  top5: 0.834  [455s]
+  Epoch   18 | Train Loss: 1.6037  Acc: 0.6050 | Eval Loss: 1.7670  Acc: 0.5611  macroF1: 0.5041  top5: 0.837  [480s]
+  Epoch   19 | Train Loss: 1.5517  Acc: 0.6049 | Eval Loss: 1.7314  Acc: 0.5588  macroF1: 0.5077  top5: 0.840  [501s]
+
+  Prototype projection (epoch 20): 90 prototypes (MCTS subgraph search — this is the slow step)...
+    P  1/90 | class  0 | best_sim=2.286 |    19s elapsed | ETA ~1699s       P  2/90 | class  0 | best_sim=2.282 |    36s elapsed | ETA ~1591s       P  3/90 | class  0 | best_sim=2.288 |    51s elapsed | ETA ~1488s       P  4/90 | class  1 | best_sim=2.708 |    64s elapsed | ETA ~1379s       P  5/90 | class  1 | best_sim=2.613 |    77s elapsed | ETA ~1308s       P  6/90 | class  1 | best_sim=2.805 |    90s elapsed | ETA ~1256s       P  7/90 | class  2 | best_sim=2.219 |   105s elapsed | ETA ~1251s       P  8/90 | class  2 | best_sim=2.220 |   121s elapsed | ETA ~1242s       P  9/90 | class  2 | best_sim=2.218 |   137s elapsed | ETA ~1234s       P 10/90 | class  3 | best_sim=3.402 |   148s elapsed | ETA ~1183s       P 11/90 | class  3 | best_sim=3.629 |   158s elapsed | ETA ~1138s       P 12/90 | class  3 | best_sim=3.638 |   169s elapsed | ETA ~1099s       P 13/90 | class  4 | best_sim=3.261 |   184s elapsed | ETA ~1089s       P 14/90 | class  4 | best_sim=3.309 |   198s elapsed | ETA ~1076s       P 15/90 | class  4 | best_sim=3.261 |   213s elapsed | ETA ~1066s       P 16/90 | class  5 | best_sim=3.106 |   227s elapsed | ETA ~1049s       P 17/90 | class  5 | best_sim=3.302 |   241s elapsed | ETA ~1035s       P 18/90 | class  5 | best_sim=3.079 |   255s elapsed | ETA ~1022s       P 19/90 | class  6 | best_sim=2.046 |   270s elapsed | ETA ~1009s       P 20/90 | class  6 | best_sim=2.969 |   285s elapsed | ETA ~ 998s       P 21/90 | class  6 | best_sim=2.606 |   301s elapsed | ETA ~ 987s       P 22/90 | class  7 | best_sim=2.218 |   315s elapsed | ETA ~ 975s       P 23/90 | class  7 | best_sim=2.486 |   331s elapsed | ETA ~ 963s       P 24/90 | class  7 | best_sim=1.993 |   347s elapsed | ETA ~ 954s       P 25/90 | class  8 | best_sim=2.250 |   364s elapsed | ETA ~ 946s       P 26/90 | class  8 | best_sim=2.244 |   382s elapsed | ETA ~ 941s       P 27/90 | class  8 | best_sim=2.250 |   399s elapsed | ETA ~ 931s       P 28/90 | class  9 | best_sim=2.471 |   420s elapsed | ETA ~ 929s       P 29/90 | class  9 | best_sim=2.702 |   439s elapsed | ETA ~ 923s       P 30/90 | class  9 | best_sim=2.783 |   459s elapsed | ETA ~ 918s       P 31/90 | class 10 | best_sim=2.783 |   478s elapsed | ETA ~ 910s       P 32/90 | class 10 | best_sim=2.782 |   497s elapsed | ETA ~ 900s       P 33/90 | class 10 | best_sim=2.787 |   515s elapsed | ETA ~ 890s       P 34/90 | class 11 | best_sim=3.306 |   530s elapsed | ETA ~ 872s       P 35/90 | class 11 | best_sim=3.310 |   544s elapsed | ETA ~ 855s       P 36/90 | class 11 | best_sim=3.359 |   558s elapsed | ETA ~ 837s       P 37/90 | class 12 | best_sim=3.320 |   572s elapsed | ETA ~ 820s       P 38/90 | class 12 | best_sim=3.074 |   587s elapsed | ETA ~ 803s       P 39/90 | class 12 | best_sim=3.084 |   601s elapsed | ETA ~ 787s       P 40/90 | class 13 | best_sim=2.124 |   613s elapsed | ETA ~ 767s       P 41/90 | class 13 | best_sim=3.510 |   625s elapsed | ETA ~ 747s       P 42/90 | class 13 | best_sim=3.142 |   637s elapsed | ETA ~ 728s       P 43/90 | class 14 | best_sim=3.064 |   660s elapsed | ETA ~ 722s       P 44/90 | class 14 | best_sim=3.058 |   682s elapsed | ETA ~ 713s       P 45/90 | class 14 | best_sim=3.062 |   703s elapsed | ETA ~ 703s       P 46/90 | class 15 | best_sim=2.823 |   718s elapsed | ETA ~ 687s       P 47/90 | class 15 | best_sim=2.823 |   734s elapsed | ETA ~ 671s       P 48/90 | class 15 | best_sim=2.825 |   749s elapsed | ETA ~ 656s       P 49/90 | class 16 | best_sim=2.467 |   766s elapsed | ETA ~ 641s       P 50/90 | class 16 | best_sim=2.469 |   782s elapsed | ETA ~ 625s       P 51/90 | class 16 | best_sim=2.464 |   798s elapsed | ETA ~ 610s       P 52/90 | class 17 | best_sim=3.202 |   813s elapsed | ETA ~ 594s       P 53/90 | class 17 | best_sim=3.202 |   828s elapsed | ETA ~ 578s       P 54/90 | class 17 | best_sim=3.200 |   843s elapsed | ETA ~ 562s       P 55/90 | class 18 | best_sim=2.670 |   853s elapsed | ETA ~ 543s       P 56/90 | class 18 | best_sim=2.668 |   864s elapsed | ETA ~ 524s       P 57/90 | class 18 | best_sim=2.681 |   874s elapsed | ETA ~ 506s       P 58/90 | class 19 | best_sim=2.623 |   886s elapsed | ETA ~ 489s       P 59/90 | class 19 | best_sim=3.374 |   898s elapsed | ETA ~ 472s       P 60/90 | class 19 | best_sim=2.157 |   911s elapsed | ETA ~ 456s       P 61/90 | class 20 | best_sim=2.220 |   928s elapsed | ETA ~ 441s       P 62/90 | class 20 | best_sim=2.046 |   944s elapsed | ETA ~ 426s       P 63/90 | class 20 | best_sim=2.544 |   959s elapsed | ETA ~ 411s       P 64/90 | class 21 | best_sim=3.576 |   972s elapsed | ETA ~ 395s       P 65/90 | class 21 | best_sim=2.799 |   985s elapsed | ETA ~ 379s       P 66/90 | class 21 | best_sim=3.037 |   999s elapsed | ETA ~ 363s       P 67/90 | class 22 | best_sim=2.140 |  1014s elapsed | ETA ~ 348s       P 68/90 | class 22 | best_sim=2.141 |  1030s elapsed | ETA ~ 333s       P 69/90 | class 22 | best_sim=2.140 |  1046s elapsed | ETA ~ 318s       P 70/90 | class 23 | best_sim=3.521 |  1063s elapsed | ETA ~ 304s       P 71/90 | class 23 | best_sim=3.537 |  1080s elapsed | ETA ~ 289s       P 72/90 | class 23 | best_sim=3.519 |  1098s elapsed | ETA ~ 274s       P 73/90 | class 24 | best_sim=2.723 |  1115s elapsed | ETA ~ 260s       P 74/90 | class 24 | best_sim=2.725 |  1133s elapsed | ETA ~ 245s       P 75/90 | class 24 | best_sim=2.723 |  1150s elapsed | ETA ~ 230s       P 76/90 | class 25 | best_sim=1.946 |  1163s elapsed | ETA ~ 214s       P 77/90 | class 25 | best_sim=2.377 |  1177s elapsed | ETA ~ 199s       P 78/90 | class 25 | best_sim=2.172 |  1192s elapsed | ETA ~ 183s       P 79/90 | class 26 | best_sim=2.579 |  1208s elapsed | ETA ~ 168s       P 80/90 | class 26 | best_sim=2.681 |  1224s elapsed | ETA ~ 153s       P 81/90 | class 26 | best_sim=2.681 |  1239s elapsed | ETA ~ 138s       P 82/90 | class 27 | best_sim=3.049 |  1256s elapsed | ETA ~ 123s       P 83/90 | class 27 | best_sim=3.075 |  1272s elapsed | ETA ~ 107s       P 84/90 | class 27 | best_sim=3.047 |  1288s elapsed | ETA ~  92s       P 85/90 | class 28 | best_sim=3.091 |  1303s elapsed | ETA ~  77s       P 86/90 | class 28 | best_sim=3.169 |  1319s elapsed | ETA ~  61s       P 87/90 | class 28 | best_sim=3.080 |  1334s elapsed | ETA ~  46s       P 88/90 | class 29 | best_sim=2.722 |  1352s elapsed | ETA ~  31s       P 89/90 | class 29 | best_sim=2.763 |  1371s elapsed | ETA ~  15s       P 90/90 | class 29 | best_sim=2.548 |  1388s elapsed | ETA ~   0s   
+  Projection done in 1388s.
+  Epoch   20 | Train Loss: 1.5016  Acc: 0.6089 | Eval Loss: 1.7846  Acc: 0.5498  macroF1: 0.4996  top5: 0.832  [1914s]
+  Epoch   21 | Train Loss: 1.4428  Acc: 0.6110 | Eval Loss: 1.7887  Acc: 0.5597  macroF1: 0.5072  top5: 0.833  [1935s]
+  Epoch   22 | Train Loss: 1.4149  Acc: 0.6120 | Eval Loss: 1.8010  Acc: 0.5532  macroF1: 0.5050  top5: 0.835  [1957s]
+  Epoch   23 | Train Loss: 1.3697  Acc: 0.6101 | Eval Loss: 1.8477  Acc: 0.5640  macroF1: 0.5092  top5: 0.841  [1977s]
+  Epoch   24 | Train Loss: 1.3338  Acc: 0.6120 | Eval Loss: 1.8612  Acc: 0.5514  macroF1: 0.4970  top5: 0.825  [2000s]
+
+  Early stopping triggered at epoch 24.
+
+  Selected checkpoint (latest post-projection): epoch=24, metric=0.4970
+
+  TEST RESULTS
+    loss              : 1.888899
+    acc               : 0.547613
+    balanced_acc      : 0.572121
+    macro_f1          : 0.496265
+    micro_f1          : 0.547613
+    top3_acc          : 0.748927
+    top5_acc          : 0.821888
+
+[INFO] explain_n=0 — skipping GraphXAI explanation step.
+
+============================================================
+SAVING RESULTS
+============================================================
+  Run results dir: /Users/necatifurkancolak/MP---Self-Explainable-Graph-Neural-Networks-via-Prototype-Learning-for-Medical-Diagnosis/protgnn_analysis/outputs/results/2026-06-28_14-32_disease_gcn
+
+  Saved report to /Users/necatifurkancolak/MP---Self-Explainable-Graph-Neural-Networks-via-Prototype-Learning-for-Medical-Diagnosis/protgnn_analysis/outputs/results/2026-06-28_14-32_disease_gcn/report.txt
+
+  All results written to: /Users/necatifurkancolak/MP---Self-Explainable-Graph-Neural-Networks-via-Prototype-Learning-for-Medical-Diagnosis/protgnn_analysis/outputs/results/2026-06-28_14-32_disease_gcn/
+
+Done.

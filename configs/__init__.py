@@ -1,2 +1,0 @@
-"""Project configuration package."""
-
