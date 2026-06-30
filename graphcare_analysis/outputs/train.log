@@ -1,0 +1,21 @@
+  patients kept=74511 | train/val/test=59607/7448/7456 | classes=30
+  epoch   0 | val macro_f1 0.4196 | val acc 0.5560 | 11s
+  epoch   1 | val macro_f1 0.4346 | val acc 0.5608 | 22s
+  epoch   2 | val macro_f1 0.4366 | val acc 0.5571 | 33s
+  epoch   3 | val macro_f1 0.4387 | val acc 0.5634 | 44s
+  epoch   4 | val macro_f1 0.4494 | val acc 0.5669 | 55s
+  epoch   5 | val macro_f1 0.4557 | val acc 0.5730 | 67s
+  epoch   6 | val macro_f1 0.4612 | val acc 0.5776 | 78s
+  epoch   7 | val macro_f1 0.4523 | val acc 0.5753 | 89s
+  epoch   8 | val macro_f1 0.4438 | val acc 0.5678 | 100s
+  epoch   9 | val macro_f1 0.4581 | val acc 0.5773 | 111s
+  epoch  10 | val macro_f1 0.4573 | val acc 0.5780 | 122s
+  epoch  11 | val macro_f1 0.4467 | val acc 0.5756 | 133s
+  epoch  12 | val macro_f1 0.4604 | val acc 0.5814 | 144s
+  epoch  13 | val macro_f1 0.4506 | val acc 0.5768 | 155s
+  epoch  14 | val macro_f1 0.4513 | val acc 0.5764 | 166s
+  epoch  15 | val macro_f1 0.4588 | val acc 0.5773 | 177s
+  epoch  16 | val macro_f1 0.4569 | val acc 0.5831 | 188s
+  early stop @ epoch 16
+  TEST macro_f1 0.4638 | micro_f1 0.5691 | acc 0.5691
+  wrote /Users/necatifurkancolak/MP---Self-Explainable-Graph-Neural-Networks-via-Prototype-Learning-for-Medical-Diagnosis/graphcare_analysis/outputs/report.txt

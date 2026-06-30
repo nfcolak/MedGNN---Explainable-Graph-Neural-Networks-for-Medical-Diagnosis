@@ -1,1 +1,0 @@
-/Users/necatifurkancolak/MP---Self-Explainable-Graph-Neural-Networks-via-Prototype-Learning-for-Medical-Diagnosis/outputs/results/2026-06-03_14-12_disease_gcn

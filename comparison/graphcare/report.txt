@@ -1,0 +1,14 @@
+GRAPHCARE (Method B) -- model-direct on merged_ed.csv
+  dataset          : merged_ed.csv (limit=None)
+  KG               : 259 nodes, 2 rels (ontology+PMI)
+  model            : GraphCare BAT-GNN, dim=128, layers=2
+  classes          : 30
+  epochs run       : 25
+
+TEST SET PERFORMANCE
+  accuracy        : 0.577521
+  balanced_acc    : 0.445396
+  macro_f1        : 0.470422
+  micro_f1        : 0.577521
+  top3_acc        : 0.764485
+  top5_acc        : 0.840263
