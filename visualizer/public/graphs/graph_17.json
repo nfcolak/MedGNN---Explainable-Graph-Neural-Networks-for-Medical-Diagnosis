@@ -1,0 +1,160 @@
+{
+  "graph_id": 17,
+  "diagnosis": "Limb injury or pain",
+  "nodes": [
+    {
+      "id": "patient",
+      "label": "PATIENT",
+      "type": "patient",
+      "original_feature_name": "encounter_root"
+    },
+    {
+      "id": "temperature",
+      "label": "temperature",
+      "type": "vital",
+      "value": 0.2,
+      "unit": "z-score",
+      "raw_value": "98.7 F",
+      "original_feature_name": "temperature",
+      "importance": 0.12
+    },
+    {
+      "id": "heartrate",
+      "label": "heartrate",
+      "type": "vital",
+      "value": 1.4,
+      "unit": "z-score",
+      "raw_value": "112 bpm",
+      "original_feature_name": "heartrate",
+      "importance": 0.48
+    },
+    {
+      "id": "resprate",
+      "label": "resprate",
+      "type": "vital",
+      "value": -0.7,
+      "unit": "z-score",
+      "raw_value": "14 /min",
+      "original_feature_name": "resprate",
+      "importance": 0.15
+    },
+    {
+      "id": "o2sat",
+      "label": "o2sat",
+      "type": "vital",
+      "value": 0.3,
+      "unit": "z-score",
+      "raw_value": "99%",
+      "original_feature_name": "o2sat",
+      "importance": 0.08
+    },
+    {
+      "id": "sbp",
+      "label": "sbp",
+      "type": "vital",
+      "value": 1.7,
+      "unit": "z-score",
+      "raw_value": "154 mmHg",
+      "original_feature_name": "sbp",
+      "importance": 0.67
+    },
+    {
+      "id": "dbp",
+      "label": "dbp",
+      "type": "vital",
+      "value": 1.3,
+      "unit": "z-score",
+      "raw_value": "91 mmHg",
+      "original_feature_name": "dbp",
+      "importance": 0.34
+    },
+    {
+      "id": "pain",
+      "label": "pain",
+      "type": "vital",
+      "value": -1.1,
+      "unit": "z-score",
+      "raw_value": "2/10",
+      "original_feature_name": "pain",
+      "importance": 0.42
+    },
+    {
+      "id": "acuity",
+      "label": "acuity",
+      "type": "vital",
+      "value": 0.5,
+      "unit": "z-score",
+      "raw_value": "3",
+      "original_feature_name": "acuity",
+      "importance": 0.22
+    },
+    {
+      "id": "ferrous",
+      "label": "ferrous",
+      "type": "medication",
+      "original_feature_name": "med_ferrous",
+      "importance": 0.18
+    },
+    {
+      "id": "omeprazole",
+      "label": "omeprazole",
+      "type": "medication",
+      "original_feature_name": "med_omeprazole",
+      "importance": 0.21
+    },
+    {
+      "id": "ondansetron",
+      "label": "ondansetron",
+      "type": "medication",
+      "original_feature_name": "med_ondansetron",
+      "importance": 0.56
+    },
+    {
+      "id": "potassium",
+      "label": "potassium",
+      "type": "medication",
+      "original_feature_name": "med_potassium",
+      "importance": 0.25
+    },
+    {
+      "id": "prochlorperazine",
+      "label": "prochlorperazine",
+      "type": "medication",
+      "original_feature_name": "med_prochlorperazine",
+      "importance": 0.51
+    },
+    {
+      "id": "arm_swelling",
+      "label": "arm swelling",
+      "type": "chief_complaint",
+      "original_feature_name": "cc_arm_swelling",
+      "importance": 0.74
+    },
+    {
+      "id": "pain_extremity",
+      "label": "extremity pain",
+      "type": "diagnosis_attribute",
+      "original_feature_name": "dx_related_extremity_pain",
+      "importance": 0.64
+    }
+  ],
+  "edges": [
+    { "source": "patient", "target": "temperature", "type": "patient_feature" },
+    { "source": "patient", "target": "heartrate", "type": "patient_feature" },
+    { "source": "patient", "target": "resprate", "type": "patient_feature" },
+    { "source": "patient", "target": "o2sat", "type": "patient_feature" },
+    { "source": "patient", "target": "sbp", "type": "patient_feature" },
+    { "source": "patient", "target": "dbp", "type": "patient_feature" },
+    { "source": "patient", "target": "pain", "type": "patient_feature" },
+    { "source": "patient", "target": "acuity", "type": "patient_feature" },
+    { "source": "patient", "target": "ferrous", "type": "patient_feature" },
+    { "source": "patient", "target": "omeprazole", "type": "patient_feature" },
+    { "source": "patient", "target": "ondansetron", "type": "patient_feature" },
+    { "source": "patient", "target": "potassium", "type": "patient_feature" },
+    { "source": "patient", "target": "prochlorperazine", "type": "patient_feature" },
+    { "source": "patient", "target": "arm_swelling", "type": "patient_feature" },
+    { "source": "patient", "target": "pain_extremity", "type": "patient_feature" },
+    { "source": "prochlorperazine", "target": "ondansetron", "type": "pmi_bundle", "pmi": 0.82 },
+    { "source": "omeprazole", "target": "ferrous", "type": "pmi_bundle", "pmi": 0.44 }
+  ]
+}
