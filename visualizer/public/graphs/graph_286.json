@@ -1,0 +1,42 @@
+{
+  "graph_id": 286,
+  "diagnosis": "Abdominal pain",
+  "nodes": [
+    { "id": "patient", "label": "PATIENT", "type": "patient" },
+    { "id": "temperature", "label": "temperature", "type": "vital", "value": 0.9, "raw_value": "99.8 F", "original_feature_name": "temperature", "importance": 0.31 },
+    { "id": "heartrate", "label": "heartrate", "type": "vital", "value": 1.6, "raw_value": "118 bpm", "original_feature_name": "heartrate", "importance": 0.72 },
+    { "id": "resprate", "label": "resprate", "type": "vital", "value": 0.4, "raw_value": "20 /min", "original_feature_name": "resprate", "importance": 0.28 },
+    { "id": "o2sat", "label": "o2sat", "type": "vital", "value": -0.2, "raw_value": "96%", "original_feature_name": "o2sat", "importance": 0.12 },
+    { "id": "sbp", "label": "sbp", "type": "vital", "value": -0.8, "raw_value": "104 mmHg", "original_feature_name": "sbp", "importance": 0.44 },
+    { "id": "pain", "label": "pain", "type": "vital", "value": 1.9, "raw_value": "9/10", "original_feature_name": "pain", "importance": 0.86 },
+    { "id": "acuity", "label": "acuity", "type": "vital", "value": 1.1, "raw_value": "2", "original_feature_name": "acuity", "importance": 0.52 },
+    { "id": "morphine", "label": "morphine", "type": "medication", "original_feature_name": "med_morphine", "importance": 0.7 },
+    { "id": "ondansetron", "label": "ondansetron", "type": "medication", "original_feature_name": "med_ondansetron", "importance": 0.62 },
+    { "id": "ketorolac", "label": "ketorolac", "type": "medication", "original_feature_name": "med_ketorolac", "importance": 0.49 },
+    { "id": "normal_saline", "label": "normal saline", "type": "medication", "original_feature_name": "med_normal_saline", "importance": 0.36 },
+    { "id": "famotidine", "label": "famotidine", "type": "medication", "original_feature_name": "med_famotidine", "importance": 0.27 },
+    { "id": "abdominal_pain", "label": "abdominal pain", "type": "chief_complaint", "original_feature_name": "cc_abdominal_pain", "importance": 0.91 },
+    { "id": "nausea", "label": "nausea", "type": "chief_complaint", "original_feature_name": "cc_nausea", "importance": 0.43 },
+    { "id": "gi_pain_cluster", "label": "GI pain cluster", "type": "diagnosis_attribute", "original_feature_name": "dx_related_gi_pain", "importance": 0.58 }
+  ],
+  "edges": [
+    { "source": "patient", "target": "temperature", "type": "patient_feature" },
+    { "source": "patient", "target": "heartrate", "type": "patient_feature" },
+    { "source": "patient", "target": "resprate", "type": "patient_feature" },
+    { "source": "patient", "target": "o2sat", "type": "patient_feature" },
+    { "source": "patient", "target": "sbp", "type": "patient_feature" },
+    { "source": "patient", "target": "pain", "type": "patient_feature" },
+    { "source": "patient", "target": "acuity", "type": "patient_feature" },
+    { "source": "patient", "target": "morphine", "type": "patient_feature" },
+    { "source": "patient", "target": "ondansetron", "type": "patient_feature" },
+    { "source": "patient", "target": "ketorolac", "type": "patient_feature" },
+    { "source": "patient", "target": "normal_saline", "type": "patient_feature" },
+    { "source": "patient", "target": "famotidine", "type": "patient_feature" },
+    { "source": "patient", "target": "abdominal_pain", "type": "patient_feature" },
+    { "source": "patient", "target": "nausea", "type": "patient_feature" },
+    { "source": "patient", "target": "gi_pain_cluster", "type": "patient_feature" },
+    { "source": "morphine", "target": "ondansetron", "type": "pmi_bundle", "pmi": 0.76 },
+    { "source": "ketorolac", "target": "normal_saline", "type": "pmi_bundle", "pmi": 0.53 },
+    { "source": "famotidine", "target": "ondansetron", "type": "pmi_bundle", "pmi": 0.38 }
+  ]
+}
