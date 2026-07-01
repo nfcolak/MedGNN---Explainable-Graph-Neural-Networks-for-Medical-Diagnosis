@@ -1,0 +1,7 @@
+{
+  "dataset_name": "mimic_intra_patient_disease",
+  "graph_count": 77697,
+  "shard_size": 500,
+  "shard_count": 156,
+  "label_count": 30
+}

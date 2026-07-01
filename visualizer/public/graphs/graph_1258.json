@@ -1,0 +1,43 @@
+{
+  "graph_id": 1258,
+  "diagnosis": "Dyspnea",
+  "nodes": [
+    { "id": "patient", "label": "PATIENT", "type": "patient" },
+    { "id": "temperature", "label": "temperature", "type": "vital", "value": -0.3, "raw_value": "97.5 F", "original_feature_name": "temperature", "importance": 0.14 },
+    { "id": "heartrate", "label": "heartrate", "type": "vital", "value": 1.1, "raw_value": "106 bpm", "original_feature_name": "heartrate", "importance": 0.5 },
+    { "id": "resprate", "label": "resprate", "type": "vital", "value": 2.1, "raw_value": "28 /min", "original_feature_name": "resprate", "importance": 0.83, "abnormal": true },
+    { "id": "o2sat", "label": "o2sat", "type": "vital", "value": -1.8, "raw_value": "90%", "original_feature_name": "o2sat", "importance": 0.9, "abnormal": true },
+    { "id": "sbp", "label": "sbp", "type": "vital", "value": 0.2, "raw_value": "128 mmHg", "original_feature_name": "sbp", "importance": 0.18 },
+    { "id": "dbp", "label": "dbp", "type": "vital", "value": -0.1, "raw_value": "74 mmHg", "original_feature_name": "dbp", "importance": 0.16 },
+    { "id": "acuity", "label": "acuity", "type": "vital", "value": 1.7, "raw_value": "2", "original_feature_name": "acuity", "importance": 0.61 },
+    { "id": "albuterol", "label": "albuterol", "type": "medication", "original_feature_name": "med_albuterol", "importance": 0.76 },
+    { "id": "ipratropium", "label": "ipratropium", "type": "medication", "original_feature_name": "med_ipratropium", "importance": 0.68 },
+    { "id": "methylprednisolone", "label": "methylprednisolone", "type": "medication", "original_feature_name": "med_methylprednisolone", "importance": 0.45 },
+    { "id": "azithromycin", "label": "azithromycin", "type": "medication", "original_feature_name": "med_azithromycin", "importance": 0.33 },
+    { "id": "magnesium", "label": "magnesium", "type": "medication", "original_feature_name": "med_magnesium", "importance": 0.29 },
+    { "id": "shortness_breath", "label": "shortness of breath", "type": "chief_complaint", "original_feature_name": "cc_shortness_of_breath", "importance": 0.93 },
+    { "id": "wheezing", "label": "wheezing", "type": "chief_complaint", "original_feature_name": "cc_wheezing", "importance": 0.47 },
+    { "id": "respiratory_cluster", "label": "respiratory cluster", "type": "diagnosis_attribute", "original_feature_name": "dx_related_respiratory", "importance": 0.82 }
+  ],
+  "edges": [
+    { "source": "patient", "target": "temperature", "type": "patient_feature" },
+    { "source": "patient", "target": "heartrate", "type": "patient_feature" },
+    { "source": "patient", "target": "resprate", "type": "patient_feature" },
+    { "source": "patient", "target": "o2sat", "type": "patient_feature" },
+    { "source": "patient", "target": "sbp", "type": "patient_feature" },
+    { "source": "patient", "target": "dbp", "type": "patient_feature" },
+    { "source": "patient", "target": "acuity", "type": "patient_feature" },
+    { "source": "patient", "target": "albuterol", "type": "patient_feature" },
+    { "source": "patient", "target": "ipratropium", "type": "patient_feature" },
+    { "source": "patient", "target": "methylprednisolone", "type": "patient_feature" },
+    { "source": "patient", "target": "azithromycin", "type": "patient_feature" },
+    { "source": "patient", "target": "magnesium", "type": "patient_feature" },
+    { "source": "patient", "target": "shortness_breath", "type": "patient_feature" },
+    { "source": "patient", "target": "wheezing", "type": "patient_feature" },
+    { "source": "patient", "target": "respiratory_cluster", "type": "patient_feature" },
+    { "source": "albuterol", "target": "ipratropium", "type": "pmi_bundle", "pmi": 0.88 },
+    { "source": "albuterol", "target": "methylprednisolone", "type": "pmi_bundle", "pmi": 0.64 },
+    { "source": "azithromycin", "target": "methylprednisolone", "type": "pmi_bundle", "pmi": 0.42 },
+    { "source": "magnesium", "target": "albuterol", "type": "pmi_bundle", "pmi": 0.31 }
+  ]
+}
