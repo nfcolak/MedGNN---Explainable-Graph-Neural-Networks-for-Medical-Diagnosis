@@ -3,7 +3,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn.conv import GCNConv
 from torch_geometric.nn.glob import global_mean_pool, global_add_pool, global_max_pool
-from torch_geometric.nn.pool.select.topk import topk
+try:
+    from torch_geometric.nn.pool.select.topk import topk  # PyG >= 2.4
+except ModuleNotFoundError:
+    from torch_geometric.nn.pool.topk_pool import topk     # PyG <= 2.3
 
 
 def get_readout_layers(readout):
