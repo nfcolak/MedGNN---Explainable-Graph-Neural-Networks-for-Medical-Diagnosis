@@ -1,0 +1,110 @@
+{
+  "graph_idx": 40,
+  "dataset_index": null,
+  "subject_id": 10059615,
+  "pred_label": 11,
+  "true_label": 11,
+  "correct": true,
+  "pred_class": "Epilepsy",
+  "true_class": "Epilepsy",
+  "num_nodes": 7,
+  "num_edges": 8,
+  "node_global_ids": [
+    42,
+    52,
+    54,
+    92,
+    163,
+    169,
+    240
+  ],
+  "explanations": {
+    "GradExplainer": {
+      "node_importance": [
+        -8.953262295108289e-06,
+        4.496497422223911e-05,
+        -1.4433833712246269e-05,
+        -4.943979365634732e-05,
+        1.596667971170973e-07,
+        -5.4974949307506904e-05,
+        -1.8872233340516686e-05
+      ],
+      "top_nodes": [
+        {
+          "index": 5,
+          "importance": -5.4974949307506904e-05
+        },
+        {
+          "index": 3,
+          "importance": -4.943979365634732e-05
+        },
+        {
+          "index": 1,
+          "importance": 4.496497422223911e-05
+        },
+        {
+          "index": 6,
+          "importance": -1.8872233340516686e-05
+        }
+      ]
+    },
+    "IntegratedGradExplainer": {
+      "node_importance": [
+        5.203141427045921e-06,
+        -2.90494517685147e-05,
+        2.0343857158877654e-06,
+        4.478289156395476e-06,
+        2.6067273211083375e-06,
+        5.14184375788318e-06,
+        -4.405774234328419e-06
+      ],
+      "top_nodes": [
+        {
+          "index": 1,
+          "importance": -2.90494517685147e-05
+        },
+        {
+          "index": 0,
+          "importance": 5.203141427045921e-06
+        },
+        {
+          "index": 5,
+          "importance": 5.14184375788318e-06
+        },
+        {
+          "index": 3,
+          "importance": 4.478289156395476e-06
+        }
+      ]
+    },
+    "GNNExplainer": {
+      "node_importance": [
+        0.0,
+        1.0,
+        1.0,
+        0.0,
+        1.0,
+        0.0,
+        1.0
+      ],
+      "top_nodes": [
+        {
+          "index": 6,
+          "importance": 1.0
+        },
+        {
+          "index": 4,
+          "importance": 1.0
+        },
+        {
+          "index": 2,
+          "importance": 1.0
+        },
+        {
+          "index": 1,
+          "importance": 1.0
+        }
+      ]
+    }
+  }
+}

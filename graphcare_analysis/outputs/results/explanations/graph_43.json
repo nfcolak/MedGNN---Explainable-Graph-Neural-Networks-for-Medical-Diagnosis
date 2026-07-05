@@ -1,0 +1,50 @@
+{
+  "graph_idx": 43,
+  "dataset_index": null,
+  "subject_id": 10065149,
+  "pred_label": 6,
+  "true_label": 6,
+  "correct": true,
+  "pred_class": "Back or spine pain",
+  "true_class": "Back or spine pain",
+  "num_nodes": 1,
+  "num_edges": 0,
+  "node_global_ids": [
+    186
+  ],
+  "explanations": {
+    "GradExplainer": {
+      "node_importance": [
+        9.782857887330465e-06
+      ],
+      "top_nodes": [
+        {
+          "index": 0,
+          "importance": 9.782857887330465e-06
+        }
+      ]
+    },
+    "IntegratedGradExplainer": {
+      "node_importance": [
+        -0.0005564905004575849
+      ],
+      "top_nodes": [
+        {
+          "index": 0,
+          "importance": -0.0005564905004575849
+        }
+      ]
+    },
+    "GNNExplainer": {
+      "node_importance": [
+        0.0
+      ],
+      "top_nodes": [
+        {
+          "index": 0,
+          "importance": 0.0
+        }
+      ]
+    }
+  }
+}

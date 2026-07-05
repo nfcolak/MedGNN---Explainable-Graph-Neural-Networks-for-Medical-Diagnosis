@@ -125,6 +125,8 @@ def main(limit=None, max_epochs=None, patience=10, min_delta=0.005,
 
     if best_state is not None:
         model.load_state_dict(best_state)
+    torch.save(model.state_dict(), cfg.OUTPUTS_DIR / "graphcare_model.pt")
+
     test = _evaluate(model, test_loader, device)
     print(f"  TEST macro_f1 {test['macro_f1']:.4f} | micro_f1 {test['micro_f1']:.4f} | acc {test['accuracy']:.4f}")
     _write_report(test, C, kg, limit, last_epoch, out_dir=out_dir)

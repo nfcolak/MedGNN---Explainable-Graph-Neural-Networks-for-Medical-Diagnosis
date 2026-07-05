@@ -1,0 +1,66 @@
+{
+  "graph_idx": 0,
+  "dataset_index": null,
+  "subject_id": 10000995,
+  "pred_label": 12,
+  "true_label": 12,
+  "correct": true,
+  "pred_class": "GI bleed",
+  "true_class": "GI bleed",
+  "num_nodes": 2,
+  "num_edges": 1,
+  "node_global_ids": [
+    190,
+    238
+  ],
+  "explanations": {
+    "GradExplainer": {
+      "node_importance": [
+        -0.004509308375418186,
+        -0.15189936757087708
+      ],
+      "top_nodes": [
+        {
+          "index": 1,
+          "importance": -0.15189936757087708
+        },
+        {
+          "index": 0,
+          "importance": -0.004509308375418186
+        }
+      ]
+    },
+    "IntegratedGradExplainer": {
+      "node_importance": [
+        0.015025914646685123,
+        0.036088500171899796
+      ],
+      "top_nodes": [
+        {
+          "index": 1,
+          "importance": 0.036088500171899796
+        },
+        {
+          "index": 0,
+          "importance": 0.015025914646685123
+        }
+      ]
+    },
+    "GNNExplainer": {
+      "node_importance": [
+        0.0,
+        0.0
+      ],
+      "top_nodes": [
+        {
+          "index": 1,
+          "importance": 0.0
+        },
+        {
+          "index": 0,
+          "importance": 0.0
+        }
+      ]
+    }
+  }
+}

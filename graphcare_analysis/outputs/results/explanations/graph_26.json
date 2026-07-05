@@ -1,0 +1,110 @@
+{
+  "graph_idx": 26,
+  "dataset_index": null,
+  "subject_id": 10034118,
+  "pred_label": 6,
+  "true_label": 6,
+  "correct": true,
+  "pred_class": "Back or spine pain",
+  "true_class": "Back or spine pain",
+  "num_nodes": 7,
+  "num_edges": 5,
+  "node_global_ids": [
+    124,
+    137,
+    161,
+    165,
+    169,
+    172,
+    207
+  ],
+  "explanations": {
+    "GradExplainer": {
+      "node_importance": [
+        0.006305078510195017,
+        0.021983012557029724,
+        -0.02298339270055294,
+        0.10129297524690628,
+        0.059310439974069595,
+        0.012537524104118347,
+        -0.049529142677783966
+      ],
+      "top_nodes": [
+        {
+          "index": 3,
+          "importance": 0.10129297524690628
+        },
+        {
+          "index": 4,
+          "importance": 0.059310439974069595
+        },
+        {
+          "index": 6,
+          "importance": -0.049529142677783966
+        },
+        {
+          "index": 2,
+          "importance": -0.02298339270055294
+        }
+      ]
+    },
+    "IntegratedGradExplainer": {
+      "node_importance": [
+        -0.012666608206927776,
+        0.008306415751576424,
+        -0.16766411066055298,
+        -0.012037177570164204,
+        0.015569770708680153,
+        0.0001817371230572462,
+        -0.23804813623428345
+      ],
+      "top_nodes": [
+        {
+          "index": 6,
+          "importance": -0.23804813623428345
+        },
+        {
+          "index": 2,
+          "importance": -0.16766411066055298
+        },
+        {
+          "index": 4,
+          "importance": 0.015569770708680153
+        },
+        {
+          "index": 0,
+          "importance": -0.012666608206927776
+        }
+      ]
+    },
+    "GNNExplainer": {
+      "node_importance": [
+        0.0,
+        1.0,
+        1.0,
+        0.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "top_nodes": [
+        {
+          "index": 6,
+          "importance": 1.0
+        },
+        {
+          "index": 5,
+          "importance": 1.0
+        },
+        {
+          "index": 4,
+          "importance": 1.0
+        },
+        {
+          "index": 2,
+          "importance": 1.0
+        }
+      ]
+    }
+  }
+}

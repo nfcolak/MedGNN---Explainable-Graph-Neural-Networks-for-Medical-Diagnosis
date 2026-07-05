@@ -1,0 +1,98 @@
+{
+  "graph_idx": 48,
+  "dataset_index": null,
+  "subject_id": 10073544,
+  "pred_label": 27,
+  "true_label": 26,
+  "correct": false,
+  "pred_class": "Unsp intestnl obst",
+  "true_class": "UTI or pyelonephritis",
+  "num_nodes": 4,
+  "num_edges": 3,
+  "node_global_ids": [
+    115,
+    161,
+    165,
+    172
+  ],
+  "explanations": {
+    "GradExplainer": {
+      "node_importance": [
+        0.0005044274730607867,
+        -0.03155520185828209,
+        -0.2754306495189667,
+        0.32796409726142883
+      ],
+      "top_nodes": [
+        {
+          "index": 3,
+          "importance": 0.32796409726142883
+        },
+        {
+          "index": 2,
+          "importance": -0.2754306495189667
+        },
+        {
+          "index": 1,
+          "importance": -0.03155520185828209
+        },
+        {
+          "index": 0,
+          "importance": 0.0005044274730607867
+        }
+      ]
+    },
+    "IntegratedGradExplainer": {
+      "node_importance": [
+        0.12239396572113037,
+        -0.02289016917347908,
+        0.29365140199661255,
+        -2.5771126747131348
+      ],
+      "top_nodes": [
+        {
+          "index": 3,
+          "importance": -2.5771126747131348
+        },
+        {
+          "index": 2,
+          "importance": 0.29365140199661255
+        },
+        {
+          "index": 0,
+          "importance": 0.12239396572113037
+        },
+        {
+          "index": 1,
+          "importance": -0.02289016917347908
+        }
+      ]
+    },
+    "GNNExplainer": {
+      "node_importance": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "top_nodes": [
+        {
+          "index": 3,
+          "importance": 1.0
+        },
+        {
+          "index": 2,
+          "importance": 1.0
+        },
+        {
+          "index": 1,
+          "importance": 0.0
+        },
+        {
+          "index": 0,
+          "importance": 0.0
+        }
+      ]
+    }
+  }
+}

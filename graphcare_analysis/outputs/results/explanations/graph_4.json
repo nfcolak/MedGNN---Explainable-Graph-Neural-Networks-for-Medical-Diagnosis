@@ -1,0 +1,50 @@
+{
+  "graph_idx": 4,
+  "dataset_index": null,
+  "subject_id": 10011449,
+  "pred_label": 19,
+  "true_label": 25,
+  "correct": false,
+  "pred_class": "Limb injury or pain",
+  "true_class": "Skin or soft-tissue infection",
+  "num_nodes": 1,
+  "num_edges": 0,
+  "node_global_ids": [
+    66
+  ],
+  "explanations": {
+    "GradExplainer": {
+      "node_importance": [
+        2.1509921550750732
+      ],
+      "top_nodes": [
+        {
+          "index": 0,
+          "importance": 2.1509921550750732
+        }
+      ]
+    },
+    "IntegratedGradExplainer": {
+      "node_importance": [
+        -0.702727735042572
+      ],
+      "top_nodes": [
+        {
+          "index": 0,
+          "importance": -0.702727735042572
+        }
+      ]
+    },
+    "GNNExplainer": {
+      "node_importance": [
+        0.0
+      ],
+      "top_nodes": [
+        {
+          "index": 0,
+          "importance": 0.0
+        }
+      ]
+    }
+  }
+}

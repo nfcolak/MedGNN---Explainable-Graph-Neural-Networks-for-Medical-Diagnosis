@@ -1,41 +1,9 @@
-.DS_Store
-~$*
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-env/
-
-# Runtime outputs and heavy local artifacts
-checkpoint/
-checkpoints/
-log/
-logs/
-wandb/
-
-# Editor/system files
-.idea/
-.vscode/
-# Local/raw data generated outside source control
-data/Original CSVs/
-data/Changes Done/
-data/processed_*/
-data/merged_ed*.csv
-data/rxnorm_mapping.csv
-data/top300_meds.json
-
-# Vendored GraphXAI: keep source code, ignore bundled datasets/results
-external/GraphXAI-main/data/
-external/GraphXAI-main/formal/
-external/GraphXAI-main/examples/
-external/GraphXAI-main/graphxai/datasets/real_world/**/*.npz
-
-# GraphCare isolated env
+data_old/
+prot_gnn_core/
+**/processed_*/
+**/*.pt
+**/*.pth
+data/*.csv
+**/__pycache__/
 .venv-graphcare/
-
-# Vendored GraphCare (third-party clone; obtain via graphcare_analysis/README.md)
-external/GraphCare/
-# GraphXAI bundled extras (not part of this work)
-external/GraphXAI-main/graphxai_flowchart.pptx
-external/GraphXAI-main/img/
-external/GraphXAI-main/test_scripts/
+.DS_Store
