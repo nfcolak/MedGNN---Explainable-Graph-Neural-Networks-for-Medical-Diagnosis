@@ -93,13 +93,7 @@ activation, and contribution to the predicted class.
 Run hyperparameter optimization:
 
 ```bash
-PYTHONPATH=.:external/GraphXAI-main python3 protgnn_analysis/scripts/hyperparameter_opt.py --n_trials 50 --max_epochs 80
-```
-
-Run the older training loop:
-
-```bash
-PYTHONPATH=.:external/GraphXAI-main python3 protgnn_analysis/scripts/train_gnns.py
+PYTHONPATH=.:external/GraphXAI-main python3 protgnn_analysis/scripts/hpo_disease.py --n_trials 50 --max_epochs 80
 ```
 
 Generate English clinical-language explanations from the latest GraphXAI outputs:

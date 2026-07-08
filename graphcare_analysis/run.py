@@ -19,14 +19,16 @@ import torch
 import torch.nn.functional as F
 
 from shared.lib.config_base import set_seed
+from shared.lib.graph_structures import resolve as resolve_structure
+from shared.lib.graph_structures import prompt_for_structure, structure_dir
 from shared.lib.metrics import multiclass_metrics
 from graphcare_analysis.config import cfg
 from graphcare_analysis.build_kg import build_global_kg
 from graphcare_analysis.adapter import build_loaders
 
 
-def _load_kg():
-    return torch.load(cfg.kg_path) if cfg.kg_path.exists() else build_global_kg(save=True)
+def _load_kg(kg_path):
+    return torch.load(kg_path) if kg_path.exists() else build_global_kg(save=True, save_path=kg_path)
 
 
 def _move(batch, device):
@@ -81,19 +83,28 @@ def _write_report(test, C, kg, limit, epochs, out_dir=None):
 
 
 def main(limit=None, max_epochs=None, patience=10, min_delta=0.005,
-         split_json=None, out_dir=None):
+         split_json=None, out_dir=None, graph_structure=None):
     set_seed(cfg.seed)
     # torch 1.12 MPS is unreliable -> CPU for GraphCare
     device = torch.device("cpu" if cfg.device == "mps" else cfg.device)
     max_epochs = max_epochs or cfg.max_epochs
+
+    # Resolve the graph structure (topology). Explicit arg wins; else prompt
+    # (falls back to config default on a non-TTY). Per-structure KG cache and
+    # report live under their own subfolders so topologies never collide.
+    structure = resolve_structure(graph_structure or cfg.graph_structure, "graphcare")
+    kg_path = structure_dir(cfg.data_dir, structure, "graphcare") / "kg.pt"
+    out_dir = out_dir or (cfg.OUTPUTS_DIR / structure)
+    print(f"  graph structure  : {structure}  (kg cache: {kg_path})")
 
     sys.path.insert(0, str(cfg.UPSTREAM_DIR))
     if not (cfg.UPSTREAM_DIR / "graphcare_" / "model.py").exists():
         raise FileNotFoundError("Clone upstream GraphCare first (external/GraphCare/README.md).")
     from graphcare_.model import GraphCare
 
-    kg = _load_kg()
-    train_loader, val_loader, test_loader, C, _ = build_loaders(kg, limit=limit, split_json=split_json)
+    kg = _load_kg(kg_path)
+    train_loader, val_loader, test_loader, C, _ = build_loaders(
+        kg, limit=limit, split_json=split_json, structure=structure)
 
     model = GraphCare(num_nodes=kg["num_nodes"], num_rels=kg["num_rels"], max_visit=1,
                       embedding_dim=cfg.emb_dim, hidden_dim=cfg.emb_dim, out_channels=C,
@@ -139,6 +150,12 @@ if __name__ == "__main__":
     ap.add_argument("--patience", type=int, default=10)
     ap.add_argument("--canonical_split", default=None, help="comparison/canonical_split.json")
     ap.add_argument("--out_dir", default=None, help="where to write report.txt")
+    ap.add_argument("--graph_structure", "--graph", default=None,
+                    help="Graph topology: star|cooccur|ontology|full "
+                         "(prompted interactively if omitted)")
     args = ap.parse_args()
+    structure = args.graph_structure or prompt_for_structure("graphcare",
+                                                             default=cfg.graph_structure)
     main(limit=args.limit, max_epochs=args.max_epochs, patience=args.patience,
-         split_json=args.canonical_split, out_dir=Path(args.out_dir) if args.out_dir else None)
+         split_json=args.canonical_split, out_dir=Path(args.out_dir) if args.out_dir else None,
+         graph_structure=structure)

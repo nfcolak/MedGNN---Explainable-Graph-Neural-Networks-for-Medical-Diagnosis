@@ -80,7 +80,7 @@ def vocab_and_presence(df):
     return ent2id, ent_names, M, med_cols
 
 
-def build_global_kg(save=True):
+def build_global_kg(save=True, save_path=None):
     df = pd.read_csv(cfg.data_dir / cfg.csv_filename, low_memory=False)
     n = len(df)
     ent2id, ent_names, M, med_cols = vocab_and_presence(df)
@@ -126,9 +126,10 @@ def build_global_kg(save=True):
     print(f"  degree mean={np.mean(degs):.1f} max={max(degs)} | isolated nodes={sum(d == 0 for d in degs)}")
 
     if save:
-        cfg.OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
-        torch.save(kg, cfg.kg_path)
-        print(f"  saved -> {cfg.kg_path}")
+        path = save_path or cfg.kg_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save(kg, path)
+        print(f"  saved -> {path}")
     return kg
 
 
