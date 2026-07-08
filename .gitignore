@@ -17,3 +17,19 @@ external/GraphXAI-main/test_scripts/
 
 # New graph-structure caches (data/graphs/<structure>/<method>/)
 data/graphs/
+
+# Raw/derived clinical data — heavy, and MIMIC access terms restrict
+# redistribution. Keep entirely local; never push.
+data/
+
+# Per-graph explanation dumps and full clinical reports scale with dataset
+# size and regenerate from a checkpoint + one script call — not worth
+# tracking. Aggregated per-run summaries (report.txt, test_metrics.json,
+# model_config.json, training_metrics.csv, threshold_sensitivity.csv) stay
+# tracked below via the negated patterns.
+**/outputs/**/explanations/
+**/outputs/**/clinical_explanations/graph_*.txt
+**/outputs/**/clinical_report.txt
+**/outputs/**/summary.md
+**/outputs/**/summary*.csv
+**/outputs/**/run_metadata.json

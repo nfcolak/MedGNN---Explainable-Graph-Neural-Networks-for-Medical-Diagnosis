@@ -1,0 +1,17 @@
+{
+  "loss": 0.509441,
+  "acc": 0.7835,
+  "precision": 0.715832,
+  "recall": 0.703457,
+  "specificity": 0.831731,
+  "f1": 0.709591,
+  "balanced_acc": 0.767594,
+  "pr_auc": 0.744646,
+  "confusion_matrix": {
+    "tn": 1038,
+    "fp": 210,
+    "fn": 223,
+    "tp": 529
+  },
+  "threshold": 0.535
+}
