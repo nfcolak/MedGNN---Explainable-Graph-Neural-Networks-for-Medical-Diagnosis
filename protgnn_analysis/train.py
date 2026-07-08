@@ -109,7 +109,6 @@ def _prepare_results_dir():
     # small, readable title from the dataset + model
     title = (data_args.dataset_name
              .replace("mimic_intra_patient_", "")
-             .replace("mimic_patient_sim_", "patsim_")
              .replace("mimic_", ""))
     stamp = time.strftime("%Y-%m-%d_%H-%M")
     RESULTS_DIR = os.path.join(RESULTS_BASE, f"{stamp}_{title}_{model_args.model_name}")
@@ -454,7 +453,7 @@ def train_model(clst: float, sep: float, use_prot: bool = False,
         print("  [INFO] Prototype layers ENABLED.")
 
     # --- Data ---
-    dataset = get_dataset(data_args.dataset_dir, data_args.dataset_name, task=data_args.task)
+    dataset = get_dataset(data_args.dataset_dir, data_args.dataset_name, task=data_args.task, graph_structure=data_args.graph_structure)
     input_dim  = dataset.num_node_features
     output_dim = int(dataset.num_classes)
     dataloader = get_dataloader(
@@ -803,7 +802,7 @@ def explain_test_set(
         gnn_nets.model.device = explain_device
     gnn_nets.to(explain_device)
 
-    dataset = get_dataset(data_args.dataset_dir, data_args.dataset_name, task=data_args.task)
+    dataset = get_dataset(data_args.dataset_dir, data_args.dataset_name, task=data_args.task, graph_structure=data_args.graph_structure)
     dataloader = get_dataloader(
         dataset, batch_size=1,
         random_split_flag=data_args.random_split,
@@ -1005,7 +1004,7 @@ def save_results(
     with open(os.path.join(RESULTS_DIR, "model_config.json"), "w") as f:
         json.dump(config, f, indent=2)
 
-    dataset = get_dataset(data_args.dataset_dir, data_args.dataset_name, task=data_args.task)
+    dataset = get_dataset(data_args.dataset_dir, data_args.dataset_name, task=data_args.task, graph_structure=data_args.graph_structure)
     with open(os.path.join(RESULTS_DIR, "dataset_metadata.json"), "w") as f:
         json.dump(_dataset_metadata(dataset), f, indent=2)
 
@@ -1204,7 +1203,10 @@ def save_results(
 
 def main():
     parser = argparse.ArgumentParser(description="Train ProtGNN and explain with GraphXAI")
-    parser.add_argument("--dataset",   default=None, help="Dataset name, e.g. mimic_patient_sim_no_los_k20")
+    parser.add_argument("--dataset",   default=None, help="Dataset name, e.g. mimic_intra_patient_disease")
+    parser.add_argument("--graph_structure", "--graph", default=None,
+                        help="Graph topology: star|cooccur|ontology|full "
+                             "(prompted interactively if omitted)")
     parser.add_argument("--clst",      type=float, default=0.1,  help="Cluster loss weight")
     parser.add_argument("--sep",       type=float, default=0.1,  help="Separation loss weight (margin-based)")
     parser.add_argument("--margin",    type=float, default=1.0,  help="Separation-loss margin (penalty if wrong-class prototype distance < margin)")
@@ -1217,6 +1219,19 @@ def main():
 
     if args.dataset:
         data_args.dataset_name = args.dataset
+
+    # Resolve the graph structure: --graph_structure wins; otherwise prompt
+    # interactively (falls back to 'star' on a non-TTY). Fold it into the
+    # dataset name so checkpoints/results are namespaced per structure and
+    # never overwrite another topology's run.
+    from shared.lib.graph_structures import resolve as _resolve_struct
+    from shared.lib.graph_structures import prompt_for_structure as _prompt_struct
+    struct = args.graph_structure or _prompt_struct("protgnn")
+    data_args.graph_structure = _resolve_struct(struct, "protgnn")
+    if data_args.graph_structure not in data_args.dataset_name.split('_'):
+        data_args.dataset_name = f"{data_args.dataset_name}_{data_args.graph_structure}"
+    print(f"  Graph structure : {data_args.graph_structure}")
+
     if args.seed is not None:
         data_args.seed = args.seed
         random.seed(args.seed)

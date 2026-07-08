@@ -39,3 +39,6 @@ external/GraphCare/
 external/GraphXAI-main/graphxai_flowchart.pptx
 external/GraphXAI-main/img/
 external/GraphXAI-main/test_scripts/
+
+# New graph-structure caches (data/graphs/<structure>/<method>/)
+data/graphs/

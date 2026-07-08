@@ -20,7 +20,9 @@ data and evaluation protocol, so they can be compared fairly:
 │   └── lib/                   The pieces that MUST match for a fair comparison:
 │       ├── config_base.py     DATA_DIR, SEED (1234), SPLIT_RATIO, device
 │       ├── splits.py          subject-aware 80/10/10 split
-│       └── metrics.py         multi-class metrics (macro/micro-F1, top-3/5)
+│       ├── metrics.py         multi-class metrics (macro/micro-F1, top-3/5)
+│       └── graph_structures.py  graph-topology registry shared by BOTH methods
+│                              (star/cooccur/ontology/full) + CLI prompt
 │
 ├── protgnn_analysis/          METHOD A — intra-patient ProtGNN
 │   ├── config.py              hyperparameters (was configs/config.py)
@@ -58,6 +60,35 @@ PYTHONPATH=.:external/GraphCare python3 graphcare_analysis/run.py
 # Shared data prep (MIMIC-IV-ED -> merged_ed.csv)
 python3 shared/data_prep/merge_ed.py
 ```
+
+### Selecting the graph structure (topology)
+
+Both methods take the SAME `--graph_structure` (alias `--graph`) argument so the
+identical pipeline runs for any topology without editing code. If omitted, the
+runner asks interactively (and falls back to a default on a non-TTY).
+
+```bash
+# pick a topology explicitly …
+python3 protgnn_analysis/train.py --graph_structure cooccur --explain_n 100
+python3 graphcare_analysis/run.py  --graph_structure cooccur
+# … or omit it to be prompted
+python3 protgnn_analysis/train.py --explain_n 100
+```
+
+Supported structures (defined once in `shared/lib/graph_structures.py`), on top
+of the always-present patient-hub spokes:
+
+| structure  | ProtGNN | GraphCare | concept↔concept edges added |
+|------------|:------:|:---------:|-----------------------------|
+| `star`     | ✓ | ✓ | none (baseline hub only) |
+| `cooccur`  | ✓ | ✓ | population PMI > threshold (cross-type) |
+| `ontology` | ✓ | ✓ | same therapeutic class / ICD chapter |
+| `full`     | ✓ | ✓ | cooccur ∪ ontology (GraphCare also expands 1-hop KG neighbours) |
+
+Every graph cache is collected under a **single main folder**, one subfolder per
+type:  `data/graphs/<structure>/{protgnn,graphcare}/…`. Different topologies never
+collide, and checkpoints/reports are namespaced by structure too, so an A/B/C
+ablation across topologies is just a loop over `--graph_structure`.
 
 ## Fair-comparison guarantee
 

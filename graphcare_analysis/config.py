@@ -34,6 +34,15 @@ class GraphCareConfig:
     med_min_prev = 0.01          # keep meds with prevalence >= 1% (== protgnn)
     pmi_threshold = 2.0          # PMI > this -> "co_occurs" edge (== protgnn)
 
+    # --- graph structure (topology) ---
+    # One of shared.lib.graph_structures supported by graphcare
+    # (star / cooccur / ontology / full). Controls how each patient's subgraph
+    # is extracted from the global KG: which relations become edges and whether
+    # it expands to 1-hop KG neighbours. Selected via --graph_structure on the
+    # CLI (or interactively). 'full' == the legacy behaviour (both rels + 1-hop
+    # expansion). Per-structure KG caches live under data/graphs/<structure>/graphcare/.
+    graph_structure = "full"
+
     # --- personalized knowledge graph ---
     kg_path = OUTPUTS_DIR / "kg.pt"
     # MVP: ontology/PMI KG (cheap, reproducible).

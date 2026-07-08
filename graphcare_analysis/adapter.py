@@ -26,13 +26,33 @@ from graphcare_analysis.config import cfg
 from graphcare_analysis.build_kg import vocab_and_presence
 
 
-def _subgraph(code_ids, neighbours, num_nodes):
-    """Patient codes + their 1-hop KG neighbours -> model-input tensors."""
-    node_set = set(int(c) for c in code_ids)
+# Which KG relations each graph structure keeps, and whether it expands the
+# subgraph to KG neighbours that are NOT among the patient's own codes. Mirrors
+# the ProtGNN structures so the two methods compare on the SAME topology.
+#   star     no edges (codes only)          cooccur  co_occurs, present codes
+#   ontology same_class, present codes      full     both rels + 1-hop expansion
+_STRUCT_RELS = {"star": set(), "cooccur": {0}, "ontology": {1}, "full": {0, 1}}
+_STRUCT_EXPAND = {"star": False, "cooccur": False, "ontology": False, "full": True}
+
+
+def _subgraph(code_ids, neighbours, num_nodes, structure="full"):
+    """Patient codes -> model-input tensors, wired per `structure`.
+
+    `structure` selects which KG relations become edges and whether the
+    subgraph expands to 1-hop KG neighbours outside the patient's own codes.
+    """
+    allow_rel = _STRUCT_RELS[structure]
+    expand = _STRUCT_EXPAND[structure]
+    code_set = set(int(c) for c in code_ids)
+    node_set = set(code_set)
     src, rel, dst = [], [], []
     for c in code_ids:
         c = int(c)
         for r, nbr in neighbours[c]:
+            if r not in allow_rel:
+                continue
+            if not expand and nbr not in code_set:
+                continue
             node_set.add(nbr)
             src.append(c); rel.append(r); dst.append(nbr)
     sub = sorted(node_set)
@@ -67,22 +87,23 @@ def _collate(batch):
 
 
 class GraphCareDataset(Dataset):
-    def __init__(self, code_lists, labels, neighbours, num_nodes):
+    def __init__(self, code_lists, labels, neighbours, num_nodes, structure="full"):
         self.code_lists = code_lists
         self.labels = labels
         self.neighbours = neighbours
         self.num_nodes = num_nodes
+        self.structure = structure
 
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, i):
-        s = _subgraph(self.code_lists[i], self.neighbours, self.num_nodes)
+        s = _subgraph(self.code_lists[i], self.neighbours, self.num_nodes, self.structure)
         s["y"] = int(self.labels[i])
         return s
 
 
-def build_loaders(kg, limit=None, batch_size=None, split_json=None):
+def build_loaders(kg, limit=None, batch_size=None, split_json=None, structure="full"):
     """merged_ed.csv + global KG -> (train, val, test) DataLoaders, num_classes, class_to_id.
 
     If `split_json` (comparison/canonical_split.json) is given, the patient set,
@@ -127,7 +148,8 @@ def build_loaders(kg, limit=None, batch_size=None, split_json=None):
             tr, va, te = stratified_split_indices(labels_k, cfg.split_ratio, cfg.seed)
 
     ds = GraphCareDataset([code_lists[i] for i in keep],
-                          y[keep], kg["neighbours"], kg["num_nodes"])
+                          y[keep], kg["neighbours"], kg["num_nodes"],
+                          structure=structure)
 
     def loader(idx, shuffle):
         return DataLoader(Subset(ds, idx), batch_size=batch_size,
