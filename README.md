@@ -299,50 +299,27 @@ The frontend reads static graph JSON files from `visualizer/public/graphs/`.
 To regenerate these files from the processed PyG dataset:
 
 ```bash
-PYTHONPATH=. python3 visualizer/scripts/export_protgnn_graphs.py
+PYTHONPATH=.:external/GraphXAI-main python3 protgnn_analysis/scripts/hyperparameter_opt.py --n_trials 50 --max_epochs 80
 ```
 
-Current exported visualizer dataset:
+Run the older training loop:
 
-| Metric | Value |
-|---|---:|
-| Graphs | **77,697** |
-| Diagnosis classes | **30** |
-| JSON shards | **156** |
-| Shard size | **500 graphs** |
+```bash
+PYTHONPATH=.:external/GraphXAI-main python3 protgnn_analysis/scripts/train_gnns.py
+```
 
-The visualizer loads only the manifest at startup and fetches graph shards lazily
-when the user selects a patient graph.
+Generate English clinical-language explanations from the latest GraphXAI outputs:
 
----
+```bash
+PYTHONPATH=.:external/GraphXAI-main python3 protgnn_analysis/scripts/generate_clinical_explanations.py --limit 5
+```
 
-## ⚖️ Fair Comparison Design
+Clinical explanation files include patient-level GraphXAI signals, similar-patient
+context, and prototype evidence when the latest run used prototype learning.
 
-Both ProtGNN and GraphCare are evaluated using the same shared protocol:
+Generated artifacts are written under `outputs/`.
 
-- same processed dataset: `data/merged_ed.csv`
-- same subject-aware split
-- same random seed: `1234`
-- same multi-class metrics
-- same diagnosis-label preparation
-
-This keeps the comparison focused on the modeling approach rather than on data
-leakage, split differences, or metric drift.
-
----
-
-## 📈 Potential Improvements
-
-- 🧪 Add automated frontend tests for graph selection, tooltip behavior, and panel rendering.
-- 🧠 Extend prototype explanations with richer clinical-language evidence summaries.
-- 🧬 Add UMLS / ontology-based enrichment for diagnosis and medication nodes.
-- 📉 Add model-performance dashboards next to graph-level explanations.
-- 🚀 Deploy the visualizer as a static site with a smaller public demo dataset.
-- 🔐 Add a privacy-preserving export mode that strips all patient identifiers.
-
----
-
-## 📚 Reference
+## Reference
 
 This work builds on the ProtGNN paper:
 

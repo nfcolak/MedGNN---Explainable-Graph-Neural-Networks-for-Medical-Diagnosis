@@ -12,17 +12,21 @@ OUTPUTS_DIR = Path(__file__).resolve().parent / "outputs"
 class DataParser():
     def __init__(self):
         super().__init__()
-        # Intra-patient heterogeneous graph (Option A).
-        # Patient-similarity star graphs carried near-zero label-relevant
-        # topology (neighbour-label agreement ≈ class prior). The intra-patient
-        # graph has PATIENT/VITAL/MED nodes + medication co-occurrence edges,
-        # giving the GNN structure that's actually informative and prototypes
-        # that map to interpretable clinical sub-patterns.
+        # Intra-patient heterogeneous graph: each patient's own clinical record
+        # becomes a graph (PATIENT/VITAL/MED/... nodes + concept co-occurrence
+        # edges), giving the GNN informative structure and prototypes that map
+        # to interpretable clinical sub-patterns.
         # Ablation alternatives:
-        #   'mimic_patient_sim_no_los'        — original star graph, no LOS
         #   'mimic_intra_patient_with_los'    — leakage ablation
         #   'mimic_intra_patient_full'        — full 309k patients
+        #   'mimic_intra_patient_disease'     — predict primary diagnosis
         self.dataset_name = 'mimic_intra_patient'
+        # Graph structure (topology) — one of shared.lib.graph_structures
+        # (star / cooccur / ontology / full). Selected via --graph_structure on
+        # the CLI (or interactively if omitted); controls which concept↔concept
+        # edges the intra-patient graph gets. Graph caches are collected under
+        # data/graphs/<structure>/protgnn/.
+        self.graph_structure = 'star'
         self.dataset_dir = str(DATA_DIR)
         self.task = None
         self.random_split: bool = True
