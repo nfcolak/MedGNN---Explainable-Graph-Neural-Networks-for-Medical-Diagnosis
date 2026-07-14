@@ -49,20 +49,9 @@ from graphcare_analysis.config import cfg
 from graphcare_analysis.build_kg import build_global_kg
 from graphcare_analysis.adapter import build_loaders, _collate
 from graphcare_analysis.explainability.graphxai_wrapper import GraphCareGraphXAIWrapper
+from shared.lib.fidelity import fidelity_plus, fidelity_minus, sparsity
 
 EXPLAINERS = ["GradExplainer", "IntegratedGradExplainer", "GNNExplainer"]
-
-
-# ── metrics (identical definition to summarize_graphxai.py) ──────────────────
-def sparsity(node_importance, mass=0.9):
-    imp = np.abs(np.asarray(node_importance, dtype=float))
-    n = len(imp)
-    if n == 0 or imp.sum() == 0:
-        return 0.0
-    order = np.sort(imp)[::-1]
-    cum = np.cumsum(order) / imp.sum()
-    k = int(np.searchsorted(cum, mass) + 1)
-    return round(1.0 - k / n, 4)
 
 
 def _extract_importance(exp, num_nodes):
@@ -220,6 +209,8 @@ def main():
 
     id_to_class = {v: k for k, v in class_to_id.items()}
     agg = {e: [] for e in EXPLAINERS}
+    agg_fp = {e: [] for e in EXPLAINERS}     # fidelity+ (prob) per explainer
+    agg_fm = {e: [] for e in EXPLAINERS}     # fidelity- (prob) per explainer
     edge_counts, n_agree, n_agree_total, n_correct, total = [], 0, 0, 0, 0
 
     for gi, b in enumerate(single):
@@ -260,11 +251,18 @@ def main():
                 exp = explain_one(ex, x0, edge_index, pred)
                 imp = _extract_importance(exp, N)
                 order = list(np.argsort(np.abs(imp))[::-1][:args.top_nodes])
+                fid_plus = fidelity_plus(wrapper, x0, edge_index, imp, y, batch)
+                fid_minus = fidelity_minus(wrapper, x0, edge_index, imp, y, batch)
                 rec["explanations"][name] = {
                     "node_importance": [float(v) for v in imp],
                     "top_nodes": [{"index": int(i), "importance": float(imp[i])} for i in order],
+                    "sparsity": sparsity(imp),
+                    "fidelity_plus": fid_plus,
+                    "fidelity_minus": fid_minus,
                 }
                 agg[name].append(sparsity(imp))
+                agg_fp[name].append(fid_plus["prob"])
+                agg_fm[name].append(fid_minus["prob"])
                 top_nodes_seen[name] = int(np.argmax(np.abs(imp)))
             except Exception as e:
                 rec["explanations"][name] = {"error": f"{type(e).__name__}: {e}"}
@@ -280,10 +278,14 @@ def main():
     # ── run summary (the numbers your thesis' explanation-quality section needs) ──
     print(f"\nDONE. explained {total} graphs -> {out_dir}")
     print(f"  accuracy on explained set : {n_correct}/{total}")
-    print("  mean sparsity per explainer:")
+    print("  mean sparsity / fidelity+ / fidelity- per explainer:")
     for e in EXPLAINERS:
-        v = agg[e]
-        print(f"    {e:<26}: {np.mean(v):.4f}" if v else f"    {e:<26}: (no successful runs)")
+        v, fps, fms = agg[e], agg_fp[e], agg_fm[e]
+        if v:
+            print(f"    {e:<26}: sparsity={np.mean(v):.4f}  "
+                  f"fidelity+={np.mean(fps):+.4f}  fidelity-={np.mean(fms):+.4f}")
+        else:
+            print(f"    {e:<26}: (no successful runs)")
     if n_agree_total:
         print(f"  top-node agreement        : {n_agree}/{n_agree_total} ({n_agree/n_agree_total:.1%})")
     if edge_counts:
