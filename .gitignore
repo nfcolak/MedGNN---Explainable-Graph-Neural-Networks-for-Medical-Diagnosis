@@ -6,6 +6,7 @@ prot_gnn_core/
 data/*.csv
 **/__pycache__/
 .venv-graphcare/
+.venv-protgnn/
 .DS_Store
 
 # Vendored GraphCare (third-party clone; obtain via graphcare_analysis/README.md)

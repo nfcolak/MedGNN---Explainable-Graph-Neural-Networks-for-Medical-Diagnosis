@@ -18,16 +18,15 @@ Aggregate rows at the end give mean sparsity per explainer + inter-explainer
 agreement rate — the kind of numbers the thesis' explanation-quality
 evaluation needs.
 
-NOTE on Fidelity: a faithful Fidelity score requires re-running the model on
-the masked subgraph (perturbation). That needs the checkpoint, so it lives in
-a separate model-loading pass; this script covers the JSON-derivable metrics
-(Sparsity + agreement + decoded evidence). Run with --with_fidelity to also
-compute Fidelity+/Fidelity- by loading the model.
+Fidelity+/Fidelity- (mean over the test set) are also reported here — they
+are computed once, at explanation-generation time in train.py's
+explain_test_set() (which has the live model/wrapper needed to re-run the
+masked forward pass), and stored per-graph per-explainer in the JSON this
+script reads. See shared/lib/fidelity.py for the definitions.
 
 Usage:
     PYTHONPATH=src:external/GraphXAI-main:. python3 scripts/summarize_graphxai.py \
         --dataset mimic_intra_patient_disease
-    # add --with_fidelity to also compute Fidelity (loads the checkpoint, slower)
 """
 
 import os
@@ -49,25 +48,12 @@ for p in (_THIS, _ROOT, os.path.join(_ROOT, "src"),
 from protgnn_analysis.config import data_args, OUTPUTS_DIR
 from protgnn_analysis.load_dataset import get_dataset
 from summarize_all_test import build_layout, decode_node
+from shared.lib.fidelity import sparsity
 
 EXPLAINERS = ["GradExplainer", "IntegratedGradExplainer", "GNNExplainer"]
 SHORT = {"GradExplainer": "grad",
          "IntegratedGradExplainer": "ig",
          "GNNExplainer": "gnnexp"}
-
-
-def sparsity(node_importance, mass=0.9):
-    """Concentration of importance: count the fewest nodes whose |importance|
-    sums to `mass` of the total, then sparsity = 1 - that_count / num_nodes.
-    Higher = more concise (a few nodes explain the prediction)."""
-    imp = np.abs(np.asarray(node_importance, dtype=float))
-    n = len(imp)
-    if n == 0 or imp.sum() == 0:
-        return 0.0
-    order = np.sort(imp)[::-1]
-    cum = np.cumsum(order) / imp.sum()
-    k = int(np.searchsorted(cum, mass) + 1)
-    return round(1.0 - k / n, 4)
 
 
 def top_node_index(ex):
@@ -115,7 +101,9 @@ def main():
     print(f"Evaluating {len(files)} graphs with {len(EXPLAINERS)} GraphXAI methods...")
 
     rows = []
-    agg = {SHORT[e]: [] for e in EXPLAINERS}   # sparsity lists
+    agg = {SHORT[e]: [] for e in EXPLAINERS}                       # sparsity lists
+    agg_fp = {SHORT[e]: [] for e in EXPLAINERS}                     # fidelity+ (prob) lists
+    agg_fm = {SHORT[e]: [] for e in EXPLAINERS}                     # fidelity- (prob) lists
     n_agree = 0
     n_agree_total = 0
 
@@ -141,6 +129,8 @@ def main():
             if "error" in ex or "node_importance" not in ex:
                 row[f"{s}_top_factors"] = f"(error: {ex.get('error','n/a')})"
                 row[f"{s}_sparsity"] = ""
+                row[f"{s}_fidelity_plus"] = ""
+                row[f"{s}_fidelity_minus"] = ""
                 continue
             # decode top-k nodes
             toks = []
@@ -149,9 +139,17 @@ def main():
                 if x is not None and 0 <= ni < x.shape[0]:
                     toks.append(decode_node(x[ni], lay))
             row[f"{s}_top_factors"] = ", ".join(toks) if toks else "-"
-            sp = sparsity(ex["node_importance"])
+            sp = ex.get("sparsity", sparsity(ex["node_importance"]))
             row[f"{s}_sparsity"] = sp
             agg[s].append(sp)
+            fp = ex.get("fidelity_plus", {}).get("prob")
+            fm = ex.get("fidelity_minus", {}).get("prob")
+            row[f"{s}_fidelity_plus"] = fp if fp is not None else ""
+            row[f"{s}_fidelity_minus"] = fm if fm is not None else ""
+            if fp is not None:
+                agg_fp[s].append(fp)
+            if fm is not None:
+                agg_fm[s].append(fm)
             top_idx_per_expl[s] = top_node_index(ex)
 
         # do all available explainers agree on the single most important node?
@@ -177,6 +175,8 @@ def main():
         vals = agg[s]
         summary[f"{s}_top_factors"] = f"mean_sparsity over {len(vals)} graphs"
         summary[f"{s}_sparsity"] = round(float(np.mean(vals)), 4) if vals else ""
+        summary[f"{s}_fidelity_plus"] = round(float(np.mean(agg_fp[s])), 4) if agg_fp[s] else ""
+        summary[f"{s}_fidelity_minus"] = round(float(np.mean(agg_fm[s])), 4) if agg_fm[s] else ""
     summary["explainers_agree_top_node"] = (
         f"{n_agree}/{n_agree_total} = {n_agree/max(n_agree_total,1):.2%}")
 
@@ -204,12 +204,37 @@ def main():
     except Exception:
         pass
 
+    # plain-text report, same convention as train.py's report.txt
+    report_path = os.path.join(out_dir, "graphxai_report.txt")
+    with open(report_path, "w") as f:
+        f.write("=" * 64 + "\n")
+        f.write("ProtGNN + GraphXAI — Fidelity / Sparsity Report\n")
+        f.write("=" * 64 + "\n\n")
+        f.write(f"Explanations dir : {expl_dir}\n")
+        f.write(f"Graphs evaluated : {len(rows)}\n")
+        f.write(f"Accuracy         : {summary['result']}\n\n")
+        f.write("MEAN SPARSITY / FIDELITY+ / FIDELITY- PER EXPLAINER\n")
+        f.write("-" * 40 + "\n")
+        for e in EXPLAINERS:
+            s = SHORT[e]
+            vals, fps, fms = agg[s], agg_fp[s], agg_fm[s]
+            sp_str = f"{np.mean(vals):.4f}" if vals else "n/a"
+            fp_str = f"{np.mean(fps):+.4f}" if fps else "n/a"
+            fm_str = f"{np.mean(fms):+.4f}" if fms else "n/a"
+            f.write(f"  {e:<28}: sparsity={sp_str}  fidelity+={fp_str}  fidelity-={fm_str}\n")
+        f.write("\n")
+        f.write(f"Top-node agreement: {n_agree}/{n_agree_total} "
+                f"({n_agree/max(n_agree_total,1):.1%})\n")
+
     print(f"\nDONE. {len(rows)} graphs evaluated.")
-    print("Mean sparsity per explainer:")
+    print("Mean sparsity / fidelity+ / fidelity- per explainer:")
     for e in EXPLAINERS:
         s = SHORT[e]
-        vals = agg[s]
-        print(f"  {e:<26}: {np.mean(vals):.4f}" if vals else f"  {e:<26}: (no data)")
+        vals, fps, fms = agg[s], agg_fp[s], agg_fm[s]
+        sp_str = f"{np.mean(vals):.4f}" if vals else "n/a"
+        fp_str = f"{np.mean(fps):+.4f}" if fps else "n/a"
+        fm_str = f"{np.mean(fms):+.4f}" if fms else "n/a"
+        print(f"  {e:<26}: sparsity={sp_str}  fidelity+={fp_str}  fidelity-={fm_str}")
     print(f"Top-node agreement: {n_agree}/{n_agree_total} "
           f"({n_agree/max(n_agree_total,1):.1%})")
     print(f"\n  {csv_path}")

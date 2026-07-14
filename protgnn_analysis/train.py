@@ -1,4 +1,3 @@
-#train_and_explain.py
 """
 ProtGNN — Train & Explain with GraphXAI
 ========================================
@@ -19,7 +18,7 @@ outputs/results/
 
 Usage
 -----
-    python scripts/train_and_explain.py [--clst 0.1] [--sep 0.1] [--explain_n 10] [--no_prot]
+    PYTHONPATH=. python3 protgnn_analysis/train.py [--clst 0.1] [--sep 0.1] [--explain_n 10] [--no_prot]
 
 Arguments
 ---------
@@ -67,6 +66,7 @@ from protgnn_analysis.explainability.graphxai_wrapper import ProtGNNWrapper
 from protgnn_analysis.load_dataset import get_dataset, get_dataloader
 from protgnn_analysis.my_mcts import mcts
 from protgnn_analysis.scripts.archive_results import archive_results
+from shared.lib.fidelity import fidelity_plus, fidelity_minus, sparsity as shared_sparsity
 
 # ---------------------------------------------------------------------------
 # GraphXAI imports
@@ -851,6 +851,13 @@ def explain_test_set(
         explain_label = torch.tensor([int(pred)], dtype=torch.long,
                                      device=explain_device)
 
+        def _fidelity_record(imp):
+            """Fidelity+/- + sparsity for one explainer's node importance,
+            scored against the TRUE label (see docs/PROJECT_CONTEXT.md Sec. 2/4)."""
+            fp = fidelity_plus(wrapper, x, edge_index, imp, label.item(), null_batch)
+            fm = fidelity_minus(wrapper, x, edge_index, imp, label.item(), null_batch)
+            return {"fidelity_plus": fp, "fidelity_minus": fm, "sparsity": shared_sparsity(imp)}
+
         record = {
             "graph_idx":   idx,
             "dataset_index": _first_or_none(getattr(batch, "dataset_index", None)),
@@ -881,6 +888,7 @@ def explain_test_set(
                 "max": float(imp.max()),
                 "mean": float(imp.mean()),
                 "std": float(imp.std()),
+                **_fidelity_record(imp),
             }
         except Exception as e:
             record["explanations"]["GradExplainer"] = {"error": str(e)}
@@ -902,6 +910,7 @@ def explain_test_set(
                 "max": float(imp.max()),
                 "mean": float(imp.mean()),
                 "std": float(imp.std()),
+                **_fidelity_record(imp),
             }
         except Exception as e:
             record["explanations"]["IntegratedGradExplainer"] = {"error": str(e)}
@@ -924,6 +933,7 @@ def explain_test_set(
                 "max": float(imp.max()),
                 "mean": float(imp.mean()),
                 "std": float(imp.std()),
+                **_fidelity_record(imp),
             }
         except Exception as e:
             record["explanations"]["GNNExplainer"] = {"error": str(e)}
@@ -942,7 +952,10 @@ def explain_test_set(
                 print(
                     f"    {name:<28}: "
                     f"min={res['min']:+.4f}  max={res['max']:+.4f}  "
-                    f"mean={res['mean']:+.4f}  std={res['std']:.4f}"
+                    f"mean={res['mean']:+.4f}  std={res['std']:.4f}  "
+                    f"sparsity={res['sparsity']:.4f}  "
+                    f"fid+={res['fidelity_plus']['prob']:+.4f}  "
+                    f"fid-={res['fidelity_minus']['prob']:+.4f}"
                 )
 
         records.append(record)
@@ -1050,7 +1063,9 @@ def save_results(
         "graph_idx", "true_label", "pred_label", "correct", "num_nodes", "num_edges",
     ]
     for name in EXPLAINER_NAMES:
-        for stat in ("min", "max", "mean", "std"):
+        for stat in ("min", "max", "mean", "std", "sparsity",
+                     "fidelity_plus_acc", "fidelity_plus_prob",
+                     "fidelity_minus_acc", "fidelity_minus_prob"):
             summary_header.append(f"{name}_{stat}")
     summary_header.append("any_error")
 
@@ -1067,15 +1082,25 @@ def save_results(
                 "num_edges":  rec["num_edges"],
                 "any_error":  False,
             }
+            stat_cols = ("min", "max", "mean", "std", "sparsity",
+                         "fidelity_plus_acc", "fidelity_plus_prob",
+                         "fidelity_minus_acc", "fidelity_minus_prob")
             for name in EXPLAINER_NAMES:
                 res = rec["explanations"].get(name, {})
                 if "error" in res:
-                    for stat in ("min", "max", "mean", "std"):
+                    for stat in stat_cols:
                         row[f"{name}_{stat}"] = ""
                     row["any_error"] = True
                 else:
-                    for stat in ("min", "max", "mean", "std"):
-                        row[f"{name}_{stat}"] = res.get(stat, "")
+                    row[f"{name}_min"] = res.get("min", "")
+                    row[f"{name}_max"] = res.get("max", "")
+                    row[f"{name}_mean"] = res.get("mean", "")
+                    row[f"{name}_std"] = res.get("std", "")
+                    row[f"{name}_sparsity"] = res.get("sparsity", "")
+                    row[f"{name}_fidelity_plus_acc"] = res.get("fidelity_plus", {}).get("acc", "")
+                    row[f"{name}_fidelity_plus_prob"] = res.get("fidelity_plus", {}).get("prob", "")
+                    row[f"{name}_fidelity_minus_acc"] = res.get("fidelity_minus", {}).get("acc", "")
+                    row[f"{name}_fidelity_minus_prob"] = res.get("fidelity_minus", {}).get("prob", "")
             writer.writerow(row)
 
     # ---- report.txt ----
@@ -1179,6 +1204,20 @@ def save_results(
         f.write(f"  Model correct (on those) : {n_correct} / {n_explained}\n")
         for name, cnt in exp_success.items():
             f.write(f"  {name:<28}: {cnt} / {n_explained} successful\n")
+        f.write("\n")
+
+        f.write("FIDELITY / SPARSITY (mean over explained graphs; see shared/lib/fidelity.py)\n")
+        f.write("-" * 40 + "\n")
+        for name in EXPLAINER_NAMES:
+            vals = [rec["explanations"][name] for rec in explanation_records
+                    if "error" not in rec["explanations"].get(name, {"error": ""})]
+            if not vals:
+                f.write(f"  {name:<28}: (no successful runs)\n")
+                continue
+            sp = np.mean([v["sparsity"] for v in vals])
+            fp = np.mean([v["fidelity_plus"]["prob"] for v in vals])
+            fm = np.mean([v["fidelity_minus"]["prob"] for v in vals])
+            f.write(f"  {name:<28}: sparsity={sp:.4f}  fidelity+={fp:+.4f}  fidelity-={fm:+.4f}\n")
         f.write("\n")
 
         f.write("OUTPUT FILES\n")

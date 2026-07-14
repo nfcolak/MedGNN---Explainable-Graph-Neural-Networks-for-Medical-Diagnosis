@@ -8,9 +8,11 @@ Reads the per-graph explanation JSONs written by explain_graphcare.py
 per explainer (GradExplainer | IntegratedGradExplainer | GNNExplainer):
   - top-k influential nodes, decoded to clinical tokens via the KG vocabulary
     (node global id -> "med[...]", "symptom[...]", "cc[...]")
-  - a SPARSITY score (same definition as the ProtGNN summarizer)
+  - SPARSITY, Fidelity+, Fidelity- (same shared/lib/fidelity.py definitions
+    used by the ProtGNN summarizer, computed at generation time in
+    explain_graphcare.py and read back here)
   - whether the explainers agree on the single most important node
-plus an AGGREGATE row (mean sparsity per explainer + agreement rate).
+plus an AGGREGATE row (mean sparsity/fidelity per explainer + agreement rate).
 
 The one GraphCare-specific difference from the ProtGNN summarizer is node
 decoding: ProtGNN decodes feature-layout rows; GraphCare decodes GLOBAL KG node
@@ -38,21 +40,10 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 from graphcare_analysis.config import cfg
+from shared.lib.fidelity import sparsity
 
 EXPLAINERS = ["GradExplainer", "IntegratedGradExplainer", "GNNExplainer"]
 SHORT = {"GradExplainer": "grad", "IntegratedGradExplainer": "ig", "GNNExplainer": "gnnexp"}
-
-
-def sparsity(node_importance, mass=0.9):
-    """Identical definition to summarize_graphxai.py."""
-    imp = np.abs(np.asarray(node_importance, dtype=float))
-    n = len(imp)
-    if n == 0 or imp.sum() == 0:
-        return 0.0
-    order = np.sort(imp)[::-1]
-    cum = np.cumsum(order) / imp.sum()
-    k = int(np.searchsorted(cum, mass) + 1)
-    return round(1.0 - k / n, 4)
 
 
 def load_id2ent(kg_path=None):
@@ -82,6 +73,8 @@ def _top_node_index(ex):
 def build_rows(files, id2ent, top_nodes=4):
     rows = []
     agg = {SHORT[e]: [] for e in EXPLAINERS}
+    agg_fp = {SHORT[e]: [] for e in EXPLAINERS}
+    agg_fm = {SHORT[e]: [] for e in EXPLAINERS}
     n_agree = n_agree_total = 0
     for fp in files:
         d = json.load(open(fp))
@@ -101,6 +94,8 @@ def build_rows(files, id2ent, top_nodes=4):
             if "error" in ex or "node_importance" not in ex:
                 row[f"{s}_top_factors"] = f"(error: {ex.get('error', 'n/a')})"
                 row[f"{s}_sparsity"] = ""
+                row[f"{s}_fidelity_plus"] = ""
+                row[f"{s}_fidelity_minus"] = ""
                 continue
             toks = []
             for item in ex.get("top_nodes", [])[:top_nodes]:
@@ -108,9 +103,17 @@ def build_rows(files, id2ent, top_nodes=4):
                 if 0 <= li < len(gids):
                     toks.append(decode_token(gids[li], id2ent))
             row[f"{s}_top_factors"] = ", ".join(toks) if toks else "-"
-            sp = sparsity(ex["node_importance"])
+            sp = ex.get("sparsity", sparsity(ex["node_importance"]))
             row[f"{s}_sparsity"] = sp
             agg[s].append(sp)
+            fp = ex.get("fidelity_plus", {}).get("prob")
+            fm = ex.get("fidelity_minus", {}).get("prob")
+            row[f"{s}_fidelity_plus"] = fp if fp is not None else ""
+            row[f"{s}_fidelity_minus"] = fm if fm is not None else ""
+            if fp is not None:
+                agg_fp[s].append(fp)
+            if fm is not None:
+                agg_fm[s].append(fm)
             top_idx_per_expl[s] = _top_node_index(ex)
         idxs = [v for v in top_idx_per_expl.values() if v is not None]
         if len(idxs) >= 2:
@@ -121,10 +124,10 @@ def build_rows(files, id2ent, top_nodes=4):
         else:
             row["explainers_agree_top_node"] = ""
         rows.append(row)
-    return rows, agg, n_agree, n_agree_total
+    return rows, agg, agg_fp, agg_fm, n_agree, n_agree_total
 
 
-def aggregate_row(rows, agg, n_agree, n_agree_total):
+def aggregate_row(rows, agg, agg_fp, agg_fm, n_agree, n_agree_total):
     summary = {
         "graph": "AGGREGATE", "patient_row": "", "prediction": "", "actual": "",
         "result": f"{sum(1 for r in rows if r['result'] == 'correct')}/{len(rows)} correct",
@@ -135,6 +138,8 @@ def aggregate_row(rows, agg, n_agree, n_agree_total):
         vals = agg[s]
         summary[f"{s}_top_factors"] = f"mean_sparsity over {len(vals)} graphs"
         summary[f"{s}_sparsity"] = round(float(np.mean(vals)), 4) if vals else ""
+        summary[f"{s}_fidelity_plus"] = round(float(np.mean(agg_fp[s])), 4) if agg_fp[s] else ""
+        summary[f"{s}_fidelity_minus"] = round(float(np.mean(agg_fm[s])), 4) if agg_fm[s] else ""
     summary["explainers_agree_top_node"] = (
         f"{n_agree}/{n_agree_total} = {n_agree / max(n_agree_total, 1):.2%}")
     return summary
@@ -144,7 +149,7 @@ def header_order():
     h = ["graph", "patient_row", "prediction", "actual", "result", "num_nodes"]
     for e in EXPLAINERS:
         s = SHORT[e]
-        h += [f"{s}_top_factors", f"{s}_sparsity"]
+        h += [f"{s}_top_factors", f"{s}_sparsity", f"{s}_fidelity_plus", f"{s}_fidelity_minus"]
     h += ["explainers_agree_top_node"]
     return h
 
@@ -163,8 +168,8 @@ def main():
     print(f"Reading {len(files)} explanations from: {expl_dir}")
 
     id2ent = load_id2ent()
-    rows, agg, n_agree, n_agree_total = build_rows(files, id2ent, top_nodes=args.top_nodes)
-    summary = aggregate_row(rows, agg, n_agree, n_agree_total)
+    rows, agg, agg_fp, agg_fm, n_agree, n_agree_total = build_rows(files, id2ent, top_nodes=args.top_nodes)
+    summary = aggregate_row(rows, agg, agg_fp, agg_fm, n_agree, n_agree_total)
 
     out_dir = os.path.dirname(expl_dir)
     os.makedirs(out_dir, exist_ok=True)
@@ -187,10 +192,37 @@ def main():
     except Exception:
         pass
 
-    print("Mean sparsity per explainer:")
+    # plain-text report, same convention as ProtGNN's report.txt / graphxai_report.txt
+    report_path = os.path.join(out_dir, "graphxai_report.txt")
+    with open(report_path, "w") as f:
+        f.write("=" * 64 + "\n")
+        f.write("GraphCare + GraphXAI — Fidelity / Sparsity Report\n")
+        f.write("=" * 64 + "\n\n")
+        f.write(f"Explanations dir : {expl_dir}\n")
+        f.write(f"Graphs evaluated : {len(rows)}\n")
+        f.write(f"Accuracy         : {summary['result']}\n\n")
+        f.write("MEAN SPARSITY / FIDELITY+ / FIDELITY- PER EXPLAINER\n")
+        f.write("-" * 40 + "\n")
+        for e in EXPLAINERS:
+            s = SHORT[e]
+            vals, fps, fms = agg[s], agg_fp[s], agg_fm[s]
+            sp_str = f"{np.mean(vals):.4f}" if vals else "n/a"
+            fp_str = f"{np.mean(fps):+.4f}" if fps else "n/a"
+            fm_str = f"{np.mean(fms):+.4f}" if fms else "n/a"
+            f.write(f"  {e:<28}: sparsity={sp_str}  fidelity+={fp_str}  fidelity-={fm_str}\n")
+        f.write("\n")
+        f.write(f"Top-node agreement: {n_agree}/{n_agree_total} "
+                f"({n_agree / max(n_agree_total, 1):.1%})\n")
+
+    print("Mean sparsity / fidelity+ / fidelity- per explainer:")
     for e in EXPLAINERS:
-        s = SHORT[e]; vals = agg[s]
-        print(f"  {e:<26}: {np.mean(vals):.4f}" if vals else f"  {e:<26}: (no data)")
+        s = SHORT[e]
+        vals, fps, fms = agg[s], agg_fp[s], agg_fm[s]
+        if vals:
+            print(f"  {e:<26}: sparsity={np.mean(vals):.4f}  "
+                  f"fidelity+={np.mean(fps):+.4f}  fidelity-={np.mean(fms):+.4f}")
+        else:
+            print(f"  {e:<26}: (no data)")
     print(f"Top-node agreement: {n_agree}/{n_agree_total} "
           f"({n_agree / max(n_agree_total, 1):.1%})")
     print(f"\n  {csv_path}")
