@@ -42,3 +42,7 @@ external/GraphXAI-main/test_scripts/
 
 # New graph-structure caches (data/graphs/<structure>/<method>/)
 data/graphs/
+
+# Obsidian docs-vault (per-machine state only)
+docs-vault/.obsidian/workspace*
+docs-vault/.obsidian/cache
