@@ -1,0 +1,38 @@
+\chapter*{Zusammenfassung}
+\addcontentsline{toc}{chapter}{Zusammenfassung}
+
+\selectlanguage{german}
+
+Graph Neural Networks werden zunehmend für klinische Vorhersagen aus
+elektronischen Patientenakten eingesetzt, ihre Entscheidungen werden jedoch
+meist erst im Nachhinein erklärt, durch Post-hoc-Attributionsverfahren, deren
+Ausgabe sich nicht daran prüfen lässt, wie das Modell tatsächlich entschieden
+hat. Diese Arbeit untersucht, ob eine selbsterklärende Architektur in diesem
+Umfeld eine brauchbare Alternative darstellt. Aus MIMIC-IV-ED wird pro Besuch in
+der Notaufnahme ein heterogener Graph gebildet, mit Vitalparametern,
+Medikamenten, Symptomen und Aufnahmegrund als typisierten Knoten. Vorhergesagt
+wird die Hauptdiagnose über 30 zusammengefasste Krankheitsklassen. Die
+Vorhersage entsteht in einer Prototyp-Schicht, die jeden Patientengraphen mit 90
+gelernten Archetypen vergleicht; diese werden auf reale Subgraphen aus den
+Trainingsdaten projiziert. Das Modell wird mit einem Knowledge-Graph-GNN
+(GraphCare), einer Ablation desselben Encoders ohne Prototyp-Schicht und einem
+tabellarischen Gradient-Boosting-Verfahren verglichen, alle auf demselben
+subjektbewussten Split.
+
+Drei Ergebnisse stechen hervor. Das tabellarische Verfahren sagt in allen
+Metriken am besten vorher (65,4\,\% Accuracy, 0,607 Macro-F1) gegenüber
+56,3\,\% und 0,508 beim Prototyp-Modell. Die hier verwendete Graphstruktur
+bringt also Interpretierbarkeit statt Genauigkeit. Die Prototyp-Schicht selbst
+ist nahezu kostenlos: Wird sie entfernt, ändert sich die Accuracy um 0,2
+Prozentpunkte. Und \caveat{bei einer Stichprobe von 50 Graphen des Test-Folds} wählen die drei
+Post-hoc-Verfahren nur bei 32\,\% der Graphen denselben wichtigsten Knoten,
+während die Prototyp-Evidenz in 39 dieser 50 Fälle zur Vorhersage passt und ihr
+Abstand richtige von falschen Vorhersagen trennt. Das spricht dafür, die Erklärung im Modell selbst zu
+verankern.
+
+\tbd{Ein drittes Vergleichsverfahren (Methode~C) ist vorgesehen, aber noch nicht
+implementiert. Sobald es vorliegt, hier einen Satz zu seinem Beitrag und seinen
+Ergebnissen ergänzen und die Zahlen oben anpassen, falls sich die Reihenfolge
+ändert.}
+
+\selectlanguage{english}

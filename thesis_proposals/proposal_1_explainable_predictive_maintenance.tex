@@ -1,0 +1,196 @@
+\documentclass[10pt,a4paper]{article}
+
+% ---------- Packages ----------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+
+\usepackage[
+    a4paper,
+    margin=1.8cm,
+    top=1.2cm,
+    bottom=1.4cm,
+    includehead,
+    headheight=1.8cm,
+    headsep=0.4cm
+]{geometry}
+
+\usepackage{graphicx}
+\usepackage[table]{xcolor}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{multicol}
+\usepackage{fancyhdr}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{xurl}
+\usepackage{hyperref}
+
+% ---------- Colors ----------
+\definecolor{mainblue}{RGB}{25,55,110}
+\definecolor{lightgray}{RGB}{245,245,245}
+
+% ---------- Links ----------
+\hypersetup{colorlinks=true, linkcolor=mainblue, urlcolor=mainblue, citecolor=mainblue}
+
+% ---------- Header ----------
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+\fancyhead[L]{\begin{minipage}[c]{0.30\textwidth}\raggedright\includegraphics[width=3.2cm]{\detokenize{uzi_logo.png}}\end{minipage}}
+\fancyhead[C]{\begin{minipage}[c]{0.36\textwidth}\centering\textbf{\small Thesis Proposal}\\[-0.1em]\scriptsize Department of Informatics\end{minipage}}
+\fancyhead[R]{\begin{minipage}[c]{0.30\textwidth}\raggedleft\includegraphics[width=3.0cm]{\detokenize{everlogo.png}}\end{minipage}}
+\fancyfoot[C]{\thepage}
+
+% ---------- Section Formatting ----------
+\titleformat{\section}{\color{mainblue}\normalfont\normalsize\bfseries}{}{0em}{}
+\titlespacing*{\section}{0pt}{0.55em}{0.25em}
+
+% ---------- Compact Lists ----------
+\setlist[itemize]{noitemsep, topsep=1pt, leftmargin=1.2em}
+\setlist[enumerate]{noitemsep, topsep=1pt, leftmargin=1.4em}
+
+% ---------- Tables ----------
+\renewcommand{\arraystretch}{1.05}
+\setlength{\tabcolsep}{5pt}
+\setlength{\parskip}{2pt}
+
+\begin{document}
+
+% ---------- Title ----------
+\begin{center}
+    {\large \textbf{Explainable Deep Learning for Machinery Condition Monitoring:\\[0.1em]Prototype-Based Models vs.\ Post-Hoc Explanations}}\\[0.2em]
+    {\small Industry Collaboration with Everllence SE (formerly MAN Energy Solutions)}
+\end{center}
+
+\vspace{0.2em}
+
+\noindent
+{\small
+\begin{tabularx}{\textwidth}{>{\bfseries}l X >{\bfseries}l X}
+Student: & Necati Furkan Colak & Student ID: & 24746323 \\
+Program: & MSc Computer Science & Semester: & Spring 2026 \\
+Supervisor: & [Supervisor Name] & Co-Supervisor: & [Everllence Contact] \\
+Email: & necatifurkan.colak@uzh.ch & Date: & \today \\
+\end{tabularx}}
+
+\vspace{0.3em}
+\hrule
+\vspace{0.3em}
+
+\section{Abstract}
+
+Deep learning performs strongly in machinery fault diagnosis and remaining-useful-life (RUL) estimation \cite{fink2020}, but its black-box character blocks adoption in maintenance, where engineers must justify costly interventions. Post-hoc explanations (SHAP, LIME \cite{lundberg2017shap}) can be unfaithful to the underlying model \cite{rudin2019}; prototype-based networks are inherently interpretable, justifying predictions by similarity to learned, plottable signal patterns \cite{chen2019protopnet, gee2019prototypes}. This thesis performs a controlled head-to-head comparison of the two paradigms on standard public benchmarks --- CWRU bearing data \cite{smith2015cwru} for fault diagnosis and NASA C-MAPSS \cite{saxena2008cmapss} for health-stage estimation --- measuring both accuracy and explanation faithfulness, complemented by a structured review with Everllence service engineers. The outcome is an evidence-based recommendation on which explanation approach to build into condition-monitoring services, obtained entirely on public data.
+
+\section{Motivation and Gap}
+
+Everllence's engines are continuously instrumented and serviced through the PrimeServ network \cite{everllence2025}; converting sensor data into \emph{trusted} maintenance decisions is the practical bottleneck repeatedly identified in the PHM literature \cite{fink2020}. Existing work on explainable predictive maintenance relies almost exclusively on post-hoc explanation, whose faithfulness is contested \cite{rudin2019}. What is missing is a controlled comparison, on equal data and matched backbones, between post-hoc explanations and inherently interpretable prototype models \cite{chen2019protopnet}: does the interpretability constraint cost accuracy, and are prototype explanations measurably more faithful and more convincing to engineers?
+
+\section{Feasibility}
+
+\begin{itemize}
+    \item The workload is bounded and assembled entirely from validated components: standard datasets, established baselines, published architectures, and defined evaluation metrics.
+    \item CWRU and C-MAPSS are the field's standard benchmarks with published reference pipelines \cite{smith2015cwru, saxena2008cmapss} --- zero data-acquisition risk; single-GPU compute suffices.
+    \item Prototype architectures have open reference implementations \cite{chen2019protopnet}, and the author already builds prototype-based self-explainable networks in his current Master's project.
+    \item No confidential data required; Everllence involvement (expert review) is additive, not blocking.
+\end{itemize}
+
+\section{Research Questions}
+
+\begin{enumerate}
+    \item \textbf{RQ1:} How does a prototype-based temporal network compare in accuracy to tuned 1D-CNN/LSTM baselines on CWRU and C-MAPSS --- how large is the interpretability cost, if any?
+    \item \textbf{RQ2:} Are prototype explanations more faithful than SHAP/saliency explanations of equally accurate black boxes, under deletion/insertion and perturbation metrics?
+    \item \textbf{RQ3:} Which explanation style do Everllence service engineers rate more plausible and actionable in a structured rubric-based review?
+\end{enumerate}
+
+\section{Methodology}
+
+\begin{itemize}
+    \item \textbf{Data/tasks:} CWRU multi-class fault diagnosis (primary); C-MAPSS FD001/FD003 RUL discretised into ordinal health stages (secondary). Published splits; leakage-safe partitioning by unit.
+    \item \textbf{Baselines:} 1D-CNN \cite{li2018rul} and LSTM tuned to literature-level scores, with SHAP \cite{lundberg2017shap} and gradient saliency.
+    \item \textbf{Prototype model:} same CNN backbone + ProtoPNet-style prototype layer \cite{chen2019protopnet}; prototypes projected onto real training windows; two design variants only (prototype count, window length).
+    \item \textbf{Evaluation:} accuracy/macro-F1 and RUL metrics; faithfulness via deletion/insertion and perturbation tests applied uniformly; expert review with 3--5 engineers on anonymised explanation cards, inter-rater agreement reported.
+    \item \textbf{Scope/risk:} no deployment or streaming; if the prototype model underperforms, the measured accuracy--interpretability trade-off is itself the (publishable) result; expert review falls back to supervising engineers if availability fails.
+\end{itemize}
+
+\section{Contribution and Value for Everllence}
+
+(1) A controlled accuracy comparison quantifying the interpretability cost; (2) a metric-based faithfulness comparison of inherent vs.\ post-hoc explanations for condition monitoring; (3) open-source pipeline and prototype libraries. For Everllence: a concrete, evidence-based choice of explanation approach for PrimeServ condition-monitoring services --- with zero confidential-data dependency.
+
+\section{Timeline}
+
+{\small
+\begin{tabularx}{\textwidth}{|p{1.6cm}|X|}
+\hline
+\rowcolor{lightgray} \textbf{Month} & \textbf{Work} \\
+\hline
+1 & Literature review; CWRU/C-MAPSS pipelines; reproduction of baseline reference scores. \\
+\hline
+2 & CNN/LSTM baselines tuned; SHAP and saliency tooling. \\
+\hline
+3 & Prototype model (adapting author's existing codebase); training on CWRU. \\
+\hline
+4 & C-MAPSS health-stage task; full accuracy benchmark (RQ1); faithfulness suite (RQ2). \\
+\hline
+5 & Expert review (RQ3); ablations; result consolidation. \\
+\hline
+6 & Thesis writing, revision, code release, submission. \\
+\hline
+\end{tabularx}}
+
+\section{References}
+
+{\footnotesize
+\renewcommand{\refname}{}\vspace{-3.2em}
+\begin{multicols}{2}
+\raggedright
+\begin{thebibliography}{9}\itemsep0pt
+
+\bibitem{chen2019protopnet}
+C.\ Chen, O.\ Li, D.\ Tao, A.\ Barnett, C.\ Rudin, J.\ K.\ Su.
+\textit{This Looks Like That: Deep Learning for Interpretable Image Recognition}. NeurIPS, 2019.
+
+\bibitem{gee2019prototypes}
+A.\ H.\ Gee et al.
+\textit{Explaining Deep Classification of Time-Series Data with Learned Prototypes}. KHD@IJCAI, 2019.
+
+\bibitem{rudin2019}
+C.\ Rudin.
+\textit{Stop Explaining Black Box Machine Learning Models for High Stakes Decisions}. \textit{Nature Machine Intelligence}, 1:206--215, 2019.
+
+\bibitem{lundberg2017shap}
+S.\ M.\ Lundberg, S.-I.\ Lee.
+\textit{A Unified Approach to Interpreting Model Predictions (SHAP)}. NeurIPS, 2017.
+
+\bibitem{fink2020}
+O.\ Fink et al.
+\textit{Potential, Challenges and Future Directions for Deep Learning in Prognostics and Health Management}. \textit{Eng.\ Appl.\ of AI}, 92:103678, 2020.
+
+\bibitem{li2018rul}
+X.\ Li, Q.\ Ding, J.-Q.\ Sun.
+\textit{Remaining Useful Life Estimation in Prognostics Using Deep Convolution Neural Networks}. \textit{Reliab.\ Eng.\ \& Syst.\ Safety}, 172:1--11, 2018.
+
+\bibitem{saxena2008cmapss}
+A.\ Saxena, K.\ Goebel, D.\ Simon, N.\ Eklund.
+\textit{Damage Propagation Modeling for Aircraft Engine Run-to-Failure Simulation (C-MAPSS)}. PHM, 2008.
+
+\bibitem{smith2015cwru}
+W.\ A.\ Smith, R.\ B.\ Randall.
+\textit{Rolling Element Bearing Diagnostics Using the CWRU Data: A Benchmark Study}. \textit{MSSP}, 64--65:100--131, 2015.
+
+\bibitem{everllence2025}
+Everllence SE. \textit{Company and Product Information}. 2025. \url{https://www.everllence.com/}
+
+\end{thebibliography}
+\end{multicols}}
+
+\vspace{0.4em}
+\noindent
+{\small
+\begin{tabularx}{\textwidth}{X X}
+\textbf{Student Signature:} & \textbf{Supervisor Signature:} \\[1.4em]
+\rule{0.42\textwidth}{0.4pt} & \rule{0.42\textwidth}{0.4pt} \\
+\end{tabularx}}
+
+\end{document}

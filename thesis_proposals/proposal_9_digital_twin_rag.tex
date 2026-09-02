@@ -1,0 +1,215 @@
+\documentclass[10pt,a4paper]{article}
+
+% ---------- Packages ----------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+
+\usepackage[
+    a4paper,
+    margin=1.8cm,
+    top=1.2cm,
+    bottom=1.5cm,
+    includehead,
+    headheight=1.9cm,
+    headsep=0.45cm
+]{geometry}
+
+\usepackage{graphicx}
+\usepackage[table]{xcolor}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{xurl}
+\usepackage{hyperref}
+
+% ---------- Colors ----------
+\definecolor{mainblue}{RGB}{25,55,110}
+\definecolor{lightgray}{RGB}{245,245,245}
+
+% ---------- Links ----------
+\hypersetup{
+    colorlinks=true,
+    linkcolor=mainblue,
+    urlcolor=mainblue,
+    citecolor=mainblue
+}
+
+% ---------- Header ----------
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\fancyhead[L]{%
+    \begin{minipage}[c]{0.32\textwidth}
+        \raggedright
+        \IfFileExists{uzi_logo.png}{\includegraphics[width=3.2cm]{\detokenize{uzi_logo.png}}}{\textbf{UZH}}
+    \end{minipage}
+}
+
+\fancyhead[C]{%
+    \begin{minipage}[c]{0.36\textwidth}
+        \centering
+        \textbf{\small MSc Thesis Proposal}\\[-0.1em]
+        \scriptsize Department of Informatics
+    \end{minipage}
+}
+
+\fancyhead[R]{}
+
+\fancyfoot[C]{\thepage}
+
+% ---------- Section Formatting ----------
+\titleformat{\section}
+  {\color{mainblue}\normalfont\large\bfseries}
+  {}
+  {0em}
+  {}
+
+\titlespacing*{\section}{0pt}{0.6em}{0.25em}
+
+% ---------- Compact Lists ----------
+\setlist[itemize]{noitemsep, topsep=2pt, leftmargin=1.2em}
+\setlist[enumerate]{noitemsep, topsep=2pt, leftmargin=1.4em}
+
+% ---------- Tables ----------
+\renewcommand{\arraystretch}{1.08}
+\setlength{\tabcolsep}{6pt}
+
+\begin{document}
+
+% ---------- Title ----------
+\begin{center}
+    {\Large \textbf{Retrieval-Augmented Interpretation of Industrial Digital Twin\\[0.15em]States for Traceable Operational Decision Support}}
+\end{center}
+
+\vspace{0.35em}
+
+% ---------- Student Information ----------
+\noindent
+\begin{tabularx}{\textwidth}{>{\bfseries}l X >{\bfseries}l X}
+Student Name: & Necati Furkan Colak       & Student ID:     & 24746323 \\
+Program:      & MSc Computer Science      & Semester:       & Spring 2026 \\
+Supervisor:   & [Supervisor Name]         & Co-Supervisor:  & [Co-Supervisor Name] \\
+Email:        & necatifurkan.colak@uzh.ch & Date:           & \today \\
+\end{tabularx}
+
+\vspace{0.5em}
+\hrule
+\vspace{0.5em}
+
+\section{Abstract}
+
+An industrial digital twin holds a structured, continuously updated representation of a running system: sensor values, events, alarms, operating modes, and simulated state variables \cite{grieves2017}. The raw twin output is hard to read. An operator still has to work out why a given state matters, which operating condition it reflects, and which technical documents support an action. Retrieval-augmented generation (RAG) \cite{lewis2020rag} can turn twin state into natural-language explanations that cite the documents they rest on. This thesis builds a RAG prototype that uses the structured twin state as a filter on retrieval, so that the retrieved passages match the current component, mode, and alarm status, and compares it against a state-agnostic RAG pipeline. Evaluation runs on a simplified system with a document corpus, and measures retrieval quality, answer correctness, faithfulness, citation accuracy, and the unsupported-claim rate, together with latency and token cost. The result is a controlled account of whether conditioning retrieval on digital twin state produces more accurate and more traceable explanations of operational data.
+
+\section{Background and Motivation}
+
+A digital twin emits a stream of structured state: readings, mode changes, and alarms tied to specific components. Operators and engineers read this stream to decide what is happening and what to do. The numbers alone do not say which operating condition they reflect or which manual section, alarm description, or troubleshooting step applies. Retrieval-augmented generation can close that step by pulling the relevant documentation and producing an explanation with citations an engineer can check. The open design question is how the structured state should steer retrieval, rather than treating the query as plain text.
+
+\section{Research Gap}
+
+Work on language-model interfaces to structured and operational data shows that conversational access is workable. What is missing is a controlled measurement of how structured twin state should shape retrieval, and how much a state-aware retrieval step improves results over generic semantic retrieval. Broad, unfiltered retrieval is known to lower faithfulness in general RAG systems \cite{gao2024survey, es2024ragas}, which is a direct reason to study retrieval scope in this setting instead of assuming that more retrieved context is better.
+
+\section{Research Objective}
+
+Build a RAG prototype that filters retrieval using digital twin state metadata, and compare it against a state-agnostic RAG pipeline on the same corpus and questions.
+
+\section{Research Questions}
+
+\begin{enumerate}
+    \item \textbf{RQ1 (primary):} To what extent does digital-twin-state-aware retrieval improve the accuracy and traceability of explanations generated from industrial operational data?
+    \item \textbf{RQ2:} Which twin-state metadata fields (component, operating mode, sensor status, alarm) improve retrieval quality most?
+    \item \textbf{RQ3:} Does state-aware retrieval reduce the rate of unsupported claims, and what does it cost in latency and tokens?
+\end{enumerate}
+
+\section{Proposed Methodology}
+
+\begin{itemize}
+    \item \textbf{Data:} A simplified industrial system or an open simulation environment. Each observation carries a structured twin state with fields for component, operating mode, sensor status, alarm or anomaly, timestamp, and state confidence. A corpus of 100 to 250 technical document sections (manuals, operating guidelines, alarm descriptions, troubleshooting instructions) supplies the evidence. No proprietary data is required.
+    \item \textbf{Architecture:} A single narrow RAG pipeline; no multi-agent design is needed. Steps: twin-state normalization, query formulation from the current state, metadata-filtered hybrid retrieval (BM25 and dense), reranking, and citation-grounded generation.
+    \item \textbf{Baselines:} LLM without retrieval; standard vector RAG; digital-twin-state-aware RAG.
+    \item \textbf{Evaluation:} Recall@k and MRR; context precision and recall; answer correctness; faithfulness and citation accuracy \cite{es2024ragas}; unsupported-claim rate; latency and token consumption. A benchmark of 60 to 100 questions is drafted with an LLM and verified by hand; a small expert check covers 15 to 20 examples. Paired significance tests compare the state-aware pipeline against the baselines.
+\end{itemize}
+
+\section{Expected Contribution}
+
+\begin{enumerate}
+    \item \textbf{Academic:} A controlled analysis of structured digital twin state used as retrieval context, and of how retrieval scope affects faithfulness in this setting.
+    \item \textbf{Technical:} A twin-state-aware, metadata-filtered RAG prototype with a reusable evaluation harness.
+    \item \textbf{Practical:} A method that turns raw digital twin output into cited, checkable explanations for operational decisions.
+\end{enumerate}
+
+\section{Scope and Limitations}
+
+The thesis does not build a real-time, bidirectional twin that controls a physical system. Predictive maintenance models, maintenance optimization, and autonomous control are out of scope. The study uses one system, one document corpus, and three baselines. The twin is a structured digital state representation, not a 3D model, so no special hardware or live plant connection is needed. Python, a vector database, an LLM API, and open or synthetic data are sufficient.
+
+\section{Feasibility}
+
+Because the twin is represented as structured state rather than a physical model, corpus assembly and experiments fit a single student. The corpus is public or synthetic, the pipeline uses standard components, and the question set is small enough to verify by hand. The workload is bounded: about 100 questions across three pipeline variants.
+
+\section{Preliminary Work Plan}
+
+\begin{tabularx}{\textwidth}{|p{1.9cm}|X|}
+\hline
+\rowcolor{lightgray}
+\textbf{Period} & \textbf{Planned Work} \\
+\hline
+Month 1 & Literature review; benchmark design. \\
+\hline
+Month 2 & Twin-state dataset and document corpus preparation. \\
+\hline
+Month 3 & Baseline RAG implementation. \\
+\hline
+Month 4 & State-aware RAG implementation. \\
+\hline
+Month 5 & Experimental evaluation; small expert check. \\
+\hline
+Month 6 & Analysis; thesis writing; final presentation. \\
+\hline
+\end{tabularx}
+
+\begingroup
+\renewcommand{\refname}{\texorpdfstring{\color{mainblue}}{}Preliminary References}
+\scriptsize
+\begin{thebibliography}{9}
+\setlength{\itemsep}{0pt}
+
+\bibitem{grieves2017}
+M.\ Grieves and J.\ Vickers.
+\textit{Digital Twin: Mitigating Unpredictable, Undesirable Emergent Behavior in Complex Systems}.
+In Transdisciplinary Perspectives on Complex Systems, Springer, 2017.
+
+\bibitem{lewis2020rag}
+P.\ Lewis et al.
+\textit{Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks}.
+NeurIPS, 2020.
+
+\bibitem{gao2024survey}
+Y.\ Gao et al.
+\textit{Retrieval-Augmented Generation for Large Language Models: A Survey}.
+arXiv:2312.10997, 2023.
+
+\bibitem{es2024ragas}
+S.\ Es et al.
+\textit{RAGAS: Automated Evaluation of Retrieval Augmented Generation}.
+EACL, 2024.
+
+\bibitem{ragindustry2025}
+\textit{Retrieval-Augmented Generation in Industry: An Interview Study on Use Cases, Requirements, Challenges, and Evaluation}.
+arXiv:2508.14066, 2025.
+
+\end{thebibliography}
+\endgroup
+
+\vspace{0.1em}
+
+\noindent
+\begin{tabularx}{\textwidth}{X X}
+\textbf{Student Signature:} & \textbf{Supervisor Signature:} \\[0.9em]
+\rule{0.42\textwidth}{0.4pt} & \rule{0.42\textwidth}{0.4pt} \\
+\end{tabularx}
+
+\end{document}

@@ -1,0 +1,209 @@
+\documentclass[10pt,a4paper]{article}
+
+% ---------- Packages ----------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+
+\usepackage[
+    a4paper,
+    margin=1.8cm,
+    top=1.2cm,
+    bottom=1.5cm,
+    includehead,
+    headheight=1.9cm,
+    headsep=0.45cm
+]{geometry}
+
+\usepackage{graphicx}
+\usepackage[table]{xcolor}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{xurl}
+\usepackage{hyperref}
+
+% ---------- Colors ----------
+\definecolor{mainblue}{RGB}{25,55,110}
+\definecolor{lightgray}{RGB}{245,245,245}
+
+% ---------- Links ----------
+\hypersetup{
+    colorlinks=true,
+    linkcolor=mainblue,
+    urlcolor=mainblue,
+    citecolor=mainblue
+}
+
+% ---------- Header ----------
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\fancyhead[L]{%
+    \begin{minipage}[c]{0.30\textwidth}
+        \raggedright
+        \IfFileExists{uzi_logo.png}{\includegraphics[width=3.2cm]{\detokenize{uzi_logo.png}}}{\textbf{UZH}}
+    \end{minipage}
+}
+
+\fancyhead[C]{%
+    \begin{minipage}[c]{0.36\textwidth}
+        \centering
+        \textbf{\small Thesis Proposal}\\[-0.1em]
+        \scriptsize Department of Informatics
+    \end{minipage}
+}
+
+\fancyhead[R]{%
+    \begin{minipage}[c]{0.30\textwidth}
+        \raggedleft
+        \IfFileExists{everlogo.png}{\includegraphics[width=3.0cm]{\detokenize{everlogo.png}}}{\textbf{Everllence}}
+    \end{minipage}
+}
+
+\fancyfoot[C]{\thepage}
+
+% ---------- Section Formatting ----------
+\titleformat{\section}
+  {\color{mainblue}\normalfont\large\bfseries}
+  {}
+  {0em}
+  {}
+
+\titlespacing*{\section}{0pt}{0.6em}{0.25em}
+
+% ---------- Compact Lists ----------
+\setlist[itemize]{noitemsep, topsep=2pt, leftmargin=1.2em}
+\setlist[enumerate]{noitemsep, topsep=2pt, leftmargin=1.4em}
+
+% ---------- Tables ----------
+\renewcommand{\arraystretch}{1.08}
+\setlength{\tabcolsep}{6pt}
+
+\begin{document}
+
+% ---------- Title ----------
+\begin{center}
+    {\Large \textbf{Cross-Lingual Retrieval Strategies for Question Answering over\\[0.15em]Multilingual Industrial Technical Documentation}}\\[0.3em]
+    {\normalsize Industry Collaboration with Everllence SE (formerly MAN Energy Solutions)}
+\end{center}
+
+\vspace{0.35em}
+
+% ---------- Student Information ----------
+\noindent
+\begin{tabularx}{\textwidth}{>{\bfseries}l X >{\bfseries}l X}
+Student Name: & Necati Furkan Colak       & Student ID:    & 24746323 \\
+Program:      & MSc Computer Science      & Semester:      & Spring 2026 \\
+Supervisor:   & [Supervisor Name]         & Co-Supervisor: & [Everllence Contact] \\
+Email:        & necatifurkan.colak@uzh.ch & Date:          & \today \\
+\end{tabularx}
+
+\vspace{0.5em}
+\hrule
+\vspace{0.5em}
+
+\section{Abstract}
+
+Industrial documentation in European companies mixes languages. Manuals, standards, and procedures exist in English, German, and other languages, and engineers ask questions in their own language while the evidence sits in another. Retrieval-augmented generation (RAG) systems are usually built and tested in English, and the existing multilingual studies use general-domain text rather than technical documents \cite{chirkova2024}. Multilingual embedding models make direct cross-lingual retrieval practical \cite{wang2024}, and machine translation makes query or document translation cheap, but there is no measurement of which option works on technical text. This thesis measures which cross-lingual strategy answers technical questions best when question language and document language differ: translating the query and retrieving in the document language, retrieving directly with multilingual embeddings, or translating documents at indexing time. The test corpus consists of public technical documents that are officially published in several languages, which gives aligned evidence across languages and makes correctness checkable. Evaluation covers retrieval quality, answer correctness, faithfulness, and terminology accuracy per language pair. The outcome is direct guidance for building document assistants in organizations that work in more than one language.
+
+\section{Motivation and Problem Statement}
+
+\textbf{Operational context.} A German engineer asks about a torque specification, and the current manual revision exists only in English. A technician in Denmark searches for a safety procedure that was translated years ago with outdated terms. In European industry, a language mismatch between query and evidence is the normal case, not the exception. An assistant that only retrieves within one language returns nothing or, worse, an outdated in-language document while the correct answer exists in another language.
+
+\textbf{What is unknown.} Multilingual RAG has been studied on general-domain text: Chirkova et al.\ tested RAG across many languages and reported that gains from in-language retrieval were small \cite{chirkova2024}. Technical language behaves differently. Domain terms translate inconsistently, abbreviations stay in the source language, and standards use fixed phrasing, so results from general-domain text do not carry over. No controlled study measures the three candidate strategies against each other on technical documentation where the correct answer can be verified across languages.
+
+\textbf{Why this is testable.} Public bodies publish identical technical and regulatory documents in several languages, for example EU machinery and safety directives, harmonized standard summaries, and multilingual equipment manuals. These parallel corpora give aligned gold evidence: the same clause exists in every language, so a retrieval miss is attributable to the strategy rather than to missing content. This makes the comparison clean and keeps the study independent of any single company.
+
+\section{Research Questions}
+
+\begin{enumerate}
+    \item \textbf{RQ1 (primary):} Which strategy gives the highest answer correctness when the question language differs from the document language: query translation, direct multilingual dense retrieval, or document translation at indexing time?
+    \item \textbf{RQ2:} How does performance vary across language pairs and question types (factual, procedural, numerical)?
+    \item \textbf{RQ3:} Where do errors originate: retrieval misses, wrong terminology in the generated answer, or reasoning errors after correct retrieval?
+\end{enumerate}
+
+\section{Methodology}
+
+\begin{itemize}
+    \item \textbf{Literature review:} RAG foundations \cite{lewis2020rag}; multilingual retrieval and RAG \cite{chirkova2024}; multilingual embedding models \cite{wang2024}; evaluation \cite{es2024ragas, ragindustry2025}.
+    \item \textbf{Data:} 20 to 50 public technical documents available in at least two languages, for example the English and German versions of EU machinery, pressure equipment, and product safety legislation from EUR-Lex, plus multilingual equipment manuals. These texts are long, freely downloadable, and published in officially aligned language versions, so corpus assembly needs no data owner. A QA set of 150 to 200 questions is written in two query languages, with gold answers and aligned evidence passages in each document language; questions are drafted with an LLM, fully verified by hand, and split into development and held-out test sets.
+    \item \textbf{Systems:} One fixed generation setup and three retrieval strategies: (a) query translation followed by monolingual retrieval, (b) direct multilingual dense retrieval (for example multilingual E5 \cite{wang2024}), and (c) document translation at indexing time followed by monolingual retrieval. Each strategy runs as a hybrid BM25 and dense pipeline. One GPT-4-class API model (for example via Azure OpenAI) and one open-weight model check that findings hold across model sizes.
+    \item \textbf{Evaluation:} Retrieval recall@k and MRR against aligned gold passages; answer correctness via an LLM-as-judge validated against human ratings on a subset; faithfulness \cite{es2024ragas}; terminology accuracy checked against a small bilingual term list built with a domain expert; paired significance tests per language pair; an error taxonomy separating retrieval, terminology, and reasoning errors (RQ3).
+\end{itemize}
+
+\section{Expected Contribution}
+
+\begin{enumerate}
+    \item \textbf{For research:} The first controlled comparison of cross-lingual retrieval strategies on technical documentation with aligned multilingual gold evidence. The work extends the general-domain findings of \cite{chirkova2024} to the technical domain, where terminology and fixed phrasing change the retrieval problem.
+    \item \textbf{For practice:} Direct guidance on the cheapest strategy that works for multilingual document assistants, a recurring decision in European engineering companies with mixed-language archives.
+    \item \textbf{Open deliverables:} The aligned multilingual technical QA benchmark, prompts, and evaluation code. The corpus is public, so the study can be reproduced and extended to further languages.
+\end{enumerate}
+
+\section{Proposed Timeline (6 months)}
+
+\begin{tabularx}{\textwidth}{|p{2.6cm}|X|}
+\hline
+\rowcolor{lightgray}
+\textbf{Period} & \textbf{Planned Work} \\
+\hline
+Month 1 & Literature review; assembly of the parallel document corpus. \\
+\hline
+Month 2 & QA set construction and human verification; baseline pipeline. \\
+\hline
+Month 3 & Implementation of the three retrieval strategies. \\
+\hline
+Month 4 & Full experimental runs; analysis per language pair and question type (RQ1, RQ2). \\
+\hline
+Month 5 & Error analysis with terminology checks (RQ3). \\
+\hline
+Month 6 & Thesis writing; code and benchmark release; final presentation. \\
+\hline
+\end{tabularx}
+
+\begingroup
+\renewcommand{\refname}{\texorpdfstring{\color{mainblue}}{}Preliminary References}
+\scriptsize
+\begin{thebibliography}{9}
+\setlength{\itemsep}{0pt}
+
+\bibitem{chirkova2024}
+N.\ Chirkova et al.
+\textit{Retrieval-Augmented Generation in Multilingual Settings}.
+Workshop on Towards Knowledgeable Language Models (KnowLLM) at ACL, 2024.
+
+\bibitem{wang2024}
+L.\ Wang et al.
+\textit{Multilingual E5 Text Embeddings: A Technical Report}.
+arXiv:2402.05672, 2024.
+
+\bibitem{lewis2020rag}
+P.\ Lewis et al.
+\textit{Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks}.
+NeurIPS, 2020.
+
+\bibitem{es2024ragas}
+S.\ Es et al.
+\textit{RAGAS: Automated Evaluation of Retrieval Augmented Generation}.
+EACL, 2024.
+
+\bibitem{ragindustry2025}
+\textit{Retrieval-Augmented Generation in Industry: An Interview Study on Use Cases, Requirements, Challenges, and Evaluation}.
+arXiv:2508.14066, 2025.
+
+\end{thebibliography}
+\endgroup
+
+\vspace{0.1em}
+
+\noindent
+\begin{tabularx}{\textwidth}{X X}
+\textbf{Student Signature:} & \textbf{Supervisor Signature:} \\[0.9em]
+\rule{0.42\textwidth}{0.4pt} & \rule{0.42\textwidth}{0.4pt} \\
+\end{tabularx}
+
+\end{document}

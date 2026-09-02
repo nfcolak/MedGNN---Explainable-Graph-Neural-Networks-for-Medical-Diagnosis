@@ -1,0 +1,31 @@
+,Acute kidney failure,Acute pharyngitis,Acute upper respiratory infection,Alcohol abuse with intoxication,Anemia,Anxiety disorder,Back or spine pain,Cardiovascular risk factor,Dehydration,Diabetes mellitus,End stage renal disease,Epilepsy,GI bleed,Head injury,Heart failure,Hypokalemia,Hypotension,Hypothyroidism,Laceration w/o fb of l idx fngr w/o damage to nail,Limb injury or pain,Lower respiratory disease,Major depressive disorder,Multiple fractures of ribs,Non-ST elevation (NSTEMI) myocardial infarction,Sepsis,Skin or soft-tissue infection,UTI or pyelonephritis,Unsp intestnl obst,Unspecified asthma with (acute) exacerbation,Unspecified atrial fibrillation
+Acute kidney failure,61,0,0,0,4,0,1,3,4,3,12,1,1,0,6,7,4,1,0,1,2,1,1,0,6,0,5,1,0,3
+Acute pharyngitis,1,110,33,2,1,1,3,2,2,0,0,0,0,0,0,2,0,2,0,4,1,0,0,0,2,2,0,0,0,0
+Acute upper respiratory infection,0,5,43,0,0,3,0,2,0,5,0,0,0,0,0,0,0,2,0,2,5,1,0,0,0,0,1,0,12,1
+Alcohol abuse with intoxication,0,0,1,275,0,9,3,1,7,5,0,3,1,8,0,2,2,0,2,1,1,12,4,0,1,1,0,1,4,1
+Anemia,5,0,2,1,75,2,0,1,5,1,3,0,5,0,1,1,0,1,0,0,3,0,0,1,1,1,3,1,0,1
+Anxiety disorder,0,0,2,3,0,97,0,2,4,2,0,1,0,1,0,1,0,4,2,2,0,10,0,0,0,1,0,0,5,1
+Back or spine pain,5,0,17,1,5,19,538,37,6,20,3,3,3,33,2,6,0,10,2,56,4,0,34,0,3,13,22,3,5,5
+Cardiovascular risk factor,15,0,29,3,9,29,10,322,27,25,11,5,6,12,17,17,11,20,3,36,15,2,17,3,3,14,22,13,6,47
+Dehydration,8,0,10,1,0,6,2,9,43,6,0,2,1,2,1,4,2,7,1,0,3,1,0,0,6,0,7,2,2,3
+Diabetes mellitus,13,0,6,2,7,6,2,12,5,254,8,2,2,0,9,9,8,4,0,13,6,0,0,5,1,20,15,6,5,5
+End stage renal disease,7,0,0,0,1,1,0,0,0,0,26,0,0,0,2,3,0,0,0,0,1,0,2,0,0,1,0,0,0,0
+Epilepsy,0,1,2,0,0,4,2,1,3,2,1,71,1,0,0,0,1,1,0,1,1,1,0,0,0,1,0,2,0,1
+GI bleed,9,0,2,0,21,2,2,3,11,0,2,0,201,1,1,5,8,3,0,1,4,0,0,0,4,0,6,9,2,5
+Head injury,1,1,2,9,2,19,20,9,9,12,0,4,3,254,3,2,3,4,40,24,3,1,57,0,0,7,0,0,3,10
+Heart failure,3,0,0,0,2,0,0,5,0,2,2,0,0,0,56,1,1,0,0,0,5,0,0,2,0,0,0,0,2,4
+Hypokalemia,11,0,2,1,4,2,0,5,7,4,7,0,0,0,4,63,1,1,0,0,2,1,5,0,2,1,2,2,0,0
+Hypotension,1,0,1,1,1,1,0,2,7,1,3,0,0,1,1,1,12,0,0,0,3,1,2,0,6,0,1,0,0,1
+Hypothyroidism,0,0,3,1,0,4,2,2,3,4,0,1,2,0,0,1,1,34,0,3,0,0,1,1,0,1,0,0,0,1
+Laceration w/o fb of l idx fngr w/o damage to nail,0,0,0,0,0,1,0,2,1,3,0,0,0,7,0,0,0,3,91,9,0,1,0,0,0,3,1,0,0,0
+Limb injury or pain,8,1,27,5,11,12,29,28,11,30,17,4,0,31,8,5,2,8,42,516,8,0,15,2,2,52,11,1,13,4
+Lower respiratory disease,8,1,39,2,5,2,0,12,5,7,6,4,1,2,25,9,4,4,1,3,131,0,7,2,17,11,12,10,29,10
+Major depressive disorder,1,1,2,4,1,22,0,2,1,1,2,0,0,3,0,1,0,1,2,2,1,217,0,0,0,0,1,1,1,0
+Multiple fractures of ribs,0,0,1,0,2,0,5,1,0,1,0,1,0,12,0,0,0,0,0,2,2,0,37,0,0,1,0,1,1,3
+Non-ST elevation (NSTEMI) myocardial infarction,2,0,0,0,3,0,0,5,1,2,0,0,0,0,5,1,0,0,0,0,2,0,1,45,3,0,1,0,1,0
+Sepsis,2,0,0,1,1,0,0,0,1,1,0,0,0,0,1,0,1,0,0,0,4,0,0,0,26,1,1,0,0,1
+Skin or soft-tissue infection,2,0,6,3,5,1,6,6,2,25,0,4,4,2,3,4,1,6,2,44,17,0,0,0,8,216,14,4,2,2
+UTI or pyelonephritis,19,2,15,0,7,6,6,23,22,17,4,1,6,5,3,6,4,10,0,12,31,1,4,2,19,10,161,7,2,8
+Unsp intestnl obst,3,0,0,0,1,1,0,2,4,6,0,1,2,0,0,4,1,2,0,0,3,0,0,0,4,1,7,70,0,5
+Unspecified asthma with (acute) exacerbation,0,0,12,0,0,2,0,2,1,0,1,0,0,0,1,1,0,1,0,1,9,0,0,0,0,1,1,0,79,0
+Unspecified atrial fibrillation,4,0,0,1,1,0,1,21,4,7,1,1,1,3,13,4,2,1,1,0,8,0,4,0,5,1,0,2,2,91

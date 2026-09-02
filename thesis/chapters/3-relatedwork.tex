@@ -1,0 +1,91 @@
+\chapter{Related Work}\label{relatedwork}
+
+This project sits at the intersection of three lines of research: graph neural
+networks for clinical prediction from EHR data, explainability methods for GNNs,
+and intrinsicly explainable models that build interpretability into the prediction itself. This chapter reviews each line and then positions the proposed model
+against the closest prior work.
+
+\section{Graph Neural Networks for EHR Prediction}
+
+A patient record is relational by nature. A single visit ties a patient to
+diagnoses, medications, laboratory results, and vital signs, and a patient
+accumulates many such visits over time. This rich and heterogeneous structure has made GNNs a common
+choice for clinical prediction, and a recent survey catalogues their use across
+mortality prediction, readmission, and diagnosis~\cite{ossboll2024gnn}.
+
+The reviewed work differs mainly in how the graph is built and whether time is
+modelled. DynaGraph learns a dynamic graph over the sequence of visits and uses
+visit-level attention to capture disease progression, reporting gains over a
+range of baselines on ICU cohorts~\cite{mesinovic2026dynagraph}. GraphCare takes
+a different route: it extracts a personalised knowledge graph for each patient
+from large language models and external biomedical knowledge bases, then trains
+a bi-attention graph network on the resulting structure~\cite{jiang2024graphcare}.
+Both inject or learn structure beyond the raw record, and both report attention
+weights as a form of interpretability. However, neither model extracts a concrete, minimal subgraph that drove the prediction, which is the level of explanation a clinician needs to verify a conclusion of a classifier model. 
+
+\section{Explainability in Graph Neural Networks}
+
+Because the mechanism of most GNNs remain ambiguous, a separate body of work develops methods to
+explain them after training. A taxonomic survey groups these post-hoc methods
+into instance-level and model-level approaches, with instance-level techniques further split into gradient-based, perturbation-based, decomposition-based, and surrogate families~\cite{yuan2022explainability}. GNNExplainer is a widely used instance-level method that learns an edge mask maximizing mutual information
+with the prediction.
+
+Two problems limit these methods in a clinical setting. The explanation is
+produced by a mechanism separate from the model, so it is not guaranteed to
+accurately reflect the reasoning that led to the prediction. Their behaviour is also
+uneven: the GraphXAI benchmark introduces a synthetic generator with
+ground-truth importance masks and four evaluation metrics, and shows that many
+post-hoc explainers degrade on larger or denser graphs and can fail to preserve
+fairness properties~\cite{agarwal2023graphxai}. This project uses the same
+GraphXAI framework, but applies it to compare inherent explainability layers of the chosen models on real clinical graphs where no ground-truth mask exists.
+
+\section{Prototype-Based Self-Explaining Models}
+
+An alternative to post-hoc explanation is to make the model interpretable by
+construction. Prototype learning follows case-based reasoning: a new input is
+classified by comparing it to a set of learned representative examples. ProtoPNet
+introduced this idea for image recognition with a prototype layer, and ProtGNN
+extended it to graphs, using a Monte Carlo Tree Search to project each prototype
+onto a real subgraph~\cite{zhang2022protgnn}. ProtGNN was evaluated on molecular
+datasets such as MUTAG, so its behaviour on clinical data was left open.
+
+ProtoEHR is the closest prior work to this project. It brings hierarchical
+prototype learning to EHR data, organising prototypes at the code, visit, and
+patient levels~\cite{cai2025protoehr}. Two gaps remain. ProtoEHR does not
+identify which parts of a patient graph drive a prediction, and it does not
+compare its built-in explanations against post-hoc methods. The model proposed
+here targets both gaps by pairing a prototype layer with GraphXAI node attribution on intra-patient graphs.
+
+\section{Positioning}
+
+Table~\ref{tab:positioning} places the proposed models against their closest
+methods. The combination that distinguishes this work is a prototype-based
+classifier over intra-patient EHR graphs that also produces node-level
+explanations and evaluates them against post-hoc explainers on the same data.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Positioning of the proposed model against the closest prior work.}
+  \label{tab:positioning}
+  \begin{tabular}{lllcc}
+    \toprule
+    Method & Interpretability & Domain & Node-level & Post-hoc \\
+           & style            &        & explanation & comparison \\
+    \midrule
+    ProtGNN~\cite{zhang2022protgnn}        & Prototypes            & Molecular & Subgraph & No \\
+    ProtoEHR~\cite{cai2025protoehr}        & Hierarchical prot.\   & EHR       & No       & No \\
+    GraphCare~\cite{jiang2024graphcare}    & Bi-attention (KG)     & EHR       & No       & No \\
+    DynaGraph~\cite{mesinovic2026dynagraph}& Visit attention       & EHR (ICU) & No       & No \\
+    Method~C \tbd{name}                    & \tbd{}                & \tbd{}    & \tbd{}   & \tbd{} \\
+    This work                              & Prototypes            & EHR (ED)  & Yes      & Yes \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The prototype family (ProtGNN, ProtoEHR) provides case-based reasoning but stops
+short of pointing to the clinical entities behind a decision. The attention-based
+EHR models (GraphCare, DynaGraph) expose attention weights but were not built to
+compare those weights against independent post-hoc explainers. By combining a
+prototype layer with GraphXAI node attribution on intra-patient graphs, this
+project addresses the gap left by both groups.

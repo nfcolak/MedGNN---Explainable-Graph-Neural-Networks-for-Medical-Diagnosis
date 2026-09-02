@@ -46,3 +46,17 @@ data/graphs/
 # Obsidian docs-vault (per-machine state only)
 docs-vault/.obsidian/workspace*
 docs-vault/.obsidian/cache
+
+# Heavy local archives (regenerate from source data, never commit)
+data.zip
+*.zip
+
+# Superseded UZH thesis template copy (the live version is thesis/)
+Master Project_Template./
+Master Project_Template..zip
+
+# Stray file from an unrelated project
+job_postings_*.xlsx
+
+# Agent-local settings
+.claude/

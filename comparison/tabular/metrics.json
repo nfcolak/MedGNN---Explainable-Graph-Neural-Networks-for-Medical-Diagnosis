@@ -1,0 +1,29 @@
+{
+  "majority": {
+    "accuracy": 0.12111051502145923,
+    "balanced_acc": 0.03333333333333333,
+    "macro_f1": 0.007201818399330063,
+    "micro_f1": 0.12111051502145923,
+    "top3_acc": 0.3362392703862661,
+    "top5_acc": 0.460568669527897,
+    "class": "Limb injury or pain"
+  },
+  "xgboost": {
+    "accuracy": 0.653969957081545,
+    "balanced_acc": 0.6173198669835637,
+    "macro_f1": 0.6065981384201323,
+    "micro_f1": 0.653969957081545,
+    "top3_acc": 0.8594420600858369,
+    "top5_acc": 0.9218079399141631,
+    "best_iteration": 573
+  },
+  "meta": {
+    "split": "comparison/canonical_split.json",
+    "n_train": 59607,
+    "n_val": 7448,
+    "n_test": 7456,
+    "n_classes": 30,
+    "n_features": 614,
+    "csv": "data/merged_ed.csv"
+  }
+}

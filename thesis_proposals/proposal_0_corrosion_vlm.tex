@@ -1,0 +1,209 @@
+\documentclass[10pt,a4paper]{article}
+
+% ---------- Packages ----------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+
+\usepackage[
+    a4paper,
+    margin=1.8cm,
+    top=1.2cm,
+    bottom=1.4cm,
+    includehead,
+    headheight=1.8cm,
+    headsep=0.4cm
+]{geometry}
+
+\usepackage{graphicx}
+\usepackage[table]{xcolor}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{multicol}
+\usepackage{fancyhdr}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{xurl}
+\usepackage{hyperref}
+
+% ---------- Colors ----------
+\definecolor{mainblue}{RGB}{25,55,110}
+\definecolor{lightgray}{RGB}{245,245,245}
+
+% ---------- Links ----------
+\hypersetup{colorlinks=true, linkcolor=mainblue, urlcolor=mainblue, citecolor=mainblue}
+
+% ---------- Header ----------
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+\fancyhead[L]{\begin{minipage}[c]{0.30\textwidth}\raggedright\includegraphics[width=3.2cm]{\detokenize{uzi_logo.png}}\end{minipage}}
+\fancyhead[C]{\begin{minipage}[c]{0.36\textwidth}\centering\textbf{\small Thesis Proposal}\\[-0.1em]\scriptsize Department of Informatics\end{minipage}}
+\fancyhead[R]{\begin{minipage}[c]{0.30\textwidth}\raggedleft\includegraphics[width=3.0cm]{\detokenize{everlogo.png}}\end{minipage}}
+\fancyfoot[C]{\thepage}
+
+% ---------- Section Formatting ----------
+\titleformat{\section}{\color{mainblue}\normalfont\normalsize\bfseries}{}{0em}{}
+\titlespacing*{\section}{0pt}{0.55em}{0.25em}
+
+% ---------- Compact Lists ----------
+\setlist[itemize]{noitemsep, topsep=1pt, leftmargin=1.2em}
+\setlist[enumerate]{noitemsep, topsep=1pt, leftmargin=1.4em}
+
+% ---------- Tables ----------
+\renewcommand{\arraystretch}{1.05}
+\setlength{\tabcolsep}{5pt}
+\setlength{\parskip}{2pt}
+
+\begin{document}
+
+% ---------- Title ----------
+\begin{center}
+    {\large \textbf{Corrosion Severity Grading on Industrial Machinery:\\[0.1em]Zero-/Few-Shot Vision-Language Models vs.\ Supervised CNN Baselines}}\\[0.2em]
+    {\small Industry Collaboration with Everllence SE (formerly MAN Energy Solutions)}
+\end{center}
+
+\vspace{0.2em}
+
+\noindent
+{\small
+\begin{tabularx}{\textwidth}{>{\bfseries}l X >{\bfseries}l X}
+Student: & Necati Furkan Colak & Student ID: & 24746323 \\
+Program: & MSc Computer Science & Semester: & Spring 2026 \\
+Supervisor: & [Supervisor Name] & Co-Supervisor: & [Everllence Contact] \\
+Email: & necatifurkan.colak@uzh.ch & Date: & \today \\
+\end{tabularx}}
+
+\vspace{0.3em}
+\hrule
+\vspace{0.3em}
+
+\section{Abstract}
+
+Corrosion is a dominant degradation mechanism for the marine and stationary machinery Everllence services through its PrimeServ network \cite{everllence2025}. Supervised CNN-based corrosion detection is well established \cite{atha2018, shiptech2024}, but it demands abundant labels per component and coating, and it answers only ``is there corrosion?''. The economically relevant task, \emph{severity grading} against standard scales (ASTM D610 \cite{astmd610}), suffers from fuzzy grade boundaries and scarce labels \cite{rios2025astm}. This thesis asks one focused question: \emph{can vision-language models (VLMs), operating zero-/few-shot with natural-language justifications, grade severity competitively with supervised CNNs trained on the same data?} On public datasets with severity annotations \cite{ameli2023bridge, chliveros2021mavecodd}, a fine-tuned CNN (with a label-efficiency curve at 100\%/50\%/10\% of labels) is compared against Qwen2.5-VL \cite{bai2025qwen25vl} zero-/few-shot and a CLIP reference \cite{radford2021clip}, using ordinal metrics and a boundary confusion analysis, plus an expert review of VLM justifications by Everllence surveyors.
+
+\section{Motivation and Gap}
+
+Everllence assets operate in salt-laden, thermally cycled environments where corrosion drives maintenance scheduling; inspection imagery accumulates in service reports but assessment is manual and subjective. Supervised CNNs work \cite{shiptech2024, atha2018} yet each component geometry effectively demands new annotations --- the adoption blocker for a service organisation with heterogeneous, confidential imagery. VLMs offer a different cost profile: zero-/few-shot operation and justification text. Zero-shot industrial inspection is an established research line \cite{jeong2023winclip, gu2024anomalygpt}, and recent surveys flag reasoning-oriented corrosion assessment as open territory \cite{yao2025survey}: existing foundation-model work on corrosion is segmentation-oriented \cite{chai2024corrosionsam}. Whether a VLM can grade \emph{severity} competitively with a CNN on equal data has not been measured; that single measurement --- with a label-efficiency analysis quantifying when the zero-label regime wins --- is the thesis.
+
+\section{Feasibility}
+
+\begin{itemize}
+    \item The supervised half is a validated, bounded workload: applied studies of the same shape (YOLOv8 vs.\ Detectron2 on ship-hull plates) are published at similar scope \cite{shiptech2024}.
+    \item All quantitative work on public data: bridge corrosion with condition ratings \cite{ameli2023bridge}, ship-hull dry-dock imagery \cite{chliveros2021mavecodd}; a small non-confidential Everllence sample serves a qualitative case study only.
+    \item Methods are mature: CNN fine-tuning is routine; Qwen2.5-VL is open-weight with documented inference tooling \cite{bai2025qwen25vl}; no VLM fine-tuning in core scope (LoRA optional). Single-GPU + Azure compute suffices.
+\end{itemize}
+
+\section{Research Questions}
+
+\begin{enumerate}
+    \item \textbf{RQ1:} How close does a zero-/few-shot VLM come to a supervised CNN on a common four-grade severity scale --- and how does the gap change as CNN training labels shrink (label efficiency)?
+    \item \textbf{RQ2:} Within a fixed prompt budget, how much do few-shot exemplars and region cropping improve VLM grading accuracy and run-to-run stability?
+    \item \textbf{RQ3:} Are VLM errors distributed differently at fuzzy grade boundaries (ordinal distance of mistakes), and do Everllence surveyors judge the VLM's justifications plausible?
+\end{enumerate}
+
+\section{Methodology}
+
+\begin{itemize}
+    \item \textbf{Data:} bridge corrosion dataset with native condition ratings \cite{ameli2023bridge} as primary benchmark; marine sets \cite{chliveros2021mavecodd} as transfer/case-study material. Labels harmonised once onto an ASTM D610-aligned four-grade scale (documented mapping); source-wise splits.
+    \item \textbf{Models:} fine-tuned ResNet/EfficientNet classifier at 100\%/50\%/10\% labels; CLIP zero-shot reference \cite{radford2021clip}; Qwen2.5-VL zero-shot and $k\in\{2,4\}$ few-shot with two prompt variants (full image vs.\ crop); fixed decoding, three repeated runs.
+    \item \textbf{Evaluation:} grade MAE, quadratic weighted kappa, macro-F1; boundary confusion analysis; VLM output stability; expert review of a stratified justification sample by 2--3 surveyors on a fixed rubric.
+    \item \textbf{Scope/risk:} segmentation research, corrosion-type taxonomy, deployment out of scope. If label harmonisation across datasets proves noisy, the bridge dataset alone carries RQ1--RQ3. A negative VLM result is decision-relevant: it justifies the annotation investment it would otherwise replace.
+\end{itemize}
+
+\section{Contribution and Value for Everllence}
+
+(1) The first direct equal-data comparison of zero-/few-shot VLM severity grading vs.\ supervised CNNs, with a label-efficiency analysis; (2) a documented ASTM-aligned cross-dataset severity protocol with ordinal metrics; (3) an expert-reviewed assessment of VLM justification quality, plus released code and prompts. For Everllence: an annotation-investment decision --- if few-shot VLM grading approaches CNN accuracy, costly component-specific labelling campaigns can be reduced; if not, the measured gap justifies them.
+
+\section{Timeline}
+
+{\small
+\begin{tabularx}{\textwidth}{|p{1.6cm}|X|}
+\hline
+\rowcolor{lightgray} \textbf{Month} & \textbf{Work} \\
+\hline
+1 & Literature review; data acquisition; severity harmonisation and splits; grading rubric. \\
+\hline
+2 & CNN baseline: fine-tuning + label-efficiency runs; CLIP reference. \\
+\hline
+3 & VLM pipeline; zero-shot evaluation; prompt variants. \\
+\hline
+4 & Few-shot experiments; stability runs; full RQ1/RQ2 benchmark. \\
+\hline
+5 & Boundary/error analysis (RQ3); expert review; Everllence case study; optional LoRA extension. \\
+\hline
+6 & Thesis writing, revision, code/prompt release, submission. \\
+\hline
+\end{tabularx}}
+
+\section{References}
+
+{\scriptsize
+\renewcommand{\refname}{}\vspace{-3.2em}
+\begin{multicols}{2}
+\raggedright
+\begin{thebibliography}{9}\itemsep0pt
+
+\bibitem{shiptech2024}
+\textit{AI-Based Ship Hull Plate Corrosion Monitoring Using CNN: YOLOv8 vs.\ Detectron2}.
+\textit{Ship Technology Research}, 72(2), 2024.
+
+\bibitem{ameli2023bridge}
+Z.\ Ameli, S.\ J.\ Nesheli, E.\ N.\ Landis.
+\textit{Deep Learning-Based Steel Bridge Corrosion Segmentation and Condition Rating Using Mask R-CNN and YOLOv8}. \textit{Infrastructures}, 9(1):3, 2023.
+
+\bibitem{atha2018}
+D.\ J.\ Atha, M.\ R.\ Jahanshahi.
+\textit{Evaluation of Deep Learning Approaches Based on CNNs for Corrosion Detection}. \textit{Structural Health Monitoring}, 17(5):1110--1128, 2018.
+
+\bibitem{rios2025astm}
+M.\ P.\ Rios, P.\ I.\ N.\ Santos, D.\ Roehl.
+\textit{Automatic Corrosion Segmentation and Classification Using Image Processing and Machine Learning}. \textit{J.\ Ocean Eng.\ Mar.\ Energy}, 2025.
+
+\bibitem{astmd610}
+ASTM International. \textit{ASTM D610: Evaluating Degree of Rusting on Painted Steel Surfaces}. West Conshohocken, PA.
+
+\bibitem{radford2021clip}
+A.\ Radford et al.
+\textit{Learning Transferable Visual Models From Natural Language Supervision (CLIP)}. ICML, 2021.
+
+\bibitem{jeong2023winclip}
+J.\ Jeong et al.
+\textit{WinCLIP: Zero-/Few-Shot Anomaly Classification and Segmentation}. CVPR, 2023.
+
+\bibitem{gu2024anomalygpt}
+Z.\ Gu et al.
+\textit{AnomalyGPT: Detecting Industrial Anomalies Using Large Vision-Language Models}. AAAI, 2024.
+
+\bibitem{bai2025qwen25vl}
+S.\ Bai et al.
+\textit{Qwen2.5-VL Technical Report}. arXiv:2502.13923, 2025.
+
+\bibitem{chai2024corrosionsam}
+X.\ Chai, J.\ Gao, S.\ Li, Z.\ Zhu.
+\textit{Corrosion SAM: Adapting the Segment Anything Model for Structural Corrosion Inspection}. 2024.
+
+\bibitem{yao2025survey}
+X.\ Yao et al.
+\textit{A Comprehensive Survey on Multimodal Computer Vision-Assisted Corrosion Assessment}. \textit{Corros.\ Eng.\ Sci.\ Technol.}, 2025.
+
+\bibitem{chliveros2021mavecodd}
+G.\ Chliveros, I.\ Tzanetatos, K.\ Kamzelis.
+\textit{MaVeCoDD: Marine Vessel Hull Corrosion in Dry-Dock Images}. Mendeley Data, 2021.
+
+\bibitem{everllence2025}
+Everllence SE. \textit{Company and Product Information}. 2025. \url{https://www.everllence.com/}
+
+\end{thebibliography}
+\end{multicols}}
+
+\vspace{0.4em}
+\noindent
+{\small
+\begin{tabularx}{\textwidth}{X X}
+\textbf{Student Signature:} & \textbf{Supervisor Signature:} \\[1.4em]
+\rule{0.42\textwidth}{0.4pt} & \rule{0.42\textwidth}{0.4pt} \\
+\end{tabularx}}
+
+\end{document}
