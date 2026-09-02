@@ -1,0 +1,201 @@
+\documentclass[10pt,a4paper]{article}
+
+% ---------- Packages ----------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+
+\usepackage[
+    a4paper,
+    margin=1.8cm,
+    top=1.2cm,
+    bottom=1.4cm,
+    includehead,
+    headheight=1.8cm,
+    headsep=0.4cm
+]{geometry}
+
+\usepackage{graphicx}
+\usepackage[table]{xcolor}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{multicol}
+\usepackage{fancyhdr}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{xurl}
+\usepackage{hyperref}
+
+% ---------- Colors ----------
+\definecolor{mainblue}{RGB}{25,55,110}
+\definecolor{lightgray}{RGB}{245,245,245}
+
+% ---------- Links ----------
+\hypersetup{colorlinks=true, linkcolor=mainblue, urlcolor=mainblue, citecolor=mainblue}
+
+% ---------- Header ----------
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+\fancyhead[L]{\begin{minipage}[c]{0.30\textwidth}\raggedright\includegraphics[width=3.2cm]{\detokenize{uzi_logo.png}}\end{minipage}}
+\fancyhead[C]{\begin{minipage}[c]{0.36\textwidth}\centering\textbf{\small Thesis Proposal}\\[-0.1em]\scriptsize Department of Informatics\end{minipage}}
+\fancyhead[R]{\begin{minipage}[c]{0.30\textwidth}\raggedleft\includegraphics[width=3.0cm]{\detokenize{everlogo.png}}\end{minipage}}
+\fancyfoot[C]{\thepage}
+
+% ---------- Section Formatting ----------
+\titleformat{\section}{\color{mainblue}\normalfont\normalsize\bfseries}{}{0em}{}
+\titlespacing*{\section}{0pt}{0.55em}{0.25em}
+
+% ---------- Compact Lists ----------
+\setlist[itemize]{noitemsep, topsep=1pt, leftmargin=1.2em}
+\setlist[enumerate]{noitemsep, topsep=1pt, leftmargin=1.4em}
+
+% ---------- Tables ----------
+\renewcommand{\arraystretch}{1.05}
+\setlength{\tabcolsep}{5pt}
+\setlength{\parskip}{2pt}
+
+\begin{document}
+
+% ---------- Title ----------
+\begin{center}
+    {\large \textbf{Agentic LLM Code Generation for Industrial Automation:\\[0.1em]How Much Does Tool Feedback Improve IEC 61131-3 Structured Text?}}\\[0.2em]
+    {\small Industry Collaboration with Everllence SE (formerly MAN Energy Solutions)}
+\end{center}
+
+\vspace{0.2em}
+
+\noindent
+{\small
+\begin{tabularx}{\textwidth}{>{\bfseries}l X >{\bfseries}l X}
+Student: & Necati Furkan Colak & Student ID: & 24746323 \\
+Program: & MSc Computer Science & Semester: & Spring 2026 \\
+Supervisor: & [Supervisor Name] & Co-Supervisor: & [Everllence Contact] \\
+Email: & necatifurkan.colak@uzh.ch & Date: & \today \\
+\end{tabularx}}
+
+\vspace{0.3em}
+\hrule
+\vspace{0.3em}
+
+\section{Abstract}
+
+PLC languages (IEC 61131-3 Structured Text \cite{iec61131}) are low-resource and safety-relevant; single-shot LLM generation is demonstrably unreliable for them \cite{koziolek2023chatgpt, fakih2024llm4plc}. The emerging remedy is \emph{agentic} generation: the model iterates against ground-truth tools --- compiler and executable tests --- repairing its output from their feedback \cite{chen2023selfdebug, shinn2023reflexion}. Published pipelines (LLM4PLC \cite{fakih2024llm4plc}, Agents4PLC \cite{liu2024agents4plc}) show the pattern works but report whole-pipeline results, leaving the practitioner question open: \emph{how much does each feedback loop buy, for which task types, at what cost?} This thesis answers it with a bounded, controlled study: a benchmark of 40--50 Structured Text tasks (from the OSCAT library \cite{oscat} and genericised Everllence specifications) with hidden test suites on an open toolchain \cite{tisserant2007beremiz}, over which four regimes (single-shot, best-of-$n$, compiler feedback, compiler+test feedback) are compared for one Azure-hosted and one open-weight model. The controlled, cost-annotated ablation --- and its transfer to the PLC domain --- is the contribution.
+
+\section{Motivation and Gap}
+
+Everllence automation engineers translate specifications, cause-and-effect matrices, and signal lists into PLC programs validated through acceptance tests \cite{everllence2025}; much of this code is structurally repetitive, yet defects found at commissioning are expensive. The company's Copilot/Azure licences make LLM assistance available --- the open question is \emph{when it can be relied on}. Prior work establishes that ChatGPT produces plausible but inconsistent control logic \cite{koziolek2023chatgpt} and that verification-wrapped pipelines improve outcomes \cite{fakih2024llm4plc, liu2024agents4plc}; a 21-task benchmark compared universal LLMs on PLC code \cite{universalplc2024}. But component contributions remain confounded: retry vs.\ compiler messages vs.\ failing-test feedback; iteration-count returns; open-weight vs.\ closed models; task types that stay unreliable regardless. A controlled factorial study on a modest benchmark answers precisely these questions. Formal verification \cite{darvas2016plcverif} is deferred to an optional extension.
+
+\section{Feasibility}
+
+\begin{itemize}
+    \item The study shape --- benchmark construction, controlled comparison, statistical analysis --- follows established empirical evaluation practice in the LLM-for-code literature \cite{koziolek2023chatgpt, universalplc2024}.
+    \item Benchmark scale is proven: the influential control-logic study used compact prompt collections \cite{koziolek2023chatgpt}; the universal-LLM comparison used 21 tasks \cite{universalplc2024}. The proposed 40--50 tasks sit in this range.
+    \item Open toolchain (MATIEC/OpenPLC \cite{tisserant2007beremiz}) removes vendor-licence risk; self-repair loops are documented patterns \cite{chen2023selfdebug}.
+    \item No confidential data: tasks authored from public libraries \cite{oscat} and genericised specifications; company involvement (realism review, quality rating) is additive.
+\end{itemize}
+
+\section{Research Questions}
+
+\begin{enumerate}
+    \item \textbf{RQ1:} How much does each feedback level (single-shot, best-of-$n$, compiler, compiler+tests) improve hidden-test pass rates, for a closed and an open-weight model under identical budgets?
+    \item \textbf{RQ2:} How do improvement and cost scale with iteration count --- yielding actionable cost--reliability curves?
+    \item \textbf{RQ3:} Which task types (combinational logic, timers/edges, stateful sequences) remain unreliable with full feedback, and what does failure analysis plus expert code review reveal?
+\end{enumerate}
+
+\section{Methodology}
+
+\begin{itemize}
+    \item \textbf{Benchmark:} 40--50 tasks in three tiers --- (a) function-level from OSCAT, (b) component-level (interlocks, sequences, alarm logic) from genericised Everllence specifications, (c) small integration tier. Each: NL spec, FB signature, hidden scan-cycle test suite, reference solution; realism reviewed in one engineer workshop.
+    \item \textbf{Regimes:} $4\times2$ design (four feedback regimes $\times$ closed/open-weight model), fixed max iterations, matched token budgets, identical prompts. No multi-agent roles, no fine-tuning.
+    \item \textbf{Evaluation:} pass@1 per regime/model/tier with McNemar tests; tokens/wall-clock per solved task (cost--reliability curves); failure-mode taxonomy from transcripts; blinded expert rating of solution readability by 2--3 engineers.
+    \item \textbf{Safety:} all execution in simulation; no generated code approaches physical equipment.
+    \item \textbf{Scope/risk:} graphical languages, vendor IDEs, and deployment out of scope. Toolchain risk handled by a Week-1--2 spike (three tasks compile+test end-to-end before benchmark authoring); tier (a) alone already supports RQ1/RQ2 if authoring runs long; local open-weight model prevents API-limit blockage.
+\end{itemize}
+
+\section{Contribution and Value for Everllence}
+
+(1) An open benchmark of specification+test Structured Text tasks on a fully open toolchain; (2) a controlled, cost-annotated ablation of agentic feedback levels, converting whole-pipeline claims \cite{fakih2024llm4plc, liu2024agents4plc} into component-level evidence; (3) a failure-mode taxonomy and expert-rated quality assessment. For Everllence: an adoption map for its Copilot/Azure investment --- per task type, measured reliability, cost per solved task, and the review effort still required.
+
+\section{Timeline}
+
+{\small
+\begin{tabularx}{\textwidth}{|p{1.6cm}|X|}
+\hline
+\rowcolor{lightgray} \textbf{Month} & \textbf{Work} \\
+\hline
+1 & Literature review; toolchain spike (3 tasks end-to-end); task typology and guidelines. \\
+\hline
+2 & Benchmark authoring (tiers a--c); reference solutions; realism workshop; freeze. \\
+\hline
+3 & Agent harness (generate/compile/test tools, logging); single-shot and best-of-$n$ baselines. \\
+\hline
+4 & Feedback regimes; full $4\times2$ run; iteration-budget sweeps. \\
+\hline
+5 & Statistics (RQ1--RQ2); failure taxonomy; expert quality rating (RQ3); optional PLCverif extension. \\
+\hline
+6 & Thesis writing, revision, benchmark/harness release, submission. \\
+\hline
+\end{tabularx}}
+
+\section{References}
+
+{\footnotesize
+\renewcommand{\refname}{}\vspace{-3.2em}
+\begin{multicols}{2}
+\raggedright
+\begin{thebibliography}{9}\itemsep0pt
+
+\bibitem{koziolek2023chatgpt}
+H.\ Koziolek, S.\ Gruener, V.\ Ashiwal.
+\textit{ChatGPT for PLC/DCS Control Logic Generation}. IEEE ETFA, 2023.
+
+\bibitem{fakih2024llm4plc}
+M.\ Fakih et al.
+\textit{LLM4PLC: Harnessing Large Language Models for Verifiable Programming of PLCs}. ICSE-SEIP, 2024.
+
+\bibitem{liu2024agents4plc}
+Z.\ Liu et al.
+\textit{Agents4PLC: Automating Closed-Loop PLC Code Generation and Verification Using LLM-Based Agents}. arXiv:2410.14209, 2024.
+
+\bibitem{universalplc2024}
+\textit{Generating PLC Code with Universal Large Language Models}. IEEE, 2024.
+
+\bibitem{chen2023selfdebug}
+X.\ Chen, M.\ Lin, N.\ Sch\"arli, D.\ Zhou.
+\textit{Teaching Large Language Models to Self-Debug}. ICLR, 2024.
+
+\bibitem{shinn2023reflexion}
+N.\ Shinn et al.
+\textit{Reflexion: Language Agents with Verbal Reinforcement Learning}. NeurIPS, 2023.
+
+\bibitem{darvas2016plcverif}
+D.\ Darvas, E.\ Blanco Vi\~nuela, B.\ Fern\'andez Adiego.
+\textit{PLCverif: A Tool to Verify PLC Programs Based on Model Checking}. ICALEPCS, 2015.
+
+\bibitem{iec61131}
+IEC. \textit{IEC 61131-3: Programmable Controllers --- Programming Languages}. Geneva.
+
+\bibitem{oscat}
+OSCAT. \textit{Open Source IEC 61131-3 Function Block Library}. \url{http://www.oscat.de/}
+
+\bibitem{tisserant2007beremiz}
+E.\ Tisserant, L.\ Bessard, M.\ de Sousa.
+\textit{An Open Source IEC 61131-3 IDE (Beremiz/MATIEC)}. IEEE INDIN, 2007.
+
+\bibitem{everllence2025}
+Everllence SE. \textit{Company and Product Information}. 2025. \url{https://www.everllence.com/}
+
+\end{thebibliography}
+\end{multicols}}
+
+\vspace{0.4em}
+\noindent
+{\small
+\begin{tabularx}{\textwidth}{X X}
+\textbf{Student Signature:} & \textbf{Supervisor Signature:} \\[1.4em]
+\rule{0.42\textwidth}{0.4pt} & \rule{0.42\textwidth}{0.4pt} \\
+\end{tabularx}}
+
+\end{document}

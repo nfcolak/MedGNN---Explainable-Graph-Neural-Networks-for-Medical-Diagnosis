@@ -266,8 +266,30 @@ def main() -> None:
             json.dump({"graphs": graphs}, f, separators=(",", ":"))
         print(f"wrote {display_path(shard_path)} ({start}-{end - 1})")
 
+    # Keep the hand-curated, attribution-carrying example graphs pinned to the
+    # top of the manifest so the frontend's Explanation mode always has data to
+    # show. These live as standalone JSON files next to the dataset shards.
+    curated = []
+    for curated_file in ("graph_17.json", "graph_286.json", "graph_1258.json"):
+        curated_path = args.out_dir / curated_file
+        if not curated_path.exists():
+            continue
+        with curated_path.open() as f:
+            curated_graph = json.load(f)
+        diagnosis = curated_graph.get("diagnosis", "Explained example")
+        curated.append({
+            "id": f"explained-{curated_graph.get('graph_id')}",
+            "label": f"★ Explained example · {diagnosis}",
+            "file": curated_file,
+            "graph_id": curated_graph.get("graph_id"),
+            "diagnosis": diagnosis,
+            "node_count": len(curated_graph.get("nodes", [])),
+            "edge_count": len(curated_graph.get("edges", [])),
+            "explained": True,
+        })
+
     with (args.out_dir / "manifest.json").open("w") as f:
-        json.dump(manifest, f, separators=(",", ":"))
+        json.dump(curated + manifest, f, separators=(",", ":"))
     with (args.out_dir / "dataset_summary.json").open("w") as f:
         json.dump({
             "dataset_name": args.dataset_name,

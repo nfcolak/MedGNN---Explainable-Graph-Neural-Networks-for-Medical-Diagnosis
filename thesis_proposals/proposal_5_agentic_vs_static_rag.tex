@@ -1,0 +1,216 @@
+\documentclass[10pt,a4paper]{article}
+
+% ---------- Packages ----------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+
+\usepackage[
+    a4paper,
+    margin=1.8cm,
+    top=1.2cm,
+    bottom=1.5cm,
+    includehead,
+    headheight=1.9cm,
+    headsep=0.45cm
+]{geometry}
+
+\usepackage{graphicx}
+\usepackage[table]{xcolor}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{xurl}
+\usepackage{hyperref}
+
+% ---------- Colors ----------
+\definecolor{mainblue}{RGB}{25,55,110}
+\definecolor{lightgray}{RGB}{245,245,245}
+
+% ---------- Links ----------
+\hypersetup{
+    colorlinks=true,
+    linkcolor=mainblue,
+    urlcolor=mainblue,
+    citecolor=mainblue
+}
+
+% ---------- Header ----------
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\fancyhead[L]{%
+    \begin{minipage}[c]{0.30\textwidth}
+        \raggedright
+        \IfFileExists{uzi_logo.png}{\includegraphics[width=3.2cm]{\detokenize{uzi_logo.png}}}{\textbf{UZH}}
+    \end{minipage}
+}
+
+\fancyhead[C]{%
+    \begin{minipage}[c]{0.36\textwidth}
+        \centering
+        \textbf{\small Thesis Proposal}\\[-0.1em]
+        \scriptsize Department of Informatics
+    \end{minipage}
+}
+
+\fancyhead[R]{%
+    \begin{minipage}[c]{0.30\textwidth}
+        \raggedleft
+        \IfFileExists{everlogo.png}{\includegraphics[width=3.0cm]{\detokenize{everlogo.png}}}{\textbf{Everllence}}
+    \end{minipage}
+}
+
+\fancyfoot[C]{\thepage}
+
+% ---------- Section Formatting ----------
+\titleformat{\section}
+  {\color{mainblue}\normalfont\large\bfseries}
+  {}
+  {0em}
+  {}
+
+\titlespacing*{\section}{0pt}{0.6em}{0.25em}
+
+% ---------- Compact Lists ----------
+\setlist[itemize]{noitemsep, topsep=2pt, leftmargin=1.2em}
+\setlist[enumerate]{noitemsep, topsep=2pt, leftmargin=1.4em}
+
+% ---------- Tables ----------
+\renewcommand{\arraystretch}{1.08}
+\setlength{\tabcolsep}{6pt}
+
+\begin{document}
+
+% ---------- Title ----------
+\begin{center}
+    {\Large \textbf{Static versus Agentic Retrieval-Augmented Generation for\\[0.15em]Question Answering over Industrial Technical Documentation}}\\[0.3em]
+    {\normalsize Industry Collaboration with Everllence SE (formerly MAN Energy Solutions)}
+\end{center}
+
+\vspace{0.35em}
+
+% ---------- Student Information ----------
+\noindent
+\begin{tabularx}{\textwidth}{>{\bfseries}l X >{\bfseries}l X}
+Student Name: & Necati Furkan Colak       & Student ID:    & 24746323 \\
+Program:      & MSc Computer Science      & Semester:      & Spring 2026 \\
+Supervisor:   & [Supervisor Name]         & Co-Supervisor: & [Everllence Contact] \\
+Email:        & necatifurkan.colak@uzh.ch & Date:          & \today \\
+\end{tabularx}
+
+\vspace{0.5em}
+\hrule
+\vspace{0.5em}
+
+\section{Abstract}
+
+Industrial organizations hold decades of heterogeneous technical documentation: manuals, standards, and procedures that mix prose with tables and domain terminology. Static retrieval-augmented generation (RAG) \cite{lewis2020rag} grounds LLM answers in such documents but runs one fixed retrieve-then-generate pass for every question. Agentic RAG lets an LLM agent decide when, what, and how to retrieve. The agent can decompose questions, choose between text and table retrieval, iterate, and check its own answer \cite{yao2023react, singh2025agentic}. Each of these steps adds LLM calls, latency, and cost. Interview studies with industrial adopters report that teams cannot tell which design is worth the effort, because comparable measurements do not exist \cite{ragindustry2025}. This thesis implements one static and one agentic RAG system over the same corpus of publicly available industrial technical documents and compares them on a stratified benchmark (single-hop, multi-hop, tabular, and unanswerable questions). It measures correctness, groundedness, attribution accuracy, refusal behavior, and per-query cost, with component ablations and statistical significance testing. The outcome is measured guidance on when agentic retrieval is worth its cost in industrial documentation workflows.
+
+\section{Motivation and Problem Statement}
+
+\textbf{Operational context.} Engineers in documentation-heavy industries answer daily questions from operation and maintenance manuals, engineering standards, and service procedures. Locating trustworthy answers is slow: keyword search fails on paraphrased technical language, and standalone LLMs produce plausible but wrong specifications. Interview studies with industrial adopters report that reliability and evaluation, not model capability, are the main obstacles to deployment \cite{ragindustry2025}.
+
+\textbf{The paradigm choice.} Static RAG pipelines (chunk, embed, retrieve once, generate) are cheap and predictable, but they treat a simple lookup and a multi-step, cross-document question identically. Agentic RAG adds adaptivity: an orchestrating agent can decompose the question, select specialized tools (for example a table retriever for numerical specifications), retrieve iteratively until the evidence suffices, check its answer, or refuse when the corpus does not support one \cite{yao2023react, singh2025agentic}. Each capability multiplies LLM calls, so quality gains must be weighed against latency and cost. Organizations currently make this choice by intuition.
+
+\textbf{The open question.} Surveys describe many agentic RAG architectures but few controlled measurements \cite{singh2025agentic}, and reported gains from more elaborate retrieval pipelines are inconsistent across settings \cite{gao2024survey}. Published evaluations rarely cover the question types that dominate industrial use: numerical lookups in tables, questions spanning several documents, and questions the corpus cannot answer. No published study compares a static and an agentic pipeline on the same industrial corpus with quality, traceability, refusal behavior, and cost measured together. This thesis provides that comparison on public data, which keeps the design reproducible and independent of any single company.
+
+\section{Research Questions}
+
+\begin{enumerate}
+    \item \textbf{RQ1 (primary):} To what extent does agentic RAG improve answer correctness and groundedness over static RAG on heterogeneous industrial technical documentation, and for which question types (single-hop, multi-hop, tabular, unanswerable)?
+    \item \textbf{RQ2:} Which agentic components (iterative retrieval, text-versus-table tool selection, self-verification) contribute most to the observed differences?
+    \item \textbf{RQ3:} How do the two paradigms differ in attribution accuracy (traceability of answers to source passages) and in refusing unanswerable questions?
+    \item \textbf{RQ4:} What are the efficiency costs of agency (LLM calls, tokens, latency, cost per query), and when does the quality gain justify them?
+\end{enumerate}
+
+\section{Methodology}
+
+\begin{itemize}
+    \item \textbf{Literature review:} RAG foundations \cite{lewis2020rag}; agentic architectures \cite{yao2023react, singh2025agentic}; RAG surveys and evaluation \cite{gao2024survey, es2024ragas, ragindustry2025}.
+    \item \textbf{Data:} 30 to 60 publicly available industrial technical documents (equipment operation and maintenance manuals, open engineering standards and guidelines, safety documentation), heterogeneous in structure (prose and tables). Manufacturers publish such manuals freely, so corpus assembly needs no data owner, and documents of this type run to hundreds of pages each, which gives enough material for the benchmark. A public technical QA benchmark serves as a secondary corpus for external validity. A benchmark of 150 to 200 questions, stratified into single-hop, multi-hop, tabular, and unanswerable, is drafted with an LLM and fully verified by hand, with gold answers and source passages, split into development and held-out test sets. No proprietary data is required; internal validation at the collaborating company is an optional extension, not a dependency.
+    \item \textbf{Baselines:} \textbf{B0}: closed-book LLM without retrieval. \textbf{B1}: tuned static RAG with structure-aware chunking, hybrid BM25 and dense retrieval, reranking, and citation-prompted grounded generation.
+    \item \textbf{Agentic system:} \textbf{A1}: a single ReAct-style orchestrator \cite{yao2023react} with tools for hybrid text retrieval, table retrieval, query decomposition, a retrieval-sufficiency self-check, and an explicit answer-or-refuse decision. Two ablations (without iterative retrieval; without self-verification) attribute effects to components (RQ2). One GPT-4-class API model (for example via Azure OpenAI) and one smaller open-weight model check that findings hold across model sizes; implemented with LlamaIndex or LangGraph and a standard vector database.
+    \item \textbf{Evaluation:} Retrieval quality (recall@k, MRR); answer correctness via an LLM-as-judge validated against human ratings on a subset with inter-rater agreement; faithfulness and context relevance \cite{es2024ragas}; attribution precision and recall; refusal accuracy and false-answer rate on unanswerable questions; per-query calls, tokens, latency, and cost (RQ4). Paired significance tests (Wilcoxon signed-rank, bootstrap) per question stratum; a blinded review in which 3 to 5 engineers rate about 30 stratified answers; results are summarized as quality and cost trade-off curves and an error taxonomy.
+\end{itemize}
+
+\section{Expected Contribution}
+
+\begin{enumerate}
+    \item \textbf{For research:} A controlled, statistically tested, question-type-conditioned, and cost-aware comparison of static and agentic RAG on heterogeneous industrial documentation, addressing the evaluation gap named in surveys and industry interviews \cite{singh2025agentic, ragindustry2025}.
+    \item \textbf{For practice:} Measured guidance (quality versus cost, per question type) for documentation-heavy engineering organizations choosing between static and agentic RAG in maintenance, compliance, and operational workflows, plus a prototype running on standard cloud LLM APIs.
+    \item \textbf{Open deliverables:} A reusable evaluation harness (heterogeneous-document ingestion, stratified question-generation protocol, attribution and refusal metrics, per-query cost accounting), prompts, and both reference implementations. All data is public, so the study is fully reproducible.
+\end{enumerate}
+
+\section{Proposed Timeline (6 months)}
+
+\begin{tabularx}{\textwidth}{|p{2.6cm}|X|}
+\hline
+\rowcolor{lightgray}
+\textbf{Period} & \textbf{Planned Work} \\
+\hline
+Month 1 & Literature review; corpus assembly and ingestion. \\
+\hline
+Month 2 & Stratified question benchmark with human verification; baselines (B0, B1); evaluation harness. \\
+\hline
+Month 3 & Agentic system (A1) and the two component ablations. \\
+\hline
+Month 4 & Full experimental runs on both corpora; statistical analysis by question stratum (RQ1 to RQ3). \\
+\hline
+Month 5 & Blinded expert review; cost and latency analysis (RQ4); error taxonomy. \\
+\hline
+Month 6 & Thesis writing; code and protocol release; final presentation. \\
+\hline
+\end{tabularx}
+
+\begingroup
+\renewcommand{\refname}{\texorpdfstring{\color{mainblue}}{}Preliminary References}
+\scriptsize
+\begin{thebibliography}{9}
+\setlength{\itemsep}{0pt}
+
+\bibitem{lewis2020rag}
+P.\ Lewis et al.
+\textit{Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks}.
+NeurIPS, 2020.
+
+\bibitem{yao2023react}
+S.\ Yao et al.
+\textit{ReAct: Synergizing Reasoning and Acting in Language Models}.
+ICLR, 2023.
+
+\bibitem{singh2025agentic}
+A.\ Singh et al.
+\textit{Agentic Retrieval-Augmented Generation: A Survey on Agentic RAG}.
+arXiv:2501.09136, 2025.
+
+\bibitem{gao2024survey}
+Y.\ Gao et al.
+\textit{Retrieval-Augmented Generation for Large Language Models: A Survey}.
+arXiv:2312.10997, 2023.
+
+\bibitem{es2024ragas}
+S.\ Es et al.
+\textit{RAGAS: Automated Evaluation of Retrieval Augmented Generation}.
+EACL, 2024.
+
+\bibitem{ragindustry2025}
+\textit{Retrieval-Augmented Generation in Industry: An Interview Study on Use Cases, Requirements, Challenges, and Evaluation}.
+arXiv:2508.14066, 2025.
+
+\end{thebibliography}
+\endgroup
+
+\vspace{0.1em}
+
+\noindent
+\begin{tabularx}{\textwidth}{X X}
+\textbf{Student Signature:} & \textbf{Supervisor Signature:} \\[0.9em]
+\rule{0.42\textwidth}{0.4pt} & \rule{0.42\textwidth}{0.4pt} \\
+\end{tabularx}
+
+\end{document}

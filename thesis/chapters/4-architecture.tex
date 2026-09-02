@@ -1,0 +1,155 @@
+\chapter{Architecture}\label{architecture}
+This chapter describes the architectures of the three methods compared in this project. All three address the same task, the 30-class emergency-department diagnosis introduced in Chapter~\ref{implementation}, and are trained and evaluated on the same cohort and split. They differ in how they represent a patient and how they reach an interpretable prediction. Section~\ref{sec:shared-framework} sets out the common ground. The prototype-based model is described in Section~\ref{sec:pillar-protgnn}, the knowledge-graph model GraphCare in Section~\ref{sec:pillar-graphcare}, and the third method in Section~\ref{sec:pillar-methodc}.
+
+\section{Shared Framework}\label{sec:shared-framework}
+The three methods share the parts of the problem that make their comparison controlled. Each predicts the primary diagnosis of an emergency-department visit as one of 30 classes. Each is trained on the same MIMIC-IV-ED cohort under the same subject-aware split, so no patient appears in more than one fold. Each draws on the same underlying clinical signal: the diagnosis, medication, and symptom vocabulary together with the population-level PMI co-occurrence statistics between medications.
+
+What differs is the graph. The prototype-based model builds one intra-patient graph per visit and classifies it directly. GraphCare reasons over a personalised knowledge graph assembled from an ontology and external knowledge. The third method adds a further representation, described in Section~\ref{sec:pillar-methodc}. Each of the following sections describes one of these designs in full.
+
+\section{Prototype-Based Model (ProtGNN)}\label{sec:pillar-protgnn}
+This method follows a four-stage pipeline that transforms raw clinical records into interpretable diagnostic insights.
+
+\subsection{Conceptual Data Flow}
+
+\begin{enumerate}
+  \item \textbf{Graph Construction (EHR to Graph).} Tabular patient records from the MIMIC-IV Emergency Department module are converted into intra-patient heterogeneous graphs. Each patient becomes its own graph, where the patient node is central, and is connected to clinical entity nodes. Out of these clinical entity nodes, there is one node per vital sign measurement, one node per taken medication, one node per symptom recorded by the attending clinician, and one for the chief complaint recorded at triage. Additionally, medications that frequently co-occur among the patients are linked via direct edges, which are derived from Pointwise Mutual Information (PMI) scores. As a result, a clinical visit becomes a relational structure: the graph encodes both the patient's individual clinical findings and the relations between co-occurring clinical entities.
+
+  \item \textbf{GNN Encoder.}
+        The patient graph is processed through a multi-layer Graph Convolutional Network (GCN). Through the message-passing paradigm, the encoder aggregates neighbourhood information across node types into a single graph-level embedding $\mathbf{h}_G \in \mathbb{R}^{d}$ via global mean pooling. The GCN propagates information from medication nodes via PMI co-occurrence edges, where drug-bundle patterns of co-occurrence (e.g.\
+        the Cardiac bundle: Aspirin - metoprolol - atorvastatin - lisinopril) influence the final embedding.
+
+  \item \textbf{The Prototype Layer.}
+        The embedding $\mathbf{h}_G$ is projected into a \textit{Prototype Space} containing $K$ learned disease prototypes $\{\mathbf{p}_k\}_{k=1}^{K}$. Each prototype is a vector in the same latent space as $\mathbf{h}_G$,
+        trained to represent a typical clinical profile for one of the 30 disease classes. The model computes a log-distance similarity score between the patient embedding and every prototype. This produces a set of case-based reasoning scores that
+        contribute to the final prediction. This makes the model's logic analogous to clinical pattern recognition: a patient is classified as having heart failure because its graph embedding lies close to prototypes learned from other heart-failure patients.
+
+  \item \textbf{Dual Output: Prediction and Explanation.}
+        The final stage produces two outputs at once. The classification output is a probability distribution over 30 disease classes, derived as a linear combination of the prototype similarity scores. The explanation output is a node importance vector produced by a GraphXAI explainer, which identifies which clinical entity nodes in the patient
+        graph contributed most to the prediction: vital signs, medications, symptoms, or chief complaints. Together these outputs answer both \textit{what} the model predicts and \textit{why}.
+\end{enumerate}
+
+\begin{figure}[htbp]
+    \centering
+    % \includegraphics[width=\textwidth]{assets/architecture_diagram.pdf}
+    \caption{Overview of the prototype-based model. Patient EHR records are converted to intra-patient heterogeneous graphs, encoded by a GCN, compared
+             against learned prototypes, and explained by a GraphXAI explainer.}
+    \label{fig:framework_diagram}
+\end{figure}
+
+\subsection{Input Layer and Graph Formulation}
+
+Each patient record is formulated as a graph $G = (V, E)$ whose node
+set $V$ consists of five typed subsets:
+
+\begin{itemize}
+  \item \textbf{Patient} node (index~0) encodes demographics, transport mode, medical history flags, lab value summaries, medication class counts, and vital sign trend statistics (min, max, standard deviation across the visit).
+  \item $|V_\text{vital}| = 15$ \textbf{Vital} nodes, one for each monitored vital sign (temperature, heart rate, respiratory rate, oxygen saturation, systolic and diastolic blood pressure, pain score, acuity, and eight triage vital-sign statistics). Each vital node encodes a z-scored measurement value, an abnormality flag ($|z| > 2$), and a missingness flag.
+  \item $|V_\text{med}|$ \textbf{Medication} nodes, one for each medication taken by the given patient, which has been assigned to more than a threshold of $1\%$ of the population, covering both home medications and ED-dispensed drugs.
+  \item $|V_\text{sym}|$ \textbf{Symptom} nodes, one for each ICD-coded symptom recorded by the clinician at triage.
+  \item $|V_\text{cc}|$ \textbf{Chief Complaint} nodes, one per complaint recorded at triage.
+\end{itemize}
+
+The edge set $E$ contains two bidirectional types of connections:
+
+\begin{itemize}
+  \item \textbf{Patient-entity edges}: the Patient node connects to every vital, medication, symptom, and chief complaint node it is associated with.
+  \item \textbf{Medication--medication PMI edges}: to encode clinically meaningful drug co-occurrence patterns, any two medication nodes whose population-level PMI score exceeds a threshold of $2.0$ are directly connected with an edge  (e.g.\ the cardiac bundle, the asthma bundle).
+\end{itemize}
+
+Every node, regardless of type, carries the same $D$-dimensional feature vector (where $D = 415$ in the full disease dataset). The feature layout is fixed: a 6-slot type one-hot block (one slot is reserved for ICD nodes and stays unused in the disease setting), followed by identity blocks for each node type vocabulary (vital identity, medication identity, symptom identity, chief complaint identity), a scalar value slot, abnormality and missingness flags, a demographics block, and a patient numeric block. Only the slots corresponding to a node's own type are populated, and all others are set to zero. This uniform feature dimension is required for the weight-sharing across node types in the GCN.
+
+\subsection{GNN Encoder $f$}
+
+The encoder $f: G \rightarrow \mathbf{h}_G$ is a three-layer GCN with hidden dimensions $[128, 128, 128]$ and ReLU nonlinearities:
+\[
+  \mathbf{H}^{(\ell)} = \sigma\!\left(
+    \tilde{D}^{-1/2}\tilde{A}\tilde{D}^{-1/2}
+    \mathbf{H}^{(\ell-1)} W^{(\ell)}
+  \right), \quad \ell = 1, 2, 3,
+\]
+where $\tilde{A} = A + I$ is the adjacency matrix with self-loops, $\tilde{D}$ is its degree matrix, $W^{(\ell)}$ are learnable weights, and $\sigma$ is ReLU. Dropout ($p = 0.51$) is applied after each layer. The graph-level representation is obtained by global mean pooling:
+\[
+  \mathbf{h}_G = \frac{1}{|V|}\sum_{v \in V} \mathbf{H}^{(3)}_v.
+\]
+
+A single 64-dimensional MLP hidden layer followed by a linear output layer maps $\mathbf{h}_G$ to class logits when prototype layers are disabled.
+
+\subsection{Prototype Matching and Latent Similarity $g_P$}
+
+The Prototype Layer $g_P$ maintains $K = C \times m$ learnable prototype vectors $\{\mathbf{p}_k\}$, where $C = 30$ is the number of disease classes and $m = 3$ is the number of prototypes per class, for a total of $K = 90$ prototypes. The similarity between the patient embedding and each prototype is computed as:
+\[
+  \mathrm{sim}(\mathbf{h}_G, \mathbf{p}_k)
+  = \log\!\left(
+      \frac{\|\mathbf{h}_G - \mathbf{p}_k\|_2^2 + 1}
+           {\|\mathbf{h}_G - \mathbf{p}_k\|_2^2 + \varepsilon}
+    \right),
+\]
+with $\varepsilon = 10^{-4}$. This formulation maps distance monotonically to similarity: the score is maximal when the patient embedding coincides with the prototype and decays toward zero as the distance grows. The final logits are $\hat{\mathbf{y}} = W_{\mathrm{last}}\, \boldsymbol{s}$, where $\boldsymbol{s} \in \mathbb{R}^{90}$ collects all similarity scores. $W_{\mathrm{last}}$ is a linear layer initialised to encode class-prototype membership and fine-tuned during joint training (Chapter~\ref{implementation}).
+
+Training optimizes a composite loss:
+\[
+  \mathcal{L} = \mathcal{L}_{\mathrm{CE}}
+              + \lambda_c \mathcal{L}_{\mathrm{cluster}}
+              + \lambda_s \mathcal{L}_{\mathrm{sep}}
+              + \lambda_\ell \|\mathbf{W}_{\mathrm{last}}
+                               \odot M_\perp\|_1,
+\]
+which consists of cross-entropy $\mathcal{L}_{\mathrm{CE}}$, along with $\mathcal{L}_{\mathrm{cluster}}$ loss, which brings each embedding closer towards its closest same-class prototype, a margin-based cost $\mathcal{L}_{\mathrm{sep}}$ that penalizes wrong-class prototypes, activated only when closer than a margin threshold (bounded in $[0, \text{margin}]$ per sample for numerical stability), and the $\ell_1$ term, which penalizes cross-class weights in the last layer.
+
+Periodically, prototype vectors are projected onto real patient subgraphs via a Monte Carlo Tree Search (MCTS) procedure. This procedure ensures that each prototype corresponds to an actual clinical substructure rather than an abstract latent point.
+
+\subsection{GraphXAI Explanation Module}
+
+Explanations are generated using three complementary GraphXAI
+explainers~\cite{agarwal2023graphxai}, each producing a node importance vector:
+
+\begin{itemize}
+  \item \textbf{GradExplainer} attributes importance by backpropagating the prediction loss to node features and summing absolute gradient magnitudes per node.
+
+  \item \textbf{IntegratedGradExplainer} integrates gradients along a path from a zero baseline to the input, reducing noise from local gradient saturation and providing attribution with provable completeness.
+
+  \item \textbf{GNNExplainer} learns a soft mask over edges by maximizing mutual information between the masked subgraph and the model prediction. Node importance is derived from the learned edge mask.
+\end{itemize}
+
+When prototype layers are active, the explainers are routed through a specialized architecture wrapper to handle the models' inherent interpretability layers. For instance, when analyzing models with highly nonlinear or distance-based components, this wrapper safely routes gradients directly to the underlying GNN backbone. This is a necessary step, because otherwise, the log-distance similarity formula suppresses gradient magnitudes by two orders of magnitude, rendering gradient-based explainers ineffective. By optimizing this routing for each model, the explainers can consistently produce meaningful attribution scores across all architectures.
+
+The top-$k$ nodes identified by each explainer make up the explanation of the model. In the clinical setting, these
+explanation nodes correspond to readings of vital signs, medications, symptoms, or chief complaints that led to the disease prediction. This provides clinicians with a clear and inspectable justification for the model's output.
+
+\section{Knowledge-Graph Model (GraphCare)}\label{sec:pillar-graphcare}
+
+The second method, GraphCare, reaches an interpretable prediction through a different representation. Instead of one graph per visit, it reasons over a personalised knowledge graph that attaches external medical knowledge to each patient's diagnoses, medications, and symptoms. The concept is introduced in Section~\ref{sec:graphcare}, and the concrete setup used here, including the knowledge-graph construction and the Bi-attention Augmented GNN, is given in Section~\ref{sec:graphcare-impl}.
+
+Two points place GraphCare alongside the prototype model rather than below it. It is trained and evaluated on the same cohort, task, and split, so the two can be compared directly. Its interpretability is of a different kind: GraphCare exposes attention weights over the personalised graph, where the prototype model explains through similarity to learned cases and node attribution. The evaluation in Chapter~\ref{evaluation} treats the two as competing designs rather than a method and its baseline.
+
+\section{Method C}\label{sec:pillar-methodc}
+
+\tbd{Third method, to be decided. Describe its patient representation and its
+route to an interpretable prediction at the same level of detail as the two
+sections above, and state how it shares the cohort, task, and split of the
+shared framework (Section~\ref{sec:shared-framework}).}
+
+\section{Design Choices and Justification}
+
+Four design choices shape the prototype-based model and the study around it.
+
+\textbf{1. Intra-patient heterogeneous graphs over patient-similarity
+graphs.}
+The initial implementation started from a star graph for each patient, which was connecting them to their  most similar patients based on cosine similarity. However, in this design, the graph edges conveyed almost no additional information beyond
+the node features. This design was replaced by the intra-patient formulation, where medication co-occurrence edges encode known drug co-occurrence patterns in prescriptions, and node types explicitly distinguish vital signs, medications, symptoms, and chief complaints. As a result of this re-design, the GNN can aggregate over a meaningful relational structure.
+
+\textbf{2. 30-class disease diagnosis over binary admission prediction.}
+Initially, prediction target for the ED data was binary: based on patient features at ED, the model was trying to predict whether a patient will be admitted to the hospital or discharged home. However, this provided limited clinical value, and the discharge decision is correlated with triage acuity. On the contrary, predicting the primary diagnosis across 30 disease classes forces the model
+to learn clinically meaningful distinctions in symptoms and prescribed medication for different disease presentations, and produces clinically meaningful output.
+
+\textbf{3. Prototype layer over a black-box MLP.}
+In the final classification layer, replacing the standard head with a prototype comparison layer makes the decision mechanism interpretable. A
+clinician can inspect a patient's similarity to the 90 learned prototypes and, after prototype projection, trace each prototype back to an actual patient subgraph from the training data. This provides a case-based justification that is grounded in real clinical examples.
+
+\textbf{4. Three post-hoc explainers over each method.}
+Using gradient-based, integrated-gradient, and mask-based explainers in parallel allows systematic comparison of explanation
+quality. On synthetic benchmarks with ground-truth motif masks, prior evaluations report that gradient-based methods can outperform mask-based methods on dense graphs~\cite{agarwal2023graphxai}. Running all three side by side shows which explainer to prioritize on clinical data, where no ground truth exists.
+
+\section{Summary}
+
+This chapter set out the three methods on a shared framework: the same 30-class emergency-department task, cohort, and split, drawing on the same clinical signal. The prototype-based model was described in full, from intra-patient graph construction through GCN encoding, prototype matching, and GraphXAI node attribution. GraphCare was placed alongside it as a knowledge-graph model with attention-based interpretability, and a section was reserved for the third method. The following chapter details the concrete implementation of each.

@@ -1,0 +1,377 @@
+\chapter{Implementation}\label{implementation}
+
+This chapter describes the concrete realization of the architecture introduced
+in Chapter~\ref{architecture}. It covers the data pipeline that turns raw
+MIMIC-IV-ED tables into intra-patient heterogeneous graphs, the core graph encoders and built-in interpretability layers as implemented in PyTorch Geometric, the model-specific optimization and training procedures, and the explanation and evaluation
+tooling. All design parameters quoted below correspond to the values actually
+used in the released configuration (\texttt{config.py}).
+
+% ─────────────────────────────────────────────────────────────────────
+\section{System Overview}
+% ─────────────────────────────────────────────────────────────────────
+
+All code is written in Python~3.11 and built on the PyTorch and PyTorch
+Geometric (PyG)~\cite{fey2019pyg} ecosystem for graph storage and message passing. The
+system is organized as an installable package (\texttt{src/prot\_gnn/}) plus a
+set of runnable scripts (\texttt{scripts/}):
+
+\begin{itemize}
+  \item \texttt{load\_dataset.py}: dataset classes and graph builders,
+        including \texttt{IntraPatientHeteroDataset} and the
+        subject-aware data splitter.
+  \item \texttt{models/GCN.py}: the \texttt{GCNNet} encoder together with the
+        integrated prototype layer; \texttt{models/\_\_init\_\_.py} exposes the
+        \texttt{GnnNets} wrapper.
+  \item \texttt{my\_mcts.py}: Monte Carlo Tree Search used for prototype
+        projection onto real patient subgraphs.
+  \item \texttt{explainability/graphxai\_wrapper.py} and
+        \texttt{graphxai\_integration.py}: the bridge between
+        \texttt{GnnNets} and the GraphXAI~\cite{agarwal2023graphxai} explainers.
+  \item \texttt{train\_and\_explain.py}: the main entry point that trains the
+        model, runs prototype projection, and produces explanations;
+        \texttt{eval\_checkpoint.py} and \texttt{generate\_clinical\_%
+        explanations.py} operate on saved checkpoints.
+  \item \texttt{disease\_baseline.py}: the tabular gradient-boosting baseline used for comparison.
+  \item \texttt{To be added: files relevant to Method B and C}:
+\end{itemize}
+
+A single configuration object centralises all hyperparameters, so the same
+training and explanation code path serves every dataset variant without
+modification. Unless stated otherwise, the prototype layer is \emph{enabled}:
+this is the primary configuration of the project, and the plain-GCN variant
+(\texttt{--no\_prot}) is used only as an ablation.
+
+% ─────────────────────────────────────────────────────────────────────
+\section{Data Preprocessing and Graph Formulation}
+% ─────────────────────────────────────────────────────────────────────
+
+\subsection{Intra-Patient Heterogeneous Graphs}
+
+Patient records are sourced from the MIMIC-IV Emergency Department
+module~\cite{johnson2023mimicived}, merged into a single per-visit table
+(\texttt{merged\_ed.csv}; a full-cohort variant with $\approx$309k visits is
+also supported). The prediction target is the \emph{primary diagnosis} of the patient: the
+\texttt{disease\_1} field is mapped to an integer class id, and the label space is defined by $C = 30$ most frequent merged disease diagnosis categories. Each
+ED visit carrying a usable diagnosis label becomes one graph.
+
+In contrast to the initial version of the patient-similarity graph formulation,
+\emph{each patient is its own graph}. The builder
+(\texttt{IntraPatientHeteroDataset}) constructs a heterogeneous star-plus-cluster
+graph, where a central patient node is connected to its clinical entity nodes:
+
+\begin{itemize}
+  \item one \textbf{patient} node (index~0),
+  \item $15$ \textbf{vital} nodes (a fixed slot per monitored vital sign,
+        including the eight triage vitals and seven triage vital-sign
+        statistics),
+  \item one \textbf{medication} node per drug whose population prevalence is at
+        least $1\%$ (home meds \texttt{med\_*} and ED-dispensed
+        \texttt{pyx\_*}),
+  \item one \textbf{symptom} node per ICD-coded symptom recorded for the visit,
+  \item one \textbf{chief-complaint} node per triage complaint.
+\end{itemize}
+
+To prevent target leakage, the diagnosis columns (\texttt{disease\_*}), the raw
+\texttt{icd\_codes}, the disposition, and the post-outcome length-of-stay
+(\texttt{los\_hours}) are removed from the inputs before graph construction.
+
+\subsection{Feature Layout and PMI Edges}
+
+Every node, regardless of type, carries the same $D$-dimensional feature vector
+so that the GCN can share weights across node types. For the 30-class disease
+dataset $D = 415$, laid out as a fixed concatenation:
+\[
+  \underbrace{6}_{\text{type}}
+  + \underbrace{15}_{\text{vital id}}
+  + \underbrace{101}_{\text{med id}}
+  + \underbrace{70}_{\text{symptom id}}
+  + \underbrace{88}_{\text{cc id}}
+  + \underbrace{3}_{\text{value, abnormal, missing}}
+  + \underbrace{11}_{\text{demographics}}
+  + \underbrace{121}_{\text{patient numeric}}
+  = 415 .
+\]
+A six-slot type one-hot block reserves a stable index for each node type
+(patient, vital, med, icd, symptom, chief complaint), of which the icd slot is
+unused in the disease setting. Only the slots belonging to a node's own type are
+populated; all others are zero. Vital nodes store a clipped, z-scored
+measurement value together with an abnormality flag ($|z| > 2$) and a
+``was-measured'' missingness flag. The patient node carries the demographic
+one-hots (gender, race, transport) and a block of $121$ z-scored patient-level
+numeric features (ED-utilisation counts, age, BMI, lab summaries, medication-%
+class counts, history flags, and per-vital min/max/std trend statistics).
+
+Two edge types connect the nodes, each emitted in both directions:
+
+\begin{itemize}
+  \item \textbf{Patient--entity edges}: the patient node is linked to every
+        vital, medication, symptom, and chief-complaint node of the visit.
+  \item \textbf{Medication--medication PMI edges}: a population-level Pointwise
+        Mutual Information matrix is computed once over the medication
+        co-occurrence statistics, and any pair with $\mathrm{PMI} > 2.0$ is
+        connected wherever both drugs co-occur in a visit. On the disease
+        dataset this yields $37$ co-occurrence edge types (e.g.\ the cardiac and
+        asthma bundles).
+\end{itemize}
+
+\subsection{Subject-Aware Data Splitting}
+
+Because a single patient can appear across several ED visits, a naive random
+split would leak the context of the same subject into both training and test sets. The
+dataloader therefore extracts the \texttt{subject\_id} of every graph and, when
+duplicate subjects are present, performs a \emph{subject-aware} 80/10/10 split
+in which all visits of each subject fall into exactly one fold, while greedily
+balancing each fold's class distribution toward the global prior. A stratified
+split is used only as a fallback when every graph has a distinct subject.
+
+% ─────────────────────────────────────────────────────────────────────
+\section{Model Architecture}
+% ─────────────────────────────────────────────────────────────────────
+
+\subsection{GCN Encoder}
+
+The encoder is a three-layer Graph Convolutional Network~\cite{kipf2017gcn} with hidden
+dimensions $[128, 128, 128]$ and ReLU non-linearities, using symmetric adjacency
+normalisation with self-loops. Dropout ($p = 0.51$, selected by hyperparameter
+search) is applied after each convolution; embedding L2-normalisation is disabled, as enabling it together
+with prototype L2 distances was found to collapse the dynamic range and
+destabilise evaluation. The graph-level embedding is obtained by global
+\emph{mean} pooling:
+\[
+  \mathbf{h}_G = \frac{1}{|V|}\sum_{v \in V}\mathbf{H}^{(3)}_v .
+\]
+When the prototype layer is disabled, a single MLP hidden layer of dimension
+$64$ followed by a linear output layer maps $\mathbf{h}_G$ to the class logits;
+this is the plain-GCN ablation.
+
+\subsection{Self-Explainable Prototype Layer}
+
+In the primary configuration, $\mathbf{h}_G$ of a test instance is compared against
+$K = C \times m = 30 \times 3 = 90$ learnable prototype vectors
+$\{\mathbf{p}_k\}$ ($m = 3$ prototypes per disease class). The squared Euclidean
+distance is converted to a log-distance similarity,
+\[
+  \mathrm{sim}(\mathbf{h}_G, \mathbf{p}_k)
+  = \log\!\left(
+      \frac{\lVert \mathbf{h}_G - \mathbf{p}_k\rVert_2^2 + 1}
+           {\lVert \mathbf{h}_G - \mathbf{p}_k\rVert_2^2 + \varepsilon}
+    \right), \qquad \varepsilon = 10^{-4},
+\]
+so that similarity is maximal when the embedding coincides with a prototype and
+decays toward zero as the distance between the embedding and a prototype grows. The $90$ similarity scores are mapped
+to the $30$ class logits by a bias-free linear layer
+$\mathbf{W}_{\mathrm{last}}$. This layer is \emph{initialized} to encode
+class--prototype membership ($+1$ for same-class, $-0.5$ for cross-class
+connections) but remains trainable; an $\ell_1$ penalty on its cross-class
+entries keeps each class dependent mainly on its own prototypes.
+
+\subsection{Training Procedure and Prototype Projection}
+
+Training minimizes a composite objective,
+\[
+  \mathcal{L} = \mathcal{L}_{\mathrm{CE}}
+              + \lambda_c\,\mathcal{L}_{\mathrm{cluster}}
+              + \lambda_s\,\mathcal{L}_{\mathrm{sep}}
+              + \lambda_\ell\,\lVert \mathbf{W}_{\mathrm{last}}\odot M_\perp\rVert_1 ,
+\]
+where $\mathcal{L}_{\mathrm{cluster}}$ pulls each embedding toward its nearest
+same-class prototype and $\mathcal{L}_{\mathrm{sep}}$ is a margin-bounded cost
+that penalizes wrong-class prototypes only while they sit closer than the margin
+(clamped to $[0,\text{margin}]$ per sample for numerical stability). The
+reported configuration uses $\lambda_c = \lambda_s = 0.1$,
+margin $= 1.0$, and $\lambda_\ell = 5\times 10^{-4}$. A diversity term is present in the code but
+disabled (weight $0$). Gradients are clipped to a magnitude of $2.0$, and a
+non-finite total loss falls back to the cross-entropy term alone.
+
+Optimisation uses Adam with a learning rate of $1.79\times10^{-3}$, weight decay
+$4.3\times10^{-5}$, and batch size $128$ (values selected by hyperparameter
+search). Training proceeds in two phases:
+
+\begin{enumerate}
+  \item \textbf{Warm-up} (first $10$ epochs): the GCN backbone and prototype
+        vectors are trained while $\mathbf{W}_{\mathrm{last}}$ is frozen at its
+        membership initialisation.
+  \item \textbf{Joint} (thereafter): all parameters, including
+        $\mathbf{W}_{\mathrm{last}}$, are trained together.
+\end{enumerate}
+
+After epoch $20$, and every $25$ epochs thereafter, a \textbf{prototype
+projection} pass replaces each abstract prototype vector with the embedding of a
+real patient subgraph. For each prototype, Monte Carlo Tree
+Search~\cite{zhang2022protgnn} (rollouts~$=3$, $c_{\text{puct}}=5$, subgraphs of
+$3$--$6$ atoms, $8$ expansion candidates) searches over training graphs of the
+prototype's class for the connected substructure whose embedding is closest to
+the current prototype. This grounds every prototype in an inspectable clinical
+substructure. Training runs for up to $300$ epochs with early stopping
+(patience~$10$, minimum macro-F1 improvement $0.005$), and the best
+post-projection checkpoint is retained.
+
+\tbd{Architectural components of Method B\&C to be added}
+
+% ─────────────────────────────────────────────────────────────────────
+\section{Explanation Generation}
+% ─────────────────────────────────────────────────────────────────────
+\subsection{Explanation Pipeline}
+The proposed framework combines intrinsic reasoning built into the chosen models with post-hoc graph attribution analysis from GraphXAI to provide a multi-faceted explanation for clinical predictions.
+
+\subsubsection{Intrinsic Reasoning}
+For each chosen model, self-explainability is achieved intrinsically during inference:
+
+\begin{itemize}
+    \item \textbf{ProtGNN (Prototype Case Reasoning):} Intrinsic self-explainability is achieved via a dedicated prototype projection layer. Patient graph representations generated by the GNN encoder are mapped into a latent metric space containing $K$ learned, class-specific clinical prototypes ($\mathbf{p}_1, \mathbf{p}_2, \dots, \mathbf{p}_K$). During inference, the network explicitly calculates Euclidean or cosine distances between the input patient embedding and these pre-calculated prototypes. Predictions are formulated as a linear combination of prototype similarity scores, providing case-based reasoning.
+    
+    \item \textbf{GraphCare (Bi-Attention Knowledge Paths):} Intrinsic interpretability in GraphCare stems from its Bi-Attention Augmented (BAT) GNN layers operating over the clinical ontology graph. During message passing, the model dynamically computes relational attention weights across medical concepts (diagnoses, symptoms, medications, and PMI co-occurrences). The learned self-attention and cross-attention matrices expose the specific knowledge-graph edges and relational paths that received the highest weight during logit computation, allowing clinicians to trace how information propagated across domain entities.
+    
+    \item \textbf{Method C (\textit{[Model Name / Placeholder]}):} \textit{[TBD: Detail the specific built-in interpretability mechanism for Method C once finalized.]}
+\end{itemize}
+
+\subsubsection{Post-Hoc GraphXAI Node Attribution}
+To analyze which specific input nodes and entity features drive the predictions post-hoc, we integrate three complementary GraphXAI explainers~\cite{agarwal2023graphxai}, each returning a node-importance vector
+$\boldsymbol{\alpha}\in\mathbb{R}^{|V|}$: \texttt{GradExplainer} (per-node
+gradient magnitude of the prediction loss), \texttt{IntegratedGradExplainer}
+(gradients integrated from a zero baseline), and \texttt{GNNExplainer} (a
+learned soft edge mask maximizing mutual information with the prediction).
+
+Because GraphXAI calls a model as \texttt{model(x, edge\_index)} and expects a
+single logit tensor, a thin model-specific wrapper adjusts each of the per model implemented architectures to this standard interface. This wrapper handles the specific structural components of each model, and assembles a PyG \texttt{Data} object from the node features and edges to return only the final logit tensor. This is done so that GraphXAI's gradient and masking routines operate on the model exactly as it is trained. All message-passing layers remain reachable through \texttt{self.modules()}, which the explainers traverse to determine the receptive-field depth.
+
+\subsection{Clinical Evidence Decoding}
+
+For the MIMIC setting, \texttt{generate\_clinical\_explanations.py} decodes both post-hoc attributions and intrinsic reasoning into human-readable clinical summaries. Top-ranked nodes identified by post-hoc explainers are mapped to feature descriptions (vitals, medications, symptoms), alongside the corresponding model-specific interpretability insights for the case.  This output format ensures that regardless of the underlying architecture, clinicians receive both intrinsic explainability insights and post-hoc feature importance for each classification decision, providing them with a tangible, inspectable justification for the diagnostic decision of each model.
+
+% ─────────────────────────────────────────────────────────────────────
+\section{GraphCare Baseline}
+\label{sec:graphcare-impl}
+% ─────────────────────────────────────────────────────────────────────
+
+The main GNN comparison is GraphCare, introduced in
+Section~\ref{sec:graphcare}. It is run from the authors' released
+implementation, adapted to the same 30-class emergency-department task and the
+same subject-aware canonical split used for the prototype model. Training the
+two models on identical data isolates the modelling approach from any difference
+in the input, so a gap in the results reflects the method rather than the split.
+
+GraphCare operates on a knowledge graph built from the same signal available to
+the prototype model. The graph combines the diagnosis, medication, and symptom
+ontology with the population-level PMI co-occurrence relations, yielding a
+compact structure of 259 nodes and two relation types. On top of this graph,
+GraphCare applies its Bi-attention Augmented (BAT) GNN with a hidden dimension of
+128 and two message-passing layers. The model is trained for 25 epochs on
+\texttt{merged\_ed.csv} and evaluated with the same multi-class metrics as the
+prototype model, which makes the comparison in Chapter~\ref{evaluation} a direct
+contrast between prototype-based case reasoning and knowledge-graph
+bi-attention.
+
+\tbd{Confirm any remaining GraphCare training details against the released
+configuration (optimiser, learning rate, batch size) before submission.}
+
+% ─────────────────────────────────────────────────────────────────────
+\section{Evaluation Protocol}
+\label{sec:eval-protocol}
+% ─────────────────────────────────────────────────────────────────────
+
+\textbf{Predictive performance.} Classification is evaluated with multi-class
+metrics appropriate to the imbalanced 30-class target: accuracy, balanced
+accuracy, macro- and micro-averaged F1, and top-$k$ accuracy, computed on the
+held-out test fold by \texttt{eval\_checkpoint.py}. Accuracy and micro-F1
+measure overall correctness, balanced accuracy and macro-F1 give every class
+the same weight regardless of its frequency, and top-3 / top-5 accuracy measure
+whether the correct diagnosis is at least among the highest-ranked candidates,
+which is how a decision-support tool would be used at triage. Threshold-free
+ranking metrics (AUROC, AUPRC) are not reported, as they were not exported for
+all compared methods.
+
+\textbf{Compared methods.} To isolate the effect of the modelling approach from
+the data, every method is trained and evaluated on the identical subject-aware
+canonical split. The comparison covers:
+%
+\begin{itemize}
+  \item \textbf{ProtGNN (ours)}: the prototype-based self-explainable model
+        described in this chapter, trained by
+        \texttt{comparison/\allowbreak protgnn\_canonical.py}. That script
+        reproduces the training loop of \texttt{train.py} (warm-up epochs with a
+        frozen classification layer, cluster and margin-separation losses, L1 on
+        cross-class weights, gradient clipping, MCTS prototype projection from
+        epoch 20, early stopping on validation macro-F1) on the canonical folds,
+        and stores the checkpoint and the per-graph test predictions that the
+        confusion matrix and the per-class table are built from. The reported
+        run stopped at epoch 23 and used the post-projection weights, so every
+        prototype corresponds to a real training subgraph.
+  \item \textbf{GraphCare}: a knowledge-graph GNN baseline, detailed in
+        Section~\ref{sec:graphcare-impl}, trained and evaluated on the same
+        split.
+  \item \textbf{Method~C} \tbd{third comparison method, to be decided}: to be
+        trained and evaluated on the same canonical split, with its results
+        reported in Section~\ref{sec:pred-perf}.
+  \item \textbf{Plain-GCN ablation}: the same GCN encoder with the prototype
+        layer replaced by an MLP head
+        (\texttt{model\_args.enable\_prot = False}), same hyperparameters, same
+        class-weighted cross-entropy and the same early-stopping rule, used to
+        isolate the contribution of the prototype layer. It is run by
+        \texttt{comparison/\allowbreak plain\_gcn\_canonical.py} rather than by
+        \texttt{train.py --no\_prot}, because \texttt{train.py} splits every
+        graph in the processed dataset (77,697), while the canonical split keeps
+        only the 74,511 visits that carry a disease label and at least one
+        clinical code; training on the larger set would place the ablation on a
+        different test fold.
+  \item \textbf{Majority-class baseline}: predicts the most frequent training
+        class for every visit, with top-$k$ accuracy taken from the training
+        class priors. It fixes the floor of the 30-class task.
+\end{itemize}
+
+\textbf{Tabular baseline.} \texttt{baselines/disease\_baseline.py} provides the
+tabular reference: an XGBoost / HistGradientBoosting ensemble trained on the
+same leakage-controlled features (vitals with engineered
+shock-index/pulse-pressure terms and missingness indicators, demographics, home
+medications, and symptom multi-hots). That script uses its own random 80/20
+split, so the numbers reported in Chapter~\ref{evaluation} come from
+\texttt{comparison/\allowbreak tabular\_baseline\_canonical.py}, which reuses the same
+feature construction but assigns rows to folds through
+\texttt{canonical\_split.json}: 614 features, class-balanced sample weights, and
+early stopping on the canonical validation fold (stopped at iteration 573 of
+800). The majority-class baseline is computed in the same script.
+
+\textbf{Explanation quality.} The explanations reported in
+Chapter~\ref{evaluation} are produced by \texttt{comparison/\allowbreak
+explain\_canonical.py}, which runs the three explainers over the canonical test
+fold with the checkpoint above; \texttt{train.py} explains its own,
+non-canonical test split. As no ground-truth importance masks exist for clinical
+data, explanation quality is summarised by \texttt{summarize\_graphxai.py}
+through (i) a \emph{sparsity} score (how few
+nodes carry most of the importance mass), (ii) inter-explainer agreement across
+the three methods, and (iii) the decoded clinical evidence. Optionally
+(\texttt{--with\_fidelity}), Fidelity$+$/Fidelity$-$ are computed by re-running
+the model on perturbed graphs. This sub-evaluation assesses post-hoc feature/node attribution quality using GraphXAI, whereas intrinsic prototype fidelity/similarity is evaluated separately within the model architecture itself.
+
+% NOTE: The synthetic BA-motif benchmark referenced in Chapter 5 is NOT part of
+% the released codebase (no generator, data, or results were found). Either
+% implement it before claiming ground-truth-mask F1 / Fidelity results, or
+% remove the forward reference in the Architecture chapter. A placeholder
+% subsection is intentionally omitted here to keep this chapter faithful to the
+% code.
+
+% ─────────────────────────────────────────────────────────────────────
+\section{Software and Hardware Environment}
+% ─────────────────────────────────────────────────────────────────────
+
+\begin{itemize}
+  \item \textbf{Language and frameworks:} Python~3.11, PyTorch, PyTorch
+        Geometric, scikit-learn, NetworkX, NumPy, pandas, and XGBoost.
+  \item \textbf{XAI library:} GraphXAI~\cite{agarwal2023graphxai}
+        (\texttt{GradExplainer}, \texttt{IntegratedGradExplainer},
+        \texttt{GNNExplainer}).
+  \item \textbf{Hardware:} an Apple M-series MacBook Pro, with GPU acceleration
+        through the Metal Performance Shaders backend
+        (\texttt{torch.backends.mps}); the implementation falls back to CUDA or
+        CPU when MPS is unavailable.
+  \item \textbf{Reproducibility:} a fixed random seed ($1234$) governs dataset
+        construction, splitting, and model initialisation, and locked
+        environment files pin all dependency versions.
+\end{itemize}
+
+% ─────────────────────────────────────────────────────────────────────
+\section{Summary}
+% ─────────────────────────────────────────────────────────────────────
+
+This chapter detailed the implementation of the proposed system: an
+intra-patient heterogeneous graph builder over MIMIC-IV-ED with typed nodes, PMI medication edges, and a leakage-controlled subject-aware split; a suite of GNN encoders integrated with intrinsic interpretability layers; their corresponding model-specific training and optimization schedules;  and a secondary post-hoc GraphXAI explanation stage used to inspect input node attributions across models. The next chapter evaluates this pipeline on the 30-class diagnosis task against the tabular baseline and analyses the resulting explanations.

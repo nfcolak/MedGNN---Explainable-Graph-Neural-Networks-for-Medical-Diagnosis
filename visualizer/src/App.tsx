@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Maximize2, Minus, Plus, RotateCcw, Search } from 'lucide-react';
+import { Maximize2, Minus, Plus, RotateCcw, Search, Sparkles } from 'lucide-react';
 import GraphCanvas, { GraphCanvasHandle, normalizeType } from './components/GraphCanvas';
 import Legend from './components/Legend';
 import NodeDetailsPanel from './components/NodeDetailsPanel';
+import EvidencePanel from './components/EvidencePanel';
 import { getDiagnosisInfo } from './data/diagnosisDescriptions';
 import { loadGraph, loadManifest } from './data/graphLoader';
 import type { GraphManifestItem, PatientGraph, PatientGraphNode } from './types/graph';
@@ -35,6 +36,7 @@ function App() {
   const [selectedNode, setSelectedNode] = useState<PatientGraphNode | null>(null);
   const [graphQuery, setGraphQuery] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [explainMode, setExplainMode] = useState(false);
   const [status, setStatus] = useState('Loading patient graphs');
 
   // Load only the manifest up front. Individual graph shards are fetched lazily
@@ -113,6 +115,10 @@ function App() {
   const activePatientLabel = graph ? patientLabelOf(graph) : null;
   const diagnosisInfo = getDiagnosisInfo(graph?.diagnosis);
   const nodeCount = graph?.nodes.length ?? 0;
+  const hasImportance = useMemo(
+    () => graph?.nodes.some((node) => typeof node.importance === 'number') ?? false,
+    [graph],
+  );
   const pmiEdgeCount = useMemo(
     () =>
       graph?.edges.filter((edge) => {
@@ -127,7 +133,13 @@ function App() {
       <div className="graph-layer">
         <div className="graph-grid" aria-hidden="true" />
         {graph ? (
-          <GraphCanvas ref={graphRef} graph={graph} searchTerm={searchTerm} onNodeSelect={handleNodeSelect} />
+          <GraphCanvas
+            ref={graphRef}
+            graph={graph}
+            searchTerm={searchTerm}
+            explainMode={explainMode}
+            onNodeSelect={handleNodeSelect}
+          />
         ) : null}
         {status ? (
           <div className="loading-state">
@@ -198,6 +210,17 @@ function App() {
             />
           </label>
 
+          <button
+            type="button"
+            className={`explain-toggle${explainMode ? ' is-active' : ''}`}
+            onClick={() => setExplainMode((value) => !value)}
+            aria-pressed={explainMode}
+            title={hasImportance ? 'Toggle model explanation overlay' : 'No attribution scores for this patient'}
+          >
+            <Sparkles size={15} />
+            <span>Explain</span>
+          </button>
+
           <div className="toolbar-divider" aria-hidden="true" />
 
           <div className="stat-chip">
@@ -248,7 +271,11 @@ function App() {
         </button>
       </div>
 
-      {selectedNode ? <NodeDetailsPanel node={selectedNode} onClose={() => setSelectedNode(null)} /> : null}
+      {selectedNode ? (
+        <NodeDetailsPanel node={selectedNode} onClose={() => setSelectedNode(null)} />
+      ) : explainMode && graph ? (
+        <EvidencePanel graph={graph} onSelect={handleNodeSelect} onClose={() => setExplainMode(false)} />
+      ) : null}
     </main>
   );
 }

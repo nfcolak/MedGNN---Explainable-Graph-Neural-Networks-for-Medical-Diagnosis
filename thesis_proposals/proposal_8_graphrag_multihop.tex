@@ -1,0 +1,210 @@
+\documentclass[10pt,a4paper]{article}
+
+% ---------- Packages ----------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+
+\usepackage[
+    a4paper,
+    margin=1.8cm,
+    top=1.2cm,
+    bottom=1.5cm,
+    includehead,
+    headheight=1.9cm,
+    headsep=0.45cm
+]{geometry}
+
+\usepackage{graphicx}
+\usepackage[table]{xcolor}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{xurl}
+\usepackage{hyperref}
+
+% ---------- Colors ----------
+\definecolor{mainblue}{RGB}{25,55,110}
+\definecolor{lightgray}{RGB}{245,245,245}
+
+% ---------- Links ----------
+\hypersetup{
+    colorlinks=true,
+    linkcolor=mainblue,
+    urlcolor=mainblue,
+    citecolor=mainblue
+}
+
+% ---------- Header ----------
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\fancyhead[L]{%
+    \begin{minipage}[c]{0.30\textwidth}
+        \raggedright
+        \IfFileExists{uzi_logo.png}{\includegraphics[width=3.2cm]{\detokenize{uzi_logo.png}}}{\textbf{UZH}}
+    \end{minipage}
+}
+
+\fancyhead[C]{%
+    \begin{minipage}[c]{0.36\textwidth}
+        \centering
+        \textbf{\small Thesis Proposal}\\[-0.1em]
+        \scriptsize Department of Informatics
+    \end{minipage}
+}
+
+\fancyhead[R]{%
+    \begin{minipage}[c]{0.30\textwidth}
+        \raggedleft
+        \IfFileExists{everlogo.png}{\includegraphics[width=3.0cm]{\detokenize{everlogo.png}}}{\textbf{Everllence}}
+    \end{minipage}
+}
+
+\fancyfoot[C]{\thepage}
+
+% ---------- Section Formatting ----------
+\titleformat{\section}
+  {\color{mainblue}\normalfont\large\bfseries}
+  {}
+  {0em}
+  {}
+
+\titlespacing*{\section}{0pt}{0.6em}{0.25em}
+
+% ---------- Compact Lists ----------
+\setlist[itemize]{noitemsep, topsep=2pt, leftmargin=1.2em}
+\setlist[enumerate]{noitemsep, topsep=2pt, leftmargin=1.4em}
+
+% ---------- Tables ----------
+\renewcommand{\arraystretch}{1.08}
+\setlength{\tabcolsep}{6pt}
+
+\begin{document}
+
+% ---------- Title ----------
+\begin{center}
+    {\Large \textbf{Graph-Based versus Vector Retrieval-Augmented Generation for\\[0.15em]Multi-Hop Question Answering over Technical Documentation}}\\[0.3em]
+    {\normalsize Industry Collaboration with Everllence SE (formerly MAN Energy Solutions)}
+\end{center}
+
+\vspace{0.35em}
+
+% ---------- Student Information ----------
+\noindent
+\begin{tabularx}{\textwidth}{>{\bfseries}l X >{\bfseries}l X}
+Student Name: & Necati Furkan Colak       & Student ID:    & 24746323 \\
+Program:      & MSc Computer Science      & Semester:      & Spring 2026 \\
+Supervisor:   & [Supervisor Name]         & Co-Supervisor: & [Everllence Contact] \\
+Email:        & necatifurkan.colak@uzh.ch & Date:          & \today \\
+\end{tabularx}
+
+\vspace{0.5em}
+\hrule
+\vspace{0.5em}
+
+\section{Abstract}
+
+Technical documents are organized: sections reference other sections, components appear in parts lists and in procedures, and a repair instruction points to a torque table three chapters away. Vector-based retrieval-augmented generation (RAG) ignores this structure. It retrieves passages by embedding similarity, which works for single-fact questions and degrades on questions whose evidence is spread over connected passages. Benchmark studies measure this directly: pipelines that answer single-fact questions well lose much of their accuracy on multi-hop queries \cite{tang2024}. Graph-based RAG builds a graph over documents (sections, entities, cross-references) and retrieves by traversing it; a peer-reviewed study in the manufacturing domain reports improved document question answering with this approach \cite{documentgraphrag2025}. The two approaches have not been compared under controlled conditions on the same technical corpus with hop-stratified questions. This thesis builds both pipelines over one public corpus of technical documents, adds a hybrid variant, and measures answer correctness, retrieval recall, faithfulness, and indexing and query cost, stratified by the number of evidence hops. An ablation with a manually corrected graph quantifies how extraction errors affect final answers. The outcome states when building a document graph is worth its cost.
+
+\section{Motivation and Problem Statement}
+
+\textbf{Operational context.} Engineers ask questions whose answers require combining passages. ``Which lubricant does the overhaul procedure require, and what is its storage temperature?'' needs the procedure, a cross-referenced material sheet, and a storage table. Assistants built on vector RAG answer the first part and miss the rest, because no single passage matches the whole question. In maintenance and service settings, these multi-part questions are common, and a partial answer forces the engineer back into manual search.
+
+\textbf{Evidence for the gap.} The MultiHop-RAG benchmark evaluated standard RAG pipelines on queries whose evidence spans several documents and found that they perform poorly on them, across retrieval variants \cite{tang2024}. Document GraphRAG, a peer-reviewed manufacturing-domain study, built a knowledge graph from document structure and keyword links and reports improved document question answering compared with vector retrieval \cite{documentgraphrag2025}. Graph construction methods for text corpora are established \cite{edge2024graphrag}. What is missing is a controlled comparison: same corpus, same questions, same generator, hop-stratified analysis, and a cost account for graph construction. Published graph RAG studies also treat the extracted graph as given, so how extraction errors limit answer quality remains unmeasured.
+
+\textbf{Why cost matters.} A graph must be extracted, stored, and maintained. If graph retrieval only helps on rare question types, organizations should know this before they invest. The comparison therefore reports quality and cost together, per question stratum.
+
+\section{Research Questions}
+
+\begin{enumerate}
+    \item \textbf{RQ1 (primary):} Does graph-based retrieval improve answer correctness over vector retrieval on multi-hop questions over technical documentation, and by how much per hop count?
+    \item \textbf{RQ2:} Does a hybrid retriever (graph traversal plus vector search) beat both single approaches, and on which question types?
+    \item \textbf{RQ3:} How do graph extraction errors (missing edges, wrong entities) propagate to answers, measured by comparing the automatically extracted graph with a manually corrected subset?
+    \item \textbf{RQ4:} What are the indexing and per-query costs of each approach?
+\end{enumerate}
+
+\section{Methodology}
+
+\begin{itemize}
+    \item \textbf{Literature review:} RAG foundations \cite{lewis2020rag}; graph-based RAG \cite{documentgraphrag2025, edge2024graphrag}; multi-hop RAG evaluation \cite{tang2024}; evaluation methods \cite{es2024ragas}.
+    \item \textbf{Data:} 100 to 300 public technical documents with internal cross-references (equipment manuals, public standards, maintenance handbooks). A QA set of 150 to 250 questions stratified by evidence hops (one, two, three or more), drafted with an LLM and fully verified by hand, with gold answers and the full evidence chain per question, split into development and held-out test sets.
+    \item \textbf{Systems:} (a) Vector RAG: hybrid BM25 and dense retrieval with reranking. (b) Graph RAG: a graph built from document structure (headings, cross-references) and extracted entities (components, materials, parameters), with retrieval by entity linking and traversal, following \cite{documentgraphrag2025, edge2024graphrag}. (c) Hybrid: graph traversal collects candidate sections, vector search ranks passages within them. The generator is fixed across systems: one GPT-4-class API model (for example via Azure OpenAI) and one open-weight model to check that findings hold across model sizes. For RQ3, the extracted graph is manually corrected for a subset of 20 to 30 documents.
+    \item \textbf{Evaluation:} Retrieval recall of the gold evidence chain; answer correctness via an LLM-as-judge validated against human ratings on a subset; faithfulness \cite{es2024ragas}; per-hop breakdown of all metrics; indexing time, storage size, and per-query tokens and latency (RQ4); paired significance tests between systems per stratum; an error analysis linking graph defects to answer failures (RQ3).
+\end{itemize}
+
+\section{Expected Contribution}
+
+\begin{enumerate}
+    \item \textbf{For research:} A controlled, hop-stratified comparison of graph-based and vector retrieval on technical documents, plus a measurement of how extraction errors limit graph retrieval, which prior studies do not isolate.
+    \item \textbf{For practice:} A quality and cost basis for deciding whether building a document graph is justified for a given mix of questions, applicable to maintenance, service, and engineering documentation in any organization.
+    \item \textbf{Open deliverables:} The hop-stratified benchmark with evidence chains, the graph extraction pipeline, and the evaluation code. The corpus is public, so the study can be reproduced.
+\end{enumerate}
+
+\section{Proposed Timeline (6 months)}
+
+\begin{tabularx}{\textwidth}{|p{2.6cm}|X|}
+\hline
+\rowcolor{lightgray}
+\textbf{Period} & \textbf{Planned Work} \\
+\hline
+Month 1 & Literature review; corpus assembly. \\
+\hline
+Month 2 & Hop-stratified QA set with human verification; vector RAG baseline. \\
+\hline
+Month 3 & Graph extraction; graph RAG and hybrid variants. \\
+\hline
+Month 4 & Manual graph correction for the subset; full experimental runs (RQ1, RQ2). \\
+\hline
+Month 5 & Error propagation analysis (RQ3); cost accounting (RQ4). \\
+\hline
+Month 6 & Thesis writing; code and benchmark release; final presentation. \\
+\hline
+\end{tabularx}
+
+\begingroup
+\renewcommand{\refname}{\texorpdfstring{\color{mainblue}}{}Preliminary References}
+\scriptsize
+\begin{thebibliography}{9}
+\setlength{\itemsep}{0pt}
+
+\bibitem{tang2024}
+Y.\ Tang and Y.\ Yang.
+\textit{MultiHop-RAG: Benchmarking Retrieval-Augmented Generation for Multi-Hop Queries}.
+arXiv:2401.15391, 2024.
+
+\bibitem{documentgraphrag2025}
+\textit{Document GraphRAG: Knowledge Graph Enhanced Retrieval Augmented Generation for Document Question Answering Within the Manufacturing Domain}.
+Electronics, 14(11):2102, 2025.
+
+\bibitem{edge2024graphrag}
+D.\ Edge et al.
+\textit{From Local to Global: A Graph RAG Approach to Query-Focused Summarization}.
+arXiv:2404.16130, 2024.
+
+\bibitem{lewis2020rag}
+P.\ Lewis et al.
+\textit{Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks}.
+NeurIPS, 2020.
+
+\bibitem{es2024ragas}
+S.\ Es et al.
+\textit{RAGAS: Automated Evaluation of Retrieval Augmented Generation}.
+EACL, 2024.
+
+\end{thebibliography}
+\endgroup
+
+\vspace{0.1em}
+
+\noindent
+\begin{tabularx}{\textwidth}{X X}
+\textbf{Student Signature:} & \textbf{Supervisor Signature:} \\[0.9em]
+\rule{0.42\textwidth}{0.4pt} & \rule{0.42\textwidth}{0.4pt} \\
+\end{tabularx}
+
+\end{document}

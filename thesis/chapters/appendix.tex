@@ -1,0 +1,158 @@
+\appendix
+
+\chapter{Results}\label{app:results}
+
+This appendix collects the detailed results that support Chapter~\ref{evaluation}.
+
+\section{Per-Class Performance}
+
+Table~\ref{tab:per-class} gives precision, recall, F1 and support for all 30
+classes on the canonical test fold, for the prototype model
+(\texttt{comparison/\allowbreak protgnn\_canonical}), sorted by support. It is
+the detail behind the aggregate numbers in Table~\ref{tab:main-results} and the
+error analysis in Section~\ref{sec:error-analysis}.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \setlength{\tabcolsep}{4pt}
+  \caption{Per-class test performance of the prototype model on the canonical
+    split. Macro-F1 is the unweighted mean of the F1 column (0.508).}
+  \label{tab:per-class}
+  \begin{tabular}{lrrrr}
+    \toprule
+    Diagnosis class & Precision & Recall & F1 & Support \\
+    \midrule
+    Limb injury or pain & 0.732 & 0.615 & 0.668 & 903 \\
+    Back or spine pain & 0.820 & 0.644 & 0.722 & 855 \\
+    Cardiovascular risk factor & 0.586 & 0.406 & 0.479 & 749 \\
+    Head injury & 0.687 & 0.490 & 0.572 & 502 \\
+    Diabetes mellitus & 0.584 & 0.551 & 0.567 & 425 \\
+    UTI or pyelonephritis & 0.590 & 0.341 & 0.433 & 413 \\
+    Skin or soft-tissue infection & 0.678 & 0.524 & 0.591 & 389 \\
+    Lower respiratory disease & 0.464 & 0.366 & 0.409 & 369 \\
+    Alcohol abuse with intoxication & 0.897 & 0.812 & 0.852 & 345 \\
+    GI bleed & 0.810 & 0.666 & 0.731 & 302 \\
+    Major depressive disorder & 0.832 & 0.835 & 0.834 & 267 \\
+    Unspecified atrial fibrillation & 0.420 & 0.497 & 0.455 & 179 \\
+    Acute pharyngitis & 0.828 & 0.744 & 0.784 & 168 \\
+    Anxiety disorder & 0.497 & 0.601 & 0.544 & 138 \\
+    Dehydration & 0.189 & 0.419 & 0.261 & 129 \\
+    Acute kidney failure & 0.377 & 0.359 & 0.368 & 128 \\
+    Hypokalemia & 0.266 & 0.504 & 0.348 & 127 \\
+    Laceration w/o fb of l idx fngr w/o damage to nail & 0.449 & 0.754 & 0.563 & 122 \\
+    Unsp intestnl obst & 0.591 & 0.556 & 0.573 & 117 \\
+    Anemia & 0.325 & 0.693 & 0.443 & 114 \\
+    Unspecified asthma with (acute) exacerbation & 0.481 & 0.670 & 0.560 & 112 \\
+    Epilepsy & 0.608 & 0.784 & 0.685 & 97 \\
+    Heart failure & 0.353 & 0.624 & 0.451 & 85 \\
+    Acute upper respiratory infection & 0.175 & 0.488 & 0.257 & 82 \\
+    Non-ST elevation (NSTEMI) myocardial infarction & 0.378 & 0.750 & 0.502 & 72 \\
+    Multiple fractures of ribs & 0.223 & 0.529 & 0.314 & 70 \\
+    Hypothyroidism & 0.236 & 0.600 & 0.339 & 65 \\
+    Hypotension & 0.200 & 0.277 & 0.232 & 47 \\
+    End stage renal disease & 0.404 & 0.477 & 0.438 & 44 \\
+    Sepsis & 0.196 & 0.488 & 0.280 & 41 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Class Distribution}
+
+The per-class counts for the canonical run are listed in
+Table~\ref{tab:class-dist}, sorted by training frequency. The class names are
+the merged disease categories used by the canonical split
+(\texttt{comparison/\allowbreak canonical\_split.json}); earlier runs used the raw
+\texttt{disease\_1} strings and are not comparable.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Class distribution for the 30-class disease dataset on the canonical
+    split (train / validation / test).}
+  \label{tab:class-dist}
+  \begin{tabular}{lrrrr}
+    \toprule
+    Diagnosis class & Train & Share & Val & Test \\
+    \midrule
+    Limb injury or pain & 7{,}224 & 12.1\% & 903 & 903 \\
+    Back or spine pain & 6{,}841 & 11.5\% & 855 & 855 \\
+    Cardiovascular risk factor & 5{,}986 & 10.0\% & 748 & 749 \\
+    Head injury & 4{,}016 & 6.7\% & 502 & 502 \\
+    Diabetes mellitus & 3{,}395 & 5.7\% & 424 & 425 \\
+    UTI or pyelonephritis & 3{,}298 & 5.5\% & 412 & 413 \\
+    Skin or soft-tissue infection & 3{,}114 & 5.2\% & 389 & 389 \\
+    Lower respiratory disease & 2{,}952 & 5.0\% & 369 & 369 \\
+    Alcohol abuse with intoxication & 2{,}755 & 4.6\% & 344 & 345 \\
+    GI bleed & 2{,}417 & 4.1\% & 302 & 302 \\
+    Major depressive disorder & 2{,}141 & 3.6\% & 268 & 267 \\
+    Unspecified atrial fibrillation & 1{,}428 & 2.4\% & 178 & 179 \\
+    Acute pharyngitis & 1{,}346 & 2.3\% & 168 & 168 \\
+    Anxiety disorder & 1{,}103 & 1.9\% & 138 & 138 \\
+    Dehydration & 1{,}027 & 1.7\% & 128 & 129 \\
+    Acute kidney failure & 1{,}025 & 1.7\% & 128 & 128 \\
+    Hypokalemia & 1{,}012 & 1.7\% & 126 & 127 \\
+    Laceration w/o fb of l idx fngr w/o damage to nail & 971 & 1.6\% & 121 & 122 \\
+    Unsp intestnl obst & 940 & 1.6\% & 118 & 117 \\
+    Anemia & 913 & 1.5\% & 114 & 114 \\
+    Unspecified asthma with (acute) exacerbation & 894 & 1.5\% & 112 & 112 \\
+    Epilepsy & 774 & 1.3\% & 97 & 97 \\
+    Heart failure & 680 & 1.1\% & 85 & 85 \\
+    Acute upper respiratory infection & 656 & 1.1\% & 82 & 82 \\
+    Non-ST elevation (NSTEMI) myocardial infarction & 577 & 1.0\% & 72 & 72 \\
+    Multiple fractures of ribs & 558 & 0.9\% & 70 & 70 \\
+    Hypothyroidism & 515 & 0.9\% & 64 & 65 \\
+    Hypotension & 381 & 0.6\% & 48 & 47 \\
+    End stage renal disease & 346 & 0.6\% & 43 & 44 \\
+    Sepsis & 322 & 0.5\% & 40 & 41 \\
+    \midrule
+    Total & 59{,}607 & 100.0\% & 7{,}448 & 7{,}456 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Example Explanations}
+
+The three cases below come from the explanation pass over the canonical test
+fold (\texttt{comparison/\allowbreak protgnn\_canonical/\allowbreak
+graphxai\_summary.csv}). \caveat{That pass covers 50 graphs, 0.7\% of the test
+fold, so these cases illustrate the mechanisms described in
+Section~\ref{sec:expl-quality} rather than establishing how often each one
+occurs.} They were chosen to show one correct prediction with coherent evidence,
+one failure where the model reads the wrong node, and the relation between
+prototype distance and correctness. Node labels are the decoded
+clinical tokens: \texttt{cc[\ldots]} is a triage chief complaint,
+\texttt{sym[\ldots]} a doctor-assigned symptom code, drug names are home or
+ED-administered medications, and arrows give the z-scored direction of a vital
+sign.
+
+\paragraph{Case 1, correct prediction with coherent evidence (graph 2).}
+Predicted and true class: \emph{Laceration w/o fb of l idx fngr w/o damage to
+nail}; 17 nodes. Integrated Gradients ranks \texttt{cc[laceration]} first and the
+gradient explainer ranks it second, behind the patient node. The three nearest
+prototypes (\#56, \#55, \#54, distances 0.074 to 0.076) all belong to the
+predicted class, so the case-based evidence and the attribution point the same
+way. GNNExplainer, as on most graphs, ranks the demographic hub node first and
+then vital signs, which says little about the diagnosis.
+
+\paragraph{Case 2, the model reads the wrong node (graph 5).}
+Predicted \emph{Hypokalemia}, true class \emph{Lower respiratory disease}; 22
+nodes. The visit carries an oxygen saturation 4.8 standard deviations below the
+mean, flagged abnormal, which is the signal for the true class. The gradient
+explainer does surface it, but only after \texttt{cc[rash]} and the patient node;
+Integrated Gradients drops it entirely in favour of levetiracetam and
+lamotrigine, the patient's antiepileptic medication. The nearest prototype is
+\#46 (\emph{Hypokalemia}) at distance 0.173, and the next two are also
+hypokalaemia prototypes, so the model is confidently matching the wrong
+archetype. The explanation is faithful, it shows what the model used, but what
+the model used was the medication history rather than the vital sign.
+
+\paragraph{Case 3, prototype distance as a confidence signal (graph 0).}
+Predicted and true class: \emph{GI bleed}; 17 nodes. The nearest prototype is
+\#38 at distance 0.032, the closest match in the sample, with the next two
+prototypes of the same class at 0.054 and 0.058. Integrated Gradients selects
+\texttt{cc[rectal pain]} first, which is the presenting complaint for this
+diagnosis. This is the pattern behind the aggregate numbers in
+Section~\ref{sec:expl-quality}: tight prototype distances (mean 0.122 \caveat{over
+the 50 explained graphs}) go with correct predictions, while the loose matches (mean
+0.191) are where the model fails, as in Case 2.
