@@ -1,0 +1,43 @@
+/Users/leylaxasiyeva/Desktop/MP---Self-Explainable-Graph-Neural-Networks-via-Prototype-Learning-for-Medical-Diagnosis/.venv-protgnn/lib/python3.10/site-packages/torch_geometric/deprecation.py:26: UserWarning: 'data.DataLoader' is deprecated, use 'loader.DataLoader' instead
+  warnings.warn(out)
+  graph structure  : star
+  device           : mps
+  [split] CANONICAL: train=59607 val=7448 test=7456 (excluded 3186)
+  params           : 223,778
+  epoch   0 | r 0.90 | pred 2.138 info 0.115 | val macro_f1 0.3790 acc 0.5481 | 59s
+  epoch   1 | r 0.90 | pred 1.496 info 0.085 | val macro_f1 0.4794 acc 0.6030 | 85s
+  epoch   2 | r 0.90 | pred 1.373 info 0.085 | val macro_f1 0.5248 acc 0.6203 | 104s
+  epoch   3 | r 0.90 | pred 1.309 info 0.084 | val macro_f1 0.5331 acc 0.6141 | 122s
+  epoch   4 | r 0.90 | pred 1.273 info 0.083 | val macro_f1 0.5458 acc 0.6254 | 142s
+  epoch   5 | r 0.90 | pred 1.242 info 0.083 | val macro_f1 0.5425 acc 0.6223 | 158s
+  epoch   6 | r 0.90 | pred 1.220 info 0.083 | val macro_f1 0.5530 acc 0.6327 | 175s
+  epoch   7 | r 0.90 | pred 1.200 info 0.083 | val macro_f1 0.5614 acc 0.6302 | 192s
+  epoch   8 | r 0.90 | pred 1.177 info 0.083 | val macro_f1 0.5585 acc 0.6348 | 207s
+  epoch   9 | r 0.90 | pred 1.164 info 0.082 | val macro_f1 0.5555 acc 0.6286 | 222s
+  epoch  10 | r 0.80 | pred 1.159 info 0.143 | val macro_f1 0.5556 acc 0.6296 | 237s
+  epoch  11 | r 0.80 | pred 1.141 info 0.141 | val macro_f1 0.5604 acc 0.6266 | 253s
+  epoch  12 | r 0.80 | pred 1.131 info 0.141 | val macro_f1 0.5713 acc 0.6394 | 269s
+  epoch  13 | r 0.80 | pred 1.114 info 0.141 | val macro_f1 0.5687 acc 0.6329 | 284s
+  epoch  14 | r 0.80 | pred 1.098 info 0.141 | val macro_f1 0.5615 acc 0.6285 | 299s
+  epoch  15 | r 0.80 | pred 1.087 info 0.141 | val macro_f1 0.5559 acc 0.6234 | 314s
+  epoch  16 | r 0.80 | pred 1.073 info 0.141 | val macro_f1 0.5640 acc 0.6284 | 330s
+  epoch  17 | r 0.80 | pred 1.063 info 0.141 | val macro_f1 0.5664 acc 0.6340 | 347s
+  epoch  18 | r 0.80 | pred 1.049 info 0.141 | val macro_f1 0.5636 acc 0.6285 | 361s
+  epoch  19 | r 0.80 | pred 1.036 info 0.140 | val macro_f1 0.5556 acc 0.6241 | 378s
+  epoch  20 | r 0.70 | pred 1.049 info 0.186 | val macro_f1 0.5546 acc 0.6294 | 393s
+  epoch  21 | r 0.70 | pred 1.034 info 0.185 | val macro_f1 0.5591 acc 0.6300 | 408s
+  epoch  22 | r 0.70 | pred 1.026 info 0.185 | val macro_f1 0.5614 acc 0.6294 | 424s
+  epoch  23 | r 0.70 | pred 1.017 info 0.184 | val macro_f1 0.5572 acc 0.6253 | 439s
+  epoch  24 | r 0.70 | pred 1.004 info 0.184 | val macro_f1 0.5626 acc 0.6286 | 455s
+  epoch  25 | r 0.70 | pred 0.999 info 0.185 | val macro_f1 0.5526 acc 0.6261 | 470s
+  epoch  26 | r 0.70 | pred 0.989 info 0.185 | val macro_f1 0.5502 acc 0.6242 | 485s
+  epoch  27 | r 0.70 | pred 0.979 info 0.185 | val macro_f1 0.5563 acc 0.6293 | 499s
+  epoch  28 | r 0.70 | pred 0.967 info 0.185 | val macro_f1 0.5582 acc 0.6294 | 514s
+  epoch  29 | r 0.70 | pred 0.958 info 0.184 | val macro_f1 0.5556 acc 0.6224 | 528s
+  epoch  30 | r 0.70 | pred 0.951 info 0.185 | val macro_f1 0.5532 acc 0.6237 | 542s
+  epoch  31 | r 0.70 | pred 0.942 info 0.185 | val macro_f1 0.5559 acc 0.6274 | 558s
+  epoch  32 | r 0.70 | pred 0.937 info 0.185 | val macro_f1 0.5449 acc 0.6210 | 573s
+  early stop @ epoch 32
+  saved /Users/leylaxasiyeva/Desktop/MP---Self-Explainable-Graph-Neural-Networks-via-Prototype-Learning-for-Medical-Diagnosis/gsat_analysis/outputs/star/gsat_model.pt
+  TEST macro_f1 0.5634 | micro_f1 0.6330 | acc 0.6330
+  wrote /Users/leylaxasiyeva/Desktop/MP---Self-Explainable-Graph-Neural-Networks-via-Prototype-Learning-for-Medical-Diagnosis/gsat_analysis/outputs/star/report.txt

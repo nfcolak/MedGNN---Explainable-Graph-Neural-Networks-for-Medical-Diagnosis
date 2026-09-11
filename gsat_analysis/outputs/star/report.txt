@@ -1,0 +1,16 @@
+GSAT (Method C) -- stochastic-attention GIN on mimic_intra_patient_disease
+  dataset          : mimic_intra_patient_disease  (graphs reused from protgnn cache)
+  graph structure  : star
+  split            : train=59607 val=7448 test=7456
+  backbone         : GIN dim=128 x 3 layers, readout=mean, dropout=0.3
+  attention        : node-level, temp=1.0, info_coef=1.0, r 0.9->0.7
+  classes          : 30
+  epochs run       : 33
+
+TEST SET PERFORMANCE
+  accuracy        : 0.633047
+  balanced_acc    : 0.558534
+  macro_f1        : 0.563440
+  micro_f1        : 0.633047
+  top3_acc        : 0.829131
+  top5_acc        : 0.897264
