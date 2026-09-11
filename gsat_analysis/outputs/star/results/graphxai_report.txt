@@ -1,0 +1,16 @@
+================================================================
+GSAT + GraphXAI — Fidelity / Sparsity Report
+================================================================
+
+Explanations dir : /Users/leylaxasiyeva/Desktop/MP---Self-Explainable-Graph-Neural-Networks-via-Prototype-Learning-for-Medical-Diagnosis/gsat_analysis/outputs/star/results/explanations
+Graphs evaluated : 50
+Accuracy         : 28/50 correct
+
+MEAN SPARSITY / FIDELITY+ / FIDELITY- PER EXPLAINER
+----------------------------------------
+  BuiltinAttention            : sparsity=0.0762  fidelity+=+0.1905  fidelity-=+0.1703
+  GradExplainer               : sparsity=0.0982  fidelity+=+0.1724  fidelity-=+0.1892
+  IntegratedGradExplainer     : sparsity=0.6185  fidelity+=+0.3909  fidelity-=+0.0402
+  GNNExplainer                : sparsity=0.5540  fidelity+=+0.0698  fidelity-=+0.2889
+
+Top-node agreement: 9/50 (18.0%)

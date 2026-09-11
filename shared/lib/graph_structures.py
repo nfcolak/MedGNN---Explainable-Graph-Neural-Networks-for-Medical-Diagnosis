@@ -1,12 +1,13 @@
-"""Single source of truth for the GRAPH STRUCTURE (topology) used by BOTH
-analyses (ProtGNN and GraphCare).
+"""Single source of truth for the GRAPH STRUCTURE (topology) used by ALL three
+analyses (ProtGNN, GraphCare and GSAT).
 
-The two methods build graphs very differently — ProtGNN emits one PyG `Data`
-per patient (feature vectors on nodes), GraphCare builds a per-patient subgraph
-over a global KG (node ids + relation ids). What they CAN share is the *edge
-policy*: given a patient's concept nodes, which edges connect them. That policy
-is what we call the "graph structure", and it is selected by name so the exact
-same pipeline runs for any topology without editing code.
+The methods build graphs differently — ProtGNN and GSAT both emit one PyG `Data`
+per patient (feature vectors on nodes; GSAT reuses ProtGNN's cache verbatim),
+GraphCare builds a per-patient subgraph over a global KG (node ids + relation
+ids). What they CAN share is the *edge policy*: given a patient's concept nodes,
+which edges connect them. That policy is what we call the "graph structure", and
+it is selected by name so the exact same pipeline runs for any topology without
+editing code.
 
 Structures (concept nodes = the patient's meds / labs / symptoms / chief
 complaints / diagnoses; the PATIENT hub is always present so its demographic /
@@ -19,28 +20,30 @@ numeric features can propagate):
     full      star + (cooccur ∪ ontology); GraphCare additionally expands to the
               patient's 1-hop KG neighbours that are NOT in the record
 
-`protgnn` / `graphcare` flags say whether a method can realise that structure.
-The ordering (star ⊂ cooccur/ontology ⊂ full on edges) makes the set a clean
-monotone ablation ladder that BOTH methods realise, for a fair comparison.
+`protgnn` / `graphcare` / `gsat` flags say whether a method can realise that
+structure. The ordering (star ⊂ cooccur/ontology ⊂ full on edges) makes the set
+a clean monotone ablation ladder that all three methods realise, for a fair
+comparison. GSAT consumes the same per-patient graphs as ProtGNN, so it supports
+exactly the structures ProtGNN does.
 """
 from collections import OrderedDict
 
 # name -> metadata. `order` is only for stable display.
 GRAPH_STRUCTURES = OrderedDict([
     ("star", {
-        "protgnn": True, "graphcare": True,
+        "protgnn": True, "graphcare": True, "gsat": True,
         "desc": "Patient hub ↔ each concept only (baseline, no concept↔concept edges).",
     }),
     ("cooccur", {
-        "protgnn": True, "graphcare": True,
+        "protgnn": True, "graphcare": True, "gsat": True,
         "desc": "Star + concept↔concept where population PMI > threshold (cross-type).",
     }),
     ("ontology", {
-        "protgnn": True, "graphcare": True,
+        "protgnn": True, "graphcare": True, "gsat": True,
         "desc": "Star + concept↔concept sharing an ontology class (drug class / ICD chapter).",
     }),
     ("full", {
-        "protgnn": True, "graphcare": True,
+        "protgnn": True, "graphcare": True, "gsat": True,
         "desc": "Star + cooccur ∪ ontology (GraphCare also expands to 1-hop KG neighbours).",
     }),
 ])
@@ -53,7 +56,7 @@ def all_structures():
 
 
 def supported_structures(method):
-    """method: 'protgnn' | 'graphcare' -> list of structure names it can build."""
+    """method: 'protgnn' | 'graphcare' | 'gsat' -> list of structure names it can build."""
     _check_method(method)
     return [name for name, meta in GRAPH_STRUCTURES.items() if meta[method]]
 
@@ -129,5 +132,5 @@ def prompt_for_structure(method, default=DEFAULT_STRUCTURE, stream=None):
 
 
 def _check_method(method):
-    if method not in ("protgnn", "graphcare"):
-        raise ValueError(f"method must be 'protgnn' or 'graphcare', got {method!r}")
+    if method not in ("protgnn", "graphcare", "gsat"):
+        raise ValueError(f"method must be 'protgnn', 'graphcare' or 'gsat', got {method!r}")
