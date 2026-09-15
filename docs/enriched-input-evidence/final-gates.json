@@ -1,0 +1,53 @@
+{
+  "status": "verified",
+  "scope": "opt-in enriched source-snapshot input and bounded PNA wiring; not benchmark performance",
+  "main_suite": {
+    "command": "python3 -m pytest tests -q --junitxml=docs/enriched-input-evidence/regression.xml",
+    "passed": 426,
+    "skipped": 2,
+    "failed": 0,
+    "skip_reason": "GraphCare real-model tests run in the separate .venv-graphcare interpreter"
+  },
+  "graphcare_suite": {
+    "command": ".venv-graphcare/bin/python -m pytest graphcare_analysis/test_zero_concept_model.py -q --junitxml=docs/enriched-input-evidence/graphcare-regression.xml",
+    "passed": 8,
+    "failed": 0
+  },
+  "new_tests_passed": 13,
+  "real_builder_dry_run_no_output": true,
+  "real_builder_no_overwrite_guard_verified": true,
+  "source_npz_split_prior_results_preservation": {
+    "unchanged_hashes": 242,
+    "source_sha256": "95b055d53c5f879e5a5784b9d44cd3e6f8b0a073798fadc6bb25e5a228eaaf8b",
+    "split_sha256": "33f6cd71399ab2605948d66f80902030cc0b36ae1017bdde551f4504e4bf82b0",
+    "original_common_npz_sha256": "7f90c512655d188187aaccc8ae52523141286f53c264ccf4e9ae2ad0b9c85d99"
+  },
+  "historical_pna_smoke_checkpoint_replay": {
+    "path": "comparison/standardized/pna_experiments/implementation_smoke_v1",
+    "n_validation_smoke": 64,
+    "arrays_equal": true,
+    "metrics_equal": true,
+    "logits_max_abs_diff": 0.0,
+    "checkpoint_sha256": "3a88782a8427b4bc15eecd242963c5ac24554f116c93e9660749f2834984d4e0"
+  },
+  "original_pna_model_equals_full_run_source_snapshot": true,
+  "all_26_laboratory_documentation_counts_checked_against_manifest": true,
+  "git_diff_check": "passed",
+  "targeted_compileall": "passed",
+  "warnings": [
+    "Existing LibreSSL/urllib3 and matplotlib/pyparsing compatibility/deprecation warnings",
+    "Expected sklearn class-coverage warnings for small synthetic/real smoke cohorts"
+  ],
+  "remaining_boundaries": [
+    "Laboratory results remain whole-stay means with unverified result availability and source units",
+    "Age is source anchor_age, not reconstructed index-encounter age",
+    "Historical categories are reconstructed from prior-ended visits, but diagnosis documentation time remains unverified",
+    "One ambiguous index record retained with missing history",
+    "GraphCare continuous hub consumer not implemented",
+    "ProtGNN/GSAT actual enriched forward/backward verified, full enriched curricula/checkpoints pending",
+    "PNA enriched entrypoint is intentionally capped smoke, not a full-training runner"
+  ],
+  "full_training_performed": false,
+  "test_fold_inference_performed": false,
+  "commit_or_push_performed": false
+}

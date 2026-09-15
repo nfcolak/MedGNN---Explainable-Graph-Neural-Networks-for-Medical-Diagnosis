@@ -60,3 +60,23 @@ job_postings_*.xlsx
 
 # Agent-local settings
 .claude/
+.hermes/
+
+# Local experiment artifacts and generated benchmark outputs
+comparison/standardized/common_input_*/
+comparison/standardized/data_quality_balance_*/
+comparison/standardized/enriched_inputs/
+comparison/standardized/enriched_runs/
+comparison/standardized/graphxai_*/
+comparison/standardized/graphxai_execution_*/
+comparison/standardized/native_evidence/
+comparison/standardized/native_inputs/
+comparison/standardized/native_runs/
+comparison/standardized/performance_diagnosis/
+comparison/standardized/performance_review_*/
+comparison/standardized/pna_experiments/
+comparison/standardized/production_cache_*/
+comparison/standardized/results/
+comparison/standardized/zero_concept_verification/
+comparison/standardized/graphxai_current_run.txt
+comparison/standardized/training.log

@@ -1,0 +1,1898 @@
+{
+  "repository": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN",
+  "trash": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220",
+  "candidates": {
+    "Master Project_Template.": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+    "TODO.txt": "Obsolete patient-similarity/LOS experiment task list and nonexistent src/scripts commands; replaced by standardized runbook.",
+    "docs/literature": "Nonruntime paper PDFs, redundant image and paper-comparison spreadsheets; research documents preserved reversibly.",
+    "docs/protgnn.png": "Nonruntime unused figure; standardized runbook and viewer do not load it.",
+    "docs/architecture_diagram.md": "Obsolete two-method architecture with diagnosis/LOS-era inputs, superseded by standardized contract.",
+    "docs/architecture_diagram_colorful.svg": "Obsolete two-method architecture figure, not used by viewer.",
+    "docs/architecture_diagram_professional.svg": "Obsolete two-method architecture figure, not used by viewer.",
+    "docs/superpowers/plans": "Completed implementation task plans, not operating instructions; retain scientific design specification.",
+    ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+    "protgnn_analysis/scripts/train_gnns.sh": "Broken unused shell launcher invokes absent protgnn_analysis/scripts/train_gnns.py.",
+    "protgnn_analysis/explainability/graphxai_integration.py": "Unused legacy example with incorrect project-root calculation and random-weight fallback; superseded by fail-closed standardized explainer.",
+    "protgnn_analysis/outputs/prototype_hpo": "May prototype-weight sweep artifacts; no active source references; preserve as retired scientific evidence.",
+    "protgnn_analysis/outputs/prototype_hpo_los": "May LOS-target prototype-weight sweep; obsolete target regime; preserve as retired scientific evidence.",
+    "protgnn_analysis/outputs/proj25_post_projection_run.log": "May obsolete projection-run log; no active source references.",
+    "comparison/protgnn_canonical": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+    "comparison/comparison.md": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+    "comparison/tabular_baseline_canonical.py": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+    "comparison/methods_comparison.md": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+    "comparison/explain_canonical.py": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+    "comparison/tabular": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+    "comparison/graphcare_train.log": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+    "comparison/error_analysis.py": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+    "comparison/protgnn": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+    "comparison/protgnn_canonical.py": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+    "comparison/protgnn_train.log": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+    "comparison/plain_gcn": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+    "comparison/graphcare": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+    "comparison/plain_gcn_canonical.py": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+    "comparison/compare.py": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+    "graphcare_analysis/outputs/\u00a8$_.txt^'0u\u0308polo\u0308,.-.txt": "Stray nonruntime text document in output root.",
+    "data.zip": "Every non-metadata ZIP payload SHA-256 matches its extracted data file; redundant compressed copy only. All extracted data and symlinks retained."
+  },
+  "symlinks_before": {},
+  "git_status_before": " M README.md\n M STRUCTURE.md\n M docs/RUN_WITH_OWN_DATA.md\n M external/GraphXAI-main/graphxai/explainers/gnn_explainer.py\n M graphcare_analysis/adapter.py\n M graphcare_analysis/build_kg.py\n M graphcare_analysis/config.py\n M graphcare_analysis/run.py\n M protgnn_analysis/config.py\n M protgnn_analysis/load_dataset.py\n M protgnn_analysis/scripts/confusion_analysis.py\n M protgnn_analysis/scripts/explain_checkpoint.py\n M protgnn_analysis/scripts/hpo_disease.py\n M protgnn_analysis/scripts/run_multi_seed.py\n M protgnn_analysis/train.py\n M shared/lib/config_base.py\n M shared/lib/graph_structures.py\n M shared/lib/metrics.py\n D thesis/assets/confusion_matrix.pdf\n D thesis/assets/ifi_logo.pdf\n D thesis/assets/refs.bib\n D thesis/assets/unizhdt-BA.sty\n D thesis/assets/unizhdt-MA.sty\n D thesis/assets/unizhdt.sty\n D thesis/assets/uzh_logo_d.pdf\n D thesis/assets/uzh_logo_e.pdf\n D thesis/chapters/1-introduction.tex\n D thesis/chapters/2-background.tex\n D thesis/chapters/3-relatedwork.tex\n D thesis/chapters/4-architecture.tex\n D thesis/chapters/5-implementation.tex\n D thesis/chapters/6-evaluation.tex\n D thesis/chapters/7-summary.tex\n D thesis/chapters/Declaration.tex\n D thesis/chapters/Zusammenfassung.tex\n D thesis/chapters/abbreviations.tex\n D thesis/chapters/abstract.tex\n D thesis/chapters/acknowledgments.tex\n D thesis/chapters/appendix.tex\n D thesis/chapters/glossary.tex\n D thesis/main.pdf\n D thesis/main.tex\n D thesis/thesis.lof\n D thesis/thesis.lot\n D thesis_proposals/NOT_ICIN_emsal_tezler.md\n D thesis_proposals/everlogo.png\n D thesis_proposals/proposal_0_corrosion_vlm.pdf\n D thesis_proposals/proposal_0_corrosion_vlm.tex\n D thesis_proposals/proposal_10_agentic_rag_evaluation.pdf\n D thesis_proposals/proposal_10_agentic_rag_evaluation.tex\n D thesis_proposals/proposal_11_fault_diagnosis_rag.pdf\n D thesis_proposals/proposal_11_fault_diagnosis_rag.tex\n D thesis_proposals/proposal_1_explainable_predictive_maintenance.pdf\n D thesis_proposals/proposal_1_explainable_predictive_maintenance.tex\n D thesis_proposals/proposal_2_trustworthy_rag_documentation.pdf\n D thesis_proposals/proposal_2_trustworthy_rag_documentation.tex\n D thesis_proposals/proposal_4_agentic_llm_plc_engineering.pdf\n D thesis_proposals/proposal_4_agentic_llm_plc_engineering.tex\n D thesis_proposals/proposal_5_agentic_vs_static_rag.md\n D thesis_proposals/proposal_5_agentic_vs_static_rag.pdf\n D thesis_proposals/proposal_5_agentic_vs_static_rag.tex\n D thesis_proposals/proposal_6_compliance_agent.pdf\n D thesis_proposals/proposal_6_compliance_agent.tex\n D thesis_proposals/proposal_7_crosslingual_rag.pdf\n D thesis_proposals/proposal_7_crosslingual_rag.tex\n D thesis_proposals/proposal_8_graphrag_multihop.pdf\n D thesis_proposals/proposal_8_graphrag_multihop.tex\n D thesis_proposals/proposal_9_digital_twin_rag.pdf\n D thesis_proposals/proposal_9_digital_twin_rag.tex\n D thesis_proposals/uzi_logo.png\n M visualizer/README.md\n?? .hermes/\n?? comparison/standardized/\n?? docs/cleanup-20260914.json\n?? docs/cleanup-manifest.md\n?? docs/common-input-improvement.md\n?? docs/data-quality-balance-improvement.md\n?? docs/graphxai-500-results.md\n?? docs/model-performance-diagnosis.md\n?? docs/performance-improvement-review.md\n?? docs/superpowers/\n?? docs/usability-verification.md\n?? docs/zero-concept-verification.md\n?? graphcare_analysis/explainability/\n?? graphcare_analysis/model.py\n?? graphcare_analysis/test_zero_concept_model.py\n?? gsat_analysis/\n?? protgnn_analysis/explainability/explain_standardized.py\n?? shared/lib/benchmark_contract.py\n?? shared/lib/canonical_graph.py\n?? shared/lib/explanation_contract.py\n?? shared/lib/fidelity.py\n?? shared/lib/graphxai_standardized.py\n?? shared/lib/run_manifest.py\n?? tests/\n",
+  "preexisting_absent": [
+    "thesis",
+    "thesis_proposals",
+    "Master Project_Template..zip",
+    "job_postings_2026-07-11.xlsx"
+  ],
+  "archive_comparison": {
+    "members": [
+      {
+        "path": "data/merged_ed.csv",
+        "bytes": 88620241,
+        "archive_payload_sha256": "95b055d53c5f879e5a5784b9d44cd3e6f8b0a073798fadc6bb25e5a228eaaf8b",
+        "local_sha256": "95b055d53c5f879e5a5784b9d44cd3e6f8b0a073798fadc6bb25e5a228eaaf8b"
+      },
+      {
+        "path": "data/merged_ed_all_visits.csv",
+        "bytes": 137376344,
+        "archive_payload_sha256": "9ab0e3ae468c445dc286cfc343859589ebbc99209899d51956d472d419b7c6f2",
+        "local_sha256": "9ab0e3ae468c445dc286cfc343859589ebbc99209899d51956d472d419b7c6f2"
+      },
+      {
+        "path": "data/merged_ed_top150.csv",
+        "bytes": 147760292,
+        "archive_payload_sha256": "ba6148c42f8c11f4ace5ef8679e17577bef46ddad83add32b0e3d26bf8e41085",
+        "local_sha256": "ba6148c42f8c11f4ace5ef8679e17577bef46ddad83add32b0e3d26bf8e41085"
+      },
+      {
+        "path": "data/Changes Done/encoding.txt",
+        "bytes": 918,
+        "archive_payload_sha256": "ea64d8cc12de332d65d1345f0266dea068c87ac933c9cbb13391f9542591b3d2",
+        "local_sha256": "ea64d8cc12de332d65d1345f0266dea068c87ac933c9cbb13391f9542591b3d2"
+      },
+      {
+        "path": "data/Changes Done/acuity_encoding.txt",
+        "bytes": 602,
+        "archive_payload_sha256": "b79e324d29c7fbfd5fe25915f7e0616de332e4af36f2bd5be2736ac4c3f4f2a9",
+        "local_sha256": "b79e324d29c7fbfd5fe25915f7e0616de332e4af36f2bd5be2736ac4c3f4f2a9"
+      },
+      {
+        "path": "data/Changes Done/2026-06-03_12-52-41_features_labs_age_bmi_history_class_merges.txt",
+        "bytes": 7780,
+        "archive_payload_sha256": "8f4ee3cbd90f4af95ad14e2b3016799dddcefe3e9ee679b00fe72f2209d9b6fa",
+        "local_sha256": "8f4ee3cbd90f4af95ad14e2b3016799dddcefe3e9ee679b00fe72f2209d9b6fa"
+      },
+      {
+        "path": "data/Changes Done/medication_standardization.txt",
+        "bytes": 9169,
+        "archive_payload_sha256": "6f64ee4389942784e572233997b2831bd2d0e4b584556f21f20564554da194ea",
+        "local_sha256": "6f64ee4389942784e572233997b2831bd2d0e4b584556f21f20564554da194ea"
+      },
+      {
+        "path": "data/Changes Done/2026-05-31_16-09-32_diagnosis_targets_pyxis_30k.txt",
+        "bytes": 4519,
+        "archive_payload_sha256": "3937331801d17531f8a1d3dd389943eefcc7c9a4a913e6f1bc98b73a2af78add",
+        "local_sha256": "3937331801d17531f8a1d3dd389943eefcc7c9a4a913e6f1bc98b73a2af78add"
+      },
+      {
+        "path": "data/Changes Done/vital_ranges.txt",
+        "bytes": 1263,
+        "archive_payload_sha256": "4473e5c8e7d729ca178f92585437aa98550cad76911094ec9eadd226841760a8",
+        "local_sha256": "4473e5c8e7d729ca178f92585437aa98550cad76911094ec9eadd226841760a8"
+      },
+      {
+        "path": "data/Changes Done/pain_cleaning.txt",
+        "bytes": 656,
+        "archive_payload_sha256": "933515b269ffd84edcbc49e04e9ef5c7aede1bd965f4a1831bffb7a4bb5d558e",
+        "local_sha256": "933515b269ffd84edcbc49e04e9ef5c7aede1bd965f4a1831bffb7a4bb5d558e"
+      },
+      {
+        "path": "data/Changes Done/medication_onehot.txt",
+        "bytes": 2447,
+        "archive_payload_sha256": "152cfcc8f87ecd175534a44c0fb916485fca46e6c4e6ed3f4dbeb471c3dd0ccc",
+        "local_sha256": "152cfcc8f87ecd175534a44c0fb916485fca46e6c4e6ed3f4dbeb471c3dd0ccc"
+      },
+      {
+        "path": "data/Changes Done/arrival_transport_cleaning.txt",
+        "bytes": 511,
+        "archive_payload_sha256": "46528fdf84720b2ab438ab2f1cb4d70ea0079e2c0a70cce37b9070aa8b137156",
+        "local_sha256": "46528fdf84720b2ab438ab2f1cb4d70ea0079e2c0a70cce37b9070aa8b137156"
+      },
+      {
+        "path": "data/Changes Done/race_grouping.txt",
+        "bytes": 1842,
+        "archive_payload_sha256": "2c45fb94f0408406f7c6ca204939718a0932747af674545376c8b7e226590c7b",
+        "local_sha256": "2c45fb94f0408406f7c6ca204939718a0932747af674545376c8b7e226590c7b"
+      },
+      {
+        "path": "data/Changes Done/icd_standardization.txt",
+        "bytes": 1270,
+        "archive_payload_sha256": "8f6d50673cf28051f1ba22d7cd1c03bc7bad750bac2d95df137165c7e8ae4dd0",
+        "local_sha256": "8f6d50673cf28051f1ba22d7cd1c03bc7bad750bac2d95df137165c7e8ae4dd0"
+      },
+      {
+        "path": "data/Changes Done/2026-06-03_13-08-16_no_sampling_class_merges_nan_native_lab_flags_med_classes.txt",
+        "bytes": 6038,
+        "archive_payload_sha256": "2208b15d11aac9f83105091ba1d1e7b5845c5a0331c3f88305cbd582791eacab",
+        "local_sha256": "2208b15d11aac9f83105091ba1d1e7b5845c5a0331c3f88305cbd582791eacab"
+      },
+      {
+        "path": "data/Original CSVs/pyxis.csv",
+        "bytes": 110448935,
+        "archive_payload_sha256": "7fb8701142f0f9292f0c31f42f46cde680a687de600ae4fb19632268eeca7090",
+        "local_sha256": "7fb8701142f0f9292f0c31f42f46cde680a687de600ae4fb19632268eeca7090"
+      },
+      {
+        "path": "data/Original CSVs/labevents.csv",
+        "bytes": 18402851720,
+        "archive_payload_sha256": "dc4deb75491acb09b0c589b88d36e72f6e6db7676152510d83221aa8133dff54",
+        "local_sha256": "dc4deb75491acb09b0c589b88d36e72f6e6db7676152510d83221aa8133dff54"
+      },
+      {
+        "path": "data/Original CSVs/vitalsign.csv",
+        "bytes": 120300320,
+        "archive_payload_sha256": "6ff4f78baed1b76ff797e91848c62b823fbc5c767c3a259095a866ac67535de1",
+        "local_sha256": "6ff4f78baed1b76ff797e91848c62b823fbc5c767c3a259095a866ac67535de1"
+      },
+      {
+        "path": "data/Original CSVs/medrecon.csv",
+        "bytes": 376877193,
+        "archive_payload_sha256": "311b27e6223242d065db6da251e44d6fb7f8aaf89d4a9702786890ff7f641b57",
+        "local_sha256": "311b27e6223242d065db6da251e44d6fb7f8aaf89d4a9702786890ff7f641b57"
+      },
+      {
+        "path": "data/Original CSVs/triage.csv",
+        "bytes": 38682149,
+        "archive_payload_sha256": "2544503b241db0f274049e87bc7979a54170751f75f5a736953c321893bb3704",
+        "local_sha256": "2544503b241db0f274049e87bc7979a54170751f75f5a736953c321893bb3704"
+      },
+      {
+        "path": "data/Original CSVs/edstays.csv",
+        "bytes": 39546845,
+        "archive_payload_sha256": "db736e03bd16dd4fe2e6f22d85360320dc27280e23dcc8629c6384da733d50fc",
+        "local_sha256": "db736e03bd16dd4fe2e6f22d85360320dc27280e23dcc8629c6384da733d50fc"
+      },
+      {
+        "path": "data/Original CSVs/omr.csv",
+        "bytes": 320875376,
+        "archive_payload_sha256": "844e89678b7a0949fbd50c54671a0d04618267e805d32dfbcb13c1f4f1693c7a",
+        "local_sha256": "844e89678b7a0949fbd50c54671a0d04618267e805d32dfbcb13c1f4f1693c7a"
+      },
+      {
+        "path": "data/Original CSVs/ed_labs.csv",
+        "bytes": 55493237,
+        "archive_payload_sha256": "34159c6131775de5a4fe3d4c4fd496355fc6ee64ed108a0e12046c45888382a0",
+        "local_sha256": "34159c6131775de5a4fe3d4c4fd496355fc6ee64ed108a0e12046c45888382a0"
+      },
+      {
+        "path": "data/Original CSVs/patients.csv",
+        "bytes": 12051137,
+        "archive_payload_sha256": "11df8b065f89410e894ab72857c1ce5c431f6f5d675e1541f132d49122f7d756",
+        "local_sha256": "11df8b065f89410e894ab72857c1ce5c431f6f5d675e1541f132d49122f7d756"
+      },
+      {
+        "path": "data/Original CSVs/icd9_to_icd10_mapping.csv",
+        "bytes": 406933,
+        "archive_payload_sha256": "722ba351279f2ae96718e09bfcbdbe220d7a0e7857b9b2fda862143bd09c94ea",
+        "local_sha256": "722ba351279f2ae96718e09bfcbdbe220d7a0e7857b9b2fda862143bd09c94ea"
+      },
+      {
+        "path": "data/Original CSVs/diagnosis.csv",
+        "bytes": 52243384,
+        "archive_payload_sha256": "f4c79226cda74cbf5776b8d62a0f78fba462234a3d74b937170ba0c09143cf7e",
+        "local_sha256": "f4c79226cda74cbf5776b8d62a0f78fba462234a3d74b937170ba0c09143cf7e"
+      },
+      {
+        "path": "data/Original CSVs/top300_meds.json",
+        "bytes": 6390,
+        "archive_payload_sha256": "aa77478fe72cda9af4524251135743342d323742a4f096293c70c3bb4973a103",
+        "local_sha256": "aa77478fe72cda9af4524251135743342d323742a4f096293c70c3bb4973a103"
+      },
+      {
+        "path": "data/processed_hetero_merged_ed_noLOS_prev10_pmi2_miss_disease/pre_transform.pt",
+        "bytes": 1261,
+        "archive_payload_sha256": "d61040ea2f61a70e2ff5c16e08d11f887eaaabc091afa86598dea9531deb6bb5",
+        "local_sha256": "d61040ea2f61a70e2ff5c16e08d11f887eaaabc091afa86598dea9531deb6bb5"
+      },
+      {
+        "path": "data/processed_hetero_merged_ed_noLOS_prev10_pmi2_miss_disease/pre_filter.pt",
+        "bytes": 1261,
+        "archive_payload_sha256": "d61040ea2f61a70e2ff5c16e08d11f887eaaabc091afa86598dea9531deb6bb5",
+        "local_sha256": "d61040ea2f61a70e2ff5c16e08d11f887eaaabc091afa86598dea9531deb6bb5"
+      },
+      {
+        "path": "data/processed_hetero_merged_ed_noLOS_prev10_pmi2_miss_disease/metadata.json",
+        "bytes": 26140,
+        "archive_payload_sha256": "86dd7f2f3e2ace5f48aa1ae42f9a869ecd46b4f9e11ddc2a58a45769d313543a",
+        "local_sha256": "86dd7f2f3e2ace5f48aa1ae42f9a869ecd46b4f9e11ddc2a58a45769d313543a"
+      },
+      {
+        "path": "data/processed_hetero_merged_ed_noLOS_prev10_pmi2_miss_disease/data.pt",
+        "bytes": 2785759321,
+        "archive_payload_sha256": "37dfca95d9da63ecfa26a2a8953c54a0b4b452ca36b2b6360d2f9da706237efa",
+        "local_sha256": "37dfca95d9da63ecfa26a2a8953c54a0b4b452ca36b2b6360d2f9da706237efa"
+      }
+    ],
+    "mismatches": []
+  },
+  "moved_files": [
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./main.pdf",
+      "relative_path": "Master Project_Template./main.pdf",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./main.pdf",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 210149,
+      "sha256": "5684a468c1755b166db1cfc5ae1f15c1b1c3a8c7f0713d877011bfa8d8b1c9b9"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./main.tex",
+      "relative_path": "Master Project_Template./main.tex",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./main.tex",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 2923,
+      "sha256": "5435d6b7a43a946f77256e5de43074565b44409345df3463cc5a8fd54386fef1"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./thesis.lot",
+      "relative_path": "Master Project_Template./thesis.lot",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./thesis.lot",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 230,
+      "sha256": "6aef581f2e1ac9a76fdcb4e8db9530d1481a7629a4e63587f0cac6be2a8ccd52"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./thesis.lof",
+      "relative_path": "Master Project_Template./thesis.lof",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./thesis.lof",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 230,
+      "sha256": "6aef581f2e1ac9a76fdcb4e8db9530d1481a7629a4e63587f0cac6be2a8ccd52"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./chapters/acknowledgments.tex",
+      "relative_path": "Master Project_Template./chapters/acknowledgments.tex",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./chapters/acknowledgments.tex",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 567,
+      "sha256": "60d615d7ec494df78309c972f7b6bc1b152c3ebafd38e5d17ad38b03a9bbeb47"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./chapters/1-introduction.tex",
+      "relative_path": "Master Project_Template./chapters/1-introduction.tex",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./chapters/1-introduction.tex",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 3944,
+      "sha256": "fa3e5818cf5e52d55c2d9e8b6aafef25714c8e205dd99132de631f9c5831c087"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./chapters/2-background.tex",
+      "relative_path": "Master Project_Template./chapters/2-background.tex",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./chapters/2-background.tex",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 12781,
+      "sha256": "882f6e457fcfe705efba2412465b98d0657b4e1a0d407dbab63576afd730e80f"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./chapters/6-evaluation.tex",
+      "relative_path": "Master Project_Template./chapters/6-evaluation.tex",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./chapters/6-evaluation.tex",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 6734,
+      "sha256": "3bdbf4b7146806576e86e8c7c01b2e6b9ba1ddeb084ed9841613b95b644e8bb8"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./chapters/abstract.tex",
+      "relative_path": "Master Project_Template./chapters/abstract.tex",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./chapters/abstract.tex",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 116,
+      "sha256": "0c724ccab99234b2a2131e134793802b8519ae59543d9870121f6c795727ea12"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./chapters/4-architecture.tex",
+      "relative_path": "Master Project_Template./chapters/4-architecture.tex",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./chapters/4-architecture.tex",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 16390,
+      "sha256": "3c3f065047cadfe5d388279d484770cbf7872a747a49081698557554fede64a9"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./chapters/glossary.tex",
+      "relative_path": "Master Project_Template./chapters/glossary.tex",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./chapters/glossary.tex",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 359,
+      "sha256": "6f3d618f0510942fa5e22baa346dfb25d01f1cd71ad8c69bd4360f8d52c8ac94"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./chapters/Declaration.tex",
+      "relative_path": "Master Project_Template./chapters/Declaration.tex",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./chapters/Declaration.tex",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 854,
+      "sha256": "754a9c4a4f66da66ce9f9c27e0d4b0eff30c85a08c8964695b2a778197487962"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./chapters/3-relatedwork.tex",
+      "relative_path": "Master Project_Template./chapters/3-relatedwork.tex",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./chapters/3-relatedwork.tex",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 5678,
+      "sha256": "feb8eeaf0859d6896187f904f92650e4e273f205ad567979fd1f611d41b86439"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./chapters/7-summary.tex",
+      "relative_path": "Master Project_Template./chapters/7-summary.tex",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./chapters/7-summary.tex",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 115,
+      "sha256": "2947d2c58ce58c0c8b7f31dc1cd3c9b443abca85341b1b1471d56ef4c8c1089b"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./chapters/Zusammenfassung.tex",
+      "relative_path": "Master Project_Template./chapters/Zusammenfassung.tex",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./chapters/Zusammenfassung.tex",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 101,
+      "sha256": "3a08bdd6c2ee0e989d1072ca9fab2277ca07f95479dcb31c6289ad65026b0929"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./chapters/abbreviations.tex",
+      "relative_path": "Master Project_Template./chapters/abbreviations.tex",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./chapters/abbreviations.tex",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 942,
+      "sha256": "d150dcf8b9a0ae7c2f93c7c5a93b5ed2e6a432f0410dc34c073795e2b50d15ca"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./chapters/5-implementation.tex",
+      "relative_path": "Master Project_Template./chapters/5-implementation.tex",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./chapters/5-implementation.tex",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 20994,
+      "sha256": "df9a2b79805c0e72a93731de35dc135b6d702af2e0c9e1036e258cfd49668e27"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./chapters/appendix.tex",
+      "relative_path": "Master Project_Template./chapters/appendix.tex",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./chapters/appendix.tex",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 2938,
+      "sha256": "07cf9232707193944efdc8cd9e79d2bec3cfbd0286eaa4ab1b746b2144b5555d"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./assets/unizhdt-BA.sty",
+      "relative_path": "Master Project_Template./assets/unizhdt-BA.sty",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./assets/unizhdt-BA.sty",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 3485,
+      "sha256": "6f6400fe8d43ab55e81127e315164defde3184590746e34641e23616b1ebd404"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./assets/ifi_logo.pdf",
+      "relative_path": "Master Project_Template./assets/ifi_logo.pdf",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./assets/ifi_logo.pdf",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 6328,
+      "sha256": "4ef08b543844356b9d4e285db7f5f3e2142238059c05571a4bc399952dbca078"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./assets/refs.bib",
+      "relative_path": "Master Project_Template./assets/refs.bib",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./assets/refs.bib",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 5215,
+      "sha256": "0b65d4e7db95efbd6b456534941e7b3bad978fb4f6a0222c0a6d75e09c50b27f"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./assets/uzh_logo_d.pdf",
+      "relative_path": "Master Project_Template./assets/uzh_logo_d.pdf",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./assets/uzh_logo_d.pdf",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 24424,
+      "sha256": "12cd843d53570844985dd99a3854a8531d066056e3c9b79f674c02fc7ca990fc"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./assets/uzh_logo_e.pdf",
+      "relative_path": "Master Project_Template./assets/uzh_logo_e.pdf",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./assets/uzh_logo_e.pdf",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 24760,
+      "sha256": "4d830c960bb0db2d39ed6308ff7daa5ca3454f5149921b704deaad2c6b2fa3c4"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./assets/unizhdt.sty",
+      "relative_path": "Master Project_Template./assets/unizhdt.sty",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./assets/unizhdt.sty",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 3463,
+      "sha256": "c650abfd275d148e679c74b9b6827ef4dd9070a5d7f3850cb3452ec6bb8a7994"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/Master Project_Template./assets/unizhdt-MA.sty",
+      "relative_path": "Master Project_Template./assets/unizhdt-MA.sty",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/Master Project_Template./assets/unizhdt-MA.sty",
+      "reason": "Nonruntime thesis template explicitly authorized for removal; reversible preservation of substantive source.",
+      "bytes": 3481,
+      "sha256": "58d658afd88ba102d2efaa08b9058b51aa04ce518692fa32275946b43d107b0a"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/TODO.txt",
+      "relative_path": "TODO.txt",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/TODO.txt",
+      "reason": "Obsolete patient-similarity/LOS experiment task list and nonexistent src/scripts commands; replaced by standardized runbook.",
+      "bytes": 5581,
+      "sha256": "caf6b8cc886a5bb70e9edd577916c32182e47bf4859f974e783b606dbf8cd435"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/docs/literature/protgnn.png",
+      "relative_path": "docs/literature/protgnn.png",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/docs/literature/protgnn.png",
+      "reason": "Nonruntime paper PDFs, redundant image and paper-comparison spreadsheets; research documents preserved reversibly.",
+      "bytes": 108652,
+      "sha256": "b364298e077ce52505b337972441d27610720486681f05bef14d1946b49fa69c"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/docs/literature/ProtGNN_ Towards Self-Explaining Graph Neural Networks.pdf",
+      "relative_path": "docs/literature/ProtGNN_ Towards Self-Explaining Graph Neural Networks.pdf",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/docs/literature/ProtGNN_ Towards Self-Explaining Graph Neural Networks.pdf",
+      "reason": "Nonruntime paper PDFs, redundant image and paper-comparison spreadsheets; research documents preserved reversibly.",
+      "bytes": 4168483,
+      "sha256": "60b6b62c375a9b2a869e618a882f4ee99d75374827b70d9ec90d2186f8b6da5c"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/docs/literature/DynaGraph_ interpretable dynamic graph learning for temporal electronic health records.pdf",
+      "relative_path": "docs/literature/DynaGraph_ interpretable dynamic graph learning for temporal electronic health records.pdf",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/docs/literature/DynaGraph_ interpretable dynamic graph learning for temporal electronic health records.pdf",
+      "reason": "Nonruntime paper PDFs, redundant image and paper-comparison spreadsheets; research documents preserved reversibly.",
+      "bytes": 4646323,
+      "sha256": "591d2f44a677fd21dfbcf80cad50710f385ea9b579a588bed72de46eca8363f8"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/docs/literature/Second_new.pdf",
+      "relative_path": "docs/literature/Second_new.pdf",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/docs/literature/Second_new.pdf",
+      "reason": "Nonruntime paper PDFs, redundant image and paper-comparison spreadsheets; research documents preserved reversibly.",
+      "bytes": 922599,
+      "sha256": "414c2f8a521c1af07e811b60ebc647b25a3a76e1337b3d3ff318bd3ca990beae"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/docs/literature/Explainability in Graph Neural Networks_  A Taxonomic Survey.pdf",
+      "relative_path": "docs/literature/Explainability in Graph Neural Networks_  A Taxonomic Survey.pdf",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/docs/literature/Explainability in Graph Neural Networks_  A Taxonomic Survey.pdf",
+      "reason": "Nonruntime paper PDFs, redundant image and paper-comparison spreadsheets; research documents preserved reversibly.",
+      "bytes": 9433939,
+      "sha256": "39b445e84d18dd5fac32cd0d6291fbfa2a721d35944a53f55fa9894a7ea88f6c"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/docs/literature/Paper_Comparison_Excel_BACKUP_20260703.xlsx",
+      "relative_path": "docs/literature/Paper_Comparison_Excel_BACKUP_20260703.xlsx",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/docs/literature/Paper_Comparison_Excel_BACKUP_20260703.xlsx",
+      "reason": "Nonruntime paper PDFs, redundant image and paper-comparison spreadsheets; research documents preserved reversibly.",
+      "bytes": 16830,
+      "sha256": "7ca8dcbd2a7e4630322f2a4a1fb68b024eee5c0134293dbfc9ee6e47995c6bf2"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/docs/literature/Graph neural networks for clinical risk prediction based on electronic health records_ A survey.pdf",
+      "relative_path": "docs/literature/Graph neural networks for clinical risk prediction based on electronic health records_ A survey.pdf",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/docs/literature/Graph neural networks for clinical risk prediction based on electronic health records_ A survey.pdf",
+      "reason": "Nonruntime paper PDFs, redundant image and paper-comparison spreadsheets; research documents preserved reversibly.",
+      "bytes": 2091328,
+      "sha256": "019009b342ff8b426a5051de62314196c9f0036f22e81cf5b19a33365612592a"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/docs/literature/Paper_Comparison_Excel.xlsx",
+      "relative_path": "docs/literature/Paper_Comparison_Excel.xlsx",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/docs/literature/Paper_Comparison_Excel.xlsx",
+      "reason": "Nonruntime paper PDFs, redundant image and paper-comparison spreadsheets; research documents preserved reversibly.",
+      "bytes": 13448,
+      "sha256": "4ebb4a9c4b7e700c37c485bdb9d4316b2bf22d18fc747a3e2ccc88561ce21a59"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/docs/literature/graphcare-2.pdf",
+      "relative_path": "docs/literature/graphcare-2.pdf",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/docs/literature/graphcare-2.pdf",
+      "reason": "Nonruntime paper PDFs, redundant image and paper-comparison spreadsheets; research documents preserved reversibly.",
+      "bytes": 4126262,
+      "sha256": "d9baaed9bf6eaf09523ed0691bbb7ce6d99ec4a442fdce80c1fb67214acfd7d6"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/docs/literature/Evaluating explainability for graph neural networks.pdf",
+      "relative_path": "docs/literature/Evaluating explainability for graph neural networks.pdf",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/docs/literature/Evaluating explainability for graph neural networks.pdf",
+      "reason": "Nonruntime paper PDFs, redundant image and paper-comparison spreadsheets; research documents preserved reversibly.",
+      "bytes": 1786612,
+      "sha256": "9149ee7ddf4f8f268d638e2dcbcc65ba3f4cee247b8cd82c073ff9b7f83ef810"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/docs/protgnn.png",
+      "relative_path": "docs/protgnn.png",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/docs/protgnn.png",
+      "reason": "Nonruntime unused figure; standardized runbook and viewer do not load it.",
+      "bytes": 108652,
+      "sha256": "b364298e077ce52505b337972441d27610720486681f05bef14d1946b49fa69c"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/docs/architecture_diagram.md",
+      "relative_path": "docs/architecture_diagram.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/docs/architecture_diagram.md",
+      "reason": "Obsolete two-method architecture with diagnosis/LOS-era inputs, superseded by standardized contract.",
+      "bytes": 5751,
+      "sha256": "dbdc737192aba58d046b5dce17df3ea2540caf97b7c8d03ff02562a0066b7461"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/docs/architecture_diagram_colorful.svg",
+      "relative_path": "docs/architecture_diagram_colorful.svg",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/docs/architecture_diagram_colorful.svg",
+      "reason": "Obsolete two-method architecture figure, not used by viewer.",
+      "bytes": 8466,
+      "sha256": "e1c04890244ed85e2beddfff7139f68c6f24dc11322e5fafd1abf61632c959bc"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/docs/architecture_diagram_professional.svg",
+      "relative_path": "docs/architecture_diagram_professional.svg",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/docs/architecture_diagram_professional.svg",
+      "reason": "Obsolete two-method architecture figure, not used by viewer.",
+      "bytes": 11072,
+      "sha256": "dccaf377c409adc9f1996868e09ee9633b7da01c67f69db6ef8fc01e0ab62392"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/docs/superpowers/plans/2026-09-12-standardized-gnn-benchmark.md",
+      "relative_path": "docs/superpowers/plans/2026-09-12-standardized-gnn-benchmark.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/docs/superpowers/plans/2026-09-12-standardized-gnn-benchmark.md",
+      "reason": "Completed implementation task plans, not operating instructions; retain scientific design specification.",
+      "bytes": 9865,
+      "sha256": "0548124979c8596e25cd2627ec6c5c38791d81754fdf3ffb3690b53312efd093"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/docs/superpowers/plans/2026-09-12-standardized-gnn-benchmark-checkpoint.md",
+      "relative_path": "docs/superpowers/plans/2026-09-12-standardized-gnn-benchmark-checkpoint.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/docs/superpowers/plans/2026-09-12-standardized-gnn-benchmark-checkpoint.md",
+      "reason": "Completed implementation task plans, not operating instructions; retain scientific design specification.",
+      "bytes": 4821,
+      "sha256": "16e0269937fb1eee3b00ef3da4882f860d2a9f24f2a236dffbc72bae10245cf8"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-7-fix1-review.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-7-fix1-review.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-7-fix1-review.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 1717,
+      "sha256": "919d76193be2fb17d465c3ed2a1eb0be90488060cc5a0e42ac2093ca668bc2cd"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-review-package.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-review-package.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-review-package.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 98069,
+      "sha256": "db82f974c4520e6fa8ba9fa4f4a96bee3fe1ba89137fa0f0acd9d5bee0b74ba4"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-1-review.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-1-review.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-1-review.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 7728,
+      "sha256": "f236b3fd85e7504b4b9f3060e3f372335c9fc54d2b1873d7181dea9c99b6067d"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-3-report.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-3-report.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-3-report.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 12842,
+      "sha256": "9f9c3aba2781abf8ecba8ebf11209d119e6a27eb9d839f24c99d07d13ebc901c"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-fix2-current-package.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-fix2-current-package.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-fix2-current-package.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 149584,
+      "sha256": "73e544f54c33ff9441dac1b9d6897c918ef31e1238ee86d1486145cb1594f5c9"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-3-review-package.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-3-review-package.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-3-review-package.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 37004,
+      "sha256": "d7b40629d38e57e2537137ff474cfa6ba43bbb9c116bbf186c9dedde58cd3683"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-fix1-current-package.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-fix1-current-package.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-fix1-current-package.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 125131,
+      "sha256": "fc16ed0d361904097379c5d6fd0d9f46cda5bd7c7c690f449edfae646bbdc280"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-7-review.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-7-review.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-7-review.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 1110,
+      "sha256": "d17a4fdee9ddd4a9312a413d9539d89a158cbfbe14a06a80a7bf2199a999392a"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-9-fix1-review.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-9-fix1-review.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-9-fix1-review.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 6485,
+      "sha256": "e84325c48d3e7be21cd2c8fe33a09e7cb7e3991e98d656f58c85173a1ebdd261"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/final-review-package.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/final-review-package.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/final-review-package.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 481649,
+      "sha256": "91b884d4a5f906795bf0a395b0347976c59355fcb210454f9a6c92957f3327e2"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-7-review-package.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-7-review-package.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-7-review-package.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 34528,
+      "sha256": "d16096388a215bc84f71384811dd12c4fc5fa670d8ea8f761f4e2512e90ce842"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-1-brief.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-1-brief.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-1-brief.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 986,
+      "sha256": "e6e8e6238d969170b99e5c0964bee7976025fe92964cb0d0846a98b8d962ea62"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-1-fix1-review.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-1-fix1-review.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-1-fix1-review.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 3634,
+      "sha256": "958aeae4403afedc1213ed6a0258b8cfeee05ac2cdeb4d937aec81e42896ca8c"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-8-report.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-8-report.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-8-report.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 6534,
+      "sha256": "be9d60c1bd9d185fa25c3a07d42d262066cdfb45f2a6b69f556832c492e42bb0"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-2-review-package.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-2-review-package.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-2-review-package.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 12896,
+      "sha256": "f1a6b25645e130257fdebf6aaa454c9b6f971b97320227ad775068b02f1e44c0"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-fix1-review.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-fix1-review.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-fix1-review.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 8328,
+      "sha256": "eaf031721290fc913d0b860cc79ad3934396a1f1e203b5c2252628d04b184c66"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-5-report.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-5-report.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-5-report.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 10954,
+      "sha256": "e9beed3b38d82e50c165f9abd54e23ea3a603da3b3da7d041c0fbbc32f05ea9d"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-brief.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-brief.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-brief.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 1021,
+      "sha256": "b900778de872415c15103e37bba20d92e25c1efe091e96180da6eefc0e6206cc"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-7-brief.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-7-brief.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-7-brief.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 635,
+      "sha256": "8c2010378426af1a615f4b9306e6f75e7f50ba192ca7efab49c18378f73c1d92"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-4-fix1-review.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-4-fix1-review.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-4-fix1-review.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 7917,
+      "sha256": "6aba7fb8ee59ae45740a4d5d5432fc016096e20e122d4772109c2dd9b7aebdf2"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-4-review-package.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-4-review-package.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-4-review-package.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 70566,
+      "sha256": "29552cc4f783fe56f28f6775e39d36fc56ea2a52b5a28e92f97fd88f4da002ef"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-2-report.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-2-report.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-2-report.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 10378,
+      "sha256": "ab6c4215db806684828ea12f670e4abdda848385b5b5228dee5ae37aac856e0a"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-5-fix1-current-package.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-5-fix1-current-package.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-5-fix1-current-package.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 56788,
+      "sha256": "18e05081794427ea7b032bb9ffefecfd9c7ce0fc479e88c1ef793354ee9b0545"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-3-fix1-review.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-3-fix1-review.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-3-fix1-review.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 4436,
+      "sha256": "754f40106c0f6a4fcaaf9e17ea87e2b36eb523d968a1548e49bc449e45f3c6e8"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-1-review-package.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-1-review-package.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-1-review-package.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 15471,
+      "sha256": "75e4e89049a5c11f5eac59c1260e970be46edc9f6f9083c8e77acccec3ff273c"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-2-fix1-review.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-2-fix1-review.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-2-fix1-review.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 3750,
+      "sha256": "716d3b61fb9f48a72bcdc3b873ad3e3d60fb12310bf6134581e0422598988a8e"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/progress.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/progress.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/progress.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 11956,
+      "sha256": "893b7bf4df6acb3fd196ca3efc89c85fe880e9a4b588de26a6df9d818f60a282"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-review.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-review.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-review.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 9742,
+      "sha256": "53103e65430e7916da6a79d8bd062f6ba55bcdb0f2798a0170e992330666d09c"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-5-review-package.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-5-review-package.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-5-review-package.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 41104,
+      "sha256": "a02db3a261540cb4a83d73db5678c308b4ed052e2d84f1b79fc0cf7ac131524c"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-9-report.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-9-report.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-9-report.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 12428,
+      "sha256": "1bf99a0d88bc7dcce467a907b10faa666194154686d6fa604c07cd16ae90e699"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-5-fix1-review.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-5-fix1-review.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-5-fix1-review.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 7651,
+      "sha256": "93a9c42b984c0a1ffb705401258a7df3e314cd6ecff8322442a097b5650c0da0"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-4-report.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-4-report.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-4-report.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 12609,
+      "sha256": "dd78080a37be2b34f17a9e18c583444d77ef7263c10e2175231abf68260d16fc"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-3-review.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-3-review.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-3-review.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 13447,
+      "sha256": "8996809b9b2d574377e5d4d4425d1caa0e4a243e600172c092889e314bc45b73"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-9-fix1-review-package.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-9-fix1-review-package.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-9-fix1-review-package.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 274524,
+      "sha256": "4a5f91b00bbf3fe7f15d600d4dcff4fc3c0710ca55a61eb6429b5ca77b1bc5c9"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-3-fix1-review-package.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-3-fix1-review-package.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-3-fix1-review-package.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 58965,
+      "sha256": "bd265441735f0d71d139f31c7d538df71493cdcb3d65eb6e05850c05ae0f796e"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-8-brief.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-8-brief.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-8-brief.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 651,
+      "sha256": "ebe39d0f64c613969f47bcfdcb6636776551fec60a98b7367487aa377351c606"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-9-brief.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-9-brief.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-9-brief.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 1217,
+      "sha256": "daab25fb73c04d436aab3f4987ce8b7fc339ec0bdd03a6029ab4cbf5fd398c13"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-9-review-package.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-9-review-package.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-9-review-package.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 34449,
+      "sha256": "f9f7805fe64a26390d78b2a30a9e4e1e22f77fb098a6744128e9d711249e7ca0"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/final-fix-review.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/final-fix-review.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/final-fix-review.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 4532,
+      "sha256": "64389852fee6ddd77d131ff39389feaeb64505b632b44d175bec0462724233cc"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-2-brief.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-2-brief.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-2-brief.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 795,
+      "sha256": "b539d83bdb9fad7a648fd49772a51cbba2f49c8df87efe9db9d37f2cf0daedd8"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-3-brief.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-3-brief.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-3-brief.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 1075,
+      "sha256": "d23f5a4907796c86eade52cca0064ad169dd3e2e10382f5a3f06b88c2cd4ca39"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-1-report.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-1-report.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-1-report.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 10827,
+      "sha256": "bbae74b5d098523742d56cfd94aad077610770347fb8c8065941be3560453be8"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-4-fix1-review-package.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-4-fix1-review-package.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-4-fix1-review-package.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 96593,
+      "sha256": "cd38520168bd616d9e48bc5bd1f8a025206b675c4d1af829315719c52821507b"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-5-review.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-5-review.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-5-review.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 8902,
+      "sha256": "5c4a5fac427d135f261e8ac1313436fbb842b974491535ccdf5786d9688baa97"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-7-fix1-review-package.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-7-fix1-review-package.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-7-fix1-review-package.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 42353,
+      "sha256": "f50ac6cbd0b64c67ec1d95b6fb0d920f26247529fa04e648c61902637a839238"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-8-review-package.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-8-review-package.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-8-review-package.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 20327,
+      "sha256": "ab7a6a90f99fc010b35bcbe9938053c2ebdea051e9a72a0652116e0cb303601c"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/final-review.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/final-review.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/final-review.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 11487,
+      "sha256": "420d7dece257f432d6fa48371e7107b7470d35c455996626050f1e753929c858"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-fix2-review-package.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-fix2-review-package.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-fix2-review-package.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 87403,
+      "sha256": "56501a9a90452674703be34458443c8c25c9bef2124e67fb13872038edb34c52"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-7-report.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-7-report.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-7-report.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 3831,
+      "sha256": "cef16b20533d7af55d05d207a891905ced1329e88b95031fdb60fc50871e2e3a"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-8-review.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-8-review.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-8-review.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 3043,
+      "sha256": "677cc6e805932e630e3f99f7be9356a3ec93ff1cfabf79a71b3d108085d11f6a"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-2-review.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-2-review.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-2-review.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 7927,
+      "sha256": "f337729c1e1894deb3af97a4f8e4f851f076aed2ddd176ffcc1b00abad12b654"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-1-fix1-review-package.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-1-fix1-review-package.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-1-fix1-review-package.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 19995,
+      "sha256": "5a6b491cbbe5399488ea715ee02d15402245a78616f781fe87f87bfdfc29efcf"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-fix1-review-package.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-fix1-review-package.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-fix1-review-package.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 120502,
+      "sha256": "f0d687f6a51e02132d267bffc390582ee65c1160b4ed24259d618c4a2a4cc300"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-5-fix1-review-package.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-5-fix1-review-package.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-5-fix1-review-package.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 143958,
+      "sha256": "9802befad3f18e81564e6f79805bab52506efcc97f19cf82fb7752aab9b57979"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-4-review.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-4-review.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-4-review.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 13809,
+      "sha256": "04854068f469093d19166a9380e7c32f994b1f17c92b75169d3828f17c97bba6"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-4-fix1-current-package.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-4-fix1-current-package.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-4-fix1-current-package.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 75347,
+      "sha256": "740c60ab6ac68d4fb28fbf0bef08c9571b7fb58ca82ee6205340ed2b19814ede"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-2-fix1-review-package.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-2-fix1-review-package.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-2-fix1-review-package.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 23726,
+      "sha256": "7e2322e7162f23e947da5e38f51abb7e576417ff6788ed396e11c9be2ad69405"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-fix2-review.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-fix2-review.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-fix2-review.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 6435,
+      "sha256": "62c8be453501c6427451359b9df85c7269ee47542bfda67dc7fe8bb65fa63486"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-report.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-report.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-6-report.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 18609,
+      "sha256": "6dded1392ac8f62a156f672bbe8af2755c0553f839aa1d2af4fb99dc34734397"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-5-brief.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-5-brief.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-5-brief.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 810,
+      "sha256": "8f0d84918e0e0ca1c0e4636c033d5b07e03b0238555a7642b392938654346e41"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-4-brief.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-4-brief.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-4-brief.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 1144,
+      "sha256": "1e8bad68e029302944be73efefb9b72a74d7cca039f75df3eb576209584e6780"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-9-review.md",
+      "relative_path": ".superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-9-review.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/.superpowers/sdd/2026-09-12-standardized-gnn-benchmark/task-9-review.md",
+      "reason": "Completed per-task agent review packets; runtime and maintained tests do not consume them.",
+      "bytes": 4051,
+      "sha256": "b02bc5da861a7e8ee236243fa4352b2d2b4ac7c4258c83cc9b0cad0191f06983"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/protgnn_analysis/scripts/train_gnns.sh",
+      "relative_path": "protgnn_analysis/scripts/train_gnns.sh",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/protgnn_analysis/scripts/train_gnns.sh",
+      "reason": "Broken unused shell launcher invokes absent protgnn_analysis/scripts/train_gnns.py.",
+      "bytes": 206,
+      "sha256": "2f6bc8593b029a4db0a375a8bc79828635c591ef25f02897d26ee608b939a2ec"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/protgnn_analysis/explainability/graphxai_integration.py",
+      "relative_path": "protgnn_analysis/explainability/graphxai_integration.py",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/protgnn_analysis/explainability/graphxai_integration.py",
+      "reason": "Unused legacy example with incorrect project-root calculation and random-weight fallback; superseded by fail-closed standardized explainer.",
+      "bytes": 11901,
+      "sha256": "e23989ed67835686fcfcb4868840f1cce5f7c666478b988ed1a4bf17447c1756"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/protgnn_analysis/outputs/prototype_hpo/prototype_loss_weight_sweep.csv",
+      "relative_path": "protgnn_analysis/outputs/prototype_hpo/prototype_loss_weight_sweep.csv",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/protgnn_analysis/outputs/prototype_hpo/prototype_loss_weight_sweep.csv",
+      "reason": "May prototype-weight sweep artifacts; no active source references; preserve as retired scientific evidence.",
+      "bytes": 2486,
+      "sha256": "c5878c711d17f405590a020b25facf90f762a856d0775670b34b7a713246ce89"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/protgnn_analysis/outputs/prototype_hpo/trial_07_clst_0.001_sep_0.log",
+      "relative_path": "protgnn_analysis/outputs/prototype_hpo/trial_07_clst_0.001_sep_0.log",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/protgnn_analysis/outputs/prototype_hpo/trial_07_clst_0.001_sep_0.log",
+      "reason": "May prototype-weight sweep artifacts; no active source references; preserve as retired scientific evidence.",
+      "bytes": 5665,
+      "sha256": "65692322aeb08053abd689077bc4dacbf2abfdf9384514b51d61d32206b824c3"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/protgnn_analysis/outputs/prototype_hpo/trial_05_clst_0.02_sep_0.log",
+      "relative_path": "protgnn_analysis/outputs/prototype_hpo/trial_05_clst_0.02_sep_0.log",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/protgnn_analysis/outputs/prototype_hpo/trial_05_clst_0.02_sep_0.log",
+      "reason": "May prototype-weight sweep artifacts; no active source references; preserve as retired scientific evidence.",
+      "bytes": 5769,
+      "sha256": "69bfd2f3e6e00e49765c0777a3845d7e2697e1b36f9dbc46bf48dd32d643c8cf"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/protgnn_analysis/outputs/prototype_hpo/trial_01_clst_0.01_sep_0.001.log",
+      "relative_path": "protgnn_analysis/outputs/prototype_hpo/trial_01_clst_0.01_sep_0.001.log",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/protgnn_analysis/outputs/prototype_hpo/trial_01_clst_0.01_sep_0.001.log",
+      "reason": "May prototype-weight sweep artifacts; no active source references; preserve as retired scientific evidence.",
+      "bytes": 5772,
+      "sha256": "7fea9ab839a8749550bc7e61afd19cc96f54271a8182ee2a021d5aca20bb19a7"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/protgnn_analysis/outputs/prototype_hpo/trial_02_clst_0.005_sep_0.log",
+      "relative_path": "protgnn_analysis/outputs/prototype_hpo/trial_02_clst_0.005_sep_0.log",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/protgnn_analysis/outputs/prototype_hpo/trial_02_clst_0.005_sep_0.log",
+      "reason": "May prototype-weight sweep artifacts; no active source references; preserve as retired scientific evidence.",
+      "bytes": 5769,
+      "sha256": "ca2ec74cdd609cb1147d535a7676e7d7234792a8630c79f9714f98c9d7e31899"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/protgnn_analysis/outputs/prototype_hpo/trial_03_clst_0.005_sep_0.001.log",
+      "relative_path": "protgnn_analysis/outputs/prototype_hpo/trial_03_clst_0.005_sep_0.001.log",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/protgnn_analysis/outputs/prototype_hpo/trial_03_clst_0.005_sep_0.001.log",
+      "reason": "May prototype-weight sweep artifacts; no active source references; preserve as retired scientific evidence.",
+      "bytes": 5771,
+      "sha256": "309f97993f8974ed987f31d42808adfe0ed82b2cd629c62b0f87f71bb0890810"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/protgnn_analysis/outputs/prototype_hpo/trial_04_clst_0.01_sep_0.log",
+      "relative_path": "protgnn_analysis/outputs/prototype_hpo/trial_04_clst_0.01_sep_0.log",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/protgnn_analysis/outputs/prototype_hpo/trial_04_clst_0.01_sep_0.log",
+      "reason": "May prototype-weight sweep artifacts; no active source references; preserve as retired scientific evidence.",
+      "bytes": 5137,
+      "sha256": "d7136c00c2aea44995b29279dbed6aa7be0d7587f5f7e1bdb8cc75c7cac3c728"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/protgnn_analysis/outputs/prototype_hpo/trial_08_clst_0.001_sep_0.0001.log",
+      "relative_path": "protgnn_analysis/outputs/prototype_hpo/trial_08_clst_0.001_sep_0.0001.log",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/protgnn_analysis/outputs/prototype_hpo/trial_08_clst_0.001_sep_0.0001.log",
+      "reason": "May prototype-weight sweep artifacts; no active source references; preserve as retired scientific evidence.",
+      "bytes": 6084,
+      "sha256": "e787a561c0e54dbd3938908f08589aaa5e0e5b3d6b81d76d86530ed04b689b56"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/protgnn_analysis/outputs/prototype_hpo/trial_06_clst_0.02_sep_0.001.log",
+      "relative_path": "protgnn_analysis/outputs/prototype_hpo/trial_06_clst_0.02_sep_0.001.log",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/protgnn_analysis/outputs/prototype_hpo/trial_06_clst_0.02_sep_0.001.log",
+      "reason": "May prototype-weight sweep artifacts; no active source references; preserve as retired scientific evidence.",
+      "bytes": 5137,
+      "sha256": "7382ed72b6f51c272ca55b5d8815b5cce14f866154be9d5c7395171d5d2ac03a"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/protgnn_analysis/outputs/prototype_hpo_los/prototype_loss_weight_sweep.csv",
+      "relative_path": "protgnn_analysis/outputs/prototype_hpo_los/prototype_loss_weight_sweep.csv",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/protgnn_analysis/outputs/prototype_hpo_los/prototype_loss_weight_sweep.csv",
+      "reason": "May LOS-target prototype-weight sweep; obsolete target regime; preserve as retired scientific evidence.",
+      "bytes": 2508,
+      "sha256": "50c0ad6d8bc1d5873046621bd4c6c43fe95672864854b245d45ade3edadf0576"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/protgnn_analysis/outputs/prototype_hpo_los/trial_07_clst_0.001_sep_0.log",
+      "relative_path": "protgnn_analysis/outputs/prototype_hpo_los/trial_07_clst_0.001_sep_0.log",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/protgnn_analysis/outputs/prototype_hpo_los/trial_07_clst_0.001_sep_0.log",
+      "reason": "May LOS-target prototype-weight sweep; obsolete target regime; preserve as retired scientific evidence.",
+      "bytes": 5769,
+      "sha256": "fea841c037868dd2926bf2ba73b4425af75d29e8087f56904747f6bd477f54f4"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/protgnn_analysis/outputs/prototype_hpo_los/trial_05_clst_0.02_sep_0.log",
+      "relative_path": "protgnn_analysis/outputs/prototype_hpo_los/trial_05_clst_0.02_sep_0.log",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/protgnn_analysis/outputs/prototype_hpo_los/trial_05_clst_0.02_sep_0.log",
+      "reason": "May LOS-target prototype-weight sweep; obsolete target regime; preserve as retired scientific evidence.",
+      "bytes": 5765,
+      "sha256": "372d83458faef7ca2b23687cd1d937f96a8d9a516c2f86d2eed21ea73da1c0f7"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/protgnn_analysis/outputs/prototype_hpo_los/trial_01_clst_0.01_sep_0.001.log",
+      "relative_path": "protgnn_analysis/outputs/prototype_hpo_los/trial_01_clst_0.01_sep_0.001.log",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/protgnn_analysis/outputs/prototype_hpo_los/trial_01_clst_0.01_sep_0.001.log",
+      "reason": "May LOS-target prototype-weight sweep; obsolete target regime; preserve as retired scientific evidence.",
+      "bytes": 5768,
+      "sha256": "36ef1d97fe82b8d97bdf2822f183ebfa7c5be0f710afe6e51c315ec45d0e89fb"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/protgnn_analysis/outputs/prototype_hpo_los/trial_02_clst_0.005_sep_0.log",
+      "relative_path": "protgnn_analysis/outputs/prototype_hpo_los/trial_02_clst_0.005_sep_0.log",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/protgnn_analysis/outputs/prototype_hpo_los/trial_02_clst_0.005_sep_0.log",
+      "reason": "May LOS-target prototype-weight sweep; obsolete target regime; preserve as retired scientific evidence.",
+      "bytes": 5664,
+      "sha256": "1a7ab2aada76e4e6b10bb1a398e91cc2f5ee73ccf2937287e44d7992add6b639"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/protgnn_analysis/outputs/prototype_hpo_los/trial_03_clst_0.005_sep_0.001.log",
+      "relative_path": "protgnn_analysis/outputs/prototype_hpo_los/trial_03_clst_0.005_sep_0.001.log",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/protgnn_analysis/outputs/prototype_hpo_los/trial_03_clst_0.005_sep_0.001.log",
+      "reason": "May LOS-target prototype-weight sweep; obsolete target regime; preserve as retired scientific evidence.",
+      "bytes": 5770,
+      "sha256": "4937fa445027f06d9b28c4905890bd27f86ba6a30477f3a705ab2fd9104da871"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/protgnn_analysis/outputs/prototype_hpo_los/trial_04_clst_0.01_sep_0.log",
+      "relative_path": "protgnn_analysis/outputs/prototype_hpo_los/trial_04_clst_0.01_sep_0.log",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/protgnn_analysis/outputs/prototype_hpo_los/trial_04_clst_0.01_sep_0.log",
+      "reason": "May LOS-target prototype-weight sweep; obsolete target regime; preserve as retired scientific evidence.",
+      "bytes": 5765,
+      "sha256": "0aecd953b21528b6dfdc9e995e0d4cd4494cfcb15b74d4858f46478b4fe82f4c"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/protgnn_analysis/outputs/prototype_hpo_los/trial_08_clst_0.001_sep_0.0001.log",
+      "relative_path": "protgnn_analysis/outputs/prototype_hpo_los/trial_08_clst_0.001_sep_0.0001.log",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/protgnn_analysis/outputs/prototype_hpo_los/trial_08_clst_0.001_sep_0.0001.log",
+      "reason": "May LOS-target prototype-weight sweep; obsolete target regime; preserve as retired scientific evidence.",
+      "bytes": 5769,
+      "sha256": "73f86ea2a24dd6796ddf7991c1dfb4e5e7f342f8b38b5b6a16891b2363887a1c"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/protgnn_analysis/outputs/prototype_hpo_los/trial_06_clst_0.02_sep_0.001.log",
+      "relative_path": "protgnn_analysis/outputs/prototype_hpo_los/trial_06_clst_0.02_sep_0.001.log",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/protgnn_analysis/outputs/prototype_hpo_los/trial_06_clst_0.02_sep_0.001.log",
+      "reason": "May LOS-target prototype-weight sweep; obsolete target regime; preserve as retired scientific evidence.",
+      "bytes": 5772,
+      "sha256": "82c31896417a8ee916d4c6c350c1cddd34e40fb4e012157147741a2f45b754ae"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/protgnn_analysis/outputs/proj25_post_projection_run.log",
+      "relative_path": "protgnn_analysis/outputs/proj25_post_projection_run.log",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/protgnn_analysis/outputs/proj25_post_projection_run.log",
+      "reason": "May obsolete projection-run log; no active source references.",
+      "bytes": 640513,
+      "sha256": "1102e8ca6d3f24a3dd6134bb53f27c0ca545ccaa403c449ebbfa7d9d093fcda9"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/metrics.json",
+      "relative_path": "comparison/protgnn_canonical/metrics.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/metrics.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 7791,
+      "sha256": "d8622f1dd565bee6111024b66600473d6adbc330f66b99e4fbc6d995e5479120"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/gcn_latest.pth",
+      "relative_path": "comparison/protgnn_canonical/gcn_latest.pth",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/gcn_latest.pth",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 448117,
+      "sha256": "80ac84e9a1a8d748cd5b2981e8cf5b92bd490e2253d7df52bc31f6eb41cf46af"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/graphxai_summary.xlsx",
+      "relative_path": "comparison/protgnn_canonical/graphxai_summary.xlsx",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/graphxai_summary.xlsx",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 11327,
+      "sha256": "3058ebab10f739a94282032f12fe0d33be4bfbc818f7cca47cdee46d1dcf1235"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/predictions.npz",
+      "relative_path": "comparison/protgnn_canonical/predictions.npz",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/predictions.npz",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 866239,
+      "sha256": "427e87f5cffd81f3fb0af8e3af2e555fc78bf2c833997318b57050b6279af75d"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/gcn_best.pth",
+      "relative_path": "comparison/protgnn_canonical/gcn_best.pth",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/gcn_best.pth",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 448081,
+      "sha256": "d63705487aabcdba503d15858c86bee3a90bac02c1b1fc1c2f5f1236b403a258"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/per_class_metrics.csv",
+      "relative_path": "comparison/protgnn_canonical/per_class_metrics.csv",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/per_class_metrics.csv",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 2439,
+      "sha256": "a73105eeaa6fc1bb3947f4ce2b57dd46c5e7982260b8acfbb303b3b899cba1f7"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/graphxai_summary.csv",
+      "relative_path": "comparison/protgnn_canonical/graphxai_summary.csv",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/graphxai_summary.csv",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 19428,
+      "sha256": "6ca3c87d1778b4d373406405948dc47a2f528567858830571537bd6da48a0eba"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/most_confused_pairs.csv",
+      "relative_path": "comparison/protgnn_canonical/most_confused_pairs.csv",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/most_confused_pairs.csv",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 36319,
+      "sha256": "99694e1dfaf5ebb67a7fc3e3969b703076d7e73c37a6d6aef6e2a2f45c887ea3"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/confusion_matrix.csv",
+      "relative_path": "comparison/protgnn_canonical/confusion_matrix.csv",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/confusion_matrix.csv",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 3272,
+      "sha256": "fa7e692343e3a5ea61d91e37c1366432db30414a996177358981e75da5123b05"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/graphxai_summary.md",
+      "relative_path": "comparison/protgnn_canonical/graphxai_summary.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/graphxai_summary.md",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 20912,
+      "sha256": "8b61da3be29347fe49996c77c762bf6a5b8a885cd66f4473c94ec58317fb4d54"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_42.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_42.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_42.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 328860,
+      "sha256": "50d8e5228067923abbd6b443996d0808a2d45447eadb9117fab69c7a5bfd8f14"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_15.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_15.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_15.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 400275,
+      "sha256": "f829786e0ff282532fd60102849ec6f445b235a10dc18ddd440c6df1d7f73fcd"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_39.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_39.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_39.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 317975,
+      "sha256": "831c2edc445194f74dcda99410f71b8927ad79ce6ab37040d41009482ec94ada"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_19.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_19.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_19.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 282312,
+      "sha256": "183ab06fdfa61147a078dc986a06a10c3ef83cb9f8fd21bf5d37fd2d54e0f603"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_35.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_35.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_35.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 272291,
+      "sha256": "82ed259cde571d6a4cfc8fea546ef2ed16628caa5da680d1b7b12bbf3f2eeab4"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_23.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_23.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_23.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 338702,
+      "sha256": "7df57bf374f7898eaee46a94d96da1923ff4cccae5c5866e67c9bede926ea376"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_7.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_7.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_7.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 267079,
+      "sha256": "3cf8a92666a2eee38f0c31a90bcd63ae6c0fc0073e281cd1335154886110ccb3"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_22.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_22.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_22.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 237646,
+      "sha256": "25b856e8c3fcc5d43dde0ce1968604d8215f729c332d027de6ed35e67b4265dd"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_6.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_6.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_6.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 272200,
+      "sha256": "d8ba4cc66ebd355909d88193d4408be90ddd1ba539f1e6764910ff7624f9da92"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_34.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_34.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_34.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 292660,
+      "sha256": "9d0f55ebc6b575a2f7f35bb9176ee375a931af4925ce8ea5261a4e9bb690e1bd"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_18.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_18.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_18.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 328336,
+      "sha256": "4e597202d642627e94f0e73da53ee46ec423b75d270b7e8c401eba29e0d6c60d"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_38.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_38.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_38.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 282439,
+      "sha256": "06b6177efc0956270ae2cc105fc9b9c061f9c74456292c93fbd6dac8fbd59aa8"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_14.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_14.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_14.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 281336,
+      "sha256": "a2d2a6fe025a4e59f29a1a273661ef8eab83d3c74f200a2989e8114a51ba5f89"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_43.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_43.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_43.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 253622,
+      "sha256": "b91f02f359d63eca3e6b7013450620fcbdc038ec3f669dc273cc729f277ee928"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_48.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_48.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_48.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 238091,
+      "sha256": "7cb97e9e0b241dea401f4df75f556c5a3abe21ff9874a3524cd91f3bd1dfcfb8"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_33.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_33.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_33.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 255581,
+      "sha256": "cb84eac20587819482922fc5b94944c6e724817b372c48a416f628b17bb5353c"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_25.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_25.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_25.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 343331,
+      "sha256": "703702d5ae9abb577517801aa3a0891ab237c6f8eea3685d09cb795a778a5d7c"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_1.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_1.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_1.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 338205,
+      "sha256": "095b3f9a15f77d8f33965da862862d9adea2740222f44fd1aa73e4b9f9ecd9fa"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_44.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_44.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_44.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 245482,
+      "sha256": "8030fd93264c1217678437c99cb887143b1c9056e3ce45a9c456749c0e800441"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_13.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_13.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_13.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 377570,
+      "sha256": "b92111c24af0be04bad6eab85780ebd6215e88cbeb15001b4fbd6dc26543c762"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_29.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_29.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_29.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 381426,
+      "sha256": "b7ed14a491db3d7c10a0d8a4ae54a857f472b8c54746fff3a0fd4fc915ae7d19"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_28.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_28.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_28.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 398501,
+      "sha256": "e9ec6b3244268fb613047d253c98163a9fab0fc50ed9b022791c6931712b0931"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_12.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_12.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_12.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 348933,
+      "sha256": "7391158ed76a8aab3553bf08255c7772fa1c65b5e8b7462eec6e5b23673d39fd"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_45.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_45.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_45.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 268922,
+      "sha256": "baca2c294e80d652bd6d591cdde5387c744911a71ec3b6eaa2726728c7b02040"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_24.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_24.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_24.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 257446,
+      "sha256": "9acd4a5db871c8efc64891554dfdcbf28a662877bc521b10bb5ede6cb52488e3"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_0.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_0.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_0.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 254293,
+      "sha256": "47b6bd78cdbbee7737d0a14417e6cf9b683f9762d7c7db5546a4ad4bf45e9ac3"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_32.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_32.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_32.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 258920,
+      "sha256": "ba777809f18c50f332734f3dd47b4cd6fd154185a705185d8e615d865d0023a3"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_49.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_49.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_49.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 385182,
+      "sha256": "e0141435d70a77bc502c9ca21aa8e74afb7d289afadc963cb5e7587fea5da862"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_3.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_3.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_3.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 294522,
+      "sha256": "90f968bbda1c85cce58b63f22d8104949da10c3d107eefc789d6f89f8af7f9a5"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_27.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_27.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_27.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 256805,
+      "sha256": "bc7e28f84e8fe5910fab34c4ee394a4976b2b1e11b1534b67ac20fd2d3c624ec"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_31.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_31.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_31.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 245282,
+      "sha256": "26dbe30949730e2a4c15006723eecd07f98ee29cb0a533910283c76173c2e67b"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_11.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_11.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_11.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 254126,
+      "sha256": "ea6bb37c55e6f8ddf796e731120af726947ee6d014d7d06d7bf9c5a76c6c21ad"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_46.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_46.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_46.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 248981,
+      "sha256": "3bfeb4f44624bb3bb925aae68b9b631b284737aafcfbd0161af74f8bf70b2d70"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_47.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_47.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_47.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 247672,
+      "sha256": "66b14577c06b8b61e2674ef4a450c435e0d7d50e3c7e1c957ed73b0e0a0b04ce"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_10.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_10.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_10.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 328197,
+      "sha256": "79efa244f01310a02ced549079f6b410311cd1ebefa31a9238cb9cdfd84af784"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_30.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_30.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_30.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 248108,
+      "sha256": "b6e8a41273eea14daa515a6089b5bdabd6822874ff40dedec9b6d8c7652a43eb"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_2.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_2.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_2.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 250204,
+      "sha256": "79bc6ce23646663531f170fb36c414347a28439ffa9f232f00c7822f54993d49"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_26.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_26.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_26.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 248106,
+      "sha256": "d2ed33c6e9250bca92df3502114b0153191809b6a736c192ee9285f1d1855dd7"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_9.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_9.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_9.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 267076,
+      "sha256": "8fc5abf2bb3cfe8caf69eabf8d234950aeca563c9a9f123c5a8f1ebfc8983346"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_17.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_17.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_17.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 397527,
+      "sha256": "d70670934ad2f6755056cf00dcefcba06f0f9f8477cc96d1350b7c718e2301cd"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_40.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_40.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_40.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 267957,
+      "sha256": "325272cdb628a691f184e660f83efd23b1c2adf415845f492ad246177ece0ac7"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_5.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_5.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_5.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 301522,
+      "sha256": "bd13ae4ea8605808994e3678e038ba27ed04ed0d2397897c6aa9a87cf1058a24"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_21.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_21.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_21.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 426911,
+      "sha256": "1c123f658184fa17f9c560e0862989a732ef7379646e63d8c2f868f60d33c156"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_37.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_37.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_37.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 354889,
+      "sha256": "06672be96c823c43e64d5d6a0612b2c6c478da8fdd95709e9c5cc7aebd13a59d"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_36.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_36.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_36.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 248890,
+      "sha256": "cf92b3fb5ab5c068b390d57d23b17a5f4133ebf8b0a809cfc2784bb89b994d0e"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_4.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_4.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_4.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 234645,
+      "sha256": "a63136275266455eba5393560f5d9ee07f3612e76410a40d5a278a7df684113d"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_20.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_20.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_20.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 272268,
+      "sha256": "b2a89cbde48d5bdadd23c7e83c418fb6a7750460ed238034677753ad6bae4a01"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_41.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_41.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_41.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 271680,
+      "sha256": "cd8f7805eda1ef46a6e7ea3972f50fd929494818bc7fbd758a5c776c57531f85"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_16.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_16.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_16.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 283427,
+      "sha256": "f5791bcaeec7edd5e535994c5370f0193a159dd13e38fe5a7458b55c2784e317"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical/explanations/graph_8.json",
+      "relative_path": "comparison/protgnn_canonical/explanations/graph_8.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical/explanations/graph_8.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 304402,
+      "sha256": "42a7b28e6b7b30a1fb84e8f8a2defa276b1942f69363ba08d20389af82145340"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/comparison.md",
+      "relative_path": "comparison/comparison.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/comparison.md",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 1231,
+      "sha256": "f8f7badc91a5be7bf204908b8d7f39cb28a8e5925735c4f74e91f449b8367f9d"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/tabular_baseline_canonical.py",
+      "relative_path": "comparison/tabular_baseline_canonical.py",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/tabular_baseline_canonical.py",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 4664,
+      "sha256": "1c95838e22b5a33ed2e9f4189f7f996fc22cf05c0df7853cbc19ef8e6c6d30f7"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/methods_comparison.md",
+      "relative_path": "comparison/methods_comparison.md",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/methods_comparison.md",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 3225,
+      "sha256": "e581c96c290839588343eafbfca608035a46899a8c477ac9a7e3557aed58ab3c"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/explain_canonical.py",
+      "relative_path": "comparison/explain_canonical.py",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/explain_canonical.py",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 6729,
+      "sha256": "99b12090f0c7547f6f48f388dcc8f177b61e5d3b9739db1170f86602ba37f8ce"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/tabular/metrics.json",
+      "relative_path": "comparison/tabular/metrics.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/tabular/metrics.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 748,
+      "sha256": "1cc905593e333638665c908adb1085da50b16225b7cee06d67595441ec519f68"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/graphcare_train.log",
+      "relative_path": "comparison/graphcare_train.log",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/graphcare_train.log",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 1628,
+      "sha256": "358c2e38e52715253688043df467ba1d39b4db145b6ba74b310e7681409272ff"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/error_analysis.py",
+      "relative_path": "comparison/error_analysis.py",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/error_analysis.py",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 3490,
+      "sha256": "0a1f4eee8fe960c301cf01d3916bf59a8daf24c82c00ddcfc37033216edd5b8a"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn/report.txt",
+      "relative_path": "comparison/protgnn/report.txt",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn/report.txt",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 4381,
+      "sha256": "16a49fb78c478ab8b5d343b7d1de0a2645bb0be439c43ed74764c6dd7a017a67"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn/test_metrics.json",
+      "relative_path": "comparison/protgnn/test_metrics.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn/test_metrics.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 165,
+      "sha256": "8115b53cb2d428ca2ea1d825a8a76c6324eb58eb185606240ceb6565006c6a68"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_canonical.py",
+      "relative_path": "comparison/protgnn_canonical.py",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_canonical.py",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 10734,
+      "sha256": "352a82214a53e61a7e56fb5baf282d65857bce4d303b54d14319409e6af89673"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/protgnn_train.log",
+      "relative_path": "comparison/protgnn_train.log",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/protgnn_train.log",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 12496,
+      "sha256": "92848e7fbeb49c5d88bac2fd4fe5db94bdbb907adea45337f05426070560d08f"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/plain_gcn/metrics.json",
+      "relative_path": "comparison/plain_gcn/metrics.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/plain_gcn/metrics.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 421,
+      "sha256": "c46c2022a910302229c91d70acfdaab0544da0640b3004a85d071a8d526d0773"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/plain_gcn/predictions.npz",
+      "relative_path": "comparison/plain_gcn/predictions.npz",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/plain_gcn/predictions.npz",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 861663,
+      "sha256": "e291d0c615acbac210d30b51bffa52126b41c6a5faedd0094ebd3c475318dae2"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/plain_gcn/per_class_metrics.csv",
+      "relative_path": "comparison/plain_gcn/per_class_metrics.csv",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/plain_gcn/per_class_metrics.csv",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 2447,
+      "sha256": "cd2bf6d521e6d9c040c67f8c8e0b20cb6ce1b8f50f167fb7dfa1b6cfb5bbfca9"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/plain_gcn/most_confused_pairs.csv",
+      "relative_path": "comparison/plain_gcn/most_confused_pairs.csv",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/plain_gcn/most_confused_pairs.csv",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 35989,
+      "sha256": "a742ead8b44a21007273ecc72cb247a0cd9b8f0579e826826a3b2712c9b0838d"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/plain_gcn/confusion_matrix.csv",
+      "relative_path": "comparison/plain_gcn/confusion_matrix.csv",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/plain_gcn/confusion_matrix.csv",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 3265,
+      "sha256": "d25c77b925ed679babd2fd7fa089d8540c7eb7d0045ddd11acc7a3e9537494dc"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/graphcare/metrics.json",
+      "relative_path": "comparison/graphcare/metrics.json",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/graphcare/metrics.json",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 200,
+      "sha256": "3585a6588b4874732c340ebbbbf240eb4a1c49576febb6e73388639ccd42f3f4"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/graphcare/report.txt",
+      "relative_path": "comparison/graphcare/report.txt",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/graphcare/report.txt",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 458,
+      "sha256": "8767d5e3ea05d52a6ac1dc9929d779588a70ea5810a596ce482af1f647a0b62e"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/plain_gcn_canonical.py",
+      "relative_path": "comparison/plain_gcn_canonical.py",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/plain_gcn_canonical.py",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 6637,
+      "sha256": "5f4d03a94fe92089da818a468f0d74be363a7078fd266aed4ef920461e8a9cd5"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/compare.py",
+      "relative_path": "comparison/compare.py",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/comparison/compare.py",
+      "reason": "Earlier two-method canonical/ablation scripts and associated outputs, superseded by standardized three-method pipeline; no active source/test/viewer consumer.",
+      "bytes": 4017,
+      "sha256": "7bc288cf1e2d0667e584551c28dee0ce02a303167d9fe4f0351f41ea78580cef"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/graphcare_analysis/outputs/\u00a8$_.txt^'0u\u0308polo\u0308,.-.txt",
+      "relative_path": "graphcare_analysis/outputs/\u00a8$_.txt^'0u\u0308polo\u0308,.-.txt",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/graphcare_analysis/outputs/\u00a8$_.txt^'0u\u0308polo\u0308,.-.txt",
+      "reason": "Stray nonruntime text document in output root.",
+      "bytes": 457,
+      "sha256": "561b90c5159bf283df301d56e1a4e7eef7152bbe61e34ff798c355146a3ad1ac"
+    },
+    {
+      "source": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/data.zip",
+      "relative_path": "data.zip",
+      "destination": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/data.zip",
+      "reason": "Every non-metadata ZIP payload SHA-256 matches its extracted data file; redundant compressed copy only. All extracted data and symlinks retained.",
+      "bytes": 2867475165,
+      "sha256": "ac04cb1f23b7f67abd3440696a099661f631b380a49c211d5de52df0a1fdf376"
+    }
+  ],
+  "relocation_errors": [],
+  "retained_hash_mismatches": [],
+  "moved_file_count": 207,
+  "moved_bytes": 2916015958
+}

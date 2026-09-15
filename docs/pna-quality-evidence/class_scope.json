@@ -1,0 +1,1213 @@
+{
+  "scope": "posthoc validation diagnostic, NOT retrained fewer-class performance or test evidence",
+  "selection": "top K by full TRAIN support, canonical index breaks ties; no validation performance selection",
+  "conditional_caveat": "true labels restrict cohort; closed-set assumes patient belongs to selected K; coverage changes and removed diseases are not detected",
+  "other_caveat": "sum existing30class probabilities into Other, no refitting or calibration; keeps7448patients but changes target",
+  "input_sha256": "7f90c512655d188187aaccc8ae52523141286f53c264ccf4e9ae2ad0b9c85d99",
+  "rows": [
+    {
+      "method": "plain",
+      "k": 30,
+      "n_validation": 7448,
+      "coverage": 1.0,
+      "excluded": 0,
+      "n_train": 59607,
+      "classes": [
+        "Limb injury or pain",
+        "Back or spine pain",
+        "Cardiovascular risk factor",
+        "Head injury",
+        "Diabetes mellitus",
+        "UTI or pyelonephritis",
+        "Skin or soft-tissue infection",
+        "Lower respiratory disease",
+        "Alcohol abuse with intoxication",
+        "GI bleed",
+        "Major depressive disorder",
+        "Unspecified atrial fibrillation",
+        "Acute pharyngitis",
+        "Anxiety disorder",
+        "Dehydration",
+        "Acute kidney failure",
+        "Hypokalemia",
+        "Laceration w/o fb of l idx fngr w/o damage to nail",
+        "Unsp intestnl obst",
+        "Anemia",
+        "Unspecified asthma with (acute) exacerbation",
+        "Epilepsy",
+        "Heart failure",
+        "Acute upper respiratory infection",
+        "Non-ST elevation (NSTEMI) myocardial infarction",
+        "Multiple fractures of ribs",
+        "Hypothyroidism",
+        "Hypotension",
+        "End stage renal disease",
+        "Sepsis"
+      ],
+      "unchanged_30_output_same_subset": {
+        "accuracy": 0.5805585392051558,
+        "macro_f1": 0.4728457571391795,
+        "balanced_acc": 0.4645395616915065
+      },
+      "restricted_k_outputs_conditional": {
+        "accuracy": 0.5805585392051558,
+        "macro_f1": 0.4728457571391795,
+        "balanced_acc": 0.4645395616915065
+      },
+      "majority_accuracy": 0.1212406015037594
+    },
+    {
+      "method": "plain",
+      "k": 20,
+      "n_validation": 6735,
+      "coverage": 0.9042696025778733,
+      "excluded": 713,
+      "n_train": 53904,
+      "classes": [
+        "Limb injury or pain",
+        "Back or spine pain",
+        "Cardiovascular risk factor",
+        "Head injury",
+        "Diabetes mellitus",
+        "UTI or pyelonephritis",
+        "Skin or soft-tissue infection",
+        "Lower respiratory disease",
+        "Alcohol abuse with intoxication",
+        "GI bleed",
+        "Major depressive disorder",
+        "Unspecified atrial fibrillation",
+        "Acute pharyngitis",
+        "Anxiety disorder",
+        "Dehydration",
+        "Acute kidney failure",
+        "Hypokalemia",
+        "Laceration w/o fb of l idx fngr w/o damage to nail",
+        "Unsp intestnl obst",
+        "Anemia"
+      ],
+      "unchanged_30_output_same_subset": {
+        "accuracy": 0.6050482553823311,
+        "macro_f1": 0.5599437876583914,
+        "balanced_acc": 0.5457117946577859
+      },
+      "restricted_k_outputs_conditional": {
+        "accuracy": 0.615887156644395,
+        "macro_f1": 0.5609158645642687,
+        "balanced_acc": 0.5563723673000556
+      },
+      "majority_accuracy": 0.13407572383073496,
+      "all_patients_k_plus_other": {
+        "n_validation": 7448,
+        "accuracy": 0.5848549946294307,
+        "macro_f1": 0.5415470572837905,
+        "balanced_acc": 0.5321001518332773,
+        "other_true_n": 713,
+        "other_pred_n": 918
+      }
+    },
+    {
+      "method": "plain",
+      "k": 15,
+      "n_validation": 6128,
+      "coverage": 0.8227712137486574,
+      "excluded": 1320,
+      "n_train": 49043,
+      "classes": [
+        "Limb injury or pain",
+        "Back or spine pain",
+        "Cardiovascular risk factor",
+        "Head injury",
+        "Diabetes mellitus",
+        "UTI or pyelonephritis",
+        "Skin or soft-tissue infection",
+        "Lower respiratory disease",
+        "Alcohol abuse with intoxication",
+        "GI bleed",
+        "Major depressive disorder",
+        "Unspecified atrial fibrillation",
+        "Acute pharyngitis",
+        "Anxiety disorder",
+        "Dehydration"
+      ],
+      "unchanged_30_output_same_subset": {
+        "accuracy": 0.6263054830287206,
+        "macro_f1": 0.6254598074714189,
+        "balanced_acc": 0.5956349976135277
+      },
+      "restricted_k_outputs_conditional": {
+        "accuracy": 0.6576370757180157,
+        "macro_f1": 0.637354558091086,
+        "balanced_acc": 0.6277534202571577
+      },
+      "majority_accuracy": 0.14735639686684074,
+      "all_patients_k_plus_other": {
+        "n_validation": 7448,
+        "accuracy": 0.6009667024704619,
+        "macro_f1": 0.5895159026860344,
+        "balanced_acc": 0.5636328850648695,
+        "other_true_n": 1320,
+        "other_pred_n": 1925
+      }
+    },
+    {
+      "method": "plain",
+      "k": 10,
+      "n_validation": 5248,
+      "coverage": 0.7046186895810956,
+      "excluded": 2200,
+      "n_train": 41998,
+      "classes": [
+        "Limb injury or pain",
+        "Back or spine pain",
+        "Cardiovascular risk factor",
+        "Head injury",
+        "Diabetes mellitus",
+        "UTI or pyelonephritis",
+        "Skin or soft-tissue infection",
+        "Lower respiratory disease",
+        "Alcohol abuse with intoxication",
+        "GI bleed"
+      ],
+      "unchanged_30_output_same_subset": {
+        "accuracy": 0.6282393292682927,
+        "macro_f1": 0.6568033543113404,
+        "balanced_acc": 0.6070151774994204
+      },
+      "restricted_k_outputs_conditional": {
+        "accuracy": 0.6794969512195121,
+        "macro_f1": 0.6735732206033214,
+        "balanced_acc": 0.6653071444436789
+      },
+      "majority_accuracy": 0.1720655487804878,
+      "all_patients_k_plus_other": {
+        "n_validation": 7448,
+        "accuracy": 0.640171858216971,
+        "macro_f1": 0.6102228779325849,
+        "balanced_acc": 0.566750814682563,
+        "other_true_n": 2200,
+        "other_pred_n": 3271
+      }
+    },
+    {
+      "method": "plain",
+      "k": 5,
+      "n_validation": 3432,
+      "coverage": 0.4607948442534909,
+      "excluded": 4016,
+      "n_train": 27462,
+      "classes": [
+        "Limb injury or pain",
+        "Back or spine pain",
+        "Cardiovascular risk factor",
+        "Head injury",
+        "Diabetes mellitus"
+      ],
+      "unchanged_30_output_same_subset": {
+        "accuracy": 0.6803613053613053,
+        "macro_f1": 0.7303012425980719,
+        "balanced_acc": 0.6726024590493154
+      },
+      "restricted_k_outputs_conditional": {
+        "accuracy": 0.7712703962703963,
+        "macro_f1": 0.7674730328880022,
+        "balanced_acc": 0.76813355146968
+      },
+      "majority_accuracy": 0.2631118881118881,
+      "all_patients_k_plus_other": {
+        "n_validation": 7448,
+        "accuracy": 0.7470461868958109,
+        "macro_f1": 0.6474834696830728,
+        "balanced_acc": 0.6105088620276956,
+        "other_true_n": 4016,
+        "other_pred_n": 4787
+      }
+    },
+    {
+      "method": "interaction",
+      "k": 30,
+      "n_validation": 7448,
+      "coverage": 1.0,
+      "excluded": 0,
+      "n_train": 59607,
+      "classes": [
+        "Limb injury or pain",
+        "Back or spine pain",
+        "Cardiovascular risk factor",
+        "Head injury",
+        "Diabetes mellitus",
+        "UTI or pyelonephritis",
+        "Skin or soft-tissue infection",
+        "Lower respiratory disease",
+        "Alcohol abuse with intoxication",
+        "GI bleed",
+        "Major depressive disorder",
+        "Unspecified atrial fibrillation",
+        "Acute pharyngitis",
+        "Anxiety disorder",
+        "Dehydration",
+        "Acute kidney failure",
+        "Hypokalemia",
+        "Laceration w/o fb of l idx fngr w/o damage to nail",
+        "Unsp intestnl obst",
+        "Anemia",
+        "Unspecified asthma with (acute) exacerbation",
+        "Epilepsy",
+        "Heart failure",
+        "Acute upper respiratory infection",
+        "Non-ST elevation (NSTEMI) myocardial infarction",
+        "Multiple fractures of ribs",
+        "Hypothyroidism",
+        "Hypotension",
+        "End stage renal disease",
+        "Sepsis"
+      ],
+      "unchanged_30_output_same_subset": {
+        "accuracy": 0.5743823845327605,
+        "macro_f1": 0.47024587629792636,
+        "balanced_acc": 0.4544458564628692
+      },
+      "restricted_k_outputs_conditional": {
+        "accuracy": 0.5743823845327605,
+        "macro_f1": 0.47024587629792636,
+        "balanced_acc": 0.4544458564628692
+      },
+      "majority_accuracy": 0.1212406015037594
+    },
+    {
+      "method": "interaction",
+      "k": 20,
+      "n_validation": 6735,
+      "coverage": 0.9042696025778733,
+      "excluded": 713,
+      "n_train": 53904,
+      "classes": [
+        "Limb injury or pain",
+        "Back or spine pain",
+        "Cardiovascular risk factor",
+        "Head injury",
+        "Diabetes mellitus",
+        "UTI or pyelonephritis",
+        "Skin or soft-tissue infection",
+        "Lower respiratory disease",
+        "Alcohol abuse with intoxication",
+        "GI bleed",
+        "Major depressive disorder",
+        "Unspecified atrial fibrillation",
+        "Acute pharyngitis",
+        "Anxiety disorder",
+        "Dehydration",
+        "Acute kidney failure",
+        "Hypokalemia",
+        "Laceration w/o fb of l idx fngr w/o damage to nail",
+        "Unsp intestnl obst",
+        "Anemia"
+      ],
+      "unchanged_30_output_same_subset": {
+        "accuracy": 0.5983667409057164,
+        "macro_f1": 0.551901842182197,
+        "balanced_acc": 0.5316466523752686
+      },
+      "restricted_k_outputs_conditional": {
+        "accuracy": 0.6099480326651819,
+        "macro_f1": 0.5543777052954846,
+        "balanced_acc": 0.5433019651602677
+      },
+      "majority_accuracy": 0.13407572383073496,
+      "all_patients_k_plus_other": {
+        "n_validation": 7448,
+        "accuracy": 0.5809613319011815,
+        "macro_f1": 0.5327621663105324,
+        "balanced_acc": 0.5224447886010141,
+        "other_true_n": 713,
+        "other_pred_n": 749
+      }
+    },
+    {
+      "method": "interaction",
+      "k": 15,
+      "n_validation": 6128,
+      "coverage": 0.8227712137486574,
+      "excluded": 1320,
+      "n_train": 49043,
+      "classes": [
+        "Limb injury or pain",
+        "Back or spine pain",
+        "Cardiovascular risk factor",
+        "Head injury",
+        "Diabetes mellitus",
+        "UTI or pyelonephritis",
+        "Skin or soft-tissue infection",
+        "Lower respiratory disease",
+        "Alcohol abuse with intoxication",
+        "GI bleed",
+        "Major depressive disorder",
+        "Unspecified atrial fibrillation",
+        "Acute pharyngitis",
+        "Anxiety disorder",
+        "Dehydration"
+      ],
+      "unchanged_30_output_same_subset": {
+        "accuracy": 0.6251631853785901,
+        "macro_f1": 0.6241155960001117,
+        "balanced_acc": 0.597830300825238
+      },
+      "restricted_k_outputs_conditional": {
+        "accuracy": 0.6491514360313316,
+        "macro_f1": 0.6323917137359055,
+        "balanced_acc": 0.6234249949676243
+      },
+      "majority_accuracy": 0.14735639686684074,
+      "all_patients_k_plus_other": {
+        "n_validation": 7448,
+        "accuracy": 0.5965359828141783,
+        "macro_f1": 0.5872629503557601,
+        "balanced_acc": 0.5676612178121664,
+        "other_true_n": 1320,
+        "other_pred_n": 1688
+      }
+    },
+    {
+      "method": "interaction",
+      "k": 10,
+      "n_validation": 5248,
+      "coverage": 0.7046186895810956,
+      "excluded": 2200,
+      "n_train": 41998,
+      "classes": [
+        "Limb injury or pain",
+        "Back or spine pain",
+        "Cardiovascular risk factor",
+        "Head injury",
+        "Diabetes mellitus",
+        "UTI or pyelonephritis",
+        "Skin or soft-tissue infection",
+        "Lower respiratory disease",
+        "Alcohol abuse with intoxication",
+        "GI bleed"
+      ],
+      "unchanged_30_output_same_subset": {
+        "accuracy": 0.6305259146341463,
+        "macro_f1": 0.6550044950396217,
+        "balanced_acc": 0.620982399478717
+      },
+      "restricted_k_outputs_conditional": {
+        "accuracy": 0.6722560975609756,
+        "macro_f1": 0.6693034652832879,
+        "balanced_acc": 0.6684279280683765
+      },
+      "majority_accuracy": 0.1720655487804878,
+      "all_patients_k_plus_other": {
+        "n_validation": 7448,
+        "accuracy": 0.6390977443609023,
+        "macro_f1": 0.6172851563997841,
+        "balanced_acc": 0.585093789730143,
+        "other_true_n": 2200,
+        "other_pred_n": 2942
+      }
+    },
+    {
+      "method": "interaction",
+      "k": 5,
+      "n_validation": 3432,
+      "coverage": 0.4607948442534909,
+      "excluded": 4016,
+      "n_train": 27462,
+      "classes": [
+        "Limb injury or pain",
+        "Back or spine pain",
+        "Cardiovascular risk factor",
+        "Head injury",
+        "Diabetes mellitus"
+      ],
+      "unchanged_30_output_same_subset": {
+        "accuracy": 0.6555944055944056,
+        "macro_f1": 0.7156423905239377,
+        "balanced_acc": 0.6497783472868497
+      },
+      "restricted_k_outputs_conditional": {
+        "accuracy": 0.7654428904428905,
+        "macro_f1": 0.7607365161370081,
+        "balanced_acc": 0.7602835206504226
+      },
+      "majority_accuracy": 0.2631118881118881,
+      "all_patients_k_plus_other": {
+        "n_validation": 7448,
+        "accuracy": 0.7446294307196563,
+        "macro_f1": 0.6472584258009925,
+        "balanced_acc": 0.6076478189662804,
+        "other_true_n": 4016,
+        "other_pred_n": 4782
+      }
+    }
+  ],
+  "details": {
+    "plain": {
+      "baseline": {
+        "accuracy": 0.5805585392051558,
+        "macro_f1": 0.4728457571391795,
+        "balanced_acc": 0.46453956169150634
+      },
+      "per_class": [
+        {
+          "label": "Acute kidney failure",
+          "index": 0,
+          "train_n": 1025,
+          "val_n": 128,
+          "pred_n": 73,
+          "precision": 0.3424657534246575,
+          "recall": 0.1953125,
+          "f1": 0.24875621890547264
+        },
+        {
+          "label": "Acute pharyngitis",
+          "index": 1,
+          "train_n": 1346,
+          "val_n": 168,
+          "pred_n": 172,
+          "precision": 0.7558139534883721,
+          "recall": 0.7738095238095238,
+          "f1": 0.7647058823529411
+        },
+        {
+          "label": "Acute upper respiratory infection",
+          "index": 2,
+          "train_n": 656,
+          "val_n": 82,
+          "pred_n": 79,
+          "precision": 0.35443037974683544,
+          "recall": 0.34146341463414637,
+          "f1": 0.34782608695652173
+        },
+        {
+          "label": "Alcohol abuse with intoxication",
+          "index": 3,
+          "train_n": 2755,
+          "val_n": 344,
+          "pred_n": 257,
+          "precision": 0.9649805447470817,
+          "recall": 0.7209302325581395,
+          "f1": 0.8252911813643927
+        },
+        {
+          "label": "Anemia",
+          "index": 4,
+          "train_n": 913,
+          "val_n": 114,
+          "pred_n": 77,
+          "precision": 0.5584415584415584,
+          "recall": 0.37719298245614036,
+          "f1": 0.450261780104712
+        },
+        {
+          "label": "Anxiety disorder",
+          "index": 5,
+          "train_n": 1103,
+          "val_n": 138,
+          "pred_n": 114,
+          "precision": 0.6929824561403509,
+          "recall": 0.572463768115942,
+          "f1": 0.626984126984127
+        },
+        {
+          "label": "Back or spine pain",
+          "index": 6,
+          "train_n": 6841,
+          "val_n": 855,
+          "pred_n": 850,
+          "precision": 0.7611764705882353,
+          "recall": 0.7567251461988304,
+          "f1": 0.7589442815249267
+        },
+        {
+          "label": "Cardiovascular risk factor",
+          "index": 7,
+          "train_n": 5986,
+          "val_n": 748,
+          "pred_n": 908,
+          "precision": 0.4845814977973568,
+          "recall": 0.5882352941176471,
+          "f1": 0.5314009661835749
+        },
+        {
+          "label": "Dehydration",
+          "index": 8,
+          "train_n": 1027,
+          "val_n": 128,
+          "pred_n": 139,
+          "precision": 0.26618705035971224,
+          "recall": 0.2890625,
+          "f1": 0.27715355805243447
+        },
+        {
+          "label": "Diabetes mellitus",
+          "index": 9,
+          "train_n": 3395,
+          "val_n": 424,
+          "pred_n": 462,
+          "precision": 0.5692640692640693,
+          "recall": 0.6202830188679245,
+          "f1": 0.5936794582392777
+        },
+        {
+          "label": "End stage renal disease",
+          "index": 10,
+          "train_n": 346,
+          "val_n": 43,
+          "pred_n": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        {
+          "label": "Epilepsy",
+          "index": 11,
+          "train_n": 774,
+          "val_n": 97,
+          "pred_n": 97,
+          "precision": 0.7731958762886598,
+          "recall": 0.7731958762886598,
+          "f1": 0.7731958762886598
+        },
+        {
+          "label": "GI bleed",
+          "index": 12,
+          "train_n": 2417,
+          "val_n": 302,
+          "pred_n": 228,
+          "precision": 0.9078947368421053,
+          "recall": 0.6854304635761589,
+          "f1": 0.7811320754716982
+        },
+        {
+          "label": "Head injury",
+          "index": 13,
+          "train_n": 4016,
+          "val_n": 502,
+          "pred_n": 624,
+          "precision": 0.5560897435897436,
+          "recall": 0.6912350597609562,
+          "f1": 0.6163410301953819
+        },
+        {
+          "label": "Heart failure",
+          "index": 14,
+          "train_n": 680,
+          "val_n": 85,
+          "pred_n": 83,
+          "precision": 0.40963855421686746,
+          "recall": 0.4,
+          "f1": 0.40476190476190477
+        },
+        {
+          "label": "Hypokalemia",
+          "index": 15,
+          "train_n": 1012,
+          "val_n": 126,
+          "pred_n": 21,
+          "precision": 0.7619047619047619,
+          "recall": 0.12698412698412698,
+          "f1": 0.21768707482993196
+        },
+        {
+          "label": "Hypotension",
+          "index": 16,
+          "train_n": 381,
+          "val_n": 48,
+          "pred_n": 37,
+          "precision": 0.43243243243243246,
+          "recall": 0.3333333333333333,
+          "f1": 0.3764705882352941
+        },
+        {
+          "label": "Hypothyroidism",
+          "index": 17,
+          "train_n": 515,
+          "val_n": 64,
+          "pred_n": 73,
+          "precision": 0.3972602739726027,
+          "recall": 0.453125,
+          "f1": 0.4233576642335766
+        },
+        {
+          "label": "Laceration w/o fb of l idx fngr w/o damage to nail",
+          "index": 18,
+          "train_n": 971,
+          "val_n": 121,
+          "pred_n": 129,
+          "precision": 0.6046511627906976,
+          "recall": 0.6446280991735537,
+          "f1": 0.624
+        },
+        {
+          "label": "Limb injury or pain",
+          "index": 19,
+          "train_n": 7224,
+          "val_n": 903,
+          "pred_n": 1041,
+          "precision": 0.6128722382324687,
+          "recall": 0.7065337763012182,
+          "f1": 0.6563786008230452
+        },
+        {
+          "label": "Lower respiratory disease",
+          "index": 20,
+          "train_n": 2952,
+          "val_n": 369,
+          "pred_n": 391,
+          "precision": 0.42710997442455245,
+          "recall": 0.45257452574525747,
+          "f1": 0.4394736842105263
+        },
+        {
+          "label": "Major depressive disorder",
+          "index": 21,
+          "train_n": 2141,
+          "val_n": 268,
+          "pred_n": 367,
+          "precision": 0.6185286103542235,
+          "recall": 0.8470149253731343,
+          "f1": 0.7149606299212599
+        },
+        {
+          "label": "Multiple fractures of ribs",
+          "index": 22,
+          "train_n": 558,
+          "val_n": 70,
+          "pred_n": 15,
+          "precision": 0.6,
+          "recall": 0.12857142857142856,
+          "f1": 0.21176470588235294
+        },
+        {
+          "label": "Non-ST elevation (NSTEMI) myocardial infarction",
+          "index": 23,
+          "train_n": 577,
+          "val_n": 72,
+          "pred_n": 32,
+          "precision": 0.46875,
+          "recall": 0.20833333333333334,
+          "f1": 0.28846153846153844
+        },
+        {
+          "label": "Sepsis",
+          "index": 24,
+          "train_n": 322,
+          "val_n": 40,
+          "pred_n": 12,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        {
+          "label": "Skin or soft-tissue infection",
+          "index": 25,
+          "train_n": 3114,
+          "val_n": 389,
+          "pred_n": 243,
+          "precision": 0.6584362139917695,
+          "recall": 0.41131105398457585,
+          "f1": 0.5063291139240507
+        },
+        {
+          "label": "UTI or pyelonephritis",
+          "index": 26,
+          "train_n": 3298,
+          "val_n": 412,
+          "pred_n": 476,
+          "precision": 0.37815126050420167,
+          "recall": 0.4368932038834951,
+          "f1": 0.40540540540540543
+        },
+        {
+          "label": "Unsp intestnl obst",
+          "index": 27,
+          "train_n": 940,
+          "val_n": 118,
+          "pred_n": 228,
+          "precision": 0.32894736842105265,
+          "recall": 0.635593220338983,
+          "f1": 0.43352601156069365
+        },
+        {
+          "label": "Unspecified asthma with (acute) exacerbation",
+          "index": 28,
+          "train_n": 894,
+          "val_n": 112,
+          "pred_n": 71,
+          "precision": 0.6056338028169014,
+          "recall": 0.38392857142857145,
+          "f1": 0.46994535519125685
+        },
+        {
+          "label": "Unspecified atrial fibrillation",
+          "index": 29,
+          "train_n": 1428,
+          "val_n": 178,
+          "pred_n": 148,
+          "precision": 0.4594594594594595,
+          "recall": 0.38202247191011235,
+          "f1": 0.4171779141104294
+        }
+      ],
+      "top_confusions": [
+        {
+          "n": 111,
+          "actual": "Skin or soft-tissue infection",
+          "predicted": "Limb injury or pain"
+        },
+        {
+          "n": 57,
+          "actual": "Back or spine pain",
+          "predicted": "Head injury"
+        },
+        {
+          "n": 54,
+          "actual": "Back or spine pain",
+          "predicted": "Limb injury or pain"
+        },
+        {
+          "n": 46,
+          "actual": "Cardiovascular risk factor",
+          "predicted": "Limb injury or pain"
+        },
+        {
+          "n": 44,
+          "actual": "Limb injury or pain",
+          "predicted": "Head injury"
+        },
+        {
+          "n": 42,
+          "actual": "UTI or pyelonephritis",
+          "predicted": "Cardiovascular risk factor"
+        },
+        {
+          "n": 42,
+          "actual": "Limb injury or pain",
+          "predicted": "Cardiovascular risk factor"
+        },
+        {
+          "n": 40,
+          "actual": "Lower respiratory disease",
+          "predicted": "UTI or pyelonephritis"
+        },
+        {
+          "n": 40,
+          "actual": "Head injury",
+          "predicted": "Laceration w/o fb of l idx fngr w/o damage to nail"
+        },
+        {
+          "n": 38,
+          "actual": "Limb injury or pain",
+          "predicted": "Back or spine pain"
+        }
+      ],
+      "subgroups": {
+        "no_complaint": {
+          "n": 890,
+          "accuracy": 0.2662921348314607
+        },
+        "has_complaint": {
+          "n": 6558,
+          "accuracy": 0.6232082952119549
+        },
+        "no_medication": {
+          "n": 2190,
+          "accuracy": 0.671689497716895
+        },
+        "medication_and_complaint": {
+          "n": 4427,
+          "accuracy": 0.5925005647165124
+        },
+        "hub_only": {
+          "n": 59,
+          "accuracy": 0.11864406779661017
+        }
+      },
+      "prediction_sha256": "fb2aa6ca9c1ffc3a96b56e63bd2a40cb6e05e04eea412e16f7e8a2ef953ff502"
+    },
+    "interaction": {
+      "baseline": {
+        "accuracy": 0.5743823845327605,
+        "macro_f1": 0.4702458762979264,
+        "balanced_acc": 0.4544458564628693
+      },
+      "per_class": [
+        {
+          "label": "Acute kidney failure",
+          "index": 0,
+          "train_n": 1025,
+          "val_n": 128,
+          "pred_n": 35,
+          "precision": 0.37142857142857144,
+          "recall": 0.1015625,
+          "f1": 0.15950920245398773
+        },
+        {
+          "label": "Acute pharyngitis",
+          "index": 1,
+          "train_n": 1346,
+          "val_n": 168,
+          "pred_n": 156,
+          "precision": 0.7756410256410257,
+          "recall": 0.7202380952380952,
+          "f1": 0.7469135802469136
+        },
+        {
+          "label": "Acute upper respiratory infection",
+          "index": 2,
+          "train_n": 656,
+          "val_n": 82,
+          "pred_n": 81,
+          "precision": 0.2839506172839506,
+          "recall": 0.2804878048780488,
+          "f1": 0.2822085889570552
+        },
+        {
+          "label": "Alcohol abuse with intoxication",
+          "index": 3,
+          "train_n": 2755,
+          "val_n": 344,
+          "pred_n": 376,
+          "precision": 0.7340425531914894,
+          "recall": 0.8023255813953488,
+          "f1": 0.7666666666666667
+        },
+        {
+          "label": "Anemia",
+          "index": 4,
+          "train_n": 913,
+          "val_n": 114,
+          "pred_n": 86,
+          "precision": 0.5,
+          "recall": 0.37719298245614036,
+          "f1": 0.43
+        },
+        {
+          "label": "Anxiety disorder",
+          "index": 5,
+          "train_n": 1103,
+          "val_n": 138,
+          "pred_n": 102,
+          "precision": 0.7450980392156863,
+          "recall": 0.5507246376811594,
+          "f1": 0.6333333333333333
+        },
+        {
+          "label": "Back or spine pain",
+          "index": 6,
+          "train_n": 6841,
+          "val_n": 855,
+          "pred_n": 857,
+          "precision": 0.7421236872812136,
+          "recall": 0.743859649122807,
+          "f1": 0.7429906542056075
+        },
+        {
+          "label": "Cardiovascular risk factor",
+          "index": 7,
+          "train_n": 5986,
+          "val_n": 748,
+          "pred_n": 881,
+          "precision": 0.4801362088535755,
+          "recall": 0.5655080213903744,
+          "f1": 0.5193370165745856
+        },
+        {
+          "label": "Dehydration",
+          "index": 8,
+          "train_n": 1027,
+          "val_n": 128,
+          "pred_n": 133,
+          "precision": 0.24060150375939848,
+          "recall": 0.25,
+          "f1": 0.24521072796934865
+        },
+        {
+          "label": "Diabetes mellitus",
+          "index": 9,
+          "train_n": 3395,
+          "val_n": 424,
+          "pred_n": 466,
+          "precision": 0.5622317596566524,
+          "recall": 0.6179245283018868,
+          "f1": 0.5887640449438202
+        },
+        {
+          "label": "End stage renal disease",
+          "index": 10,
+          "train_n": 346,
+          "val_n": 43,
+          "pred_n": 25,
+          "precision": 0.04,
+          "recall": 0.023255813953488372,
+          "f1": 0.029411764705882353
+        },
+        {
+          "label": "Epilepsy",
+          "index": 11,
+          "train_n": 774,
+          "val_n": 97,
+          "pred_n": 96,
+          "precision": 0.78125,
+          "recall": 0.7731958762886598,
+          "f1": 0.7772020725388601
+        },
+        {
+          "label": "GI bleed",
+          "index": 12,
+          "train_n": 2417,
+          "val_n": 302,
+          "pred_n": 220,
+          "precision": 0.9090909090909091,
+          "recall": 0.6622516556291391,
+          "f1": 0.7662835249042146
+        },
+        {
+          "label": "Head injury",
+          "index": 13,
+          "train_n": 4016,
+          "val_n": 502,
+          "pred_n": 582,
+          "precision": 0.5687285223367697,
+          "recall": 0.6593625498007968,
+          "f1": 0.6107011070110702
+        },
+        {
+          "label": "Heart failure",
+          "index": 14,
+          "train_n": 680,
+          "val_n": 85,
+          "pred_n": 83,
+          "precision": 0.39759036144578314,
+          "recall": 0.38823529411764707,
+          "f1": 0.39285714285714285
+        },
+        {
+          "label": "Hypokalemia",
+          "index": 15,
+          "train_n": 1012,
+          "val_n": 126,
+          "pred_n": 39,
+          "precision": 0.48717948717948717,
+          "recall": 0.15079365079365079,
+          "f1": 0.23030303030303031
+        },
+        {
+          "label": "Hypotension",
+          "index": 16,
+          "train_n": 381,
+          "val_n": 48,
+          "pred_n": 32,
+          "precision": 0.4375,
+          "recall": 0.2916666666666667,
+          "f1": 0.35
+        },
+        {
+          "label": "Hypothyroidism",
+          "index": 17,
+          "train_n": 515,
+          "val_n": 64,
+          "pred_n": 66,
+          "precision": 0.3787878787878788,
+          "recall": 0.390625,
+          "f1": 0.38461538461538464
+        },
+        {
+          "label": "Laceration w/o fb of l idx fngr w/o damage to nail",
+          "index": 18,
+          "train_n": 971,
+          "val_n": 121,
+          "pred_n": 111,
+          "precision": 0.6396396396396397,
+          "recall": 0.5867768595041323,
+          "f1": 0.6120689655172413
+        },
+        {
+          "label": "Limb injury or pain",
+          "index": 19,
+          "train_n": 7224,
+          "val_n": 903,
+          "pred_n": 916,
+          "precision": 0.6528384279475983,
+          "recall": 0.6622369878183831,
+          "f1": 0.657504123144585
+        },
+        {
+          "label": "Lower respiratory disease",
+          "index": 20,
+          "train_n": 2952,
+          "val_n": 369,
+          "pred_n": 461,
+          "precision": 0.40563991323210413,
+          "recall": 0.5067750677506775,
+          "f1": 0.4506024096385542
+        },
+        {
+          "label": "Major depressive disorder",
+          "index": 21,
+          "train_n": 2141,
+          "val_n": 268,
+          "pred_n": 292,
+          "precision": 0.7431506849315068,
+          "recall": 0.8097014925373134,
+          "f1": 0.775
+        },
+        {
+          "label": "Multiple fractures of ribs",
+          "index": 22,
+          "train_n": 558,
+          "val_n": 70,
+          "pred_n": 22,
+          "precision": 0.6363636363636364,
+          "recall": 0.2,
+          "f1": 0.30434782608695654
+        },
+        {
+          "label": "Non-ST elevation (NSTEMI) myocardial infarction",
+          "index": 23,
+          "train_n": 577,
+          "val_n": 72,
+          "pred_n": 30,
+          "precision": 0.5,
+          "recall": 0.20833333333333334,
+          "f1": 0.29411764705882354
+        },
+        {
+          "label": "Sepsis",
+          "index": 24,
+          "train_n": 322,
+          "val_n": 40,
+          "pred_n": 16,
+          "precision": 0.0625,
+          "recall": 0.025,
+          "f1": 0.03571428571428571
+        },
+        {
+          "label": "Skin or soft-tissue infection",
+          "index": 25,
+          "train_n": 3114,
+          "val_n": 389,
+          "pred_n": 421,
+          "precision": 0.47030878859857483,
+          "recall": 0.5089974293059126,
+          "f1": 0.4888888888888889
+        },
+        {
+          "label": "UTI or pyelonephritis",
+          "index": 26,
+          "train_n": 3298,
+          "val_n": 412,
+          "pred_n": 502,
+          "precision": 0.3944223107569721,
+          "recall": 0.48058252427184467,
+          "f1": 0.43326039387308535
+        },
+        {
+          "label": "Unsp intestnl obst",
+          "index": 27,
+          "train_n": 940,
+          "val_n": 118,
+          "pred_n": 128,
+          "precision": 0.4140625,
+          "recall": 0.4491525423728814,
+          "f1": 0.43089430894308944
+        },
+        {
+          "label": "Unspecified asthma with (acute) exacerbation",
+          "index": 28,
+          "train_n": 894,
+          "val_n": 112,
+          "pred_n": 66,
+          "precision": 0.7121212121212122,
+          "recall": 0.41964285714285715,
+          "f1": 0.5280898876404494
+        },
+        {
+          "label": "Unspecified atrial fibrillation",
+          "index": 29,
+          "train_n": 1428,
+          "val_n": 178,
+          "pred_n": 167,
+          "precision": 0.4550898203592814,
+          "recall": 0.42696629213483145,
+          "f1": 0.4405797101449275
+        }
+      ],
+      "top_confusions": [
+        {
+          "n": 82,
+          "actual": "Skin or soft-tissue infection",
+          "predicted": "Limb injury or pain"
+        },
+        {
+          "n": 65,
+          "actual": "Limb injury or pain",
+          "predicted": "Skin or soft-tissue infection"
+        },
+        {
+          "n": 54,
+          "actual": "Back or spine pain",
+          "predicted": "Head injury"
+        },
+        {
+          "n": 51,
+          "actual": "Limb injury or pain",
+          "predicted": "Back or spine pain"
+        },
+        {
+          "n": 49,
+          "actual": "Cardiovascular risk factor",
+          "predicted": "UTI or pyelonephritis"
+        },
+        {
+          "n": 46,
+          "actual": "Cardiovascular risk factor",
+          "predicted": "Lower respiratory disease"
+        },
+        {
+          "n": 42,
+          "actual": "Back or spine pain",
+          "predicted": "Limb injury or pain"
+        },
+        {
+          "n": 40,
+          "actual": "Limb injury or pain",
+          "predicted": "Cardiovascular risk factor"
+        },
+        {
+          "n": 40,
+          "actual": "Cardiovascular risk factor",
+          "predicted": "Limb injury or pain"
+        },
+        {
+          "n": 39,
+          "actual": "Limb injury or pain",
+          "predicted": "Head injury"
+        }
+      ],
+      "subgroups": {
+        "no_complaint": {
+          "n": 890,
+          "accuracy": 0.2696629213483146
+        },
+        "has_complaint": {
+          "n": 6558,
+          "accuracy": 0.6157365050320219
+        },
+        "no_medication": {
+          "n": 2190,
+          "accuracy": 0.6753424657534246
+        },
+        "medication_and_complaint": {
+          "n": 4427,
+          "accuracy": 0.5798509148407499
+        },
+        "hub_only": {
+          "n": 59,
+          "accuracy": 0.13559322033898305
+        }
+      },
+      "prediction_sha256": "dd2f6c5dd098175e0d998bdacc1ef267f16e84ed067ab0842bc2e5cf6ae21805"
+    }
+  }
+}

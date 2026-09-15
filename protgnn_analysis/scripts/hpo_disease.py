@@ -48,7 +48,7 @@ DEVICE = 'mps' if torch.backends.mps.is_available() else \
          'cuda' if torch.cuda.is_available() else 'cpu'
 DATASET_DIR = str(DATA_DIR)
 RESULTS_DIR = os.path.join(str(OUTPUTS_DIR), 'hpo_results')
-os.makedirs(RESULTS_DIR, exist_ok=True)
+
 
 
 def _class_weights(labels, n):
@@ -168,6 +168,7 @@ def main():
                              "(0 = full dataset). Architecture search does not "
                              "need all 60k graphs.")
     args = parser.parse_args()
+    os.makedirs(RESULTS_DIR, exist_ok=True)
 
     print(f"Device  : {DEVICE}")
     print(f"Dataset : {args.dataset}")

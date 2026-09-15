@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "dataset_path": "data/merged_ed.csv",
+  "split_path": "comparison/canonical_split.json",
+  "results_root": "comparison/standardized/results",
+  "methods_order": ["protgnn", "gsat", "graphcare"],
+  "structures": ["star", "cooccur"],
+  "seeds": [1234, 1235, 1236],
+  "topology_parameters": {
+    "star": {
+      "patient_hub": true,
+      "patient_concept_edges": "bidirectional",
+      "concept_concept_edges": "none"
+    },
+    "cooccur": {
+      "patient_hub": true,
+      "patient_concept_edges": "bidirectional",
+      "concept_concept_edges": "training_fold_pmi",
+      "pmi_threshold": 2.0
+    }
+  },
+  "methods": {
+    "protgnn": {
+      "command": ["python3", "-u", "-m", "protgnn_analysis.train"],
+      "flags": {
+        "structure": "--graph-structure",
+        "split": "--canonical-split",
+        "seed": "--seed",
+        "output_dir": "--output-dir",
+        "limit": "--limit",
+        "max_epochs": "--max-epochs"
+      },
+      "metrics_path": "test_metrics.json",
+      "checkpoint_path": "checkpoints/mimic_intra_patient_disease/gcn_best.pth"
+    },
+    "gsat": {
+      "command": ["python3", "-u", "-m", "gsat_analysis.train"],
+      "flags": {
+        "structure": "--graph_structure",
+        "split": "--canonical_split",
+        "seed": "--seed",
+        "output_dir": "--out_dir",
+        "limit": "--limit",
+        "max_epochs": "--max_epochs"
+      },
+      "metrics_path": "metrics.json",
+      "checkpoint_path": "gsat_model.pt"
+    },
+    "graphcare": {
+      "command": [".venv-graphcare/bin/python3", "-u", "-m", "graphcare_analysis.run"],
+      "flags": {
+        "structure": "--graph_structure",
+        "split": "--canonical_split",
+        "seed": "--seed",
+        "output_dir": "--out_dir",
+        "limit": "--limit",
+        "max_epochs": "--max_epochs"
+      },
+      "metrics_path": "metrics.json",
+      "checkpoint_path": "graphcare_model.pt"
+    }
+  }
+}
