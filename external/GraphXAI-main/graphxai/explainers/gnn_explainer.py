@@ -235,7 +235,8 @@ class GNNExplainer(_BaseExplainer):
             loss = loss + self.coeff['edge']['size'] * torch.sum(m)
             ent = -m * torch.log(m + EPS) - (1 - m) * torch.log(1 - m + EPS)
             #loss = loss + self.coeffs['edge_ent'] * ent.mean()
-            loss = loss + self.coeff['edge']['entropy'] * ent.mean()
+            # Empty edge sets have zero entropy contribution, not mean([])=NaN.
+            loss = loss + self.coeff['edge']['entropy'] * (ent.mean() if ent.numel() else ent.sum())
 
             m = self.feature_mask.sigmoid()
             #node_feat_reduce = getattr(torch, self.coeffs['node_feat_reduction'])

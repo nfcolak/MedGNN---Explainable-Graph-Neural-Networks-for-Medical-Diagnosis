@@ -5,6 +5,7 @@ Interactive dark-themed web interface for intra-patient ProtGNN-style medical gr
 ## Run
 
 ```bash
+cd visualizer  # from the repository root
 npm install
 npm run dev
 ```
@@ -14,7 +15,7 @@ Then open the local URL printed by Vite.
 ## Project Structure
 
 ```text
-protgnn_analysis/graph_visualizer/
+visualizer/
 ├── index.html
 ├── package.json
 ├── public/
@@ -39,6 +40,21 @@ protgnn_analysis/graph_visualizer/
 ├── tsconfig.node.json
 └── vite.config.ts
 ```
+
+## Explanation Mode
+
+The **Explain** toggle in the toolbar overlays the model's attribution scores on
+the graph. Nodes that drove the prediction get a heat halo scaled to their
+`importance` value, low-importance nodes are dimmed, and a side panel ranks the
+top evidence features with their scores. A patient only shows the overlay when
+its nodes carry an `importance` field; otherwise the panel explains that no
+attribution was exported for that patient.
+
+The three `★ Explained example` entries pinned to the top of the patient
+selector (`graph_17`, `graph_286`, `graph_1258`) carry real attribution scores
+and are the quickest way to see the overlay in action. The bulk dataset shards
+do not include attribution yet, so run the explanation pipeline and add an
+`importance` field per node to light up Explanation mode across more patients.
 
 ## Adding Graphs
 

@@ -57,6 +57,7 @@ export interface GraphManifestItem {
   subject_id?: string | number;
   node_count?: number;
   edge_count?: number;
+  explained?: boolean;
 }
 
 export interface TooltipState {

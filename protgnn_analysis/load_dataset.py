@@ -1,12 +1,112 @@
 #load_dataset.py
 import os
 import json
+import hashlib
 import torch
 import numpy as np
 import os.path as osp
 import pandas as pd
+from numbers import Integral
+from pathlib import Path
 from torch.utils.data import Subset
 from torch_geometric.data import Data, InMemoryDataset, DataLoader
+
+from shared.lib.benchmark_contract import file_sha256, load_canonical_split
+from shared.lib.canonical_graph import STANDARDIZED_GRAPH_MEMBERSHIP_CONTRACT
+
+
+PREPROCESSING_SCHEMA_VERSION = 4
+PREPROCESSING_RECIPE_VERSION = "protgnn-patient-graph-v4"
+
+
+def _json_sha256(value):
+    payload = json.dumps(
+        value, ensure_ascii=False, separators=(",", ":"), sort_keys=True
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _fit_subjects_sha256(split):
+    return _json_sha256(sorted(key for key, fold in split["fold"].items() if fold == 0))
+
+
+def standardized_cache_paths(
+    dataset_dir,
+    canonical_split,
+    graph_structure,
+    *,
+    med_min_prev=0.01,
+    pmi_threshold=2.0,
+):
+    """Return the exact primary PyG cache paths without creating a dataset."""
+    from shared.lib.graph_structures import resolve, structure_dir
+
+    root = Path(dataset_dir).resolve()
+    split_path = Path(canonical_split).resolve()
+    dataset_path = root / "merged_ed.csv"
+    structure = resolve(graph_structure, "protgnn")
+    recipe = {
+        "version": PREPROCESSING_RECIPE_VERSION,
+        "symptom_input_policy": "exclude_diagnosis_derived",
+        "clinical_empty_graph_policy": "retain_patient_hub_no_edges_v1",
+        "graph_membership_contract": STANDARDIZED_GRAPH_MEMBERSHIP_CONTRACT,
+        "target": "disease",
+        "graph_structure": structure,
+        "med_min_prev": float(med_min_prev),
+        "icd_min_prev": 0.0,
+        "pmi_threshold": float(pmi_threshold),
+        "drop_los": True,
+        "add_missing_flag": True,
+    }
+    variant = (
+        "hetero_merged_ed_noLOS_"
+        f"prev{int(round(float(med_min_prev) * 1000))}_"
+        f"pmi{float(pmi_threshold):g}_miss_disease"
+        f"_std_ds{file_sha256(dataset_path)[:12]}"
+        f"_split{file_sha256(split_path)[:12]}"
+        f"_recipe{_json_sha256(recipe)[:12]}"
+    )
+    cache_dir = structure_dir(root, structure, "protgnn") / variant
+    return cache_dir / "data.pt", cache_dir / "metadata.json"
+
+
+def _canonical_row_indices(df, split):
+    """Map every canonical subject to exactly one source row and fail closed."""
+    if "subject_id" not in df.columns:
+        raise ValueError("Canonical ProtGNN preprocessing requires subject_id.")
+    subject_keys = []
+    for row_index, subject_id in enumerate(df["subject_id"].values):
+        if isinstance(subject_id, (bool, np.bool_)) or not isinstance(subject_id, Integral):
+            raise ValueError(
+                "Canonical ProtGNN subject/row identity has a non-integer "
+                f"subject_id at row {row_index}."
+            )
+        subject_keys.append(str(int(subject_id)))
+    fold = split["fold"]
+    counts = {}
+    for subject_key in subject_keys:
+        if subject_key in fold:
+            counts[subject_key] = counts.get(subject_key, 0) + 1
+    missing = sorted(set(fold) - set(counts))
+    duplicate = sorted(key for key, count in counts.items() if count != 1)
+    if missing or duplicate:
+        raise ValueError(
+            "Canonical ProtGNN subject/row identity mismatch: "
+            f"missing_subjects={missing[:10]}, duplicate_subjects={duplicate[:10]}."
+        )
+    keep_indices = [
+        row_index
+        for row_index, subject_key in enumerate(subject_keys)
+        if subject_key in fold
+    ]
+    fit_indices = [
+        output_index
+        for output_index, row_index in enumerate(keep_indices)
+        if fold[subject_keys[row_index]] == 0
+    ]
+    if not fit_indices:
+        raise ValueError("Canonical ProtGNN preprocessing has no fold-0 training rows.")
+    return keep_indices, np.asarray(fit_indices, dtype=np.int64), subject_keys
 
 def _extract_graph_labels(dataset):
     labels = []
@@ -199,7 +299,7 @@ class IntraPatientHeteroDataset(InMemoryDataset):
                  med_min_prev=0.01, pmi_threshold=2.0, drop_los=True,
                  add_missing_flag=True, icd_min_prev=0.01,
                  target='disposition', graph_structure='star',
-                 transform=None, pre_transform=None):
+                 transform=None, pre_transform=None, canonical_split=None):
         self.name = name
         self.csv_filename = csv_filename
         self.med_min_prev = float(med_min_prev)
@@ -219,20 +319,66 @@ class IntraPatientHeteroDataset(InMemoryDataset):
         #                    class per distinct disease category. disease_* and
         #                    symptom_* columns are then removed from the inputs.
         self.target = str(target)
+        self.icd_min_prev = float(icd_min_prev)
+        self.add_missing_flag = bool(add_missing_flag)
+        self.canonical_split_path = (
+            Path(canonical_split).resolve() if canonical_split is not None else None
+        )
+        self._canonical_split = (
+            load_canonical_split(self.canonical_split_path)
+            if self.canonical_split_path is not None else None
+        )
+        if self._canonical_split is not None and self.target != 'disease':
+            raise ValueError(
+                "Standardized ProtGNN preprocessing requires the disease_1 target."
+            )
+        self.dataset_path = Path(root).resolve() / csv_filename
+        self._preprocessing_provenance = None
+        if self._canonical_split is not None:
+            if not self.dataset_path.is_file():
+                raise ValueError(
+                    "Standardized ProtGNN preprocessing requires the exact source "
+                    f"dataset file: {self.dataset_path}."
+                )
+            self._preprocessing_provenance = {
+                "schema_version": PREPROCESSING_SCHEMA_VERSION,
+                "fit_scope": "training_fold",
+                "fit_fold": 0,
+                "fit_subject_count": sum(
+                    fold == 0 for fold in self._canonical_split["fold"].values()
+                ),
+                "split_sha256": file_sha256(self.canonical_split_path),
+                "dataset_sha256": file_sha256(self.dataset_path),
+                "fit_subjects_sha256": _fit_subjects_sha256(self._canonical_split),
+                "recipe": self._preprocessing_recipe(),
+            }
         # If the CSV has an icd_codes column, add ICD diagnosis nodes (4th node
         # type). Diagnoses are the strongest single signal for admission BUT may
         # leak for early-prediction framing (codes can be assigned during/after
         # the admit decision) — report ICD runs with that caveat.
-        self.icd_min_prev = float(icd_min_prev)
         # Add a per-vital "was this measured?" flag. Without it, a missing vital
         # is z-scored to 0 (= the population mean) and becomes indistinguishable
         # from a genuinely average measurement. The fact that a vital was *not*
         # taken is itself clinical signal (low-acuity patients get fewer
         # measurements).
-        self.add_missing_flag = bool(add_missing_flag)
         super().__init__(root, transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0], weights_only=False)
         self._load_metadata()
+
+    def _preprocessing_recipe(self):
+        return {
+            "version": PREPROCESSING_RECIPE_VERSION,
+            "symptom_input_policy": "exclude_diagnosis_derived",
+            "clinical_empty_graph_policy": "retain_patient_hub_no_edges_v1",
+            "graph_membership_contract": STANDARDIZED_GRAPH_MEMBERSHIP_CONTRACT,
+            "target": self.target,
+            "graph_structure": self.graph_structure,
+            "med_min_prev": self.med_min_prev,
+            "icd_min_prev": self.icd_min_prev,
+            "pmi_threshold": self.pmi_threshold,
+            "drop_los": self.drop_los,
+            "add_missing_flag": self.add_missing_flag,
+        }
 
     @property
     def raw_dir(self):
@@ -250,9 +396,17 @@ class IntraPatientHeteroDataset(InMemoryDataset):
         # Every graph type lives under the single main folder data/graphs/,
         # one subfolder per structure -> data/graphs/<structure>/protgnn/<variant>.
         from shared.lib.graph_structures import structure_dir
+        variant = f'hetero_{csv_stem}_{los_tag}_{prev_tag}_{pmi_tag}{miss_tag}{icd_tag}{tgt_tag}'
+        if self._preprocessing_provenance is not None:
+            provenance = self._preprocessing_provenance
+            variant += (
+                f"_std_ds{provenance['dataset_sha256'][:12]}"
+                f"_split{provenance['split_sha256'][:12]}"
+                f"_recipe{_json_sha256(provenance['recipe'])[:12]}"
+            )
         return osp.join(
             str(structure_dir(self.root, self.graph_structure, "protgnn")),
-            f'hetero_{csv_stem}_{los_tag}_{prev_tag}_{pmi_tag}{miss_tag}{icd_tag}{tgt_tag}',
+            variant,
         )
 
     @property
@@ -278,6 +432,7 @@ class IntraPatientHeteroDataset(InMemoryDataset):
         self.demo_vocab   = []
         self.feature_metadata = {}
         self.label_mapping = {"0": "HOME", "1": "ADMITTED"}
+        meta = None
         if osp.isfile(self.metadata_path):
             with open(self.metadata_path) as f:
                 meta = json.load(f)
@@ -292,9 +447,12 @@ class IntraPatientHeteroDataset(InMemoryDataset):
             self.label_mapping = meta.get("label_mapping", self.label_mapping)
             # Surface a flat human-readable name list per feature slot for
             # GraphXAI explanations. MUST match process() layout exactly:
-            # fixed 6 type slots, then id blocks, value/abnormal/missing,
+            # canonical/legacy type slots, then id blocks, value/abnormal/missing,
             # demo block, patient-numeric block.
-            types = ["patient", "vital", "med", "icd", "symptom", "chiefcomplaint"]
+            types = meta.get(
+                "node_types",
+                ["patient", "vital", "med", "icd", "symptom", "chiefcomplaint"],
+            )
             self.feature_cols = (
                 [f"type[{t}]" for t in types]
                 + [f"vital_id[{v}]" for v in self.vital_vocab]
@@ -306,9 +464,26 @@ class IntraPatientHeteroDataset(InMemoryDataset):
                 + [f"demo[{d}]"     for d in self.demo_vocab]
                 + [f"pnum[{p}]"     for p in self.patient_num_vocab]
             )
+        if self._preprocessing_provenance is not None:
+            if not isinstance(meta, dict) or meta.get("preprocessing") != self._preprocessing_provenance:
+                raise ValueError(
+                    "Standardized ProtGNN cache requires matching training-fold "
+                    "provenance for the exact dataset, split, recipe, and fit subjects; "
+                    "regenerate this cache with the canonical split."
+                )
 
     def process(self):
         df = pd.read_csv(osp.join(self.raw_dir, self.csv_filename))
+        source_row_indices = np.arange(len(df), dtype=np.int64)
+        if self._canonical_split is not None:
+            keep_indices, fit_indices, _ = _canonical_row_indices(
+                df, self._canonical_split
+            )
+            source_row_indices = source_row_indices[keep_indices]
+            df = df.iloc[keep_indices].reset_index(drop=True)
+        else:
+            fit_indices = np.arange(len(df), dtype=np.int64)
+
         # Keep subject_id so the dataloader can build a SUBJECT-AWARE split
         # (the same patient appears in multiple ED visits; letting one visit
         # leak into train and another into test inflates metrics).
@@ -320,26 +495,41 @@ class IntraPatientHeteroDataset(InMemoryDataset):
         # --- Build the prediction target ---
         label_names = None
         if self.target == 'disease':
-            # Single-label primary diagnosis (disease_1). Map each distinct
-            # disease string to an integer class id.
+            # Standardized runs use the authority split's class ordering; legacy
+            # runs retain their historical sorted all-row class mapping.
             diseases = df['disease_1'].fillna('').astype(str)
-            classes = sorted(d for d in diseases.unique() if d)
+            classes = (
+                list(self._canonical_split["classes"])
+                if self._canonical_split is not None
+                else sorted(d for d in diseases.unique() if d)
+            )
             class_to_id = {d: i for i, d in enumerate(classes)}
             y_vals = diseases.map(class_to_id).fillna(-1).astype(int).values
             label_names = classes
-            # rows with no usable disease_1 are dropped
             keep = y_vals >= 0
+            if self._canonical_split is not None and not keep.all():
+                invalid = [
+                    f"subject_id={int(subject_ids[i])}, row={int(source_row_indices[i])}, "
+                    f"label={diseases.iloc[i]!r}"
+                    for i in np.nonzero(~keep)[0][:10]
+                ]
+                raise ValueError(
+                    "Canonical ProtGNN row has a label outside the canonical class "
+                    f"mapping: {'; '.join(invalid)}."
+                )
         else:
             y_vals = df['disposition'].values.astype(int)
             keep = np.ones(len(df), dtype=bool)
         self._label_names = label_names
 
-        # Capture presenting-complaint columns BEFORE dropping feature columns.
-        #   symptom_*        : doctor-refined ICD R-codes (post-exam)
-        #   chiefcomplaint_* : triage free text (pre-diagnosis, the door)
-        # Both are legitimate model INPUT (complaint -> disease is standard
-        # clinical reasoning, not leakage); each becomes its own node type.
-        symptom_cols = sorted(c for c in df.columns if c.startswith('symptom_'))
+        # Legacy runs retain their historical doctor-refined ``symptom_*`` ICD
+        # R-code inputs. Canonical benchmark runs must exclude them completely:
+        # they are diagnosis-derived from the same visit as the disease target.
+        # Triage ``chiefcomplaint_*`` text is pre-diagnosis and remains eligible.
+        symptom_cols = (
+            sorted(c for c in df.columns if c.startswith('symptom_'))
+            if self._canonical_split is None else []
+        )
         symptom_lists_raw = (
             df[symptom_cols].fillna('').astype(str).values.tolist()
             if symptom_cols else [[] for _ in range(len(df))]
@@ -363,27 +553,33 @@ class IntraPatientHeteroDataset(InMemoryDataset):
             df = df[keep].reset_index(drop=True)
             y_vals = y_vals[keep]
             subject_ids = subject_ids[keep]
+            source_row_indices = source_row_indices[keep]
             symptom_lists_raw = [symptom_lists_raw[i] for i in np.nonzero(keep)[0]]
             cc_lists_raw = [cc_lists_raw[i] for i in np.nonzero(keep)[0]]
+            # This branch is legacy-only: standardized invalid labels fail above.
+            fit_indices = np.arange(len(df), dtype=np.int64)
 
-        def _build_vocab(lists_raw):
+        def _build_vocab(lists_raw, fit_rows):
             counter = {}
-            for row in lists_raw:
+            for i in fit_rows:
+                row = lists_raw[int(i)]
                 for s in row:
                     s = s.strip()
                     if s:
                         counter[s] = counter.get(s, 0) + 1
             vocab = sorted(counter.keys())
             index = {s: j for j, s in enumerate(vocab)}
-            patient_ids = [
-                [index[s.strip()] for s in row if s.strip() in index]
-                for row in lists_raw
-            ]
+            patient_ids = []
+            for row in lists_raw:
+                ids = [index[s.strip()] for s in row if s.strip() in index]
+                if self._canonical_split is not None:
+                    ids = list(dict.fromkeys(ids))
+                patient_ids.append(ids)
             return vocab, patient_ids
 
-        # Build symptom + chief-complaint vocabularies and per-patient id lists.
-        symptom_vocab, patient_symptoms = _build_vocab(symptom_lists_raw)
-        cc_vocab, patient_ccs = _build_vocab(cc_lists_raw)
+        # Fit vocabularies on fold 0 and apply the frozen maps to all rows.
+        symptom_vocab, patient_symptoms = _build_vocab(symptom_lists_raw, fit_indices)
+        cc_vocab, patient_ccs = _build_vocab(cc_lists_raw, fit_indices)
         if symptom_vocab:
             print(f"  Symptom nodes: {len(symptom_vocab)} categories "
                   f"(avg {np.mean([len(p) for p in patient_symptoms]):.1f} per patient)")
@@ -394,7 +590,14 @@ class IntraPatientHeteroDataset(InMemoryDataset):
         if self.drop_los and 'los_hours' in df.columns:
             df = df.drop(columns=['los_hours'])
 
-        vital_cols = [c for c in self.VITAL_COLS if c in df.columns]
+        # GraphCare has no channel for the numeric vital measurements. The
+        # standardized common-subset contract therefore excludes vital nodes
+        # entirely rather than creating categorical vital-name-only proxies.
+        # Legacy graphs retain their historical vital nodes and values.
+        vital_cols = (
+            [c for c in self.VITAL_COLS if c in df.columns]
+            if self._canonical_split is None else []
+        )
         demo_cols  = [c for c in self.DEMO_COLS  if c in df.columns]
         # Medication nodes = home meds (med_*) AND, if present, ED-dispensed
         # meds (pyx_*). They share the MED node type; the pyx_ prefix keeps them
@@ -404,7 +607,7 @@ class IntraPatientHeteroDataset(InMemoryDataset):
                                if c.startswith('med_') or c.startswith('pyx_')])
 
         # Drop ultra-rare meds (no statistical mass + GNN noise).
-        med_prev = df[med_cols_all].mean()
+        med_prev = df.iloc[fit_indices][med_cols_all].mean()
         med_cols = [c for c in med_cols_all if med_prev[c] >= self.med_min_prev]
         n_pyx = sum(c.startswith('pyx_') for c in med_cols)
         print(f"  Vitals: {len(vital_cols)}  |  demo: {len(demo_cols)}  |  "
@@ -425,8 +628,9 @@ class IntraPatientHeteroDataset(InMemoryDataset):
         patient_num_cols = sorted(patient_num_cols)
         patient_num_stats = {}
         for col in patient_num_cols:
-            mean = float(df[col].mean())
-            std = float(df[col].std())
+            fit_values = df.iloc[fit_indices][col]
+            mean = float(fit_values.mean())
+            std = float(fit_values.std())
             patient_num_stats[col] = {"mean": mean, "std": std}
             if std > 0:
                 df[col] = (df[col] - mean) / std
@@ -449,9 +653,10 @@ class IntraPatientHeteroDataset(InMemoryDataset):
             icd_lists = df['icd_codes'].apply(_split_icd).tolist()
             from collections import Counter as _C
             icd_counter = _C()
-            for codes in icd_lists:
+            for i in fit_indices:
+                codes = icd_lists[int(i)]
                 icd_counter.update(set(codes))
-            min_count = self.icd_min_prev * len(df)
+            min_count = self.icd_min_prev * len(fit_indices)
             icd_vocab = sorted([c for c, n in icd_counter.items() if n >= min_count])
             icd_index = {c: j for j, c in enumerate(icd_vocab)}
             # per-patient kept-ICD index list
@@ -473,27 +678,27 @@ class IntraPatientHeteroDataset(InMemoryDataset):
             lo, hi = self.VITAL_CLIP.get(col, (None, None))
             if lo is not None:
                 df[col] = df[col].clip(lower=lo, upper=hi)
-            # mean/std computed on observed (non-missing) values only
-            mean = float(df[col].mean())
-            std  = float(df[col].std())
+            # mean/std computed on observed fold-0 values only in standardized mode
+            fit_values = df.iloc[fit_indices][col]
+            mean = float(fit_values.mean())
+            std  = float(fit_values.std())
             vital_stats[col] = {"mean": mean, "std": std,
                                 "clip_lo": lo, "clip_hi": hi,
-                                "missing_rate": float(np.mean(vital_missing[col]))}
+                                "missing_rate": float(np.mean(vital_missing[col][fit_indices]))}
             if std > 0:
                 df[col] = (df[col] - mean) / std
             df[col] = df[col].fillna(0.0)  # missing → population mean (z=0)
 
-        # --- Med-med PMI edges (computed once on the full sample for a
-        # stable population statistic; using only training rows would
-        # require a holdout-aware refactor we don't need for this graph
-        # of co-occurrence statistics). ---
+        # --- Med-med PMI edges. Standardized caches fit this statistic only on
+        # fold 0; legacy caches retain their historical all-row fit indices. ---
         med_matrix = (df[med_cols].values > 0).astype(np.float32)
-        med_marginals = med_matrix.mean(axis=0)
+        med_fit = med_matrix[fit_indices]
+        med_marginals = med_fit.mean(axis=0)
         eps = 1e-9
         # co-occurrence in float64 (float32 matmul triggers spurious BLAS
         # overflow warnings on some platforms; counts are small integers anyway)
-        _mm = med_matrix.astype(np.float64)
-        co = (_mm.T @ _mm) / float(len(df))
+        _mm = med_fit.astype(np.float64)
+        co = (_mm.T @ _mm) / float(len(fit_indices))
         pmi = np.log((co + eps) / (np.outer(med_marginals, med_marginals) + eps))
         np.fill_diagonal(pmi, 0.0)
         pmi_pairs = np.argwhere(pmi > self.pmi_threshold)
@@ -516,15 +721,23 @@ class IntraPatientHeteroDataset(InMemoryDataset):
         V_c = len(cc_vocab)
         D_d = len(demo_cols)
         P_n = len(patient_num_cols)
-        # type one-hot slots: FIXED 6 slots (stable indices regardless of which
-        # node types are present in this particular dataset variant).
-        IDX_TYPE_PATIENT = 0
-        IDX_TYPE_VITAL   = 1
-        IDX_TYPE_MED     = 2
-        IDX_TYPE_ICD     = 3                            # only used when V_i > 0
-        IDX_TYPE_SYMPTOM = 4                            # only used when V_s > 0
-        IDX_TYPE_CC      = 5                            # only used when V_c > 0
-        N_TYPES = 6
+        # Canonical caches have no symptom type slot or symptom feature-ID block.
+        # Legacy caches retain the historical six-type feature layout.
+        node_types = ["patient"]
+        if self._canonical_split is None:
+            node_types.append("vital")
+        node_types.extend(["med", "icd"])
+        if self._canonical_split is None:
+            node_types.append("symptom")
+        node_types.append("chiefcomplaint")
+        type_index = {name: index for index, name in enumerate(node_types)}
+        IDX_TYPE_PATIENT = type_index["patient"]
+        IDX_TYPE_VITAL = type_index.get("vital")
+        IDX_TYPE_MED = type_index["med"]
+        IDX_TYPE_ICD = type_index["icd"]
+        IDX_TYPE_SYMPTOM = type_index.get("symptom")
+        IDX_TYPE_CC = type_index["chiefcomplaint"]
+        N_TYPES = len(node_types)
         IDX_VITAL_START  = N_TYPES
         IDX_MED_START    = IDX_VITAL_START + V_v
         IDX_ICD_START    = IDX_MED_START + V_m          # icd id one-hot block
@@ -581,9 +794,9 @@ class IntraPatientHeteroDataset(InMemoryDataset):
         # threshold as the med-med edges, now cross-type).
         concept_cooccur = [[] for _ in range(n_concept_gids)]
         if self.graph_structure in ('cooccur', 'full') and n_concept_gids > 1:
-            Cf = concept_present.astype(np.float64)
+            Cf = concept_present[fit_indices].astype(np.float64)
             marg = Cf.mean(axis=0)
-            co_c = (Cf.T @ Cf) / float(len(df))
+            co_c = (Cf.T @ Cf) / float(len(fit_indices))
             pmi_c = np.log((co_c + eps) / (np.outer(marg, marg) + eps))
             np.fill_diagonal(pmi_c, 0.0)
             pairs_c = np.argwhere(pmi_c > self.pmi_threshold)
@@ -645,6 +858,8 @@ class IntraPatientHeteroDataset(InMemoryDataset):
             num_nodes = (1 + V_v + num_med_nodes + num_icd_nodes
                          + num_sym_nodes + num_cc_nodes)
             x = np.zeros((num_nodes, feat_dim), dtype=np.float32)
+            canonical_node_ids = ["patient:hub"]
+            canonical_node_types = ["patient"]
 
             # Patient node (idx 0)
             x[0, IDX_TYPE_PATIENT] = 1.0
@@ -666,6 +881,8 @@ class IntraPatientHeteroDataset(InMemoryDataset):
                     x[n, IDX_ABNORMAL] = 1.0
                 if self.add_missing_flag and is_missing:
                     x[n, IDX_MISSING] = 1.0
+                canonical_node_ids.append(f"vital:{vital_cols[v_idx]}")
+                canonical_node_types.append("vital")
 
             # Concept nodes (med/icd/symptom/cc) also register their GLOBAL
             # concept id so the structure-driven edge builder below can wire
@@ -681,6 +898,8 @@ class IntraPatientHeteroDataset(InMemoryDataset):
                 x[n, IDX_MED_START + g_idx] = 1.0
                 x[n, IDX_VALUE] = 1.0
                 concept_local_of_gid[CG_MED + g_idx] = n
+                canonical_node_ids.append(f"med:{med_cols[g_idx][4:]}")
+                canonical_node_types.append("medication")
 
             # ICD diagnosis nodes
             icd_offset = 1 + V_v + num_med_nodes
@@ -690,6 +909,8 @@ class IntraPatientHeteroDataset(InMemoryDataset):
                 x[n, IDX_ICD_START + g_idx] = 1.0
                 x[n, IDX_VALUE] = 1.0
                 concept_local_of_gid[CG_ICD + g_idx] = n
+                canonical_node_ids.append(f"icd:{icd_vocab[g_idx]}")
+                canonical_node_types.append("diagnosis")
 
             # SYMPTOM (doctor-refined ICD R-code) nodes
             sym_offset = 1 + V_v + num_med_nodes + num_icd_nodes
@@ -699,6 +920,8 @@ class IntraPatientHeteroDataset(InMemoryDataset):
                 x[n, IDX_SYM_START + g_idx] = 1.0
                 x[n, IDX_VALUE] = 1.0
                 concept_local_of_gid[CG_SYM + g_idx] = n
+                canonical_node_ids.append(f"sym:{symptom_vocab[g_idx]}")
+                canonical_node_types.append("symptom")
 
             # CHIEF-COMPLAINT (triage free-text) nodes
             cc_offset = 1 + V_v + num_med_nodes + num_icd_nodes + num_sym_nodes
@@ -708,29 +931,36 @@ class IntraPatientHeteroDataset(InMemoryDataset):
                 x[n, IDX_CC_START + g_idx] = 1.0
                 x[n, IDX_VALUE] = 1.0
                 concept_local_of_gid[CG_CC + g_idx] = n
+                canonical_node_ids.append(f"cc:{cc_vocab[g_idx]}")
+                canonical_node_types.append("chiefcomplaint")
 
             # Edges
-            src, dst = [], []
+            src, dst, canonical_edge_types = [], [], []
             # patient ↔ vital
             for v_idx in range(V_v):
                 n = 1 + v_idx
                 src += [0, n]; dst += [n, 0]
+                canonical_edge_types += ["patient_concept", "patient_concept"]
             # patient ↔ med
             for k in range(num_med_nodes):
                 n = med_offset + k
                 src += [0, n]; dst += [n, 0]
+                canonical_edge_types += ["patient_concept", "patient_concept"]
             # patient ↔ icd
             for k in range(num_icd_nodes):
                 n = icd_offset + k
                 src += [0, n]; dst += [n, 0]
+                canonical_edge_types += ["patient_concept", "patient_concept"]
             # patient ↔ symptom
             for k in range(num_sym_nodes):
                 n = sym_offset + k
                 src += [0, n]; dst += [n, 0]
+                canonical_edge_types += ["patient_concept", "patient_concept"]
             # patient ↔ chief-complaint
             for k in range(num_cc_nodes):
                 n = cc_offset + k
                 src += [0, n]; dst += [n, 0]
+                canonical_edge_types += ["patient_concept", "patient_concept"]
             # concept ↔ concept edges, governed by self.graph_structure.
             # (patient↔concept spokes above are always present; this only adds
             # the extra topology that distinguishes the structures.)
@@ -752,24 +982,33 @@ class IntraPatientHeteroDataset(InMemoryDataset):
                             seen_pairs.add((gid, gid_b))
                             b = concept_local_of_gid[gid_b]
                             src += [a, b]; dst += [b, a]
+                            edge_type = "cooccur" if nbr_map is concept_cooccur else "ontology"
+                            canonical_edge_types += [edge_type, edge_type]
             # struct == 'star' -> no concept↔concept edges (pure hub baseline)
-            if not src:
-                # Pathological case (no meds AND no vitals) → self-loop on patient.
+            if not src and self._canonical_split is None:
+                # Preserve legacy behavior only. Standardized clinical-empty
+                # subjects retain a hub with no edges, just like GraphCare.
                 src, dst = [0], [0]
+                canonical_edge_types = ["self_loop"]
             edge_index = torch.tensor([src, dst], dtype=torch.long)
 
-            data_list.append(Data(
+            record = Data(
                 x=torch.from_numpy(x),
                 edge_index=edge_index,
                 y=torch.tensor([y_vals[i]], dtype=torch.long),
-                dataset_index=torch.tensor([i], dtype=torch.long),
+                dataset_index=torch.tensor([int(source_row_indices[i])], dtype=torch.long),
                 subject_id=torch.tensor([int(subject_ids[i])], dtype=torch.long),
                 num_med_nodes=torch.tensor([num_med_nodes], dtype=torch.long),
                 num_icd_nodes=torch.tensor([num_icd_nodes], dtype=torch.long),
                 num_sym_nodes=torch.tensor([num_sym_nodes], dtype=torch.long),
                 num_cc_nodes=torch.tensor([num_cc_nodes], dtype=torch.long),
                 num_total_nodes=torch.tensor([num_nodes], dtype=torch.long),
-            ))
+            )
+            if self._canonical_split is not None:
+                record.canonical_node_ids = canonical_node_ids
+                record.canonical_node_types = canonical_node_types
+                record.canonical_edge_types = canonical_edge_types
+            data_list.append(record)
 
         avg_nodes = np.mean([d.x.shape[0]            for d in data_list])
         avg_edges = np.mean([d.edge_index.shape[1]   for d in data_list]) / 2
@@ -789,6 +1028,7 @@ class IntraPatientHeteroDataset(InMemoryDataset):
             json.dump({
                 "csv_filename": self.csv_filename,
                 "feature_dim": feat_dim,
+                "node_types": node_types,
                 "vital_vocab": vital_cols,
                 "med_vocab":   med_cols,
                 "icd_vocab":   icd_vocab,
@@ -801,6 +1041,9 @@ class IntraPatientHeteroDataset(InMemoryDataset):
                 "icd_min_prev": self.icd_min_prev,
                 "pmi_threshold": self.pmi_threshold,
                 "n_med_med_edges": int(len(pmi_pairs)),
+                "n_concept_cooccur_edges": int(
+                    sum(len(neighbours) for neighbours in concept_cooccur) // 2
+                ),
                 "graph_structure": self.graph_structure,
                 "drop_los": self.drop_los,
                 "add_missing_flag": self.add_missing_flag,
@@ -811,10 +1054,23 @@ class IntraPatientHeteroDataset(InMemoryDataset):
                     if getattr(self, "_label_names", None)
                     else {"0": "HOME", "1": "ADMITTED"}
                 ),
+                "preprocessing": (
+                    self._preprocessing_provenance
+                    if self._preprocessing_provenance is not None
+                    else {
+                        "schema_version": 1,
+                        "fit_scope": "all_rows_legacy",
+                        "fit_fold": None,
+                        "fit_subject_count": len(df),
+                        "split_sha256": None,
+                    }
+                ),
             }, f, indent=2)
 
 
-def get_dataset(dataset_dir, dataset_name, task=None, graph_structure=None):
+def get_dataset(
+    dataset_dir, dataset_name, task=None, graph_structure=None, canonical_split=None
+):
     if dataset_name.lower().startswith('mimic_intra_patient'):
         # Intra-patient heterogeneous graph (Option A).
         # name format:  mimic_intra_patient[_full][_with_los][_prevN][_pmiX]
@@ -853,16 +1109,22 @@ def get_dataset(dataset_dir, dataset_name, task=None, graph_structure=None):
         struct = graph_structure
         if struct is None:
             struct = next((p for p in parts if p in all_structures()), 'star')
+        if canonical_split is None:
+            canonical_split = os.environ.get("CANONICAL_SPLIT_JSON")
         return IntraPatientHeteroDataset(
             root=dataset_dir, name=dataset_name, csv_filename=csv,
             med_min_prev=prev, pmi_threshold=pmi, drop_los=not with_los,
             icd_min_prev=icd_prev, target=target, graph_structure=struct,
+            canonical_split=canonical_split,
         )
     else:
         raise NotImplementedError
 
 
-def get_dataloader(dataset, batch_size, random_split_flag=True, data_split_ratio=None, seed=5):
+def get_dataloader(
+    dataset, batch_size, random_split_flag=True, data_split_ratio=None, seed=5,
+    canonical_split=None,
+):
     """
     Args:
         dataset:
@@ -878,10 +1140,24 @@ def get_dataloader(dataset, batch_size, random_split_flag=True, data_split_ratio
     # train/val/test folds from it (by subject_id) so ProtGNN and GraphCare are
     # evaluated on the IDENTICAL test patients. Graphs whose subject is not in
     # the canonical set (e.g. 0-code patients) are excluded from all folds.
-    _canon = os.environ.get("CANONICAL_SPLIT_JSON")
+    _canon = canonical_split or os.environ.get("CANONICAL_SPLIT_JSON")
     if _canon:
-        fold = json.load(open(_canon))["fold"]
+        split = load_canonical_split(_canon)
+        fold = split["fold"]
+        if isinstance(dataset, IntraPatientHeteroDataset):
+            provenance = getattr(dataset, "_preprocessing_provenance", None)
+            if (
+                not isinstance(provenance, dict)
+                or provenance.get("split_sha256") != file_sha256(_canon)
+                or provenance.get("fit_scope") != "training_fold"
+            ):
+                raise ValueError(
+                    "Canonical dataloading requires a dataset cache built with the "
+                    "same validated canonical split before preprocessing."
+                )
         groups = _extract_graph_groups(dataset, "subject_id")
+        if groups is None:
+            raise ValueError("Canonical dataloading requires per-graph subject_id values.")
         tr, ev, te = [], [], []
         for i in range(len(dataset)):
             f = fold.get(str(int(groups[i])))

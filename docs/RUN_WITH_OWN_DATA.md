@@ -1,5 +1,15 @@
 # Run With Your Own Data
 
+> **Legacy workflow, not the standardized benchmark.** Use the
+> [current runbook](../comparison/standardized/README.md) for the three-method
+> comparison. This raw-data recipe is not fully verified: `merge_ed.py` runs at
+> import time, both raw batch scripts currently resolve `shared/data` instead
+> of root `data/`, and the merger also reads `patients.csv` and `omr.csv` beyond
+> the older list below. Do not invoke these scripts with `--help` as a safe
+> probe. Preserve existing data/symlinks; fix and validate their path/CLI
+> migration on fixtures before a real regeneration. See the
+> [verification report](usability-verification.md).
+
 The raw MIMIC ED files are not included in GitHub. To regenerate the dataset,
 model outputs, GraphXAI JSON files, and summary files, place the raw CSV files
 under:

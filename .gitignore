@@ -11,9 +11,51 @@ data/*.csv
 # Vendored GraphCare (third-party clone; obtain via graphcare_analysis/README.md)
 external/GraphCare/
 # GraphXAI bundled extras (not part of this work)
+external/GraphXAI-main/data/
+external/GraphXAI-main/formal/
+external/GraphXAI-main/examples/
+external/GraphXAI-main/graphxai/datasets/real_world/**/*.npz
 external/GraphXAI-main/graphxai_flowchart.pptx
 external/GraphXAI-main/img/
 external/GraphXAI-main/test_scripts/
 
 # New graph-structure caches (data/graphs/<structure>/<method>/)
 data/graphs/
+
+# Obsidian docs-vault (per-machine state only)
+docs-vault/.obsidian/workspace*
+docs-vault/.obsidian/cache
+
+# Heavy local archives (regenerate from source data, never commit)
+data.zip
+*.zip
+
+# Superseded UZH thesis template copy (the live version is thesis/)
+Master Project_Template./
+Master Project_Template..zip
+
+# Stray file from an unrelated project
+job_postings_*.xlsx
+
+# Agent-local settings
+.claude/
+.hermes/
+
+# Local experiment artifacts and generated benchmark outputs
+comparison/standardized/common_input_*/
+comparison/standardized/data_quality_balance_*/
+comparison/standardized/enriched_inputs/
+comparison/standardized/enriched_runs/
+comparison/standardized/graphxai_*/
+comparison/standardized/graphxai_execution_*/
+comparison/standardized/native_evidence/
+comparison/standardized/native_inputs/
+comparison/standardized/native_runs/
+comparison/standardized/performance_diagnosis/
+comparison/standardized/performance_review_*/
+comparison/standardized/pna_experiments/
+comparison/standardized/production_cache_*/
+comparison/standardized/results/
+comparison/standardized/zero_concept_verification/
+comparison/standardized/graphxai_current_run.txt
+comparison/standardized/training.log

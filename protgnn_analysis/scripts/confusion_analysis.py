@@ -35,14 +35,15 @@ for p in (_THIS, _ROOT):
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import precision_recall_fscore_support, confusion_matrix
-from disease_baseline import build_xy
+from baselines.disease_baseline import build_xy
+from shared.lib.config_base import DATA_DIR
 
 OUT_DIR = os.path.join(_ROOT, "outputs", "results", "confusion")
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--csv", default=os.path.join(_ROOT, "data", "merged_ed.csv"))
+    ap.add_argument("--csv", default=str(DATA_DIR / "merged_ed.csv"))
     ap.add_argument("--top_pairs", type=int, default=30, help="# most-confused pairs to list")
     ap.add_argument("--min_class", type=int, default=5, help="drop classes with < this many rows")
     args = ap.parse_args()

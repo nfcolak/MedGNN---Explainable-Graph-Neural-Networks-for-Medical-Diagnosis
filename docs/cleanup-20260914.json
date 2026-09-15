@@ -1,0 +1,139 @@
+{
+  "executed_at": "2026-09-14T15:10:29.345972+02:00",
+  "repository": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN",
+  "branch": "new_repo_structure_and_new_node_to_node_edge_trials",
+  "scope": "First-party bounded traversal; data, dependencies, environments, user documents and scientific output trees excluded from cleanup. Counts are bounded inventory, not whole-repository disk usage.",
+  "removed": [
+    {
+      "path": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.pytest_cache",
+      "files": [
+        {
+          "path": ".pytest_cache/.gitignore",
+          "bytes": 37,
+          "sha256": "3ed731b65d06150c138e2dadb0be0697550888a6b47eb8c45ecc9adba8b8e9bd"
+        },
+        {
+          "path": ".pytest_cache/CACHEDIR.TAG",
+          "bytes": 191,
+          "sha256": "37dc88ef9a0abeddbe81053a6dd8fdfb13afb613045ea1eb4a5c815a74a3bde4"
+        },
+        {
+          "path": ".pytest_cache/README.md",
+          "bytes": 302,
+          "sha256": "73fd6fccdd802c419a6b2d983d6c3173b7da97558ac4b589edec2dfe443db9ad"
+        },
+        {
+          "path": ".pytest_cache/v/cache/lastfailed",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": ".pytest_cache/v/cache/nodeids",
+          "bytes": 43283,
+          "sha256": "c113c6fddc14ffd1b3d81b81dcd1a9041a78f03f1944bf18cba207740c054129"
+        }
+      ]
+    },
+    {
+      "path": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.DS_Store",
+      "files": [
+        {
+          "path": ".DS_Store",
+          "bytes": 18436,
+          "sha256": "0d5a60a569df33ccb8b34df62fa973fb05380a717ced3ea7017bca36e4771511"
+        }
+      ]
+    }
+  ],
+  "removed_paths": 2,
+  "removed_files": 6,
+  "removed_bytes": 62251,
+  "trash_moves": [],
+  "inventory_before": {
+    "files": 625,
+    "bytes": 2945735532
+  },
+  "inventory_after_physical_cleanup_before_manifest": {
+    "files": 619,
+    "bytes": 2945673281
+  },
+  "preservation": {
+    "files_sha256_identical": 4731,
+    "protected_graphxai_run_files": 3594,
+    "aggregate_before_sha256": "4a9b06eec8a997acd409b879cd4a670e4e2b1ae8b14cb410a9727e6c1faacfef",
+    "aggregate_after_sha256": "4a9b06eec8a997acd409b879cd4a670e4e2b1ae8b14cb410a9727e6c1faacfef",
+    "private_audit_directory": "/tmp/medgnn-cleanup-20260914-audit",
+    "git_status_identical_before_manifest": true,
+    "git_diff_check_exit": 0
+  },
+  "retained": [
+    {
+      "paths": [
+        "comparison/standardized/graphxai_execution_20260914T142631",
+        "comparison/standardized/graphxai_execution_20260914T142801"
+      ],
+      "reason": "Nonempty failure tracebacks; diagnostic provenance for device/gradient fixes, not proven disposable."
+    },
+    {
+      "paths": [
+        "comparison/standardized/graphxai_500_20260914T144701",
+        "docs/graphxai-500-results.md"
+      ],
+      "reason": "Protected successful 500-record run, complete output/source snapshots and associated smoke/retry provenance preserved."
+    },
+    {
+      "paths": [
+        "protgnn_analysis/scripts/train_gnns.sh"
+      ],
+      "reason": "Legacy tracked shell calls missing train_gnns.py. Retained pending explicit source retirement; no speculative source deletion."
+    },
+    {
+      "paths": [
+        "baselines",
+        "comparison/*.py",
+        "shared/data_prep",
+        "protgnn_analysis/scripts"
+      ],
+      "reason": "Referenced by code/docs/tests and git history; legacy does not mean unused."
+    },
+    {
+      "paths": [
+        "data.zip",
+        "data",
+        "external",
+        ".venv-graphcare",
+        "visualizer/node_modules",
+        "visualizer/dist",
+        "visualizer/public"
+      ],
+      "reason": "Protected medical data, dependencies, environments or patient graph exports; no cleanup."
+    },
+    {
+      "paths": [
+        "Master Project_Template.",
+        "thesis",
+        "thesis_proposals",
+        "docs-vault",
+        "docs/literature/Paper_Comparison_Excel_BACKUP_20260703.xlsx",
+        "docs/protgnn.png",
+        "docs/literature/protgnn.png"
+      ],
+      "reason": "User documents, tracked references and figures; duplication or safe retirement not established."
+    },
+    {
+      "paths": [
+        ".hermes",
+        ".claude",
+        ".superpowers"
+      ],
+      "reason": "Active local planning/agent state; not assumed unused. Credential settings not read."
+    }
+  ],
+  "verification_notes": [
+    "No tracked or source file changed. Existing dirty code/tests preserved.",
+    "No tests, training, installs, data processing, commits or pushes.",
+    "No new Trash moves; previous docs/cleanup-manifest.md preserved unchanged.",
+    "No eligible __pycache__ directories found. All selected paths absent after removal.",
+    "Manifest contains no patient identifiers or clinical content; full protected output path/hash inventory remains local in private audit directory."
+  ]
+}

@@ -39,6 +39,7 @@ import argparse
 import random
 import shutil
 import time
+from pathlib import Path
 import numpy as np
 import torch
 import torch.nn as nn
@@ -61,12 +62,21 @@ for _path in (_PROJECT_ROOT, _SRC_DIR, _EXTERNAL_GRAPHXAI_ROOT):
 # ---------------------------------------------------------------------------
 # ProtGNN imports
 # ---------------------------------------------------------------------------
-from protgnn_analysis.config import OUTPUTS_DIR, data_args, model_args, train_args
+from protgnn_analysis.config import (
+    OUTPUTS_DIR,
+    STANDARDIZED_DATASET_NAME,
+    data_args,
+    model_args,
+    train_args,
+)
 from protgnn_analysis.models import GnnNets
 from protgnn_analysis.explainability.graphxai_wrapper import ProtGNNWrapper
 from protgnn_analysis.load_dataset import get_dataset, get_dataloader
 from protgnn_analysis.my_mcts import mcts
 from protgnn_analysis.scripts.archive_results import archive_results
+from shared.lib.benchmark_contract import BenchmarkSpec, load_canonical_split
+from shared.lib.config_base import isolated_callable, set_seed
+from shared.lib.metrics import multiclass_metrics
 
 # ---------------------------------------------------------------------------
 # GraphXAI imports
@@ -101,11 +111,17 @@ def _mkdir(path: str) -> str:
     return path
 
 
-def _prepare_results_dir():
-    """Redirect RESULTS_DIR to a fresh, timestamped + titled per-run subfolder.
-    NEVER deletes previous runs — each run is self-contained under its own
-    folder, e.g.  outputs/results/2026-06-02_17-30_disease_gcn/ ."""
+def _prepare_results_dir(output_dir=None):
+    """Select an isolated run directory without overwriting prior outputs."""
     global RESULTS_DIR
+    if output_dir is not None:
+        RESULTS_DIR = str(Path(output_dir))
+        _mkdir(RESULTS_DIR)
+        _mkdir(os.path.join(RESULTS_DIR, "explanations"))
+        print(f"  Run results dir: {RESULTS_DIR}")
+        return
+
+    # Legacy mode keeps its timestamped folder and latest-run pointer.
     # small, readable title from the dataset + model
     title = (data_args.dataset_name
              .replace("mimic_intra_patient_", "")
@@ -167,28 +183,6 @@ def _binary_metrics(labels, preds, pos_scores):
         "balanced_acc": round((recall + spec) / 2, 6),
         "pr_auc":    round(_average_precision(labels, pos_scores), 6),
     }
-
-
-def _multiclass_metrics(labels, preds, probs):
-    """Multi-class (e.g. 30-disease) metrics: accuracy is added by the caller;
-    here we add balanced accuracy, macro/micro-F1, and top-3/top-5 accuracy."""
-    from sklearn.metrics import (balanced_accuracy_score, f1_score,
-                                 top_k_accuracy_score)
-    labels = np.asarray(labels, dtype=np.int64)
-    preds = np.asarray(preds, dtype=np.int64)
-    out = {
-        "balanced_acc": round(float(balanced_accuracy_score(labels, preds)), 6),
-        "macro_f1": round(float(f1_score(labels, preds, average="macro", zero_division=0)), 6),
-        "micro_f1": round(float(f1_score(labels, preds, average="micro", zero_division=0)), 6),
-    }
-    if probs is not None and probs.ndim == 2:
-        n_cls = probs.shape[1]
-        lab_range = np.arange(n_cls)
-        for k in (3, 5):
-            if n_cls > k:
-                out[f"top{k}_acc"] = round(float(
-                    top_k_accuracy_score(labels, probs, k=k, labels=lab_range)), 6)
-    return out
 
 
 def _confusion_counts(labels, preds):
@@ -261,18 +255,16 @@ def _state_from_predictions(loss, labels_all, argmax_preds, probs_all, threshold
         preds_all = (probs_all[:, 1] >= threshold).astype(np.int64)
         threshold_used = float(threshold)
 
-    state = {
-        "loss": round(loss, 6),
-        "acc":  round(float((preds_all == labels_all).mean()), 6),
-    }
+    state = {"loss": round(loss, 6)}
     if probs_all.ndim == 2 and probs_all.shape[1] == 2:
+        state["acc"] = round(float((preds_all == labels_all).mean()), 6)
         state.update(_binary_metrics(labels_all, preds_all, probs_all[:, 1]))
         state["confusion_matrix"] = _confusion_counts(labels_all, preds_all)
         if threshold_used is not None:
             state["threshold"] = round(threshold_used, 6)
     else:
         # multi-class (e.g. disease, 30 classes)
-        state.update(_multiclass_metrics(labels_all, preds_all, probs_all))
+        state.update(multiclass_metrics(labels_all, preds_all, probs_all))
     return state
 
 
@@ -294,6 +286,33 @@ def _find_best_threshold(labels, pos_scores, objective="balanced_acc"):
 def _evaluate(dataloader, model, criterion, threshold=None):
     loss, labels_all, argmax_preds, probs_all = _collect_predictions(dataloader, model, criterion)
     return _state_from_predictions(loss, labels_all, argmax_preds, probs_all, threshold=threshold)
+
+
+def _validation_selection_score(eval_state):
+    """Select PR-AUC for binary runs and macro-F1 for multiclass runs."""
+    accuracy = eval_state.get("accuracy", eval_state.get("acc"))
+    if accuracy is None:
+        raise ValueError("Evaluation state is missing accuracy.")
+    score = eval_state.get("pr_auc")
+    if score is None:
+        score = eval_state.get("macro_f1", accuracy)
+    if isinstance(score, float) and np.isnan(score):
+        return accuracy
+    return score
+
+
+def _checkpoint_to_load(
+    best, latest, use_prot, epoch_rows, proj_epochs, standardized=False
+):
+    """Standardized runs always load the highest-validation checkpoint."""
+    if (
+        not standardized
+        and use_prot
+        and epoch_rows
+        and epoch_rows[-1]["epoch"] >= proj_epochs
+    ):
+        return latest, "latest post-projection"
+    return best, "best validation"
 
 
 def _tensor_to_list(value):
@@ -428,7 +447,9 @@ def _prototype_record(gnn_nets, batch, output_dim, pred_label=None, top_k=5):
 # ===========================================================================
 
 def train_model(clst: float, sep: float, use_prot: bool = False,
-                margin: float = 1.0) -> tuple:
+                margin: float = 1.0, canonical_split=None,
+                checkpoint_root=None, standardized: bool = False,
+                limit=None) -> tuple:
     """
     Train ProtGNN (or a plain GCN when use_prot=False) and save checkpoints.
 
@@ -446,14 +467,20 @@ def train_model(clst: float, sep: float, use_prot: bool = False,
     print("=" * 60)
     print("TRAINING")
     print("=" * 60)
+    model_args.enable_prot = bool(use_prot)
     if not use_prot:
         print("  [INFO] Prototype layers DISABLED — training as a standard GCN.")
-        model_args.enable_prot = False
     else:
         print("  [INFO] Prototype layers ENABLED.")
 
     # --- Data ---
-    dataset = get_dataset(data_args.dataset_dir, data_args.dataset_name, task=data_args.task, graph_structure=data_args.graph_structure)
+    dataset = get_dataset(
+        data_args.dataset_dir,
+        data_args.dataset_name,
+        task=data_args.task,
+        graph_structure=data_args.graph_structure,
+        canonical_split=canonical_split,
+    )
     input_dim  = dataset.num_node_features
     output_dim = int(dataset.num_classes)
     dataloader = get_dataloader(
@@ -462,7 +489,19 @@ def train_model(clst: float, sep: float, use_prot: bool = False,
         random_split_flag=data_args.random_split,
         data_split_ratio=data_args.data_split_ratio,
         seed=data_args.seed,
+        canonical_split=canonical_split,
     )
+    if limit is not None:
+        limited = {}
+        for name, loader in dataloader.items():
+            indices = list(loader.dataset.indices)[:limit]
+            subset = torch.utils.data.Subset(dataset, indices)
+            limited[name] = loader.__class__(
+                subset,
+                batch_size=loader.batch_size,
+                shuffle=name == "train",
+            )
+        dataloader = limited
 
     avg_nodes = sum(dataset[i].x.shape[0] for i in range(len(dataset))) / len(dataset)
     avg_edges = sum(dataset[i].edge_index.shape[1] for i in range(len(dataset))) / len(dataset)
@@ -491,7 +530,8 @@ def train_model(clst: float, sep: float, use_prot: bool = False,
     print(f"  clst={clst}  sep={sep}  lr={train_args.learning_rate}")
     print()
 
-    ckpt_dir = os.path.join(model_args.checkpoint, data_args.dataset_name)
+    checkpoint_root = model_args.checkpoint if checkpoint_root is None else checkpoint_root
+    ckpt_dir = os.path.join(checkpoint_root, data_args.dataset_name)
     _mkdir(ckpt_dir)
 
     best_metric       = float("-inf")   # best ever (for checkpoint)
@@ -621,12 +661,10 @@ def train_model(clst: float, sep: float, use_prot: bool = False,
         train_loss = float(np.mean(batch_losses))
         train_acc  = float(np.concatenate(batch_accs).mean())
         eval_state = _evaluate(dataloader["eval"], gnn_nets, criterion)
+        eval_accuracy = eval_state.get("accuracy", eval_state.get("acc"))
 
         # selection metric: PR-AUC (binary) else macro-F1 (multi-class) else acc
-        sel = eval_state.get("pr_auc")
-        if sel is None:
-            sel = eval_state.get("macro_f1", eval_state["acc"])
-        sel = eval_state["acc"] if (isinstance(sel, float) and np.isnan(sel)) else sel
+        sel = _validation_selection_score(eval_state)
 
         # Early stopping: only a MEANINGFUL improvement (> min_delta) resets the
         # patience counter — tiny 0.0001 noise bumps no longer keep it alive
@@ -654,7 +692,7 @@ def train_model(clst: float, sep: float, use_prot: bool = False,
             "train_loss": round(train_loss, 6),
             "train_acc":  round(train_acc, 6),
             "eval_loss":  eval_state["loss"],
-            "eval_acc":   eval_state["acc"],
+            "eval_acc":   eval_accuracy,
             "eval_f1":        eval_state.get("f1", ""),
             "eval_pr_auc":    eval_state.get("pr_auc", ""),
             "eval_recall":    eval_state.get("recall", ""),
@@ -670,7 +708,7 @@ def train_model(clst: float, sep: float, use_prot: bool = False,
         print(
             f"  Epoch {epoch:4d} | "
             f"Train Loss: {train_loss:.4f}  Acc: {train_acc:.4f} | "
-            f"Eval Loss: {eval_state['loss']:.4f}  Acc: {eval_state['acc']:.4f}"
+            f"Eval Loss: {eval_state['loss']:.4f}  Acc: {eval_accuracy:.4f}"
             + (f"  PR-AUC: {eval_state['pr_auc']:.4f}" if "pr_auc" in eval_state else "")
             + (f"  macroF1: {eval_state['macro_f1']:.4f}"
                + (f"  top5: {eval_state['top5_acc']:.3f}" if "top5_acc" in eval_state else "")
@@ -683,11 +721,14 @@ def train_model(clst: float, sep: float, use_prot: bool = False,
             break
 
     # --- Load selected model ---
-    selected_ckpt_path = best
-    selected_ckpt_label = "best validation"
-    if use_prot and epoch_rows and epoch_rows[-1]["epoch"] >= train_args.proj_epochs:
-        selected_ckpt_path = latest
-        selected_ckpt_label = "latest post-projection"
+    selected_ckpt_path, selected_ckpt_label = _checkpoint_to_load(
+        best,
+        latest,
+        use_prot,
+        epoch_rows,
+        train_args.proj_epochs,
+        standardized=standardized,
+    )
 
     ckpt = torch.load(selected_ckpt_path, map_location=model_args.device)
     gnn_nets.update_state_dict(ckpt["net"])
@@ -766,7 +807,38 @@ def explain_test_set(
     gnn_nets: GnnNets,
     output_dim: int,
     explain_n: int,
-    threshold: float = None,
+    threshold=None,
+    canonical_split=None,
+) -> list:
+    """Run explanations while restoring caller-owned model mode and devices."""
+    model = getattr(gnn_nets, "model", None)
+    previous_training = getattr(gnn_nets, "training", None)
+    previous_gnn_device = getattr(gnn_nets, "device", model_args.device)
+    had_model_device = hasattr(model, "device")
+    previous_model_device = getattr(model, "device", None)
+    try:
+        return _explain_test_set_unscoped(
+            gnn_nets,
+            output_dim,
+            explain_n,
+            threshold=threshold,
+            canonical_split=canonical_split,
+        )
+    finally:
+        gnn_nets.to(previous_gnn_device)
+        gnn_nets.device = previous_gnn_device
+        if had_model_device and model is not None:
+            model.device = previous_model_device
+        if previous_training is not None:
+            gnn_nets.train(previous_training)
+
+
+def _explain_test_set_unscoped(
+    gnn_nets: GnnNets,
+    output_dim: int,
+    explain_n: int,
+    threshold=None,
+    canonical_split=None,
 ) -> list:
     """
     Run GradExplainer, IntegratedGradExplainer, and GNNExplainer on the test set.
@@ -802,12 +874,19 @@ def explain_test_set(
         gnn_nets.model.device = explain_device
     gnn_nets.to(explain_device)
 
-    dataset = get_dataset(data_args.dataset_dir, data_args.dataset_name, task=data_args.task, graph_structure=data_args.graph_structure)
+    dataset = get_dataset(
+        data_args.dataset_dir,
+        data_args.dataset_name,
+        task=data_args.task,
+        graph_structure=data_args.graph_structure,
+        canonical_split=canonical_split,
+    )
     dataloader = get_dataloader(
         dataset, batch_size=1,
         random_split_flag=data_args.random_split,
         data_split_ratio=data_args.data_split_ratio,
         seed=data_args.seed,
+        canonical_split=canonical_split,
     )
 
     wrapper   = ProtGNNWrapper(gnn_nets)
@@ -970,9 +1049,11 @@ def save_results(
     output_dim: int,
     use_prot: bool = False,
     threshold: float = None,
+    output_dir=None,
+    canonical_split=None,
 ):
-    """Write all artefacts under outputs/results/."""
-    _prepare_results_dir()
+    """Write all artefacts under the selected results directory."""
+    _prepare_results_dir(output_dir=output_dir)
 
     # ---- model_config.json ----
     config = {
@@ -1004,7 +1085,13 @@ def save_results(
     with open(os.path.join(RESULTS_DIR, "model_config.json"), "w") as f:
         json.dump(config, f, indent=2)
 
-    dataset = get_dataset(data_args.dataset_dir, data_args.dataset_name, task=data_args.task, graph_structure=data_args.graph_structure)
+    dataset = get_dataset(
+        data_args.dataset_dir,
+        data_args.dataset_name,
+        task=data_args.task,
+        graph_structure=data_args.graph_structure,
+        canonical_split=canonical_split,
+    )
     with open(os.path.join(RESULTS_DIR, "dataset_metadata.json"), "w") as f:
         json.dump(_dataset_metadata(dataset), f, indent=2)
 
@@ -1183,16 +1270,20 @@ def save_results(
 
         f.write("OUTPUT FILES\n")
         f.write("-" * 40 + "\n")
-        f.write(f"  outputs/results/model_config.json\n")
-        f.write(f"  outputs/results/dataset_metadata.json\n")
-        f.write(f"  outputs/results/training_metrics.csv          ({total_epochs} rows)\n")
-        f.write(f"  outputs/results/test_metrics.json\n")
-        f.write(f"  outputs/results/evaluation_diagnostics.json\n")
+        report_root = Path(RESULTS_DIR)
+        f.write(f"  {report_root / 'model_config.json'}\n")
+        f.write(f"  {report_root / 'dataset_metadata.json'}\n")
+        f.write(f"  {report_root / 'training_metrics.csv'}          ({total_epochs} rows)\n")
+        f.write(f"  {report_root / 'test_metrics.json'}\n")
+        f.write(f"  {report_root / 'evaluation_diagnostics.json'}\n")
         if threshold_rows:
-            f.write(f"  outputs/results/threshold_sensitivity.csv\n")
-        f.write(f"  outputs/results/explanations/graph_<i>.json   ({n_explained} files)\n")
-        f.write(f"  outputs/results/explanations/explanations_summary.csv\n")
-        f.write(f"  outputs/results/report.txt\n")
+            f.write(f"  {report_root / 'threshold_sensitivity.csv'}\n")
+        f.write(
+            f"  {report_root / 'explanations' / 'graph_<i>.json'}   "
+            f"({n_explained} files)\n"
+        )
+        f.write(f"  {report_root / 'explanations' / 'explanations_summary.csv'}\n")
+        f.write(f"  {report_root / 'report.txt'}\n")
 
     print(f"\n  Saved report to {os.path.join(RESULTS_DIR, 'report.txt')}")
 
@@ -1201,74 +1292,218 @@ def save_results(
 # Entry point
 # ===========================================================================
 
-def main():
-    parser = argparse.ArgumentParser(description="Train ProtGNN and explain with GraphXAI")
-    parser.add_argument("--dataset",   default=None, help="Dataset name, e.g. mimic_intra_patient_disease")
-    parser.add_argument("--graph_structure", "--graph", default=None,
-                        help="Graph topology: star|cooccur|ontology|full "
-                             "(prompted interactively if omitted)")
-    parser.add_argument("--clst",      type=float, default=0.1,  help="Cluster loss weight")
-    parser.add_argument("--sep",       type=float, default=0.1,  help="Separation loss weight (margin-based)")
-    parser.add_argument("--margin",    type=float, default=1.0,  help="Separation-loss margin (penalty if wrong-class prototype distance < margin)")
-    parser.add_argument("--seed",      type=int,   default=None, help="Override data-split seed for multi-seed runs")
-    parser.add_argument("--explain_n", type=int,   default=10,   help="Graphs to explain (-1 = all)")
-    parser.add_argument("--no_prot",   action="store_true",      help="Disable prototype layers (standard GCN training)")
-    parser.add_argument("--no_archive", action="store_true",     help="Do not copy this run into outputs/runs")
-    parser.add_argument("--archive_tag", default="auto", help="Tag appended to archived run folder")
-    args = parser.parse_args()
+@isolated_callable(data_args, model_args, train_args)
+def main(
+    graph_structure=None,
+    canonical_split=None,
+    seed=None,
+    output_dir=None,
+    *,
+    dataset=None,
+    clst=0.1,
+    sep=0.1,
+    margin=1.0,
+    explain_n=10,
+    no_prot=False,
+    no_archive=False,
+    archive_tag="auto",
+    limit=None,
+    max_epochs=None,
+):
+    """Run ProtGNN in either all-explicit standardized or legacy mode."""
+    global RESULTS_DIR
+    for name, value in (("limit", limit), ("max_epochs", max_epochs)):
+        if value is not None and (type(value) is not int or value < 1):
+            raise ValueError(f"{name} must be a positive exact integer when provided.")
 
-    if args.dataset:
-        data_args.dataset_name = args.dataset
+    standardized_values = {
+        "graph structure": graph_structure,
+        "canonical split": canonical_split,
+        "seed": seed,
+        "output directory": output_dir,
+    }
+    provided = {name for name, value in standardized_values.items() if value is not None}
+    standardized = canonical_split is not None or output_dir is not None
+    if standardized and len(provided) != len(standardized_values):
+        missing = ", ".join(
+            name for name in standardized_values if name not in provided
+        )
+        raise ValueError(
+            "Standardized ProtGNN mode requires all of graph structure, canonical "
+            f"split, seed, and output directory; missing: {missing}."
+        )
 
-    # Resolve the graph structure: --graph_structure wins; otherwise prompt
-    # interactively (falls back to 'star' on a non-TTY). Fold it into the
-    # dataset name so checkpoints/results are namespaced per structure and
-    # never overwrite another topology's run.
     from shared.lib.graph_structures import resolve as _resolve_struct
     from shared.lib.graph_structures import prompt_for_structure as _prompt_struct
-    struct = args.graph_structure or _prompt_struct("protgnn")
-    data_args.graph_structure = _resolve_struct(struct, "protgnn")
-    if data_args.graph_structure not in data_args.dataset_name.split('_'):
-        data_args.dataset_name = f"{data_args.dataset_name}_{data_args.graph_structure}"
-    print(f"  Graph structure : {data_args.graph_structure}")
 
-    if args.seed is not None:
-        data_args.seed = args.seed
-        random.seed(args.seed)
-        np.random.seed(args.seed)
-        torch.manual_seed(args.seed)
-        if torch.cuda.is_available():
-            torch.cuda.manual_seed_all(args.seed)
-
-    use_prot = not args.no_prot
-
-    # Train
-    gnn_nets, epoch_rows, test_state, output_dim, epoch_header, threshold, diagnostics = train_model(
-        args.clst, args.sep, use_prot, margin=args.margin
-    )
-
-    # Explain
-    explanation_records = explain_test_set(gnn_nets, output_dim, args.explain_n, threshold=threshold)
-
-    # Save
-    print("\n" + "=" * 60)
-    print("SAVING RESULTS")
-    print("=" * 60)
-    save_results(epoch_rows, epoch_header, test_state, diagnostics, explanation_records,
-                 args.clst, args.sep, output_dim, use_prot, threshold=threshold)
-
-    print(f"\n  All results written to: {RESULTS_DIR}/")
-    if not args.no_archive:
-        command = " ".join([sys.executable, *sys.argv])
-        archive_dir = archive_results(
-            results_dir=RESULTS_DIR,
-            runs_dir=os.path.join(str(OUTPUTS_DIR), "runs"),
-            tag=args.archive_tag,
-            command=command,
+    canonical_path = None
+    target_output_dir = None
+    if standardized:
+        if dataset is not None:
+            raise ValueError("Standardized ProtGNN mode does not accept a dataset override.")
+        spec = BenchmarkSpec("protgnn", graph_structure, seed)
+        canonical_path = Path(canonical_split)
+        load_canonical_split(canonical_path)
+        resolved_structure = spec.structure
+        resolved_seed = spec.seed
+        resolved_dataset = STANDARDIZED_DATASET_NAME
+        target_output_dir = Path(output_dir)
+    else:
+        resolved_structure = _resolve_struct(
+            graph_structure or _prompt_struct("protgnn"), "protgnn"
         )
-        print(f"  Archived run to: {archive_dir}")
-    print("\nDone.")
+        resolved_seed = data_args.seed if seed is None else seed
+        resolved_dataset = dataset or data_args.dataset_name
+        if resolved_structure not in resolved_dataset.split("_"):
+            resolved_dataset = f"{resolved_dataset}_{resolved_structure}"
+
+    # Seed every invocation after resolving CLI/config values, including legacy.
+    set_seed(resolved_seed)
+
+    previous_config = (
+        data_args.dataset_name,
+        data_args.graph_structure,
+        data_args.seed,
+        model_args.checkpoint,
+        model_args.enable_prot,
+        train_args.max_epochs,
+    )
+    previous_results_dir = RESULTS_DIR
+    env_key = "CANONICAL_SPLIT_JSON"
+    previous_split_env = os.environ.get(env_key)
+    use_prot = not no_prot
+    try:
+        data_args.dataset_name = resolved_dataset
+        data_args.graph_structure = resolved_structure
+        data_args.seed = resolved_seed
+        model_args.enable_prot = use_prot
+        if max_epochs is not None:
+            train_args.max_epochs = max_epochs
+        if standardized:
+            os.environ[env_key] = str(canonical_path)
+
+        print(f"  Graph structure : {data_args.graph_structure}")
+        gnn_nets, epoch_rows, test_state, output_dim, epoch_header, threshold, diagnostics = train_model(
+            clst,
+            sep,
+            use_prot,
+            margin=margin,
+            canonical_split=canonical_path,
+            checkpoint_root=(target_output_dir / "checkpoints" if standardized else None),
+            standardized=standardized,
+            limit=limit,
+        )
+        if not hasattr(gnn_nets, "parameters"):
+            raise RuntimeError("ProtGNN model cannot report parameter_count.")
+        test_state["parameter_count"] = sum(
+            parameter.numel() for parameter in gnn_nets.parameters()
+        )
+        if standardized:
+            # Standardized explanations are a separate, fixed-cohort checkpoint
+            # phase. Never interpret ``explain_n`` as "first N" in benchmark mode.
+            explanation_records = []
+            print(
+                "  Standardized explanations deferred to the mandatory "
+                "fixed-cohort explanation runner."
+            )
+        else:
+            explanation_records = explain_test_set(
+                gnn_nets,
+                output_dim,
+                explain_n,
+                threshold=threshold,
+                canonical_split=canonical_path,
+            )
+
+        print("\n" + "=" * 60)
+        print("SAVING RESULTS")
+        print("=" * 60)
+        save_results(
+            epoch_rows,
+            epoch_header,
+            test_state,
+            diagnostics,
+            explanation_records,
+            clst,
+            sep,
+            output_dim,
+            use_prot,
+            threshold=threshold,
+            output_dir=target_output_dir,
+            canonical_split=canonical_path,
+        )
+
+        reported_results_dir = target_output_dir if standardized else RESULTS_DIR
+        print(f"\n  All results written to: {reported_results_dir}/")
+        if not standardized and not no_archive:
+            command = " ".join([sys.executable, *sys.argv])
+            archive_dir = archive_results(
+                results_dir=RESULTS_DIR,
+                runs_dir=os.path.join(str(OUTPUTS_DIR), "runs"),
+                tag=archive_tag,
+                command=command,
+            )
+            print(f"  Archived run to: {archive_dir}")
+        print("\nDone.")
+        return test_state
+    finally:
+        (
+            data_args.dataset_name,
+            data_args.graph_structure,
+            data_args.seed,
+            model_args.checkpoint,
+            model_args.enable_prot,
+            train_args.max_epochs,
+        ) = previous_config
+        RESULTS_DIR = previous_results_dir
+        if previous_split_env is None:
+            os.environ.pop(env_key, None)
+        else:
+            os.environ[env_key] = previous_split_env
+
+
+def cli(argv=None):
+    """Parse the CLI while retaining no-argument legacy behavior."""
+    parser = argparse.ArgumentParser(description="Train ProtGNN and explain with GraphXAI")
+    parser.add_argument("--dataset", default=None, help="Legacy dataset name override")
+    parser.add_argument(
+        "--graph-structure",
+        "--graph_structure",
+        "--graph",
+        dest="graph_structure",
+        default=None,
+        help="Graph topology: star|cooccur|ontology|full",
+    )
+    parser.add_argument("--canonical-split", "--canonical_split", dest="canonical_split", type=Path, default=None)
+    parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument("--output-dir", "--out_dir", dest="output_dir", type=Path, default=None)
+    parser.add_argument("--clst", type=float, default=0.1, help="Cluster loss weight")
+    parser.add_argument("--sep", type=float, default=0.1, help="Separation loss weight")
+    parser.add_argument("--margin", type=float, default=1.0, help="Separation-loss margin")
+    parser.add_argument("--explain_n", type=int, default=10, help="Graphs to explain (-1 = all)")
+    parser.add_argument("--no_prot", action="store_true", help="Disable prototype layers")
+    parser.add_argument("--no_archive", action="store_true", help="Disable legacy run archiving")
+    parser.add_argument("--archive_tag", default="auto", help="Legacy archive tag")
+    parser.add_argument("--limit", type=int, default=None, help="Cap each canonical fold")
+    parser.add_argument("--max-epochs", "--max_epochs", dest="max_epochs", type=int, default=None)
+    args = parser.parse_args(argv)
+    return main(
+        graph_structure=args.graph_structure,
+        canonical_split=args.canonical_split,
+        seed=args.seed,
+        output_dir=args.output_dir,
+        dataset=args.dataset,
+        clst=args.clst,
+        sep=args.sep,
+        margin=args.margin,
+        explain_n=args.explain_n,
+        no_prot=args.no_prot,
+        no_archive=args.no_archive,
+        archive_tag=args.archive_tag,
+        limit=args.limit,
+        max_epochs=args.max_epochs,
+    )
 
 
 if __name__ == "__main__":
-    main()
+    cli()
