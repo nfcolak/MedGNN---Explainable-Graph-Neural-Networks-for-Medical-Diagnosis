@@ -1,0 +1,100 @@
+{
+  "age_observed": 74498,
+  "all_row_topology_payload_checks": 74511,
+  "any_lab_observed": 50794,
+  "any_reconstructed_history_positive": 18738,
+  "artifact_manifest_sha256": "3209a721f2c94ece3f9aee8cf70c0357f4deb2e322992a604c9357346b5d062d",
+  "comparators": {
+    "gsat": {
+      "input_shape": [
+        43,
+        320
+      ],
+      "n_train_records": 8,
+      "numeric_gradient_l1": 0.4596625566482544,
+      "numeric_logit_max_abs_delta": 0.0016948971897363663,
+      "scope": "actual canonical train payload forward/backward only; no full curriculum/projection run"
+    },
+    "protgnn": {
+      "input_shape": [
+        43,
+        320
+      ],
+      "n_train_records": 8,
+      "numeric_gradient_l1": 85.03715515136719,
+      "numeric_logit_max_abs_delta": 0.09138411283493042,
+      "scope": "actual canonical train payload forward/backward only; no full curriculum/projection run"
+    }
+  },
+  "counts": [
+    59607,
+    7448,
+    7456
+  ],
+  "graphcare_numeric_consumer": "pending",
+  "graphxai_synthetic": {
+    "interaction_hub_only": {
+      "GNNExplainer": "success",
+      "GradExplainer": "success",
+      "IntegratedGradExplainer": "success"
+    },
+    "interaction_mixed": {
+      "GNNExplainer": "success",
+      "GradExplainer": "success",
+      "IntegratedGradExplainer": "success"
+    },
+    "plain_hub_only": {
+      "GNNExplainer": "success",
+      "GradExplainer": "success",
+      "IntegratedGradExplainer": "success"
+    },
+    "plain_mixed": {
+      "GNNExplainer": "success",
+      "GradExplainer": "success",
+      "IntegratedGradExplainer": "success"
+    }
+  },
+  "history_documentation_time_verified": false,
+  "hub_only_by_fold": [
+    552,
+    59,
+    58
+  ],
+  "lineage": {
+    "ambiguous_or_unmatched": 1,
+    "initial_triage_unique_matches": 74507,
+    "matching_policy": "exact subject+initial triage fields+all available 26 lab means; unique only; never current diagnosis",
+    "unique_matches": 74510
+  },
+  "numeric_channels": 127,
+  "numeric_train_stats_independently_verified": 32,
+  "protected_file_hashes_unchanged": 242,
+  "replays": {
+    "interaction": {
+      "arrays_equal": true,
+      "checkpoint_sha256": "a9c756ed3eeecc207b7fd28dd71f28dcbbcd9a06c22887a609e670226af88421",
+      "logits_max_abs_diff": 0.0,
+      "metrics_equal": true,
+      "n_validation_smoke": 32
+    },
+    "plain": {
+      "arrays_equal": true,
+      "checkpoint_sha256": "7dcabd98af3367749f69818b1475aca729556fa6cf7632c863efcc16b6b1b56b",
+      "logits_max_abs_diff": 0.0,
+      "metrics_equal": true,
+      "n_validation_smoke": 32
+    }
+  },
+  "rows": 74511,
+  "sex": {
+    "female": 39622,
+    "male": 34889,
+    "unknown": 0
+  },
+  "source_history_positive_values_removed": 47,
+  "status": "verified",
+  "temporal_clean": false,
+  "test_evaluated": false,
+  "three_pyg_inputs_identical_sha256": "ca0527d80eb7e67f1829b4ae15c95938cb13ffc562d18d054d5086544bb68972",
+  "verification_script_sha256": "629f97fbd73b72fec93b6eaf5e8a3539f5af235f759c079f012e56673e2f8ac4"
+}

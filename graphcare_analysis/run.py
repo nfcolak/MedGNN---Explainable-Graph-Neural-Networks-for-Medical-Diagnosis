@@ -12,23 +12,37 @@ Run (inside the GraphCare venv):
 """
 import argparse
 import json
+from pathlib import Path
 import sys
 import time
 
 import torch
 import torch.nn.functional as F
 
-from shared.lib.config_base import set_seed
+from shared.lib.benchmark_contract import BenchmarkSpec, load_canonical_split
+from shared.lib.config_base import isolated_callable, set_seed
 from shared.lib.graph_structures import resolve as resolve_structure
 from shared.lib.graph_structures import prompt_for_structure, structure_dir
 from shared.lib.metrics import multiclass_metrics
 from graphcare_analysis.config import cfg
-from graphcare_analysis.build_kg import build_global_kg
+from graphcare_analysis.build_kg import (
+    build_global_kg,
+    validate_kg_schema,
+    validate_training_provenance,
+)
 from graphcare_analysis.adapter import build_loaders
 
 
-def _load_kg(kg_path):
-    return torch.load(kg_path) if kg_path.exists() else build_global_kg(save=True, save_path=kg_path)
+def _load_kg(kg_path, split_json=None):
+    if kg_path.exists():
+        kg = torch.load(kg_path)
+        validate_kg_schema(kg)
+        if split_json:
+            validate_training_provenance(kg, split_json)
+        return kg
+    return build_global_kg(
+        save=True, save_path=kg_path, split_json=split_json
+    )
 
 
 def _move(batch, device):
@@ -38,6 +52,29 @@ def _move(batch, device):
 def _forward(model, b):
     return model(b["node_ids"], b["rel_ids"], b["edge_index"], b["batch"],
                  b["visit_node"], b["ehr_nodes"])
+
+
+def build_graphcare_model(kg, num_classes, device):
+    """Construct the exact GraphCare architecture used by train and explain."""
+    sys.path.insert(0, str(cfg.UPSTREAM_DIR))
+    if not (cfg.UPSTREAM_DIR / "graphcare_" / "model.py").exists():
+        raise FileNotFoundError("Clone upstream GraphCare first (external/GraphCare/README.md).")
+    from graphcare_analysis.model import GraphCare
+
+    return GraphCare(
+        num_nodes=kg["num_nodes"],
+        num_rels=kg["num_rels"],
+        max_visit=1,
+        embedding_dim=cfg.emb_dim,
+        hidden_dim=cfg.emb_dim,
+        out_channels=num_classes,
+        layers=cfg.num_layers,
+        dropout=cfg.dropout,
+        patient_mode="joint",
+        use_alpha=True,
+        use_beta=True,
+        gnn="BAT",
+    ).to(device)
 
 
 @torch.no_grad()
@@ -56,7 +93,6 @@ def _evaluate(model, loader, device):
     pred = torch.cat(preds).numpy()
     prob = torch.cat(probs).numpy()
     m = multiclass_metrics(y, pred, prob)
-    m["accuracy"] = round(float((y == pred).mean()), 6)
     m["loss"] = round(tot / max(n, 1), 6)
     return m
 
@@ -78,41 +114,104 @@ def _write_report(test, C, kg, limit, epochs, out_dir=None):
         if k in test:
             lines.append(f"  {k:16s}: {test[k]:.6f}")
     (out_dir / "report.txt").write_text("\n".join(lines) + "\n")
-    (out_dir / "metrics.json").write_text(json.dumps({"test": test}, indent=2))
+    (out_dir / "metrics.json").write_text(json.dumps({
+        "parameter_count": test["parameter_count"],
+        "test": test,
+    }, indent=2))
     print("  wrote", out_dir / "report.txt")
 
 
+def _validate_optional_positive_int(name, value):
+    if value is not None and (type(value) is not int or value < 1):
+        raise ValueError(f"{name} must be a positive exact integer when provided.")
+
+
+def _validate_standardized_output(out_dir, spec):
+    expected_suffix = (
+        "comparison", "standardized", "results", "graphcare",
+        spec.structure, f"seed_{spec.seed}",
+    )
+    path = Path(out_dir)
+    if tuple(path.parts[-len(expected_suffix):]) != expected_suffix:
+        raise ValueError(
+            "Standardized GraphCare output must be under standardized results at "
+            f"comparison/standardized/results/graphcare/{spec.structure}/"
+            f"seed_{spec.seed}."
+        )
+    return path
+
+
+@isolated_callable(cfg)
 def main(limit=None, max_epochs=None, patience=10, min_delta=0.005,
-         split_json=None, out_dir=None, graph_structure=None):
-    set_seed(cfg.seed)
+         split_json=None, out_dir=None, graph_structure=None, seed=None):
+    """Run GraphCare in fail-closed standardized mode or explicit legacy mode."""
+    _validate_optional_positive_int("limit", limit)
+    _validate_optional_positive_int("max_epochs", max_epochs)
+    _validate_optional_positive_int("patience", patience)
+    standardized = split_json is not None or seed is not None
+    if standardized:
+        required = {
+            "canonical split": split_json,
+            "output directory": out_dir,
+            "graph structure": graph_structure,
+            "seed": seed,
+        }
+        missing = [name for name, value in required.items() if value is None]
+        if missing:
+            raise ValueError(
+                "Standardized GraphCare mode requires all of canonical split, output "
+                f"directory, graph structure, and seed; missing: {', '.join(missing)}."
+            )
+        spec = BenchmarkSpec("graphcare", graph_structure, seed)
+        target_out = _validate_standardized_output(out_dir, spec)
+        load_canonical_split(split_json)
+        structure = spec.structure
+        resolved_seed = spec.seed
+        split_path = Path(split_json)
+    else:
+        structure = resolve_structure(graph_structure or cfg.graph_structure, "graphcare")
+        resolved_seed = cfg.seed if seed is None else seed
+        target_out = Path(out_dir) if out_dir is not None else (cfg.OUTPUTS_DIR / structure)
+        split_path = Path(split_json) if split_json is not None else None
+
+    previous = (cfg.seed, cfg.graph_structure)
+    try:
+        cfg.seed = resolved_seed
+        cfg.graph_structure = structure
+        set_seed(resolved_seed)
+        return _run_training(
+            limit=limit,
+            max_epochs=max_epochs,
+            patience=patience,
+            min_delta=min_delta,
+            split_json=split_path,
+            out_dir=target_out,
+            graph_structure=structure,
+            seed=resolved_seed,
+        )
+    finally:
+        cfg.seed, cfg.graph_structure = previous
+
+
+def _run_training(*, limit, max_epochs, patience, min_delta, split_json,
+                  out_dir, graph_structure, seed):
     # torch 1.12 MPS is unreliable -> CPU for GraphCare
     device = torch.device("cpu" if cfg.device == "mps" else cfg.device)
-    max_epochs = max_epochs or cfg.max_epochs
-
-    # Resolve the graph structure (topology). Explicit arg wins; else prompt
-    # (falls back to config default on a non-TTY). Per-structure KG cache and
-    # report live under their own subfolders so topologies never collide.
-    structure = resolve_structure(graph_structure or cfg.graph_structure, "graphcare")
+    max_epochs = cfg.max_epochs if max_epochs is None else max_epochs
+    structure = resolve_structure(graph_structure, "graphcare")
     kg_path = structure_dir(cfg.data_dir, structure, "graphcare") / "kg.pt"
-    out_dir = out_dir or (cfg.OUTPUTS_DIR / structure)
     print(f"  graph structure  : {structure}  (kg cache: {kg_path})")
 
-    sys.path.insert(0, str(cfg.UPSTREAM_DIR))
-    if not (cfg.UPSTREAM_DIR / "graphcare_" / "model.py").exists():
-        raise FileNotFoundError("Clone upstream GraphCare first (external/GraphCare/README.md).")
-    from graphcare_.model import GraphCare
-
-    kg = _load_kg(kg_path)
+    kg = _load_kg(kg_path, split_json=split_json)
     train_loader, val_loader, test_loader, C, _ = build_loaders(
         kg, limit=limit, split_json=split_json, structure=structure)
 
-    model = GraphCare(num_nodes=kg["num_nodes"], num_rels=kg["num_rels"], max_visit=1,
-                      embedding_dim=cfg.emb_dim, hidden_dim=cfg.emb_dim, out_channels=C,
-                      layers=cfg.num_layers, dropout=cfg.dropout,
-                      patient_mode="joint", use_alpha=True, use_beta=True, gnn="BAT").to(device)
+    model = build_graphcare_model(kg, C, device)
     opt = torch.optim.Adam(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
 
-    best_f1, best_state, bad, t0 = -1.0, None, 0, time.time()
+    best_f1 = -1.0
+    best_for_patience = -1.0
+    best_state, bad, t0 = None, 0, time.time()
     last_epoch = 0
     for epoch in range(max_epochs):
         last_epoch = epoch + 1
@@ -124,9 +223,14 @@ def main(limit=None, max_epochs=None, patience=10, min_delta=0.005,
         val = _evaluate(model, val_loader, device)
         print(f"  epoch {epoch:3d} | val macro_f1 {val['macro_f1']:.4f} | "
               f"val acc {val['accuracy']:.4f} | {time.time()-t0:.0f}s", flush=True)
-        if val["macro_f1"] > best_f1 + min_delta:
+        # Checkpoint selection uses the exact highest validation macro-F1.
+        if val["macro_f1"] > best_f1:
             best_f1 = val["macro_f1"]
             best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+
+        # min_delta controls patience only and cannot suppress a better checkpoint.
+        if val["macro_f1"] > best_for_patience + min_delta:
+            best_for_patience = val["macro_f1"]
             bad = 0
         else:
             bad += 1
@@ -134,30 +238,58 @@ def main(limit=None, max_epochs=None, patience=10, min_delta=0.005,
                 print(f"  early stop @ epoch {epoch}")
                 break
 
-    if best_state is not None:
-        model.load_state_dict(best_state)
-    torch.save(model.state_dict(), cfg.OUTPUTS_DIR / "graphcare_model.pt")
-
+    if best_state is None:
+        raise RuntimeError("GraphCare training produced no validation checkpoint.")
+    model.load_state_dict(best_state)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    checkpoint = out_dir / "graphcare_model.pt"
+    parameter_count = sum(parameter.numel() for parameter in model.parameters())
+    torch.save(
+        {
+            "state_dict": model.state_dict(),
+            "structure": structure,
+            "seed": seed,
+            "num_classes": C,
+            "parameter_count": parameter_count,
+        },
+        checkpoint,
+    )
     test = _evaluate(model, test_loader, device)
+    test["parameter_count"] = parameter_count
     print(f"  TEST macro_f1 {test['macro_f1']:.4f} | micro_f1 {test['micro_f1']:.4f} | acc {test['accuracy']:.4f}")
     _write_report(test, C, kg, limit, last_epoch, out_dir=out_dir)
     return test
 
 
-if __name__ == "__main__":
-    from pathlib import Path
+def cli(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=None, help="cap #patients (quick runs)")
     ap.add_argument("--max_epochs", type=int, default=None)
     ap.add_argument("--patience", type=int, default=10)
-    ap.add_argument("--canonical_split", default=None, help="comparison/canonical_split.json")
-    ap.add_argument("--out_dir", default=None, help="where to write report.txt")
+    ap.add_argument("--canonical_split", type=Path, default=None,
+                    help="comparison/canonical_split.json")
+    ap.add_argument("--out_dir", type=Path, default=None,
+                    help="isolated standardized run directory")
     ap.add_argument("--graph_structure", "--graph", default=None,
-                    help="Graph topology: star|cooccur|ontology|full "
-                         "(prompted interactively if omitted)")
-    args = ap.parse_args()
-    structure = args.graph_structure or prompt_for_structure("graphcare",
-                                                             default=cfg.graph_structure)
-    main(limit=args.limit, max_epochs=args.max_epochs, patience=args.patience,
-         split_json=args.canonical_split, out_dir=Path(args.out_dir) if args.out_dir else None,
-         graph_structure=structure)
+                    help="Graph topology: star|cooccur|ontology|full|"
+                         "full_kg_expanded (prompted interactively if omitted)")
+    ap.add_argument("--seed", type=int, default=None)
+    args = ap.parse_args(argv)
+    structure = args.graph_structure
+    if structure is None and not any(
+        value is not None for value in (args.canonical_split, args.out_dir, args.seed)
+    ):
+        structure = prompt_for_structure("graphcare", default=cfg.graph_structure)
+    return main(
+        limit=args.limit,
+        max_epochs=args.max_epochs,
+        patience=args.patience,
+        split_json=args.canonical_split,
+        out_dir=args.out_dir,
+        graph_structure=structure,
+        seed=args.seed,
+    )
+
+
+if __name__ == "__main__":
+    cli()

@@ -1,113 +1,110 @@
-# Repository structure
+# Repository navigation
 
-The project is organised as **two self-contained analyses** that share the same
-data and evaluation protocol, so they can be compared fairly:
+Scientific code stays in its existing packages: moving it would break imports,
+checkpoint paths, notebooks and cached graph recipes. Start with the
+[standardized runbook](comparison/standardized/README.md) and the
+[verification report](docs/usability-verification.md), not the older experiment
+scripts.
 
-- **`protgnn_analysis/`** — Method A: the intra-patient ProtGNN (current work).
-- **`graphcare_analysis/`** — Method B: the GraphCare (KG + BAT-GNN) comparison.
-  The model is vendored upstream under `external/GraphCare/`; this folder holds
-  the data adapter, KG builder and run wrapper (work in progress; see roadmap).
+## What lives where
 
-```text
-.
-├── data/                      SHARED raw + processed data (merged_ed.csv, processed_*/)
-├── external/                  SHARED 3rd-party code (GraphXAI-main, GraphCare)
-├── docs/                      SHARED literature + RUN_WITH_OWN_DATA.md
-│
-├── shared/                    SHARED code imported by BOTH analyses
-│   ├── data_prep/             MIMIC-IV-ED tables -> merged_ed.csv
-│   │                          (merge_ed.py + med/chiefcomplaint standardizers, extract_ed_labs)
-│   └── lib/                   The pieces that MUST match for a fair comparison:
-│       ├── config_base.py     DATA_DIR, SEED (1234), SPLIT_RATIO, device
-│       ├── splits.py          subject-aware 80/10/10 split
-│       ├── metrics.py         multi-class metrics (macro/micro-F1, top-3/5)
-│       └── graph_structures.py  graph-topology registry shared by BOTH methods
-│                              (star/cooccur/ontology/full) + CLI prompt
-│
-├── protgnn_analysis/          METHOD A — intra-patient ProtGNN
-│   ├── config.py              hyperparameters (was configs/config.py)
-│   ├── load_dataset.py        IntraPatientHeteroDataset + graph builders
-│   ├── models/                GCN / GAT / GIN + GnnNets wrapper
-│   ├── my_mcts.py             MCTS prototype projection
-│   ├── explainability/        GraphXAI wrapper + integration
-│   ├── train.py               main train + explain entry point
-│   ├── scripts/               eval / summarize / confusion / hpo / clinical explanations / ...
-│   └── outputs/               checkpoints, runs, results
-│
-├── graphcare_analysis/        METHOD B — GraphCare (KG + BAT-GNN); model vendored upstream
-│   ├── config.py              hyperparameters (reuses shared seed/split)
-│   ├── adapter.py             merged_ed.csv -> GraphCare/PyHealth records     [Phase 1]
-│   ├── build_kg.py            personalized KG (ontology/PMI; LLM+UMLS later)  [Phase 2]
-│   ├── run.py                 train/eval wrapper reusing shared lib           [Phase 3]
-│   └── outputs/               GraphCare runs/results
-│
-├── baselines/                 SHARED tabular baseline (XGBoost / HistGB)
-├── README.md  STRUCTURE.md  environment.yml  requirements*.txt  TODO.txt
-```
+| Location | Role / maintenance boundary |
+|---|---|
+| `comparison/standardized/` | Current three-method benchmark: config, cache builder/audit, per-cell runner, orchestration, fixed-cohort explanations, summary. |
+| `comparison/canonical_split.json` | Fixed class ordering and subject folds. Do not regenerate for a resumed benchmark. |
+| `protgnn_analysis/` | ProtGNN model, patient graph loader, training and explanation code. `scripts/` also contains legacy exploratory tools. |
+| `gsat_analysis/` | GSAT on the shared PyG patient graphs, trainer and explainers. |
+| `pna_analysis/` | Opt-in interaction-PNA and plain/wider controls; bounded common-input train/eval/replay. Separate from the three-method matrix; [commands and architecture](docs/pna-interaction.md). |
+| `graphcare_analysis/` | Split-aware KG builder, patient adapter, training wrapper and explanations around upstream BAT-GNN. |
+| `shared/lib/` | Benchmark/explanation contracts, canonical graph identities, provenance, metrics, split and configuration helpers. |
+| `shared/data_prep/` | Raw CSV merging, medication/chief-complaint normalization, optional lab extraction. Legacy batch scripts; see cautions below. |
+| `baselines/` | Exploratory tabular baseline; its default split is not the standardized benchmark. |
+| `comparison/build_split.py` | Canonical split construction source; retained for provenance. Existing `canonical_split.json` is the active input, not regenerated during cleanup. |
+| `data/` | Raw/merged CSVs, external data symlinks and graph caches. Not source code; never relocate as a cleanup side effect. |
+| `external/` | Third-party GraphXAI and GraphCare source. Keep upstream layout and separate dependency requirements. |
+| `visualizer/` | Independent React/TypeScript/Vite viewer; `scripts/export_protgnn_graphs.py` exports patient graphs. Export rewrites viewer data. |
+| `tests/` | Maintained Python tests; invoke `python3 -m pytest tests -q` explicitly to avoid vendored test collections. |
+| `docs/` | Operating runbooks, current scientific evidence, verification and benchmark design specification. |
+| `docs-vault/` | Project-owned Obsidian knowledge vault; keep inside this repository. |
+| `README.md`, `STRUCTURE.md` | Landing page and this navigation map. Nonruntime thesis/templates/proposals and obsolete TODO notes are no longer in the working tree. |
+| `requirements.txt`, `requirements-lock.txt`, `environment.yml` | Flexible and pinned main-Python dependencies. Not a replacement for the GraphCare environment. |
+| `.venv-graphcare/` | Existing isolated GraphCare runtime; do not merge into the main environment. |
+| `.claude/`, `.superpowers/`, `.pytest_cache/`, `.git/` | Agent, test and version-control state; not scientific source. |
 
-## Running
+The substantive [working-tree cleanup report](docs/cleanup-working-tree.md)
+and [per-file restoration manifest](docs/cleanup-working-tree.json) record
+retired templates, literature/figures, completed agent task packets, obsolete
+two-method experiments, and broken unused entrypoints. They were moved outside
+the repository to a unique macOS Trash directory, not permanently deleted.
+`data.zip` was retired only after all 31 non-metadata payload files matched the
+extracted data by SHA-256; all extracted data stays in place. Earlier cleanup
+reports are historical evidence, not the current inventory.
 
-Both analyses run from the **repo root** with the repo root on `PYTHONPATH`
-(this replaces the old `PYTHONPATH=src:...`):
+## One pipeline, explicit execution
+
+Run from the repository root:
 
 ```bash
-# Method A — ProtGNN (current)
-PYTHONPATH=.:external/GraphXAI-main python3 protgnn_analysis/train.py --explain_n 100
+# Read-only: show the complete preprocessing/train/explain/summary plan.
+python3 -m comparison.standardized.run_all --dry-run
 
-# Method B — GraphCare (comparison; clone external/GraphCare first)
-PYTHONPATH=.:external/GraphCare python3 graphcare_analysis/run.py
+# Read-only: validate inputs and show the training matrix.
+python3 -m comparison.standardized.run_benchmark --dry-run
 
-# Shared data prep (MIMIC-IV-ED -> merged_ed.csv)
-python3 shared/data_prep/merge_ed.py
+# Read-only: show one three-method explanation set, without checkpoints.
+python3 -m comparison.standardized.run_explanations --topology star --seed 1234 --dry-run
+
+# Read-only: preview cache construction; no caches are created by default.
+python3 -m comparison.standardized.build_caches --dry-run
+
+# Maintained tests (temporary fixture preprocessing and model forward/backward).
+python3 -m pytest tests -q
 ```
 
-### Selecting the graph structure (topology)
+`run_all --execute` is **expensive**: it generates missing standardized caches,
+audits record parity, trains the 18 matrix cells, executes six three-method
+explanation sets and writes summaries. Do not run it merely to verify setup.
+Real preprocessing/training requires separate approval.
 
-Both methods take the SAME `--graph_structure` (alias `--graph`) argument so the
-identical pipeline runs for any topology without editing code. If omitted, the
-runner asks interactively (and falls back to a default on a non-TTY).
+`--resume` revalidates completed scientific artifacts and skips completed
+commands. `--retry-failed` permits retrying a failed command. An occupied,
+incomplete result is not overwritten: the additional `--archive-incomplete`
+flag preserves that individual run/set under `comparison/standardized/attempts/`
+before starting it again. Ensure no worker is still active. **This is run-level
+restart from scratch, not optimizer/epoch-level resume.**
 
-```bash
-# pick a topology explicitly …
-python3 protgnn_analysis/train.py --graph_structure cooccur --explain_n 100
-python3 graphcare_analysis/run.py  --graph_structure cooccur
-# … or omit it to be prompted
-python3 protgnn_analysis/train.py --explain_n 100
-```
+## Output ownership
 
-Supported structures (defined once in `shared/lib/graph_structures.py`), on top
-of the always-present patient-hub spokes:
+- Current benchmark: `comparison/standardized/results/<method>/<topology>/seed_<seed>/`.
+- Fixed-cohort explanations: `comparison/standardized/explanations/<topology>/seed_<seed>/<method>/`.
+- Pipeline state/events: `comparison/standardized/checkpoint/` (outside result cells).
+- Preserved retry attempts: `comparison/standardized/attempts/` (excluded from summaries).
+- Isolated PNA smokes: `comparison/standardized/pna_experiments/<new-run>/` (no overwrite; not included in the legacy benchmark summaries).
+- Legacy method runs: each method's own `outputs/`, not a root `outputs/` directory.
+- Shared graphs: `data/graphs/<topology>/{protgnn,graphcare}/`; GSAT uses ProtGNN's PyG cache.
 
-| structure  | ProtGNN | GraphCare | concept↔concept edges added |
-|------------|:------:|:---------:|-----------------------------|
-| `star`     | ✓ | ✓ | none (baseline hub only) |
-| `cooccur`  | ✓ | ✓ | population PMI > threshold (cross-type) |
-| `ontology` | ✓ | ✓ | same therapeutic class / ICD chapter |
-| `full`     | ✓ | ✓ | cooccur ∪ ontology (GraphCare also expands 1-hop KG neighbours) |
+Primary standardized topologies are `star` and `cooccur`. Additional legacy or
+method-specific graph variants are defined in `shared/lib/graph_structures.py`;
+they must not silently enter the primary aggregate. The contracts are enforced
+by code and tests; full-production graph parity still requires cache generation
+and the real audit, and has not been established by this usability pass.
 
-Every graph cache is collected under a **single main folder**, one subfolder per
-type:  `data/graphs/<structure>/{protgnn,graphcare}/…`. Different topologies never
-collide, and checkpoints/reports are namespaced by structure too, so an A/B/C
-ablation across topologies is just a loop over `--graph_structure`.
+## Legacy boundaries and cautions
 
-## Fair-comparison guarantee
+- `shared/data_prep/merge_ed.py` executes work at import time and both it and
+  `extract_ed_labs.py` still derive `shared/data` rather than the root `data/`.
+  Do not run them with `--help` as a harmless probe. Their raw-data CLI and path
+  migration require a separate fixture-backed change; the existing files were
+  not moved or their processing semantics altered here.
+- Several historical scripts use implicit datasets, topology prompts and
+  timestamped outputs. A passing `--help` checks imports/parser wiring, not a
+  complete training, attribution, export or clinical-report run.
+- Use module form (`python3 -m package.module`) from the root. For direct-file
+  legacy commands use `PYTHONPATH=.:external/GraphXAI-main`; GraphCare uses
+  `PYTHONPATH=.:external/GraphCare .venv-graphcare/bin/python3`.
+- Open the viewer from `visualizer/` with `npm run dev`; exporting real graphs is
+  a separate write operation, not part of a viewer build or setup check.
 
-Both methods consume the **same** `data/merged_ed.csv`, the **same**
-subject-aware split (`shared/lib/splits.py`, seed 1234) and the **same** metrics
-(`shared/lib/metrics.py`), so differences in results come from the *method*, not
-the data or the split.
-
-> **Note (cleanup TODO):** `protgnn_analysis/` currently keeps its own copies of
-> the split/metric helpers (unchanged, working). `shared/lib/` holds identical
-> canonical copies that `graphcare_analysis/` uses. A later pass should migrate
-> `protgnn_analysis/` to import from `shared/lib/` and delete the duplicates.
-
-## GraphCare roadmap (where the work is)
-
-| Phase | Goal | File |
-|-------|------|------|
-| 0 | Clone upstream + install deps (pyhealth, torch-geometric) | `external/GraphCare/` |
-| 1 | Data adapter: merged_ed.csv -> GraphCare records | `graphcare_analysis/adapter.py` |
-| 2 | Personalized KG (ontology/PMI; LLM+UMLS later) | `graphcare_analysis/build_kg.py` |
-| 3 | Wire training/eval + shared metrics/report | `graphcare_analysis/run.py` |
-| 4 | Comparison ladder + interpretability (BAT attention vs GraphXAI) | `baselines/`, `shared/lib` |
+Future organization should consolidate documentation links and testable CLI
+wrappers before considering a `src/` layout. Do not mass-move scientific code,
+symlinks, vendored dependencies or historical outputs just to reduce root entries.

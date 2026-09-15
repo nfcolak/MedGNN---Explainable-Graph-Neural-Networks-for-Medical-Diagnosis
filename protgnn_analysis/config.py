@@ -7,6 +7,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 # data/ stays shared at the repo root; outputs/ lives inside this analysis folder
 DATA_DIR = PROJECT_ROOT / "data"
 OUTPUTS_DIR = Path(__file__).resolve().parent / "outputs"
+STANDARDIZED_DATASET_NAME = "mimic_intra_patient_disease"
 
 
 class DataParser():
@@ -146,12 +147,3 @@ model_args = ModelParser()
 mcts_args = MCTSParser()
 reward_args = RewardParser()
 train_args = TrainParser()
-
-import torch
-import random
-import numpy as np
-random_seed = 1234
-random.seed(random_seed)
-np.random.seed(random_seed)
-torch.manual_seed(random_seed)
-torch.cuda.manual_seed_all(random_seed)

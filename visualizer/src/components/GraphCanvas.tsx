@@ -19,7 +19,21 @@ export interface GraphCanvasHandle {
 interface GraphCanvasProps {
   graph: PatientGraph;
   searchTerm: string;
+  explainMode: boolean;
   onNodeSelect: (node: PatientGraphNode | null) => void;
+}
+
+function importanceOf(node: PatientGraphNode) {
+  return typeof node.importance === 'number' ? Math.abs(node.importance) : 0;
+}
+
+// Warm amber -> hot red ramp so stronger attribution reads as "hotter".
+function heatColor(t: number) {
+  const clamped = Math.max(0, Math.min(1, t));
+  const from = [252, 211, 77]; // soft amber
+  const to = [240, 101, 74]; // hot red
+  const channel = (i: number) => Math.round(from[i] + (to[i] - from[i]) * clamped);
+  return `rgb(${channel(0)}, ${channel(1)}, ${channel(2)})`;
 }
 
 const TYPE_COLORS = {
@@ -207,6 +221,12 @@ const cytoscapeStyle = [
     },
   },
   {
+    selector: '.explain-dim',
+    css: {
+      opacity: 0.28,
+    },
+  },
+  {
     selector: 'edge',
     css: {
       width: 1.7,
@@ -235,16 +255,22 @@ const cytoscapeStyle = [
 ] as unknown as StylesheetCSS[];
 
 const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
-  ({ graph, searchTerm, onNodeSelect }, ref) => {
+  ({ graph, searchTerm, explainMode, onNodeSelect }, ref) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const cyRef = useRef<Core | null>(null);
     const [tooltip, setTooltip] = useState<TooltipState>({ visible: false, x: 0, y: 0 });
+
+    const maxImportance = useMemo(
+      () => graph.nodes.reduce((max, node) => Math.max(max, importanceOf(node)), 0),
+      [graph],
+    );
 
     const elements = useMemo<ElementDefinition[]>(() => {
       const nodes = graph.nodes.map((node) => {
         const type = normalizeType(node.type);
         const value = nodeValue(node);
         const importance = typeof node.importance === 'number' ? Math.abs(node.importance) : 0;
+        const impNorm = maxImportance > 0 ? importance / maxImportance : 0;
         const labelLength = String(node.label).length;
         return {
           data: {
@@ -257,6 +283,8 @@ const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
             valueText: formatValue(value),
             fontSize: type === 'patient' ? 12 : labelLength > 15 ? 7 : labelLength > 11 ? 8 : 10,
             size: type === 'patient' ? 1 : Math.min(1, 0.24 + importance * 0.76),
+            importance,
+            impNorm,
             rawNode: node,
           },
         };
@@ -277,7 +305,7 @@ const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
         })
         .filter((edge) => edge.data.source !== 'undefined' && edge.data.target !== 'undefined');
       return [...nodes, ...edges];
-    }, [graph]);
+    }, [graph, maxImportance]);
 
     const applyLayout = (fit = false) => {
       const cy = cyRef.current;
@@ -360,6 +388,47 @@ const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
         cyRef.current = null;
       };
     }, [elements, graph, onNodeSelect]);
+
+    // Explanation overlay: paint a heat halo (underlay glow) scaled to each
+    // node's attribution and dim the non-evidence nodes so the model's
+    // reasoning stands out. Reverts cleanly to the base stylesheet when off.
+    useEffect(() => {
+      const cy = cyRef.current;
+      if (!cy) return;
+      const active = explainMode && maxImportance > 0;
+
+      cy.batch(() => {
+        cy.nodes().forEach((node) => {
+          const type = node.data('type');
+          if (!active) {
+            node.removeClass('explain-dim');
+            node.removeStyle('underlay-color underlay-opacity underlay-padding border-color border-width');
+            return;
+          }
+          if (type === 'patient') {
+            node.removeClass('explain-dim');
+            node.removeStyle('underlay-color underlay-opacity underlay-padding border-color border-width');
+            return;
+          }
+          const impNorm = Number(node.data('impNorm')) || 0;
+          const isEvidence = impNorm >= 0.15;
+          if (isEvidence) {
+            const color = heatColor(impNorm);
+            node.removeClass('explain-dim');
+            node.style({
+              'underlay-color': color,
+              'underlay-opacity': 0.16 + impNorm * 0.34,
+              'underlay-padding': 3 + impNorm * 9,
+              'border-color': color,
+              'border-width': 1.6 + impNorm * 3.6,
+            });
+          } else {
+            node.addClass('explain-dim');
+            node.removeStyle('underlay-color underlay-opacity underlay-padding border-color border-width');
+          }
+        });
+      });
+    }, [explainMode, maxImportance, elements]);
 
     useEffect(() => {
       const cy = cyRef.current;

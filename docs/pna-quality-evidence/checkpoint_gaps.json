@@ -1,0 +1,246 @@
+{
+  "scope": "checkpoint inference only; no optimizer; train and validation only",
+  "runtime": {
+    "python": "3.9.6 (default, Apr 17 2026, 18:15:52) \n[Clang 21.0.0 (clang-2100.1.1.101)]",
+    "torch": "2.8.0"
+  },
+  "checkpoints": [
+    {
+      "architecture": "interaction",
+      "checkpoint": "best",
+      "epoch": 19,
+      "parameters": 153950,
+      "checkpoint_sha256": "1e81beb0f09e2b54b8b25ff9aae063eeddc1110822046a4dfd54bae9b76da1fa",
+      "checkpoint_binding_equal": true,
+      "state_dict_strict_loaded": true,
+      "train": {
+        "n": 59607,
+        "unweighted_ce": 1.3261111480568395,
+        "accuracy": 0.6102471186270069,
+        "macro_f1_30": 0.5200323335609147,
+        "balanced_accuracy_30": 0.5006514797405589
+      },
+      "validation": {
+        "n": 7448,
+        "unweighted_ce": 1.5412178443409044,
+        "accuracy": 0.5743823845327605,
+        "macro_f1_30": 0.4702458762979264,
+        "balanced_accuracy_30": 0.4544458564628693
+      },
+      "validation_replay": {
+        "arrays_equal": {
+          "logits": true,
+          "y": true,
+          "probability": true,
+          "pred": true
+        },
+        "max_abs_logit_difference": 0.0
+      },
+      "train_validation_gap": {
+        "accuracy": 0.0358647340942464,
+        "macro_f1_30": 0.049786457262988304,
+        "balanced_accuracy_30": 0.04620562327768962,
+        "validation_minus_train_ce": 0.21510669628406487
+      },
+      "history_epoch_train_loss_online": 1.3661371220787508,
+      "history_first_epoch_train_loss_online": 1.9541690237043303,
+      "seconds": 14.991355915999998
+    },
+    {
+      "architecture": "interaction",
+      "checkpoint": "final",
+      "epoch": 30,
+      "parameters": 153950,
+      "checkpoint_sha256": "a188aec065d8174a3e752bcc1d24cbed46a11a3ff41e1da27d28a52c1b7adf1f",
+      "checkpoint_binding_equal": true,
+      "state_dict_strict_loaded": true,
+      "saved_train_validation_indices_equal": true,
+      "train": {
+        "n": 59607,
+        "unweighted_ce": 1.2260340064441562,
+        "accuracy": 0.6293723891489255,
+        "macro_f1_30": 0.5443045186965982,
+        "balanced_accuracy_30": 0.5264795990883891
+      },
+      "validation": {
+        "n": 7448,
+        "unweighted_ce": 1.6365910539448805,
+        "accuracy": 0.567266380236305,
+        "macro_f1_30": 0.4556545506907321,
+        "balanced_accuracy_30": 0.44555303184329276
+      },
+      "validation_replay": {
+        "arrays_equal": {
+          "logits": true,
+          "y": true,
+          "probability": true,
+          "pred": true
+        },
+        "max_abs_logit_difference": 0.0
+      },
+      "train_validation_gap": {
+        "accuracy": 0.062106008912620414,
+        "macro_f1_30": 0.08864996800586616,
+        "balanced_accuracy_30": 0.08092656724509639,
+        "validation_minus_train_ce": 0.4105570475007243
+      },
+      "history_epoch_train_loss_online": 1.2783036147477969,
+      "history_first_epoch_train_loss_online": 1.9541690237043303,
+      "seconds": 15.196031166999997
+    },
+    {
+      "architecture": "plain",
+      "checkpoint": "best",
+      "epoch": 7,
+      "parameters": 145758,
+      "checkpoint_sha256": "3d491e045e6004bfc2cdffdadf232e06220f76188be545f0a836b16f47660e98",
+      "checkpoint_binding_equal": true,
+      "state_dict_strict_loaded": true,
+      "train": {
+        "n": 59607,
+        "unweighted_ce": 1.4443985995696544,
+        "accuracy": 0.5879007499119231,
+        "macro_f1_30": 0.48713996678176824,
+        "balanced_accuracy_30": 0.47835910665755954
+      },
+      "validation": {
+        "n": 7448,
+        "unweighted_ce": 1.5342469297288133,
+        "accuracy": 0.5805585392051558,
+        "macro_f1_30": 0.4728457571391795,
+        "balanced_accuracy_30": 0.46453956169150634
+      },
+      "validation_replay": {
+        "arrays_equal": {
+          "logits": true,
+          "y": true,
+          "probability": true,
+          "pred": true
+        },
+        "max_abs_logit_difference": 0.0
+      },
+      "train_validation_gap": {
+        "accuracy": 0.007342210706767327,
+        "macro_f1_30": 0.014294209642588762,
+        "balanced_accuracy_30": 0.013819544966053199,
+        "validation_minus_train_ce": 0.08984833015915883
+      },
+      "history_epoch_train_loss_online": 1.4666594873127525,
+      "history_first_epoch_train_loss_online": 1.9866354327090088,
+      "seconds": 3.7655476660000033
+    },
+    {
+      "architecture": "plain",
+      "checkpoint": "final",
+      "epoch": 30,
+      "parameters": 145758,
+      "checkpoint_sha256": "8a8dc6d9aa2e2d1acc03ca63aa684afeec6704bc86fc381ee8d25244da6bca5b",
+      "checkpoint_binding_equal": true,
+      "state_dict_strict_loaded": true,
+      "saved_train_validation_indices_equal": true,
+      "train": {
+        "n": 59607,
+        "unweighted_ce": 1.2988517876495211,
+        "accuracy": 0.6151626486822017,
+        "macro_f1_30": 0.5294631424752845,
+        "balanced_accuracy_30": 0.5188212977220903
+      },
+      "validation": {
+        "n": 7448,
+        "unweighted_ce": 1.5748505797781336,
+        "accuracy": 0.5735767991407089,
+        "macro_f1_30": 0.4664844011458501,
+        "balanced_accuracy_30": 0.4607033398117981
+      },
+      "validation_replay": {
+        "arrays_equal": {
+          "logits": true,
+          "y": true,
+          "probability": true,
+          "pred": true
+        },
+        "max_abs_logit_difference": 0.0
+      },
+      "train_validation_gap": {
+        "accuracy": 0.0415858495414928,
+        "macro_f1_30": 0.06297874132943437,
+        "balanced_accuracy_30": 0.05811795791029217,
+        "validation_minus_train_ce": 0.27599879212861245
+      },
+      "history_epoch_train_loss_online": 1.3336681882338393,
+      "history_first_epoch_train_loss_online": 1.9866354327090088,
+      "seconds": 3.740346166000002
+    }
+  ],
+  "verification": {
+    "source_sha256": "95b055d53c5f879e5a5784b9d44cd3e6f8b0a073798fadc6bb25e5a228eaaf8b",
+    "split_sha256": "33f6cd71399ab2605948d66f80902030cc0b36ae1017bdde551f4504e4bf82b0",
+    "input_sha256": "7f90c512655d188187aaccc8ae52523141286f53c264ccf4e9ae2ad0b9c85d99",
+    "source_canonical_row_order_and_train_val_labels_equal": true,
+    "train_identity_hash_equal": true,
+    "run_bindings_verified": 5,
+    "train_row_sha256": "c717e9adc4576b2cd8eafac8a77a7ce00d420e98d9dde2c4d5d7b82c56cf4269",
+    "validation_row_sha256": "3e0255952c9be4bf0b8edba53f6af05f83795fc756da0da06c1f559b5f92014d",
+    "all_30_classes_present_in_both_folds": true,
+    "both_manifests_current_code_and_source_snapshots_match": true,
+    "all_protected_inputs_sources_and_run_artifacts_hash_unchanged_after": true,
+    "protected_file_count": 68
+  },
+  "coverage": {
+    "med_concepts": 104,
+    "complaint_concepts": 88,
+    "train": {
+      "n": 59607,
+      "no_med": 17339,
+      "no_complaint": 6852,
+      "neither": 552,
+      "both_modalities": 35968,
+      "no_med_fraction": 0.29088865401714564,
+      "no_complaint_fraction": 0.11495294176858423,
+      "both_modalities_fraction": 0.6034190615196202,
+      "active_concepts_mean": 4.931786535138491
+    },
+    "validation": {
+      "n": 7448,
+      "no_med": 2190,
+      "no_complaint": 890,
+      "neither": 59,
+      "both_modalities": 4427,
+      "no_med_fraction": 0.29403866809881846,
+      "no_complaint_fraction": 0.11949516648764769,
+      "both_modalities_fraction": 0.5943877551020408,
+      "active_concepts_mean": 4.99140708915145
+    }
+  },
+  "train_signature_conflicts": {
+    "n": 59607,
+    "unique_signatures": 39339,
+    "repeated_signature_groups": 2205,
+    "conflicting_groups": 1349,
+    "rows_in_conflicting_groups": 19391,
+    "rows_in_conflicting_fraction": 0.32531414095659905,
+    "minimum_errors_for_deterministic_same_input_prediction_on_this_train_sample": 6865,
+    "empirical_train_accuracy_ceiling_given_exact_binary_signatures": 0.8848289630412536,
+    "note": "Sample-specific representation collision bound, NOT label-error proof or population/generalization ceiling."
+  },
+  "memory_before_graphs": {
+    "total": 25769803776,
+    "available": 5785993216,
+    "percent": 77.5,
+    "used": 9806970880,
+    "free": 72581120,
+    "active": 5726994432,
+    "inactive": 5512495104,
+    "wired": 4079976448
+  },
+  "graphs": {
+    "counts": [
+      59607,
+      7448
+    ],
+    "tensor_bytes": 321729080,
+    "rss_bytes": 1099300864,
+    "test_graphs_created": 0
+  },
+  "total_seconds": 43.967615832999996
+}

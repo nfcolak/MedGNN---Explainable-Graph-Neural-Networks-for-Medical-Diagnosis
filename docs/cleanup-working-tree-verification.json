@@ -1,0 +1,253 @@
+{
+  "relocated_files_verified": 207,
+  "relocated_bytes": 2916015958,
+  "move_errors": [],
+  "unlisted_moved_files": [],
+  "retained_files_sha256_verified": 4854,
+  "retained_hash_mismatches": [],
+  "intentional_document_edits": [
+    "README.md",
+    "STRUCTURE.md"
+  ],
+  "raw_archive_payload_files_reverified": 31,
+  "raw_hash_mismatches": [],
+  "symlinks_checked": {
+    ".venv-graphcare/bin/python3": {
+      "link": "/Library/Developer/CommandLineTools/usr/bin/python3",
+      "valid": true
+    },
+    ".venv-graphcare/bin/python": {
+      "link": "python3",
+      "valid": true
+    },
+    ".venv-graphcare/bin/python3.9": {
+      "link": "python3",
+      "valid": true
+    }
+  },
+  "broken_symlinks": [],
+  "latest_graphxai_result_root": "comparison/standardized/graphxai_500_20260914T144701",
+  "latest_graphxai_unchanged_files": 3594,
+  "benchmark_unique_cells": 18,
+  "commands": [
+    {
+      "name": "maintained-tests",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "tests",
+        "comparison/standardized/data_quality_balance_20260914/test_quality.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "cwd": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN",
+      "exit_code": 0,
+      "seconds": 93.95,
+      "log": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/_audit/maintained-tests.log",
+      "output_tail": "n.py:85\n../../../../Library/Python/3.9/lib/python/site-packages/matplotlib/_fontconfig_pattern.py:85\n../../../../Library/Python/3.9/lib/python/site-packages/matplotlib/_fontconfig_pattern.py:85\n../../../../Library/Python/3.9/lib/python/site-packages/matplotlib/_fontconfig_pattern.py:85\n  /Users/necatifurkancolak/Library/Python/3.9/lib/python/site-packages/matplotlib/_fontconfig_pattern.py:85: PyparsingDeprecationWarning: 'parseString' deprecated - use 'parse_string'\n    parse = parser.parseString(pattern)\n\n../../../../Library/Python/3.9/lib/python/site-packages/matplotlib/_fontconfig_pattern.py:89\n../../../../Library/Python/3.9/lib/python/site-packages/matplotlib/_fontconfig_pattern.py:89\n../../../../Library/Python/3.9/lib/python/site-packages/matplotlib/_fontconfig_pattern.py:89\n../../../../Library/Python/3.9/lib/python/site-packages/matplotlib/_fontconfig_pattern.py:89\n../../../../Library/Python/3.9/lib/python/site-packages/matplotlib/_fontconfig_pattern.py:89\n../../../../Library/Python/3.9/lib/python/site-packages/matplotlib/_fontconfig_pattern.py:89\n  /Users/necatifurkancolak/Library/Python/3.9/lib/python/site-packages/matplotlib/_fontconfig_pattern.py:89: PyparsingDeprecationWarning: 'resetCache' deprecated - use 'reset_cache'\n    parser.resetCache()\n\n../../../../Library/Python/3.9/lib/python/site-packages/matplotlib/_mathtext.py:45\n  /Users/necatifurkancolak/Library/Python/3.9/lib/python/site-packages/matplotlib/_mathtext.py:45: PyparsingDeprecationWarning: 'enablePackrat' deprecated - use 'enable_packrat'\n    ParserElement.enablePackrat()\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n405 passed, 2 skipped, 14 warnings in 92.26s (0:01:32)\n"
+    },
+    {
+      "name": "graphcare-isolated-tests",
+      "command": [
+        ".venv-graphcare/bin/python3",
+        "-m",
+        "pytest",
+        "graphcare_analysis/test_zero_concept_model.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "cwd": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN",
+      "exit_code": 0,
+      "seconds": 2.6,
+      "log": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/_audit/graphcare-isolated-tests.log",
+      "output_tail": "........                                                                 [100%]\n8 passed in 2.19s\n"
+    },
+    {
+      "name": "graphcare-model-smoke",
+      "command": [
+        ".venv-graphcare/bin/python3",
+        "graphcare_analysis/test_model_smoke.py"
+      ],
+      "cwd": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN",
+      "exit_code": 0,
+      "seconds": 2.47,
+      "log": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/_audit/graphcare-model-smoke.log",
+      "output_tail": "OK: logits (2, 30), loss 3.968, backward ran.\n"
+    },
+    {
+      "name": "viewer-build",
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "cwd": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/visualizer",
+      "exit_code": 0,
+      "seconds": 2.72,
+      "log": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/_audit/viewer-build.log",
+      "output_tail": "\n> protgnn-graph-visualizer@0.1.0 build\n> tsc && vite build\n\nvite v8.1.1 building client environment for production...\n\u001b[2K\ntransforming...\u2713 38 modules transformed.\nrendering chunks...\ncomputing gzip size...\ndist/index.html                   0.45 kB \u2502 gzip:   0.29 kB\ndist/assets/index-C4zCqg4h.css   15.86 kB \u2502 gzip:   3.99 kB\ndist/assets/index-B2Gto5V1.js   642.64 kB \u2502 gzip: 203.57 kB\n\n\u2713 built in 1.02s\n[plugin builtin:vite-reporter] \n(!) Some chunks are larger than 500 kB after minification. Consider:\n- Using dynamic import() to code-split the application\n- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting\n- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.\n"
+    },
+    {
+      "name": "run-all-help",
+      "command": [
+        "python3",
+        "-m",
+        "comparison.standardized.run_all",
+        "--help"
+      ],
+      "cwd": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN",
+      "exit_code": 0,
+      "seconds": 0.86,
+      "log": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/_audit/run-all-help.log",
+      "output_tail": "usage: run_all.py [-h] [--execute | --dry-run] [--resume] [--retry-failed]\n                  [--archive-incomplete] [--cohort-size COHORT_SIZE]\n                  [--cohort COHORT_PATH] [--state STATE] [--events EVENTS]\n\nCheckpointed orchestration for the standardized benchmark pipeline. This\nmodule only coordinates the maintained runners; it does not implement\ntraining, cache generation, explanation, or summary science.\n\noptional arguments:\n  -h, --help            show this help message and exit\n  --execute             Run preprocessing, training, explanations and summary\n                        (expensive).\n  --dry-run             Print commands only; create nothing (default).\n  --resume              Validate/reuse completed runs; not epoch-level resume.\n  --retry-failed        Retry failed commands, stopping again on any failure.\n  --archive-incomplete  Preserve incomplete run/set under attempts/ before\n                        restarting from scratch; requires --resume --retry-\n                        failed and no active workers.\n  --cohort-size COHORT_SIZE\n                        Expected explanation subjects (default: 500).\n  --cohort COHORT_PATH\n  --state STATE\n  --events EVENTS\n"
+    },
+    {
+      "name": "run-all-dry-run",
+      "command": [
+        "python3",
+        "-m",
+        "comparison.standardized.run_all",
+        "--dry-run"
+      ],
+      "cwd": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN",
+      "exit_code": 0,
+      "seconds": 0.97,
+      "log": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/_audit/run-all-dry-run.log",
+      "output_tail": "-seeds\",\n        \"1236\"\n      ],\n      [\n        \"/Library/Developer/CommandLineTools/usr/bin/python3\",\n        \"-m\",\n        \"comparison.standardized.run_benchmark\",\n        \"--methods\",\n        \"graphcare\",\n        \"--structures\",\n        \"star\",\n        \"--seeds\",\n        \"1234\"\n      ],\n      [\n        \"/Library/Developer/CommandLineTools/usr/bin/python3\",\n        \"-m\",\n        \"comparison.standardized.run_benchmark\",\n        \"--methods\",\n        \"graphcare\",\n        \"--structures\",\n        \"star\",\n        \"--seeds\",\n        \"1235\"\n      ],\n      [\n        \"/Library/Developer/CommandLineTools/usr/bin/python3\",\n        \"-m\",\n        \"comparison.standardized.run_benchmark\",\n        \"--methods\",\n        \"graphcare\",\n        \"--structures\",\n        \"star\",\n        \"--seeds\",\n        \"1236\"\n      ],\n      [\n        \"/Library/Developer/CommandLineTools/usr/bin/python3\",\n        \"-m\",\n        \"comparison.standardized.run_benchmark\",\n        \"--methods\",\n        \"graphcare\",\n        \"--structures\",\n        \"cooccur\",\n        \"--seeds\",\n        \"1234\"\n      ],\n      [\n        \"/Library/Developer/CommandLineTools/usr/bin/python3\",\n        \"-m\",\n        \"comparison.standardized.run_benchmark\",\n        \"--methods\",\n        \"graphcare\",\n        \"--structures\",\n        \"cooccur\",\n        \"--seeds\",\n        \"1235\"\n      ],\n      [\n        \"/Library/Developer/CommandLineTools/usr/bin/python3\",\n        \"-m\",\n        \"comparison.standardized.run_benchmark\",\n        \"--methods\",\n        \"graphcare\",\n        \"--structures\",\n        \"cooccur\",\n        \"--seeds\",\n        \"1236\"\n      ]\n    ]\n  },\n  \"phases\": [\n    \"preflight\",\n    \"cache\",\n    \"train\",\n    \"explain\",\n    \"summarize\"\n  ]\n}\n"
+    },
+    {
+      "name": "benchmark-dry-run",
+      "command": [
+        "python3",
+        "-m",
+        "comparison.standardized.run_benchmark",
+        "--dry-run"
+      ],
+      "cwd": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN",
+      "exit_code": 0,
+      "seconds": 4.94,
+      "log": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/_audit/benchmark-dry-run.log",
+      "output_tail": "star/seed_1236\"\n    ],\n    \"method\": \"graphcare\",\n    \"output_dir\": \"comparison/standardized/results/graphcare/star/seed_1236\",\n    \"seed\": 1236,\n    \"structure\": \"star\"\n  },\n  {\n    \"command\": [\n      \".venv-graphcare/bin/python3\",\n      \"-u\",\n      \"-m\",\n      \"graphcare_analysis.run\",\n      \"--graph_structure\",\n      \"cooccur\",\n      \"--canonical_split\",\n      \"comparison/canonical_split.json\",\n      \"--seed\",\n      \"1234\",\n      \"--out_dir\",\n      \"comparison/standardized/results/graphcare/cooccur/seed_1234\"\n    ],\n    \"method\": \"graphcare\",\n    \"output_dir\": \"comparison/standardized/results/graphcare/cooccur/seed_1234\",\n    \"seed\": 1234,\n    \"structure\": \"cooccur\"\n  },\n  {\n    \"command\": [\n      \".venv-graphcare/bin/python3\",\n      \"-u\",\n      \"-m\",\n      \"graphcare_analysis.run\",\n      \"--graph_structure\",\n      \"cooccur\",\n      \"--canonical_split\",\n      \"comparison/canonical_split.json\",\n      \"--seed\",\n      \"1235\",\n      \"--out_dir\",\n      \"comparison/standardized/results/graphcare/cooccur/seed_1235\"\n    ],\n    \"method\": \"graphcare\",\n    \"output_dir\": \"comparison/standardized/results/graphcare/cooccur/seed_1235\",\n    \"seed\": 1235,\n    \"structure\": \"cooccur\"\n  },\n  {\n    \"command\": [\n      \".venv-graphcare/bin/python3\",\n      \"-u\",\n      \"-m\",\n      \"graphcare_analysis.run\",\n      \"--graph_structure\",\n      \"cooccur\",\n      \"--canonical_split\",\n      \"comparison/canonical_split.json\",\n      \"--seed\",\n      \"1236\",\n      \"--out_dir\",\n      \"comparison/standardized/results/graphcare/cooccur/seed_1236\"\n    ],\n    \"method\": \"graphcare\",\n    \"output_dir\": \"comparison/standardized/results/graphcare/cooccur/seed_1236\",\n    \"seed\": 1236,\n    \"structure\": \"cooccur\"\n  }\n]\n"
+    },
+    {
+      "name": "explanations-dry-run",
+      "command": [
+        "python3",
+        "-m",
+        "comparison.standardized.run_explanations",
+        "--topology",
+        "star",
+        "--seed",
+        "1234",
+        "--dry-run"
+      ],
+      "cwd": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN",
+      "exit_code": 0,
+      "seconds": 0.9,
+      "log": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/_audit/explanations-dry-run.log",
+      "output_tail": "u\",\n    \"-m\",\n    \"protgnn_analysis.explainability.explain_standardized\",\n    \"--checkpoint\",\n    \"comparison/standardized/results/protgnn/star/seed_1234/checkpoints/mimic_intra_patient_disease/gcn_best.pth\",\n    \"--graph-structure\",\n    \"star\",\n    \"--canonical-split\",\n    \"comparison/canonical_split.json\",\n    \"--cohort-size\",\n    \"500\",\n    \"--cohort\",\n    \"comparison/standardized/explanation_subjects.json\",\n    \"--dataset\",\n    \"data/merged_ed.csv\",\n    \"--seed\",\n    \"1234\",\n    \"--out-dir\",\n    \"comparison/standardized/explanations/star/seed_1234/protgnn\"\n  ],\n  [\n    \"python3\",\n    \"-u\",\n    \"-m\",\n    \"gsat_analysis.explainability.explain_gsat\",\n    \"--checkpoint\",\n    \"comparison/standardized/results/gsat/star/seed_1234/gsat_model.pt\",\n    \"--graph-structure\",\n    \"star\",\n    \"--canonical-split\",\n    \"comparison/canonical_split.json\",\n    \"--cohort-size\",\n    \"500\",\n    \"--cohort\",\n    \"comparison/standardized/explanation_subjects.json\",\n    \"--dataset\",\n    \"data/merged_ed.csv\",\n    \"--seed\",\n    \"1234\",\n    \"--out-dir\",\n    \"comparison/standardized/explanations/star/seed_1234/gsat\"\n  ],\n  [\n    \".venv-graphcare/bin/python3\",\n    \"-u\",\n    \"-m\",\n    \"graphcare_analysis.explainability.explain_graphcare\",\n    \"--checkpoint\",\n    \"comparison/standardized/results/graphcare/star/seed_1234/graphcare_model.pt\",\n    \"--graph-structure\",\n    \"star\",\n    \"--canonical-split\",\n    \"comparison/canonical_split.json\",\n    \"--cohort-size\",\n    \"500\",\n    \"--cohort\",\n    \"comparison/standardized/explanation_subjects.json\",\n    \"--dataset\",\n    \"data/merged_ed.csv\",\n    \"--seed\",\n    \"1234\",\n    \"--out-dir\",\n    \"comparison/standardized/explanations/star/seed_1234/graphcare\"\n  ]\n]\n"
+    },
+    {
+      "name": "cache-dry-run",
+      "command": [
+        "python3",
+        "-m",
+        "comparison.standardized.build_caches",
+        "--dry-run"
+      ],
+      "cwd": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN",
+      "exit_code": 0,
+      "seconds": 0.04,
+      "log": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/_audit/cache-dry-run.log",
+      "output_tail": "{\"structures\": [\"star\", \"cooccur\"], \"dataset_dir\": \"/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/data\", \"canonical_split\": \"/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/canonical_split.json\", \"execute\": false}\n"
+    },
+    {
+      "name": "protgnn-help",
+      "command": [
+        "python3",
+        "-m",
+        "protgnn_analysis.train",
+        "--help"
+      ],
+      "cwd": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN",
+      "exit_code": 0,
+      "seconds": 3.94,
+      "log": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/_audit/protgnn-help.log",
+      "output_tail": "/Users/necatifurkancolak/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020\n  warnings.warn(\nusage: train.py [-h] [--dataset DATASET] [--graph-structure GRAPH_STRUCTURE]\n                [--canonical-split CANONICAL_SPLIT] [--seed SEED]\n                [--output-dir OUTPUT_DIR] [--clst CLST] [--sep SEP]\n                [--margin MARGIN] [--explain_n EXPLAIN_N] [--no_prot]\n                [--no_archive] [--archive_tag ARCHIVE_TAG] [--limit LIMIT]\n                [--max-epochs MAX_EPOCHS]\n\nTrain ProtGNN and explain with GraphXAI\n\noptional arguments:\n  -h, --help            show this help message and exit\n  --dataset DATASET     Legacy dataset name override\n  --graph-structure GRAPH_STRUCTURE, --graph_structure GRAPH_STRUCTURE, --graph GRAPH_STRUCTURE\n                        Graph topology: star|cooccur|ontology|full\n  --canonical-split CANONICAL_SPLIT, --canonical_split CANONICAL_SPLIT\n  --seed SEED\n  --output-dir OUTPUT_DIR, --out_dir OUTPUT_DIR\n  --clst CLST           Cluster loss weight\n  --sep SEP             Separation loss weight\n  --margin MARGIN       Separation-loss margin\n  --explain_n EXPLAIN_N\n                        Graphs to explain (-1 = all)\n  --no_prot             Disable prototype layers\n  --no_archive          Disable legacy run archiving\n  --archive_tag ARCHIVE_TAG\n                        Legacy archive tag\n  --limit LIMIT         Cap each canonical fold\n  --max-epochs MAX_EPOCHS, --max_epochs MAX_EPOCHS\n"
+    },
+    {
+      "name": "gsat-help",
+      "command": [
+        "python3",
+        "-m",
+        "gsat_analysis.train",
+        "--help"
+      ],
+      "cwd": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN",
+      "exit_code": 0,
+      "seconds": 2.51,
+      "log": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/_audit/gsat-help.log",
+      "output_tail": "/Users/necatifurkancolak/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020\n  warnings.warn(\nusage: train.py [-h] --graph_structure GRAPH_STRUCTURE\n                [--max_epochs MAX_EPOCHS] [--limit LIMIT] --out_dir OUT_DIR\n                --canonical_split CANONICAL_SPLIT --seed SEED\n\nTrain GSAT (Method C)\n\noptional arguments:\n  -h, --help            show this help message and exit\n  --graph_structure GRAPH_STRUCTURE, --graph GRAPH_STRUCTURE\n                        star|cooccur|ontology|full\n  --max_epochs MAX_EPOCHS\n  --limit LIMIT         cap #graphs (quick runs)\n  --out_dir OUT_DIR\n  --canonical_split CANONICAL_SPLIT\n  --seed SEED\n"
+    },
+    {
+      "name": "graphcare-help",
+      "command": [
+        ".venv-graphcare/bin/python3",
+        "-m",
+        "graphcare_analysis.run",
+        "--help"
+      ],
+      "cwd": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN",
+      "exit_code": 0,
+      "seconds": 0.64,
+      "log": "/Users/necatifurkancolak/.Trash/MedGNN-cleanup-20260914T152126+0200-ba819220/_audit/graphcare-help.log",
+      "output_tail": "usage: run.py [-h] [--limit LIMIT] [--max_epochs MAX_EPOCHS]\n              [--patience PATIENCE] [--canonical_split CANONICAL_SPLIT]\n              [--out_dir OUT_DIR] [--graph_structure GRAPH_STRUCTURE]\n              [--seed SEED]\n\noptional arguments:\n  -h, --help            show this help message and exit\n  --limit LIMIT         cap #patients (quick runs)\n  --max_epochs MAX_EPOCHS\n  --patience PATIENCE\n  --canonical_split CANONICAL_SPLIT\n                        comparison/canonical_split.json\n  --out_dir OUT_DIR     isolated standardized run directory\n  --graph_structure GRAPH_STRUCTURE, --graph GRAPH_STRUCTURE\n                        Graph topology:\n                        star|cooccur|ontology|full|full_kg_expanded (prompted\n                        interactively if omitted)\n  --seed SEED\n"
+    }
+  ],
+  "initial_test_invocation_issue": {
+    "command": "python3 -m pytest tests graphcare_analysis/test_zero_concept_model.py comparison/standardized/data_quality_balance_20260914/test_quality.py -q -p no:cacheprovider",
+    "result": "8 failed, 405 passed, 2 skipped; GraphCare tests were mistakenly collected in main Python without pyhealth, and must run separately in .venv-graphcare. Correct environment rerun: 8 passed. No scientific code changed."
+  },
+  "diff_check_exit_code": 0,
+  "diff_check_output": "",
+  "permanently_removed_metadata": [
+    {
+      "path": ".DS_Store",
+      "bytes": 18436,
+      "sha256": "52752034ea91d5924ec78cf4cdad4b6fe4d252d3929c659302892ee9b988bef4"
+    }
+  ],
+  "root_listing": [
+    ".claude",
+    ".git",
+    ".gitignore",
+    ".hermes",
+    ".superpowers",
+    ".venv-graphcare",
+    "README.md",
+    "STRUCTURE.md",
+    "baselines",
+    "comparison",
+    "data",
+    "docs",
+    "docs-vault",
+    "environment.yml",
+    "external",
+    "graphcare_analysis",
+    "gsat_analysis",
+    "protgnn_analysis",
+    "requirements-lock.txt",
+    "requirements.txt",
+    "shared",
+    "tests",
+    "visualizer"
+  ],
+  "comparison_listing": [
+    "build_split.py",
+    "canonical_split.json",
+    "standardized"
+  ]
+}
