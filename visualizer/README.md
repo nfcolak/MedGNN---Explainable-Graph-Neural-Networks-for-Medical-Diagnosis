@@ -5,6 +5,7 @@ Interactive dark-themed web interface for intra-patient ProtGNN-style medical gr
 ## Run
 
 ```bash
+cd visualizer  # from the repository root
 npm install
 npm run dev
 ```
@@ -14,7 +15,7 @@ Then open the local URL printed by Vite.
 ## Project Structure
 
 ```text
-protgnn_analysis/graph_visualizer/
+visualizer/
 ├── index.html
 ├── package.json
 ├── public/

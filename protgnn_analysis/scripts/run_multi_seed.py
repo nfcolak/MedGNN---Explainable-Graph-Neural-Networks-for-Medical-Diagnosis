@@ -1,16 +1,12 @@
-"""
-Run train_and_explain.py over multiple seeds and aggregate metrics.
+"""Legacy ProtGNN multi-seed convenience runner (not the standardized benchmark).
 
-Usage:
-    PYTHONPATH=src:external/GraphXAI-main:. \\
-        python3 scripts/run_multi_seed.py --seeds 1 2 3 4 5 \\
-        -- --clst 0.02 --sep 0.1 --explain_n 0 --archive_tag multiseed
+From the repository root:
+    python3 -m protgnn_analysis.scripts.run_multi_seed --seeds 1 2 3 -- --explain_n 0
 
-Anything after `--` is forwarded verbatim to train_and_explain.py for each
-seed (with `--seed <s>` appended and `--archive_tag <tag>_seed<s>`).
-
-The script reads `outputs/results/test_metrics.json` after each run and writes
-`outputs/results/multi_seed_summary.json` with per-seed metrics and mean/std.
+Arguments after `--` are forwarded to protgnn_analysis.train. Each completed
+legacy run is read through outputs/results/latest_run.txt; the aggregate is
+written to protgnn_analysis/outputs/results/multi_seed_summary.json.
+For isolated, comparable runs and safe restart use comparison.standardized.run_all.
 """
 
 import argparse
@@ -26,7 +22,10 @@ RESULTS_DIR = PROJECT_ROOT / "outputs" / "results"
 TEST_METRICS = RESULTS_DIR / "test_metrics.json"
 SUMMARY_PATH = RESULTS_DIR / "multi_seed_summary.json"
 
-METRIC_KEYS = ["acc", "pr_auc", "precision", "recall", "specificity", "f1", "balanced_acc"]
+METRIC_KEYS = [
+    "acc", "pr_auc", "precision", "recall", "specificity", "f1", "balanced_acc",
+    "accuracy", "macro_f1", "micro_f1", "top3_acc", "top5_acc",
+]
 
 
 def parse_args():
@@ -41,7 +40,7 @@ def parse_args():
 
 
 def run_seed(seed, tag, forwarded):
-    cmd = [sys.executable, str(PROJECT_ROOT / "scripts" / "train_and_explain.py"),
+    cmd = [sys.executable, "-m", "protgnn_analysis.train",
            "--seed", str(seed), "--archive_tag", f"{tag}_seed{seed}"]
     extras = [a for a in forwarded if a != "--"]
     cmd.extend(extras)
@@ -49,8 +48,9 @@ def run_seed(seed, tag, forwarded):
     print(f"[multi-seed] seed={seed}")
     print(" ".join(cmd))
     print("=" * 70)
-    subprocess.run(cmd, check=True)
-    with open(TEST_METRICS) as f:
+    subprocess.run(cmd, check=True, cwd=PROJECT_ROOT.parent)
+    latest = Path((RESULTS_DIR / "latest_run.txt").read_text().strip())
+    with open(latest / "test_metrics.json") as f:
         return json.load(f)
 
 

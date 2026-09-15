@@ -37,7 +37,7 @@ from protgnn_analysis.config import data_args, model_args, train_args
 from protgnn_analysis.models import GnnNets
 from protgnn_analysis.load_dataset import get_dataset, get_dataloader
 
-import train_and_explain as TE
+from protgnn_analysis import train as TE
 
 _EPOCH_RE = re.compile(
     r"Epoch\s+(\d+)\s*\|\s*Train Loss:\s*([\d.]+)\s*Acc:\s*([\d.]+)\s*\|\s*"

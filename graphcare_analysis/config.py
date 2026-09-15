@@ -28,19 +28,23 @@ class GraphCareConfig:
     csv_filename = "merged_ed.csv"
     target = "disease"                                   # 30-class disease_1
     num_classes = 30
-    # codes = non-leaky clinical entities (NOT the diagnosis ICDs, which leak)
-    code_prefixes = ("med_", "pyx_", "symptom_", "chiefcomplaint_")
+    # Input eligibility by mode. Split-aware standardized preprocessing excludes
+    # diagnosis-derived symptom_* while preserving pre-diagnosis chiefcomplaint_*.
+    standardized_code_prefixes = ("med_", "pyx_", "chiefcomplaint_")
+    legacy_code_prefixes = ("med_", "pyx_", "symptom_", "chiefcomplaint_")
+    code_prefixes = legacy_code_prefixes
     # KG construction (mirror protgnn vocab/PMI so both methods share the KG signal)
     med_min_prev = 0.01          # keep meds with prevalence >= 1% (== protgnn)
     pmi_threshold = 2.0          # PMI > this -> "co_occurs" edge (== protgnn)
 
     # --- graph structure (topology) ---
     # One of shared.lib.graph_structures supported by graphcare
-    # (star / cooccur / ontology / full). Controls how each patient's subgraph
-    # is extracted from the global KG: which relations become edges and whether
-    # it expands to 1-hop KG neighbours. Selected via --graph_structure on the
-    # CLI (or interactively). 'full' == the legacy behaviour (both rels + 1-hop
-    # expansion). Per-structure KG caches live under data/graphs/<structure>/graphcare/.
+    # (star / cooccur / ontology / full / full_kg_expanded). Controls which
+    # relations each patient subgraph includes. Common structures always add an
+    # explicit patient hub and remain record-local; only full_kg_expanded adds
+    # record-external one-hop KG neighbours. Selected via --graph_structure on
+    # the CLI (or interactively). Per-structure KG caches live under
+    # data/graphs/<structure>/graphcare/.
     graph_structure = "full"
 
     # --- personalized knowledge graph ---

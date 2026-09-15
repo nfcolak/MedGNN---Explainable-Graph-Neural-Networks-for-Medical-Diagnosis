@@ -1,47 +1,63 @@
-"""Single source of truth for the GRAPH STRUCTURE (topology) used by BOTH
-analyses (ProtGNN and GraphCare).
+"""Single source of truth for benchmark graph-structure policies.
 
-The two methods build graphs very differently — ProtGNN emits one PyG `Data`
-per patient (feature vectors on nodes), GraphCare builds a per-patient subgraph
-over a global KG (node ids + relation ids). What they CAN share is the *edge
-policy*: given a patient's concept nodes, which edges connect them. That policy
-is what we call the "graph structure", and it is selected by name so the exact
-same pipeline runs for any topology without editing code.
+The methods build graphs differently: ProtGNN and GSAT consume one PyG `Data`
+per patient, while GraphCare builds a per-patient subgraph over a global KG.
+What they share is the *edge policy*: given a patient's concept nodes, which
+edges connect them. That policy is selected by name so each method can run the
+same benchmark topology without editing code.
 
-Structures (concept nodes = the patient's meds / labs / symptoms / chief
-complaints / diagnoses; the PATIENT hub is always present so its demographic /
-numeric features can propagate):
+Structures use the patient hub plus method-eligible concept nodes. For the
+standardized ``disease_1`` benchmark, all three methods use the conservative
+common membership subset: patient hub, training-fitted medication nodes, and
+training-fitted pre-diagnosis ``chiefcomplaint_*`` nodes. Diagnosis-derived
+``symptom_*``, diagnosis/target inputs, and vital nodes are excluded. GraphCare
+cannot consume the identical numeric vital measurements, so standardized
+ProtGNN/GSAT do not create categorical vital-name-only substitutes. Legacy mode
+retains its historical input policy:
 
     star      patient hub ↔ each concept only (baseline; no concept↔concept edges)
     cooccur   star + concept↔concept where population PMI > threshold (cross-type)
     ontology  star + concept↔concept sharing an ontology class
               (meds → therapeutic class, ICD/symptom → ICD chapter)
-    full      star + (cooccur ∪ ontology); GraphCare additionally expands to the
-              patient's 1-hop KG neighbours that are NOT in the record
+    full      record-local star + (cooccur ∪ ontology)
+    full_kg_expanded
+              GraphCare-only full topology plus record-external 1-hop KG nodes
 
-`protgnn` / `graphcare` flags say whether a method can realise that structure.
-The ordering (star ⊂ cooccur/ontology ⊂ full on edges) makes the set a clean
-monotone ablation ladder that BOTH methods realise, for a fair comparison.
+Method flags say whether a method can realise that structure. The common
+ordering (star ⊂ cooccur/ontology ⊂ full on edges) makes the set a clean
+monotone ablation ladder. ``full_kg_expanded`` is exploratory and excluded from
+the primary cross-method table.
 """
 from collections import OrderedDict
 
-# name -> metadata. `order` is only for stable display.
+SUPPORTED_METHODS = ("protgnn", "gsat", "graphcare")
+
+# name -> metadata. OrderedDict provides stable CLI and report display.
 GRAPH_STRUCTURES = OrderedDict([
     ("star", {
-        "protgnn": True, "graphcare": True,
+        "protgnn": True, "gsat": True, "graphcare": True,
+        "primary": True, "record_local": True, "kg_expanded": False,
         "desc": "Patient hub ↔ each concept only (baseline, no concept↔concept edges).",
     }),
     ("cooccur", {
-        "protgnn": True, "graphcare": True,
+        "protgnn": True, "gsat": True, "graphcare": True,
+        "primary": True, "record_local": True, "kg_expanded": False,
         "desc": "Star + concept↔concept where population PMI > threshold (cross-type).",
     }),
     ("ontology", {
-        "protgnn": True, "graphcare": True,
+        "protgnn": True, "gsat": True, "graphcare": True,
+        "primary": False, "record_local": True, "kg_expanded": False,
         "desc": "Star + concept↔concept sharing an ontology class (drug class / ICD chapter).",
     }),
     ("full", {
-        "protgnn": True, "graphcare": True,
-        "desc": "Star + cooccur ∪ ontology (GraphCare also expands to 1-hop KG neighbours).",
+        "protgnn": True, "gsat": True, "graphcare": True,
+        "primary": False, "record_local": True, "kg_expanded": False,
+        "desc": "Record-local star + cooccur ∪ ontology; no record-external nodes.",
+    }),
+    ("full_kg_expanded", {
+        "protgnn": False, "gsat": False, "graphcare": True,
+        "primary": False, "record_local": False, "kg_expanded": True,
+        "desc": "GraphCare-only full topology plus record-external 1-hop KG neighbours.",
     }),
 ])
 
@@ -52,8 +68,12 @@ def all_structures():
     return list(GRAPH_STRUCTURES.keys())
 
 
+def all_methods():
+    return list(SUPPORTED_METHODS)
+
+
 def supported_structures(method):
-    """method: 'protgnn' | 'graphcare' -> list of structure names it can build."""
+    """Return structure names that the benchmark method can build."""
     _check_method(method)
     return [name for name, meta in GRAPH_STRUCTURES.items() if meta[method]]
 
@@ -129,5 +149,6 @@ def prompt_for_structure(method, default=DEFAULT_STRUCTURE, stream=None):
 
 
 def _check_method(method):
-    if method not in ("protgnn", "graphcare"):
-        raise ValueError(f"method must be 'protgnn' or 'graphcare', got {method!r}")
+    if method not in SUPPORTED_METHODS:
+        choices = ", ".join(repr(name) for name in SUPPORTED_METHODS)
+        raise ValueError(f"method must be one of {choices}, got {method!r}")
