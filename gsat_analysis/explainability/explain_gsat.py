@@ -76,7 +76,11 @@ def load_model(ckpt_path, device):
                 temperature=c["temperature"], info_loss_coef=c["info_loss_coef"],
                 init_r=c["init_r"], final_r=c["final_r"],
                 decay_interval=c["decay_interval"], decay_r=c["decay_r"])
-    gsat.load_state_dict(ck["state_dict"])
+    # class_weights is a training-time-only, non-persistent buffer (see
+    # models/gsat.py); older checkpoints saved before that fix still carry it
+    # in their state_dict — drop it here rather than reject the checkpoint.
+    state_dict = {k: v for k, v in ck["state_dict"].items() if k != "class_weights"}
+    gsat.load_state_dict(state_dict)
     gsat.to(device).eval()
     return gsat, ck["structure"]
 

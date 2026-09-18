@@ -67,7 +67,7 @@ class ExtractorMLP(nn.Module):
 class GSAT(nn.Module):
     def __init__(self, clf, extractor, *, attention_level="node", temperature=1.0,
                  info_loss_coef=1.0, init_r=0.9, final_r=0.7, decay_interval=10,
-                 decay_r=0.1):
+                 decay_r=0.1, class_weights=None):
         super().__init__()
         self.clf = clf
         self.extractor = extractor
@@ -78,6 +78,20 @@ class GSAT(nn.Module):
         self.final_r = final_r
         self.decay_interval = decay_interval
         self.decay_r = decay_r
+        # Optional per-class weights for the prediction loss (e.g. sqrt-inverse
+        # frequency, computed from TRAIN-fold labels only — see train.py
+        # --loss_weighting). None (default) preserves the original unweighted
+        # cross-entropy behavior. Registered non-persistent: it moves with
+        # .to(device) but is deliberately excluded from state_dict()/
+        # load_state_dict() — it's a training-time-only input (never read by
+        # predict()/node_importance()), so inference/explanation code that
+        # constructs a fresh GSAT() and loads a checkpoint doesn't need to
+        # know or reproduce the exact weighting policy that trained it.
+        self.register_buffer(
+            "class_weights",
+            None if class_weights is None else torch.as_tensor(class_weights, dtype=torch.float32),
+            persistent=False,
+        )
 
     # -- r curriculum (paper App. C.2.2) -----------------------------------
     def get_r(self, epoch):
@@ -122,7 +136,7 @@ class GSAT(nn.Module):
                           edge_atten=edge_att.unsqueeze(-1))
 
         r = self.get_r(epoch)
-        pred_loss = F.cross_entropy(logits, data.y.view(-1).long())
+        pred_loss = F.cross_entropy(logits, data.y.view(-1).long(), weight=self.class_weights)
         info_loss = self._info_loss(att.squeeze(-1), r) * self.info_loss_coef
         return {
             "logits": logits,
