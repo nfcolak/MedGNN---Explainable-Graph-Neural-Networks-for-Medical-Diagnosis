@@ -1,0 +1,255 @@
+{
+  "scope": "validation_only_no_refit",
+  "contract_sha256": "2a2566e662bf87b10d97e58700f868d8d6d6b036582ec046dd5453e6dcd9f7c0",
+  "cohort": 7448,
+  "test_evaluated": false,
+  "gchm_best_epochs": [
+    8,
+    7,
+    5
+  ],
+  "gchm_per_seed": [
+    {
+      "accuracy": 0.6220461868958109,
+      "balanced_acc": 0.5967643095854543,
+      "macro_f1": 0.5614673857394478,
+      "top3_acc": 0.8210257787325457
+    },
+    {
+      "accuracy": 0.6142588614393125,
+      "balanced_acc": 0.5970874630276057,
+      "macro_f1": 0.5548872785431584,
+      "top3_acc": 0.8204887218045113
+    },
+    {
+      "accuracy": 0.6084854994629431,
+      "balanced_acc": 0.5883581709591286,
+      "macro_f1": 0.543854635082823,
+      "top3_acc": 0.8129699248120301
+    }
+  ],
+  "gchm_3seed_mean": {
+    "accuracy": 0.6292964554242749,
+    "balanced_acc": 0.6076420024270424,
+    "macro_f1": 0.5676218483050973,
+    "top3_acc": 0.8292158968850698
+  },
+  "xgboost": {
+    "accuracy": 0.644468313641246,
+    "balanced_acc": 0.5685267959431085,
+    "macro_f1": 0.5812070920590772,
+    "top3_acc": 0.8449248120300752
+  },
+  "per_class": [
+    {
+      "class": "Sepsis",
+      "n": 40,
+      "gchm_recall": 0.6,
+      "xgb_recall": 0.325,
+      "delta": 0.27499999999999997
+    },
+    {
+      "class": "End stage renal disease",
+      "n": 43,
+      "gchm_recall": 0.4883720930232558,
+      "xgb_recall": 0.3488372093023256,
+      "delta": 0.1395348837209302
+    },
+    {
+      "class": "Hypotension",
+      "n": 48,
+      "gchm_recall": 0.4166666666666667,
+      "xgb_recall": 0.2916666666666667,
+      "delta": 0.125
+    },
+    {
+      "class": "Hypothyroidism",
+      "n": 64,
+      "gchm_recall": 0.5625,
+      "xgb_recall": 0.421875,
+      "delta": 0.140625
+    },
+    {
+      "class": "Multiple fractures of ribs",
+      "n": 70,
+      "gchm_recall": 0.4142857142857143,
+      "xgb_recall": 0.3,
+      "delta": 0.11428571428571432
+    },
+    {
+      "class": "Non-ST elevation (NSTEMI) myocardial infarction",
+      "n": 72,
+      "gchm_recall": 0.7916666666666666,
+      "xgb_recall": 0.75,
+      "delta": 0.04166666666666663
+    },
+    {
+      "class": "Acute upper respiratory infection",
+      "n": 82,
+      "gchm_recall": 0.4146341463414634,
+      "xgb_recall": 0.3048780487804878,
+      "delta": 0.1097560975609756
+    },
+    {
+      "class": "Heart failure",
+      "n": 85,
+      "gchm_recall": 0.47058823529411764,
+      "xgb_recall": 0.4235294117647059,
+      "delta": 0.047058823529411764
+    },
+    {
+      "class": "Epilepsy",
+      "n": 97,
+      "gchm_recall": 0.8041237113402062,
+      "xgb_recall": 0.7835051546391752,
+      "delta": 0.020618556701030966
+    },
+    {
+      "class": "Unspecified asthma with (acute) exacerbation",
+      "n": 112,
+      "gchm_recall": 0.6160714285714286,
+      "xgb_recall": 0.5714285714285714,
+      "delta": 0.044642857142857206
+    },
+    {
+      "class": "Anemia",
+      "n": 114,
+      "gchm_recall": 0.7631578947368421,
+      "xgb_recall": 0.6929824561403509,
+      "delta": 0.07017543859649122
+    },
+    {
+      "class": "Unsp intestnl obst",
+      "n": 118,
+      "gchm_recall": 0.7711864406779662,
+      "xgb_recall": 0.6016949152542372,
+      "delta": 0.16949152542372892
+    },
+    {
+      "class": "Laceration w/o fb of l idx fngr w/o damage to nail",
+      "n": 121,
+      "gchm_recall": 0.71900826446281,
+      "xgb_recall": 0.6033057851239669,
+      "delta": 0.11570247933884303
+    },
+    {
+      "class": "Hypokalemia",
+      "n": 126,
+      "gchm_recall": 0.5238095238095238,
+      "xgb_recall": 0.5396825396825397,
+      "delta": -0.015873015873015817
+    },
+    {
+      "class": "Acute kidney failure",
+      "n": 128,
+      "gchm_recall": 0.546875,
+      "xgb_recall": 0.46875,
+      "delta": 0.078125
+    },
+    {
+      "class": "Dehydration",
+      "n": 128,
+      "gchm_recall": 0.2421875,
+      "xgb_recall": 0.25,
+      "delta": -0.0078125
+    },
+    {
+      "class": "Anxiety disorder",
+      "n": 138,
+      "gchm_recall": 0.6594202898550725,
+      "xgb_recall": 0.5797101449275363,
+      "delta": 0.07971014492753625
+    },
+    {
+      "class": "Acute pharyngitis",
+      "n": 168,
+      "gchm_recall": 0.7797619047619048,
+      "xgb_recall": 0.7678571428571429,
+      "delta": 0.011904761904761862
+    },
+    {
+      "class": "Unspecified atrial fibrillation",
+      "n": 178,
+      "gchm_recall": 0.5561797752808989,
+      "xgb_recall": 0.5337078651685393,
+      "delta": 0.022471910112359605
+    },
+    {
+      "class": "Major depressive disorder",
+      "n": 268,
+      "gchm_recall": 0.8582089552238806,
+      "xgb_recall": 0.8395522388059702,
+      "delta": 0.018656716417910446
+    },
+    {
+      "class": "GI bleed",
+      "n": 302,
+      "gchm_recall": 0.7052980132450332,
+      "xgb_recall": 0.7516556291390728,
+      "delta": -0.04635761589403964
+    },
+    {
+      "class": "Alcohol abuse with intoxication",
+      "n": 344,
+      "gchm_recall": 0.8313953488372093,
+      "xgb_recall": 0.8459302325581395,
+      "delta": -0.014534883720930147
+    },
+    {
+      "class": "Lower respiratory disease",
+      "n": 369,
+      "gchm_recall": 0.43360433604336046,
+      "xgb_recall": 0.5149051490514905,
+      "delta": -0.08130081300813008
+    },
+    {
+      "class": "Skin or soft-tissue infection",
+      "n": 389,
+      "gchm_recall": 0.5526992287917738,
+      "xgb_recall": 0.5372750642673522,
+      "delta": 0.015424164524421635
+    },
+    {
+      "class": "UTI or pyelonephritis",
+      "n": 412,
+      "gchm_recall": 0.46359223300970875,
+      "xgb_recall": 0.4975728155339806,
+      "delta": -0.03398058252427183
+    },
+    {
+      "class": "Diabetes mellitus",
+      "n": 424,
+      "gchm_recall": 0.6485849056603774,
+      "xgb_recall": 0.6981132075471698,
+      "delta": -0.04952830188679236
+    },
+    {
+      "class": "Head injury",
+      "n": 502,
+      "gchm_recall": 0.6633466135458167,
+      "xgb_recall": 0.6792828685258964,
+      "delta": -0.015936254980079667
+    },
+    {
+      "class": "Cardiovascular risk factor",
+      "n": 748,
+      "gchm_recall": 0.5561497326203209,
+      "xgb_recall": 0.6844919786096256,
+      "delta": -0.12834224598930477
+    },
+    {
+      "class": "Back or spine pain",
+      "n": 855,
+      "gchm_recall": 0.7380116959064328,
+      "xgb_recall": 0.752046783625731,
+      "delta": -0.014035087719298178
+    },
+    {
+      "class": "Limb injury or pain",
+      "n": 903,
+      "gchm_recall": 0.6378737541528239,
+      "xgb_recall": 0.6965669988925803,
+      "delta": -0.058693244739756456
+    }
+  ]
+}

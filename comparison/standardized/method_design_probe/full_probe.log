@@ -1,0 +1,17 @@
+~/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+artifact ok | contract 2a2566e662bf | train 59607 val 7448
+
+[1] Signal attribution — which block carries the discriminative signal?
+  XGBoost  concepts only (192)                 macroF1=0.4727 acc=0.5771 bal=0.4533 iter=599
+  XGBoost  hub only (132)                      macroF1=0.3545 acc=0.4066 bal=0.3585 iter=599
+  XGBoost  concepts+hub (324)                  macroF1=0.5825 acc=0.6439 bal=0.5722 iter=599
+
+[2] Is it the graph, or the width bottleneck? Same features, no graph.
+  MLP      width 64, 2 layers, no graph        macroF1=0.5685 acc=0.6348 bal=0.5554 ep=23 params=26910
+  MLP      width 256, 2 layers, no graph       macroF1=0.5655 acc=0.6331 bal=0.5596 ep=8 params=156702
+
+[3] Does explicit concept x hub multiplicative interaction help?
+  MLP      width 256, 3 layers, no graph       macroF1=0.5662 acc=0.6309 bal=0.5589 ep=16 params=222494
+
+wrote comparison/standardized/method_design_probe/probe_results.json  (181.9s)

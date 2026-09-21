@@ -46,6 +46,8 @@ comparison/standardized/common_input_*/
 comparison/standardized/data_quality_balance_*/
 comparison/standardized/enriched_inputs/
 comparison/standardized/enriched_runs/
+comparison/standardized/event_inputs/
+comparison/standardized/event_training/
 comparison/standardized/graphxai_*/
 comparison/standardized/graphxai_execution_*/
 comparison/standardized/native_evidence/
@@ -59,3 +61,10 @@ comparison/standardized/results/
 comparison/standardized/zero_concept_verification/
 comparison/standardized/graphxai_current_run.txt
 comparison/standardized/training.log
+
+# Trained model binaries: the reports/ JSON keeps every metric, per-class table and
+# bootstrap interval, so results stay auditable without shipping ~0.5 GB of weights.
+comparison/standardized/matched_gchm_xgb_v1/runs/
+comparison/standardized/matched_gchm_xgb_v1/smoke/
+**/*.ubj
+**/*.npz
