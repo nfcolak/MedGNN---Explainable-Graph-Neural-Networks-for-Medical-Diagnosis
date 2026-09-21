@@ -117,24 +117,97 @@ aynı kod kümesinden türetilmişti. Yine de bu iki sınıfın metrikleri ayrı
 
 ## Kullanım
 
+Sıfırdan çalıştırma **4 adımdır**. Bu repo yalnız kodu taşır; üretilen artefaktlar
+(`event_inputs/`, ~7 GB) MIMIC türevi olduğu için gitignore'dadır ve aşağıdaki
+adımlarla yeniden üretilir.
+
+**Ön koşul:** `data/Original CSVs/` altında MIMIC-IV-ED dosyaları
+(`labevents.csv`, `edstays.csv`, `triage.csv`, `patients.csv`, `diagnosis.csv`,
+`icd9_to_icd10_mapping.csv`) ve `comparison/canonical_split.json`.
+
+### Adım 1 — Olay index'i + kohort (bir kez, ~2-3 saat)
+
+18 GB `labevents.csv` taranır; `events.sqlite`, `cohort.csv` ve v1 graflarını üretir.
+v2/v3'ün ihtiyacı olan **yalnız ilk ikisidir**.
+
+```bash
+python3 -m comparison.standardized.event_graph_v1.first_lab \
+  --raw-root "data/Original CSVs" \
+  --canonical comparison/canonical_split.json \
+  --knowledge comparison/standardized/event_graph_v1/knowledge_seed.csv \
+  --output comparison/standardized/event_inputs/first_recorded_lab_all_visits_v2 \
+  --lab-scope all-numeric-known-unit --execute
+```
+
+Kesilirse `--resume-prepared` ile devam eder (tarama tekrarlanmaz).
+Disk tasarrufu için bitince `graphs.jsonl` (17 GB) silinebilir; v3 onu kullanmaz.
+
+### Adım 2 — Etiket sidecar'ı (~10 dk)
+
+Graflar etiketsizdir; hedefler `sample_id` ile ayrı bağlanır.
+
+```bash
+python3 -m comparison.standardized.event_graph_gchm_xgb_v1.local_labels_v2 \
+  --output comparison/standardized/event_inputs/first_recorded_lab_all_visits_v2_targets_local_v2
+```
+
+### Adım 3 — v3 klinik graf (~10 dk)
+
+Adım 1'in `events.sqlite` + `cohort.csv`'sini devralır, 18 GB taramayı tekrarlamaz.
+
 ```bash
 python3 -m comparison.standardized.clinical_graph_v2.build \
   --inherit-from comparison/standardized/event_inputs/first_recorded_lab_all_visits_v2 \
   --raw-root "data/Original CSVs" \
   --canonical comparison/canonical_split.json \
   --knowledge comparison/standardized/event_graph_v1/knowledge_seed.csv \
-  --output comparison/standardized/event_inputs/clinical_graph_v2_full \
+  --output comparison/standardized/event_inputs/clinical_graph_v3_full \
   --complaint-min-count 50 --with-diagnosis --execute
-
-python3 -m comparison.standardized.clinical_graph_v2.audit \
-  --artifact comparison/standardized/event_inputs/clinical_graph_v2_full
 ```
 
-`--with-diagnosis` olmadan tanı katmanı hiç üretilmez; ikisini ayrı çıktı klasörlerine
-üretip karşılaştırmak, tanının katkısını ölçmenin doğru yoludur.
+`--with-diagnosis` olmadan tanı katmanı üretilmez; ikisini ayrı klasöre üretip
+karşılaştırmak tanının katkısını ölçmenin doğru yoludur.
+`--limit N` sınırlı smoke içindir ve artefaktı `bounded_smoke_not_benchmark` işaretler.
 
-`--limit N` sınırlı smoke içindir ve artefaktı `bounded_smoke_not_benchmark` olarak
-işaretler. Çıktı klasörü varsa üretim **başlamaz** (no-overwrite).
+### Adım 4 — Eğitim ve kontroller
+
+```bash
+# mekanizma kontrolleri (egitimsiz, saniyeler) -- once bunu kosun
+python3 -m comparison.standardized.clinical_graph_v2.mechanism_check
+
+# ana kosu (~10 dk/seed, CPU)
+python3 -m comparison.standardized.clinical_graph_v2.train \
+  --artifact comparison/standardized/event_inputs/clinical_graph_v3_full \
+  --targets comparison/standardized/event_inputs/first_recorded_lab_all_visits_v2_targets_local_v2/targets.csv \
+  --output comparison/standardized/clinical_runs_v3/main_seed1234 \
+  --epochs 12 --seed 1234 --edges all --execute
+
+# kapasite-esit ablasyonlar (ayni sinif, tek bayrak farki)
+#   --no-message-passing   mesaj gecirme yok (dugum-only kontrol)
+#   --no-edge-payload      delta/aralik yuku sifirlanir
+#   --edges informative    yalniz informative iliskiler
+
+# tablo kontrolu (XGBoost, ayni artefakt)
+python3 -m comparison.standardized.clinical_graph_v2.tabular_control \
+  --artifact comparison/standardized/event_inputs/clinical_graph_v3_full \
+  --targets comparison/standardized/event_inputs/first_recorded_lab_all_visits_v2_targets_local_v2/targets.csv \
+  --out comparison/standardized/clinical_runs_v3/xgb_control
+
+# sonuclari topla + seed yayilimini olc
+python3 comparison/standardized/clinical_graph_v2/aggregate.py
+```
+
+### İsteğe bağlı — graf denetimi
+
+Grafın tablo görünümünden yeniden kurulup kurulamadığını ölçer:
+
+```bash
+python3 -m comparison.standardized.clinical_graph_v2.audit \
+  --artifact comparison/standardized/event_inputs/clinical_graph_v3_full
+```
+
+Çıktı klasörü varsa üretim **başlamaz** (no-overwrite); yeniden denemek için
+yeni bir yol verin.
 
 ## Garantiler
 
