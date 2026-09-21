@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<style>
+  .wrap { display: inline-block; }
+  .hd { font-size: 13px; color: var(--muted-foreground); margin-bottom: 8px; }
+  .hd b { color: var(--foreground); }
+  svg text { fill: var(--foreground); }
+  .id   { font-size: 9.5px; fill: var(--muted-foreground); }
+  .tok  { font-size: 11.5px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .val  { font-size: 12px; font-weight: 700; }
+  .rel  { font-size: 10.5px; fill: var(--muted-foreground); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .relI { font-size: 10.5px; fill: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; }
+  .cap  { font-size: 10.5px; fill: var(--muted-foreground); }
+  .n    { fill: var(--card); stroke: var(--border); stroke-width: 1.3; }
+  .nI   { fill: var(--card); stroke: var(--accent); stroke-width: 1.6; }
+  .eS   { stroke: var(--border); stroke-width: 1.2; fill: none; }
+  .eI   { stroke: var(--accent); stroke-width: 2; fill: none; }
+  .key  { font-size: 11.5px; color: var(--muted-foreground); margin-top: 6px; }
+  .sw   { display:inline-block; width:20px; height:0; border-top:2px solid var(--accent); vertical-align:middle; margin:0 5px 0 14px; }
+  .sw2  { display:inline-block; width:20px; height:0; border-top:1.2px solid var(--border); vertical-align:middle; margin:0 5px 0 14px; }
+  .note { font-size: 12px; color: var(--muted-foreground); margin-top: 10px; max-width: 860px; line-height: 1.5; }
+  .note b { color: var(--foreground); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="hd"><b>16 düğüm · 21 kenar</b> — 6 informative, 15 structural · tüm token'lar artefakttaki ham hâliyle</div>
+
+<svg width="880" height="560" viewBox="0 0 880 560" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="mS" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+      <path d="M0,1 L9,5 L0,9" fill="none" stroke="var(--border)" stroke-width="1.6"/>
+    </marker>
+    <marker id="mI" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto">
+      <path d="M0,1 L9,5 L0,9" fill="none" stroke="var(--accent)" stroke-width="2"/>
+    </marker>
+  </defs>
+
+  <!-- ---------- EDGES (drawn first, under nodes) ---------- -->
+
+  <!-- patient <-> visit -->
+  <path class="eS" d="M104,60 L186,60" marker-end="url(#mS)"/>
+  <path class="eS" d="M186,76 L104,76" marker-end="url(#mS)"/>
+  <text class="rel" x="145" y="52" text-anchor="middle">has_visit</text>
+  <text class="rel" x="145" y="92" text-anchor="middle">index_visit_of</text>
+
+  <!-- visit -> complaints -->
+  <path class="eS" d="M268,52 L360,30" marker-end="url(#mS)"/>
+  <path class="eS" d="M268,64 L360,110" marker-end="url(#mS)"/>
+  <text class="rel" x="300" y="35" text-anchor="end">reports_complaint</text>
+
+  <!-- co_complaint pair -->
+  <path class="eI" d="M392,50 C372,70 372,74 392,94" marker-end="url(#mI)"/>
+  <path class="eI" d="M486,94 C506,74 506,70 486,50" marker-end="url(#mI)"/>
+  <text class="relI" x="439" y="76" text-anchor="middle">co_complaint</text>
+
+  <!-- visit -> vitals (bundled) -->
+  <path class="eS" d="M227,92 L227,150" marker-end="url(#mS)"/>
+  <text class="rel" x="236" y="124">observed_vital ×6</text>
+
+  <!-- visit -> index measurement -->
+  <path class="eS" d="M268,78 L636,196" marker-end="url(#mS)"/>
+  <text class="rel" x="470" y="130" text-anchor="middle">measured_in</text>
+
+  <!-- trajectory chain -->
+  <path class="eI" d="M144,316 L236,316" marker-end="url(#mI)"/>
+  <text class="relI" x="190" y="308" text-anchor="middle">trajectory_of</text>
+  <text class="cap" x="190" y="332" text-anchor="middle">Δ 0,0 · 631 sa</text>
+
+  <path class="eI" d="M328,316 L420,316" marker-end="url(#mI)"/>
+  <text class="relI" x="374" y="308" text-anchor="middle">trajectory_of</text>
+  <text class="cap" x="374" y="332" text-anchor="middle">Δ 0,0 · 85 sa</text>
+
+  <!-- baseline_of : last prior -> index -->
+  <path class="eI" d="M512,300 C568,300 596,250 636,220" marker-end="url(#mI)" stroke-width="2.6"/>
+  <text class="relI" x="566" y="272" text-anchor="middle">baseline_of</text>
+  <text class="cap" x="574" y="288" text-anchor="middle">Δ +0,2 · 491 sa</text>
+
+  <!-- instance_of : all four measurements -> analyte -->
+  <path class="eS" d="M100,336 C100,420 300,430 386,430" marker-end="url(#mS)"/>
+  <path class="eS" d="M284,336 C284,400 330,428 386,430" marker-end="url(#mS)"/>
+  <path class="eS" d="M468,336 C468,390 440,424 464,420" marker-end="url(#mS)"/>
+  <path class="eS" d="M660,224 C660,340 560,420 500,428" marker-end="url(#mS)"/>
+  <text class="rel" x="300" y="452" text-anchor="middle">instance_of ×4</text>
+
+  <!-- analyte -> knowledge -->
+  <path class="eI" d="M540,436 L636,436" marker-end="url(#mI)"/>
+  <text class="relI" x="588" y="428" text-anchor="middle">medical:assesses</text>
+
+  <!-- ---------- NODES ---------- -->
+
+  <!-- patient -->
+  <rect class="n" x="14" y="46" width="90" height="44" rx="7"/>
+  <text class="id" x="22" y="60">n0</text>
+  <text class="tok" x="59" y="76" text-anchor="middle">patient</text>
+
+  <!-- visit -->
+  <rect class="n" x="186" y="46" width="82" height="44" rx="7"/>
+  <text class="id" x="194" y="60">n1</text>
+  <text class="tok" x="227" y="76" text-anchor="middle">visit:index</text>
+
+  <!-- complaints -->
+  <rect class="nI" x="392" y="12" width="188" height="40" rx="7"/>
+  <text class="id" x="400" y="26">n2</text>
+  <text class="tok" x="486" y="42" text-anchor="middle">cc:altered mental status</text>
+
+  <rect class="nI" x="392" y="92" width="188" height="40" rx="7"/>
+  <text class="id" x="400" y="106">n3</text>
+  <text class="tok" x="486" y="122" text-anchor="middle">cc:syncope</text>
+
+  <!-- vitals block -->
+  <rect class="n" x="132" y="150" width="190" height="94" rx="7"/>
+  <text class="id" x="140" y="164">n4–n9</text>
+  <text class="tok" x="227" y="182" text-anchor="middle">vital:*</text>
+  <text class="cap" x="144" y="202">heartrate 65 · sbp 128</text>
+  <text class="cap" x="144" y="218">dbp 56 · o2sat 100</text>
+  <text class="cap" x="144" y="234">resprate 16 · temp 36,3</text>
+
+  <!-- prior measurements chain -->
+  <text class="cap" x="14" y="272">önceki ziyaretler</text>
+  <rect class="n" x="14" y="286" width="130" height="60" rx="7"/>
+  <text class="id" x="22" y="300">n12</text>
+  <text class="tok" x="79" y="318" text-anchor="middle">lab:50912</text>
+  <text class="val" x="79" y="337" text-anchor="middle">0,7</text>
+  <text class="cap" x="79" y="360" text-anchor="middle">−1207 sa</text>
+
+  <rect class="n" x="236" y="286" width="92" height="60" rx="7"/>
+  <text class="id" x="244" y="300">n13</text>
+  <text class="tok" x="282" y="318" text-anchor="middle">lab:50912</text>
+  <text class="val" x="282" y="337" text-anchor="middle">0,7</text>
+  <text class="cap" x="282" y="360" text-anchor="middle">−576 sa</text>
+
+  <rect class="n" x="420" y="286" width="92" height="60" rx="7"/>
+  <text class="id" x="428" y="300">n14</text>
+  <text class="tok" x="466" y="318" text-anchor="middle">lab:50912</text>
+  <text class="val" x="466" y="337" text-anchor="middle">0,7</text>
+  <text class="cap" x="466" y="360" text-anchor="middle">−491 sa</text>
+
+  <!-- index measurement -->
+  <text class="cap" x="636" y="182">bu ziyaret</text>
+  <rect class="nI" x="636" y="190" width="92" height="60" rx="7"/>
+  <text class="id" x="644" y="204">n10</text>
+  <text class="tok" x="682" y="222" text-anchor="middle">lab:50912</text>
+  <text class="val" x="682" y="241" text-anchor="middle">0,9</text>
+  <text class="cap" x="682" y="264" text-anchor="middle">−0,05 sa</text>
+
+  <!-- analyte -->
+  <rect class="n" x="386" y="410" width="154" height="44" rx="7"/>
+  <text class="id" x="394" y="424">n11</text>
+  <text class="tok" x="463" y="442" text-anchor="middle">lab:50912 (analyte)</text>
+
+  <!-- knowledge -->
+  <rect class="n" x="636" y="410" width="230" height="44" rx="7"/>
+  <text class="id" x="644" y="424">n15</text>
+  <text class="tok" x="751" y="442" text-anchor="middle">knowledge:physiology:</text>
+  <text class="tok" x="751" y="452" text-anchor="middle" style="font-size:10px">kidney_function</text>
+
+  <!-- cutoff marker -->
+  <line x1="760" y1="286" x2="760" y2="380" stroke="var(--accent)" stroke-width="1.3" stroke-dasharray="5 4" opacity=".6"/>
+  <text class="cap" x="766" y="330" style="fill:var(--accent)">cutoff = 0</text>
+  <text class="cap" x="766" y="346" style="fill:var(--accent)">sağında düğüm yok</text>
+
+  <!-- time axis -->
+  <line x1="14" y1="500" x2="740" y2="500" stroke="var(--border)" stroke-width="1"/>
+  <text class="cap" x="14" y="518">−1207 sa</text>
+  <text class="cap" x="282" y="518" text-anchor="middle">−576</text>
+  <text class="cap" x="466" y="518" text-anchor="middle">−491</text>
+  <text class="cap" x="682" y="518" text-anchor="middle">0</text>
+  <circle cx="79" cy="500" r="3.5" fill="var(--muted-foreground)"/>
+  <circle cx="282" cy="500" r="3.5" fill="var(--muted-foreground)"/>
+  <circle cx="466" cy="500" r="3.5" fill="var(--muted-foreground)"/>
+  <circle cx="682" cy="500" r="4.5" fill="var(--accent)"/>
+</svg>
+
+<div class="key">
+  <span class="sw"></span>informative (6)
+  <span class="sw2"></span>structural (15)
+</div>
+
+<div class="note">
+<b>lab:50912 = kreatinin.</b> Üç kez 0,7 ölçülmüş (−1207, −576, −491 sa), şimdi <b>0,9</b>.
+Tablo modeli yalnız “kreatinin = 0,9” kolonunu görür — normal sınırlarda. Graf ise
+<b>bu hastanın kendi sabit bazalinin 0,7 olduğunu</b> ve 491 saatte +0,2 yükseldiğini taşır.
+Aynı 0,9 değeri, bazali 1,4 olan bir hastada düşüş anlamına gelirdi; fark ancak iki uç noktaya
+birden bakınca çıkar. <b>cc:altered mental status + cc:syncope</b> birlikteliği de iki ayrı
+presence kolonunun toplamı değildir.
+</div>
+</div>
+</body>
+</html>

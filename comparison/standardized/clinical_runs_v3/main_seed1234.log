@@ -1,0 +1,19 @@
+~/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+{"stage": "bound", "parameter_count": 266142, "counts": {"train": 77930, "validation": 9582}, "edges": "all", "edge_payload": true, "message_passing": true}
+comparison/standardized/clinical_graph_v2/train.py:223: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /Users/runner/work/pytorch/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:836.)
+  total += float(loss) * batch.num_graphs
+{"epoch": 1, "train_loss": 2.919555, "accuracy": 0.358902, "balanced_acc": 0.297915, "macro_f1": 0.267022, "micro_f1": 0.358902, "top3_acc": 0.573471, "top5_acc": 0.682843, "seconds": 110.4}
+{"epoch": 2, "train_loss": 2.155387, "accuracy": 0.468691, "balanced_acc": 0.409284, "macro_f1": 0.398376, "micro_f1": 0.468691, "top3_acc": 0.675224, "top5_acc": 0.763619, "seconds": 147.0}
+{"epoch": 3, "train_loss": 1.968215, "accuracy": 0.496034, "balanced_acc": 0.43445, "macro_f1": 0.432437, "micro_f1": 0.496034, "top3_acc": 0.69808, "top5_acc": 0.786162, "seconds": 179.9}
+{"epoch": 4, "train_loss": 1.894825, "accuracy": 0.500209, "balanced_acc": 0.44517, "macro_f1": 0.443172, "micro_f1": 0.500209, "top3_acc": 0.701315, "top5_acc": 0.790962, "seconds": 212.7}
+{"epoch": 5, "train_loss": 1.848202, "accuracy": 0.504279, "balanced_acc": 0.462342, "macro_f1": 0.44693, "micro_f1": 0.504279, "top3_acc": 0.71436, "top5_acc": 0.800981, "seconds": 245.4}
+{"epoch": 6, "train_loss": 1.824242, "accuracy": 0.516072, "balanced_acc": 0.46801, "macro_f1": 0.451017, "micro_f1": 0.516072, "top3_acc": 0.716552, "top5_acc": 0.800772, "seconds": 278.0}
+{"epoch": 7, "train_loss": 1.798913, "accuracy": 0.512315, "balanced_acc": 0.474912, "macro_f1": 0.453108, "micro_f1": 0.512315, "top3_acc": 0.711438, "top5_acc": 0.801398, "seconds": 314.8}
+{"epoch": 8, "train_loss": 1.779779, "accuracy": 0.510854, "balanced_acc": 0.473425, "macro_f1": 0.451711, "micro_f1": 0.510854, "top3_acc": 0.715613, "top5_acc": 0.79952, "seconds": 352.5}
+{"epoch": 9, "train_loss": 1.763911, "accuracy": 0.510958, "balanced_acc": 0.474027, "macro_f1": 0.445698, "micro_f1": 0.510958, "top3_acc": 0.713421, "top5_acc": 0.80286, "seconds": 389.4}
+{"epoch": 10, "train_loss": 1.747912, "accuracy": 0.515446, "balanced_acc": 0.474571, "macro_f1": 0.452578, "micro_f1": 0.515446, "top3_acc": 0.71937, "top5_acc": 0.80693, "seconds": 426.1}
+{"epoch": 11, "train_loss": 1.735657, "accuracy": 0.504383, "balanced_acc": 0.477646, "macro_f1": 0.446376, "micro_f1": 0.504383, "top3_acc": 0.709664, "top5_acc": 0.801816, "seconds": 462.8}
+{"epoch": 12, "train_loss": 1.724161, "accuracy": 0.504488, "balanced_acc": 0.477749, "macro_f1": 0.448872, "micro_f1": 0.504488, "top3_acc": 0.711647, "top5_acc": 0.802129, "seconds": 499.7}
+{"stage": "completed", "selected_epoch": 7, "accuracy": 0.512315, "balanced_acc": 0.474912, "macro_f1": 0.453108, "micro_f1": 0.512315, "top3_acc": 0.711438, "top5_acc": 0.801398}

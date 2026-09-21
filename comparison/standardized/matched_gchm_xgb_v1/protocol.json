@@ -1,0 +1,52 @@
+{
+  "version": "matched-gchm-xgb-v1",
+  "status": "frozen_before_new_xgboost_training",
+  "purpose": "Exploratory validation-only matched class-weight comparison; not clinical early prediction or confirmatory testing",
+  "contract_sha256": "2a2566e662bf87b10d97e58700f868d8d6d6b036582ec046dd5453e6dcd9f7c0",
+  "test_evaluated": false,
+  "primary_metric": "macro_f1",
+  "selection": "First maximum validation macro_f1 rounded to six decimals over the complete fixed budget; no early stopping",
+  "secondary_metrics": ["balanced_acc", "accuracy", "micro_f1", "top3_acc", "top5_acc", "per_class_precision", "per_class_recall", "per_class_f1", "false_positives"],
+  "seeds": [1234, 1235, 1236],
+  "weight_policies": ["none", "sqrt_inverse"],
+  "class_weights": "Use shared class_weights on full training labels only: sqrt(N/(30*n_c)); no validation weighting and no resampling",
+  "xgboost": {
+    "num_boost_round": 1200,
+    "learning_rate": 0.03,
+    "max_depth": 4,
+    "subsample": 0.9,
+    "colsample_bytree": 0.9,
+    "reg_lambda": 2.0,
+    "min_child_weight": 3.0,
+    "tree_method": "hist",
+    "objective": "multi:softprob",
+    "num_class": 30,
+    "nthread": 4
+  },
+  "gchm_reuse": {
+    "none": {
+      "1234": "comparison/standardized/native_runs/ablation_v2/gchm_seed1234",
+      "1235": "comparison/standardized/native_runs/ablation_v2/gchm_seed1235",
+      "1236": "comparison/standardized/native_runs/ablation_v2/gchm_seed1236"
+    },
+    "sqrt_inverse": {
+      "1234": "comparison/standardized/native_runs/gchm_sqrt_v2/seed1234",
+      "1235": "comparison/standardized/native_runs/gchm_sqrt_v2/seed1235",
+      "1236": "comparison/standardized/native_runs/gchm_sqrt_v2/seed1236"
+    }
+  },
+  "reuse_policy": "Verify completed manifests, source snapshots, selection policy, cohort/label order, original checkpoint replay provenance, and recomputed selected metrics. Do not resume historical models under changed live sources. No neural retraining authorized.",
+  "ensemble_policy": "Equal probability average across exactly three independently trained seeds, each selected with the same primary metric; separate rows from single-model mean and sample SD",
+  "uncertainty": {
+    "method": "Paired stratified-by-true-class patient bootstrap, same sampled patients for compared models",
+    "replicates": 2000,
+    "seed": 20260919,
+    "confidence": 0.95,
+    "scope": "Conditional on the fixed validation cohort, selected checkpoints and class supports; does not account for model selection or training uncertainty; class intervals are pointwise, not multiplicity corrected"
+  },
+  "rare_class_policy": "Lowest training-support quartile: floor(30/4)=7 classes, stable class-index ties; existing validation-support <=100 grouping retained only as explicitly exploratory historical comparison",
+  "subgroups": ["0-1 concepts", "2-4 concepts", "5-9 concepts", "10+ concepts"],
+  "compute_fairness": "Matched information, folds, weights, metric and seeds, NOT equal architecture, optimizer, compute budget or checkpoint-search count (30 GCHM epochs versus 1200 boosting rounds)",
+  "scope_exclusions": ["test evaluation", "other GNN training", "concept-dropout training", "hyperparameter sweep", "silent temporal cleaning", "clinical deployment claims"],
+  "clinical_limitations": "Native temporal_clean=false. History may include current/future diagnoses; whole-visit labs and stay-wide vitals are not availability-safe. External time-aware evaluation and clinical cost analysis remain required."
+}

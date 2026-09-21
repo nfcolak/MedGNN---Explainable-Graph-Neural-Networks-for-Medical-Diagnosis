@@ -1,0 +1,441 @@
+{
+  "binding": {
+    "artifact": "comparison/standardized/event_inputs/clinical_graph_v3_full",
+    "artifact_graphs_sha256": "4cba568b143f48ee4e3ffff01018a80ab5c8bdb472fd0c62d1df9276ea4efe3f",
+    "artifact_schema": "clinical_graph_v2",
+    "batch_size": 64,
+    "counts": {
+      "train": 77930,
+      "validation": 9582
+    },
+    "device": "cpu",
+    "diagnosis_tier": true,
+    "dropout": 0.1,
+    "edge_dim": 22,
+    "edge_payload": true,
+    "edges": "all",
+    "epochs": 12,
+    "hidden": 96,
+    "layers": 3,
+    "lr": 0.001,
+    "message_passing": true,
+    "node_dim": 14,
+    "parameter_count": 266142,
+    "seed": 1235,
+    "selection": "best validation macro_f1; full fixed budget; no early stop",
+    "source_code": {
+      "__init__.py": "4cdf162150103311be700c566173f56d14be46b297962a6f7f7951d60659be1d",
+      "audit.py": "d4f6077cfa8f47858bbce4817be686dc7c2b27df535c5a24505ea4ae061eee92",
+      "build.py": "43ac1ebae715e0399b59cfc97917d4999cdc06bc1e2f06898b4fd00b54b1d03a",
+      "diagnosis.py": "cd35794f4b25118d8ac912c7ea2b5ff86e21ddf196edf1db2a90e10794499b72",
+      "graph.py": "f84931d25893b20fc13f79fc6fa3d4e796e013e183cd01108a8e6016adb22b13",
+      "mechanism_check.py": "ef50f22f4b7227d4167c257ac38c603f0b4d0d17752a836a587d14b998096520",
+      "model.py": "9bf52265336b7458486ee36a7bc5495fee55e6b3af2bdf439e1a8b4483bbf694",
+      "schema.py": "a3edc3162c6700910f731f388edc4c4f627cfc6e01ccd60566670f9746916514",
+      "store.py": "95dd5456a512776fef674ee668aa85e88a8bcc264dcd57f5c28d08ade2007b69",
+      "tensorize.py": "ffab7209e754c8386ec70ac59cbb743d03506a99f2f666c07d62d781a91ef892",
+      "train.py": "b1bf055aa14bfb8e076c7e12114fbba85e29c039d946eb6951706daf820a30fa"
+    },
+    "targets_sha256": "43e656abe6df96ca77c061d7c5cbbbd462aaca740581dc11b1d83257d4f7b34c",
+    "test_evaluated": false,
+    "torch": "2.8.0",
+    "train_limit": null,
+    "vocabulary_size": 1767,
+    "weights": "sqrt_inverse"
+  },
+  "caveats": [
+    "Single seed; seed spread not measured, so deltas below it are noise.",
+    "Validation reused for epoch selection; this is a selection score, not a held-out result.",
+    "Test fold never loaded.",
+    "Input artifact temporal_clean=true but storetime is an availability proxy."
+  ],
+  "history": [
+    {
+      "accuracy": 0.34617,
+      "balanced_acc": 0.256552,
+      "epoch": 1,
+      "macro_f1": 0.254736,
+      "micro_f1": 0.34617,
+      "seconds": 108.3,
+      "top3_acc": 0.563348,
+      "top5_acc": 0.674076,
+      "train_loss": 2.906026
+    },
+    {
+      "accuracy": 0.476205,
+      "balanced_acc": 0.408179,
+      "epoch": 2,
+      "macro_f1": 0.393875,
+      "micro_f1": 0.476205,
+      "seconds": 142.5,
+      "top3_acc": 0.669067,
+      "top5_acc": 0.761219,
+      "train_loss": 2.191395
+    },
+    {
+      "accuracy": 0.483824,
+      "balanced_acc": 0.463261,
+      "epoch": 3,
+      "macro_f1": 0.422661,
+      "micro_f1": 0.483824,
+      "seconds": 175.2,
+      "top3_acc": 0.67512,
+      "top5_acc": 0.777082,
+      "train_loss": 1.952927
+    },
+    {
+      "accuracy": 0.497913,
+      "balanced_acc": 0.471076,
+      "epoch": 4,
+      "macro_f1": 0.437935,
+      "micro_f1": 0.497913,
+      "seconds": 205.9,
+      "top3_acc": 0.697558,
+      "top5_acc": 0.788144,
+      "train_loss": 1.87867
+    },
+    {
+      "accuracy": 0.504279,
+      "balanced_acc": 0.446886,
+      "epoch": 5,
+      "macro_f1": 0.434743,
+      "micro_f1": 0.504279,
+      "seconds": 236.4,
+      "top3_acc": 0.710394,
+      "top5_acc": 0.79785,
+      "train_loss": 1.832484
+    },
+    {
+      "accuracy": 0.51315,
+      "balanced_acc": 0.476582,
+      "epoch": 6,
+      "macro_f1": 0.445402,
+      "micro_f1": 0.51315,
+      "seconds": 325.6,
+      "top3_acc": 0.714256,
+      "top5_acc": 0.794302,
+      "train_loss": 1.806539
+    },
+    {
+      "accuracy": 0.510123,
+      "balanced_acc": 0.474093,
+      "epoch": 7,
+      "macro_f1": 0.453808,
+      "micro_f1": 0.510123,
+      "seconds": 424.2,
+      "top3_acc": 0.707681,
+      "top5_acc": 0.795241,
+      "train_loss": 1.777406
+    },
+    {
+      "accuracy": 0.506784,
+      "balanced_acc": 0.485505,
+      "epoch": 8,
+      "macro_f1": 0.447752,
+      "micro_f1": 0.506784,
+      "seconds": 487.2,
+      "top3_acc": 0.707264,
+      "top5_acc": 0.796807,
+      "train_loss": 1.760296
+    },
+    {
+      "accuracy": 0.51315,
+      "balanced_acc": 0.479009,
+      "epoch": 9,
+      "macro_f1": 0.451359,
+      "micro_f1": 0.51315,
+      "seconds": 520.3,
+      "top3_acc": 0.713317,
+      "top5_acc": 0.797641,
+      "train_loss": 1.743027
+    },
+    {
+      "accuracy": 0.506157,
+      "balanced_acc": 0.481872,
+      "epoch": 10,
+      "macro_f1": 0.441763,
+      "micro_f1": 0.506157,
+      "seconds": 552.5,
+      "top3_acc": 0.709873,
+      "top5_acc": 0.799729,
+      "train_loss": 1.725957
+    },
+    {
+      "accuracy": 0.512732,
+      "balanced_acc": 0.481647,
+      "epoch": 11,
+      "macro_f1": 0.449173,
+      "micro_f1": 0.512732,
+      "seconds": 585.2,
+      "top3_acc": 0.718743,
+      "top5_acc": 0.804842,
+      "train_loss": 1.712007
+    },
+    {
+      "accuracy": 0.513358,
+      "balanced_acc": 0.45963,
+      "epoch": 12,
+      "macro_f1": 0.455281,
+      "micro_f1": 0.513358,
+      "seconds": 617.1,
+      "top3_acc": 0.716343,
+      "top5_acc": 0.80933,
+      "train_loss": 1.701963
+    }
+  ],
+  "majority_baseline_accuracy": 0.109894,
+  "metrics": {
+    "accuracy": 0.513358,
+    "balanced_acc": 0.45963,
+    "macro_f1": 0.455281,
+    "micro_f1": 0.513358,
+    "top3_acc": 0.716343,
+    "top5_acc": 0.80933
+  },
+  "per_class": [
+    {
+      "f1": 0.155932,
+      "index": 0,
+      "label": "Acute kidney failure",
+      "precision": 0.353846,
+      "recall": 0.1,
+      "support": 230
+    },
+    {
+      "f1": 0.60251,
+      "index": 1,
+      "label": "Acute pharyngitis",
+      "precision": 0.55814,
+      "recall": 0.654545,
+      "support": 110
+    },
+    {
+      "f1": 0.243094,
+      "index": 2,
+      "label": "Acute upper respiratory infection",
+      "precision": 0.217822,
+      "recall": 0.275,
+      "support": 80
+    },
+    {
+      "f1": 0.74269,
+      "index": 3,
+      "label": "Alcohol abuse with intoxication",
+      "precision": 0.798742,
+      "recall": 0.693989,
+      "support": 366
+    },
+    {
+      "f1": 0.501053,
+      "index": 4,
+      "label": "Anemia",
+      "precision": 0.423488,
+      "recall": 0.613402,
+      "support": 194
+    },
+    {
+      "f1": 0.496183,
+      "index": 5,
+      "label": "Anxiety disorder",
+      "precision": 0.528455,
+      "recall": 0.467626,
+      "support": 139
+    },
+    {
+      "f1": 0.671703,
+      "index": 6,
+      "label": "Back or spine pain",
+      "precision": 0.697575,
+      "recall": 0.647682,
+      "support": 755
+    },
+    {
+      "f1": 0.452525,
+      "index": 7,
+      "label": "Cardiovascular risk factor",
+      "precision": 0.483279,
+      "recall": 0.425451,
+      "support": 1053
+    },
+    {
+      "f1": 0.266949,
+      "index": 8,
+      "label": "Dehydration",
+      "precision": 0.229091,
+      "recall": 0.319797,
+      "support": 197
+    },
+    {
+      "f1": 0.429696,
+      "index": 9,
+      "label": "Diabetes mellitus",
+      "precision": 0.356343,
+      "recall": 0.541076,
+      "support": 706
+    },
+    {
+      "f1": 0.35,
+      "index": 10,
+      "label": "End stage renal disease",
+      "precision": 0.304348,
+      "recall": 0.411765,
+      "support": 119
+    },
+    {
+      "f1": 0.757225,
+      "index": 11,
+      "label": "Epilepsy",
+      "precision": 0.789157,
+      "recall": 0.727778,
+      "support": 180
+    },
+    {
+      "f1": 0.750809,
+      "index": 12,
+      "label": "GI bleed",
+      "precision": 0.820755,
+      "recall": 0.691849,
+      "support": 503
+    },
+    {
+      "f1": 0.566906,
+      "index": 13,
+      "label": "Head injury",
+      "precision": 0.513021,
+      "recall": 0.633441,
+      "support": 311
+    },
+    {
+      "f1": 0.401848,
+      "index": 14,
+      "label": "Heart failure",
+      "precision": 0.368644,
+      "recall": 0.441624,
+      "support": 197
+    },
+    {
+      "f1": 0.375691,
+      "index": 15,
+      "label": "Hypokalemia",
+      "precision": 0.485714,
+      "recall": 0.306306,
+      "support": 222
+    },
+    {
+      "f1": 0.340136,
+      "index": 16,
+      "label": "Hypotension",
+      "precision": 0.462963,
+      "recall": 0.268817,
+      "support": 93
+    },
+    {
+      "f1": 0.117647,
+      "index": 17,
+      "label": "Hypothyroidism",
+      "precision": 0.315789,
+      "recall": 0.072289,
+      "support": 83
+    },
+    {
+      "f1": 0.173913,
+      "index": 18,
+      "label": "Laceration w/o fb of l idx fngr w/o damage to nail",
+      "precision": 0.153846,
+      "recall": 0.2,
+      "support": 20
+    },
+    {
+      "f1": 0.503775,
+      "index": 19,
+      "label": "Limb injury or pain",
+      "precision": 0.471722,
+      "recall": 0.540501,
+      "support": 679
+    },
+    {
+      "f1": 0.484227,
+      "index": 20,
+      "label": "Lower respiratory disease",
+      "precision": 0.59381,
+      "recall": 0.408788,
+      "support": 751
+    },
+    {
+      "f1": 0.79638,
+      "index": 21,
+      "label": "Major depressive disorder",
+      "precision": 0.79638,
+      "recall": 0.79638,
+      "support": 442
+    },
+    {
+      "f1": 0.290323,
+      "index": 22,
+      "label": "Multiple fractures of ribs",
+      "precision": 0.259615,
+      "recall": 0.329268,
+      "support": 82
+    },
+    {
+      "f1": 0.397661,
+      "index": 23,
+      "label": "Non-ST elevation (NSTEMI) myocardial infarction",
+      "precision": 0.465753,
+      "recall": 0.346939,
+      "support": 98
+    },
+    {
+      "f1": 0.221053,
+      "index": 24,
+      "label": "Sepsis",
+      "precision": 0.182609,
+      "recall": 0.28,
+      "support": 75
+    },
+    {
+      "f1": 0.509606,
+      "index": 25,
+      "label": "Skin or soft-tissue infection",
+      "precision": 0.495088,
+      "recall": 0.525,
+      "support": 480
+    },
+    {
+      "f1": 0.476618,
+      "index": 26,
+      "label": "UTI or pyelonephritis",
+      "precision": 0.463263,
+      "recall": 0.490765,
+      "support": 758
+    },
+    {
+      "f1": 0.59633,
+      "index": 27,
+      "label": "Unsp intestnl obst",
+      "precision": 0.548523,
+      "recall": 0.653266,
+      "support": 199
+    },
+    {
+      "f1": 0.541516,
+      "index": 28,
+      "label": "Unspecified asthma with (acute) exacerbation",
+      "precision": 0.576923,
+      "recall": 0.510204,
+      "support": 147
+    },
+    {
+      "f1": 0.444444,
+      "index": 29,
+      "label": "Unspecified atrial fibrillation",
+      "precision": 0.477941,
+      "recall": 0.415335,
+      "support": 313
+    }
+  ],
+  "proba_sha256": "2ace0f09d80cc91d6e1be4a1d03e4b2cf154db136cf564442d8b1dfb7b23bb6a",
+  "selected_epoch": 12,
+  "status": "completed",
+  "total_seconds": 617.2
+}
