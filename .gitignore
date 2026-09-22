@@ -4,8 +4,12 @@ prot_gnn_core/
 **/*.pt
 **/*.pth
 data/*.csv
+# Raw MIMIC-derived source data — was uncovered by any pattern; redistribution
+# is restricted by MIMIC access terms. Never commit.
+data/Original CSVs/
 **/__pycache__/
 .venv-graphcare/
+.venv-protgnn/
 .DS_Store
 
 # Vendored GraphCare (third-party clone; obtain via graphcare_analysis/README.md)

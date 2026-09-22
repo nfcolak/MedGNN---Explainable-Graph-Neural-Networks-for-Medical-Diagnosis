@@ -21,27 +21,29 @@
   },
   "methods": {
     "protgnn": {
-      "command": ["python3", "-u", "-m", "protgnn_analysis.train"],
+      "command": [".venv-protgnn/bin/python3", "-u", "-m", "protgnn_analysis.train"],
       "flags": {
         "structure": "--graph-structure",
         "split": "--canonical-split",
         "seed": "--seed",
         "output_dir": "--output-dir",
         "limit": "--limit",
-        "max_epochs": "--max-epochs"
+        "max_epochs": "--max-epochs",
+        "loss_weighting": "--loss_weighting"
       },
       "metrics_path": "test_metrics.json",
       "checkpoint_path": "checkpoints/mimic_intra_patient_disease/gcn_best.pth"
     },
     "gsat": {
-      "command": ["python3", "-u", "-m", "gsat_analysis.train"],
+      "command": [".venv-protgnn/bin/python3", "-u", "-m", "gsat_analysis.train"],
       "flags": {
         "structure": "--graph_structure",
         "split": "--canonical_split",
         "seed": "--seed",
         "output_dir": "--out_dir",
         "limit": "--limit",
-        "max_epochs": "--max_epochs"
+        "max_epochs": "--max_epochs",
+        "loss_weighting": "--loss_weighting"
       },
       "metrics_path": "metrics.json",
       "checkpoint_path": "gsat_model.pt"
@@ -54,7 +56,8 @@
         "seed": "--seed",
         "output_dir": "--out_dir",
         "limit": "--limit",
-        "max_epochs": "--max_epochs"
+        "max_epochs": "--max_epochs",
+        "loss_weighting": "--loss_weighting"
       },
       "metrics_path": "metrics.json",
       "checkpoint_path": "graphcare_model.pt"

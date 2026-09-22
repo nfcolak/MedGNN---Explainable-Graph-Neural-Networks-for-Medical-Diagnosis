@@ -449,7 +449,7 @@ def _prototype_record(gnn_nets, batch, output_dim, pred_label=None, top_k=5):
 def train_model(clst: float, sep: float, use_prot: bool = False,
                 margin: float = 1.0, canonical_split=None,
                 checkpoint_root=None, standardized: bool = False,
-                limit=None) -> tuple:
+                limit=None, loss_weighting: str = "inverse") -> tuple:
     """
     Train ProtGNN (or a plain GCN when use_prot=False) and save checkpoints.
 
@@ -459,11 +459,20 @@ def train_model(clst: float, sep: float, use_prot: bool = False,
     sep       : separation-loss weight (only active when use_prot=True)
     use_prot  : whether to enable prototype layers.  When False, the model
                 is trained as a standard GCN/GIN which converges reliably.
+    loss_weighting : "inverse" (default — ProtGNN's ORIGINAL weighting,
+                unchanged; full inverse class frequency, via
+                _compute_class_weights) or "sqrt_inverse" (the shared,
+                dampened policy used for the cross-method comparison — the
+                exact same formula GSAT/GraphCare use, via
+                comparison.standardized.performance_review.class_weights).
+                Additive: the default reproduces every prior run byte-for-byte.
 
     Returns
     -------
     gnn_nets, epoch_rows, test_state, output_dim, epoch_header, diagnostics
     """
+    if loss_weighting not in ("inverse", "sqrt_inverse", "none"):
+        raise ValueError("loss_weighting must be 'inverse', 'sqrt_inverse', or 'none'.")
     print("=" * 60)
     print("TRAINING")
     print("=" * 60)
@@ -519,7 +528,13 @@ def train_model(clst: float, sep: float, use_prot: bool = False,
     train_labels  = np.array([int(dataset[i].y.view(-1)[0].item()) for i in train_indices])
     eval_split_labels = np.array([int(dataset[i].y.view(-1)[0].item()) for i in eval_indices])
     test_split_labels = np.array([int(dataset[i].y.view(-1)[0].item()) for i in test_indices])
-    class_weights, class_counts = _compute_class_weights(train_labels, output_dim)
+    if loss_weighting == "inverse":
+        class_weights, class_counts = _compute_class_weights(train_labels, output_dim)  # unchanged path
+    else:
+        class_counts = np.bincount(train_labels, minlength=output_dim).astype(np.float32)
+        from comparison.standardized.performance_review import class_weights as _policy
+        class_weights = torch.tensor(_policy(train_labels, output_dim, loss_weighting),
+                                     dtype=torch.float32, device=model_args.device)
     criterion = nn.CrossEntropyLoss(weight=class_weights)
     optimizer = Adam(gnn_nets.parameters(), lr=train_args.learning_rate, weight_decay=train_args.weight_decay)
 
@@ -1309,6 +1324,7 @@ def main(
     archive_tag="auto",
     limit=None,
     max_epochs=None,
+    loss_weighting="inverse",
 ):
     """Run ProtGNN in either all-explicit standardized or legacy mode."""
     global RESULTS_DIR
@@ -1392,6 +1408,7 @@ def main(
             checkpoint_root=(target_output_dir / "checkpoints" if standardized else None),
             standardized=standardized,
             limit=limit,
+            loss_weighting=loss_weighting,
         )
         if not hasattr(gnn_nets, "parameters"):
             raise RuntimeError("ProtGNN model cannot report parameter_count.")
@@ -1486,6 +1503,10 @@ def cli(argv=None):
     parser.add_argument("--archive_tag", default="auto", help="Legacy archive tag")
     parser.add_argument("--limit", type=int, default=None, help="Cap each canonical fold")
     parser.add_argument("--max-epochs", "--max_epochs", dest="max_epochs", type=int, default=None)
+    parser.add_argument("--loss_weighting", choices=("inverse", "sqrt_inverse", "none"),
+                        default="inverse",
+                        help="inverse (default, ProtGNN's ORIGINAL weighting, unchanged) | "
+                             "sqrt_inverse (shared cross-method comparison policy) | none")
     args = parser.parse_args(argv)
     return main(
         graph_structure=args.graph_structure,
@@ -1502,6 +1523,7 @@ def cli(argv=None):
         archive_tag=args.archive_tag,
         limit=args.limit,
         max_epochs=args.max_epochs,
+        loss_weighting=args.loss_weighting,
     )
 
 

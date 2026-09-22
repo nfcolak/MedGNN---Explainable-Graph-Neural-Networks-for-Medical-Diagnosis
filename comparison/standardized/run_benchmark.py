@@ -41,11 +41,14 @@ class RunnerOptions:
     config: Mapping[str, Any]
     limit: Optional[int] = None
     max_epochs: Optional[int] = None
+    loss_weighting: Optional[str] = None
 
     def __post_init__(self) -> None:
         for name, value in (("limit", self.limit), ("max_epochs", self.max_epochs)):
             if value is not None and (type(value) is not int or value < 1):
                 raise ValueError(f"{name} must be a positive exact integer.")
+        if self.loss_weighting is not None and self.loss_weighting not in ("sqrt_inverse", "none"):
+            raise ValueError("loss_weighting must be 'sqrt_inverse' or 'none' when provided.")
 
 
 def load_config(path: Path = DEFAULT_CONFIG_PATH) -> dict[str, Any]:
@@ -99,7 +102,7 @@ def command_for(spec: BenchmarkSpec, options: RunnerOptions) -> list[str]:
         isinstance(part, str) and part for part in base_command
     ):
         raise ValueError(f"Command for {spec.method!r} must be a nonempty argv list.")
-    required_flags = {"structure", "split", "seed", "output_dir", "limit", "max_epochs"}
+    required_flags = {"structure", "split", "seed", "output_dir", "limit", "max_epochs", "loss_weighting"}
     if not isinstance(flags, dict) or set(flags) != required_flags:
         raise ValueError(f"Command flags for {spec.method!r} are incomplete or unexpected.")
 
@@ -120,6 +123,8 @@ def command_for(spec: BenchmarkSpec, options: RunnerOptions) -> list[str]:
         command.extend([flags["limit"], str(options.limit)])
     if options.max_epochs is not None:
         command.extend([flags["max_epochs"], str(options.max_epochs)])
+    if options.loss_weighting is not None:
+        command.extend([flags["loss_weighting"], options.loss_weighting])
     return command
 
 
@@ -516,6 +521,10 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--limit", type=int)
     parser.add_argument("--max-epochs", type=int)
+    parser.add_argument("--loss-weighting", choices=("sqrt_inverse", "none"), default=None,
+                        help="Class-imbalance weighting applied uniformly to all three "
+                             "methods' training loss (train-fold-only). Omit to use each "
+                             "method's own unchanged default.")
     parser.add_argument("--continue-on-error", action="store_true")
     return parser
 
@@ -523,7 +532,8 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = _parser().parse_args(argv)
     config = load_config(args.config)
-    options = RunnerOptions(config=config, limit=args.limit, max_epochs=args.max_epochs)
+    options = RunnerOptions(config=config, limit=args.limit, max_epochs=args.max_epochs,
+                            loss_weighting=args.loss_weighting)
     specs = build_run_specs(config)
     for name, requested in (
         ("methods", args.methods), ("structures", args.structures), ("seeds", args.seeds)
