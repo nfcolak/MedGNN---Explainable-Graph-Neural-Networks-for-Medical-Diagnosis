@@ -1176,9 +1176,10 @@ def test_method_clis_accept_every_runner_flag(monkeypatch):
         graphcare_run, "main", lambda **kwargs: graphcare_call.update(kwargs)
     )
     monkeypatch.setattr(
-        gsat_train, "main", lambda *args: gsat_call.update({
+        gsat_train, "main", lambda *args, **kwargs: gsat_call.update({
             "graph_structure": args[0], "max_epochs": args[1], "limit": args[2],
             "out_dir": args[3], "canonical_split": args[4], "seed": args[5],
+            **kwargs,  # e.g. loss_weighting, added by class-weighting-and-hpo
         })
     )
     monkeypatch.setattr(
