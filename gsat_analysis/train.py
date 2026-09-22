@@ -33,17 +33,33 @@ from shared.lib.metrics import multiclass_metrics
 from protgnn_analysis.load_dataset import get_dataset, get_dataloader
 from gsat_analysis.config import cfg
 from gsat_analysis.models import GIN, GSAT, ExtractorMLP
+# Reused verbatim (not reimplemented) so GSAT, ProtGNN and GraphCare compute
+# class weights with the exact same formula for this comparison — see
+# --loss_weighting below.
+from comparison.standardized.performance_review import class_weights as _class_weight_policy
+
+LOSS_WEIGHTING_CHOICES = ("none", "sqrt_inverse")
 
 
-def build_model(x_dim, num_classes, device):
+def build_model(x_dim, num_classes, device, class_weights=None):
     clf = GIN(x_dim, num_classes, hidden_dim=cfg.hidden_dim,
               num_layers=cfg.num_layers, dropout=cfg.dropout, readout=cfg.readout)
     extractor = ExtractorMLP(cfg.hidden_dim, attention_level=cfg.attention_level)
     gsat = GSAT(clf, extractor, attention_level=cfg.attention_level,
                 temperature=cfg.temperature, info_loss_coef=cfg.info_loss_coef,
                 init_r=cfg.init_r, final_r=cfg.final_r,
-                decay_interval=cfg.decay_interval, decay_r=cfg.decay_r)
+                decay_interval=cfg.decay_interval, decay_r=cfg.decay_r,
+                class_weights=class_weights)
     return gsat.to(device)
+
+
+def _train_fold_class_weights(train_loader, num_classes, loss_weighting):
+    """None for 'none' (unweighted CE, the original default); else the
+    train-fold-only weight vector for the requested policy."""
+    if loss_weighting == "none":
+        return None
+    labels = np.array([int(g.y.view(-1)[0]) for g in train_loader.dataset])
+    return _class_weight_policy(labels, num_classes, loss_weighting)
 
 
 @torch.no_grad()
@@ -68,12 +84,14 @@ def evaluate(gsat, loader, device, epoch):
     return m
 
 
-def _write_report(test, structure, n_train, n_val, n_test, epochs, out_dir):
+def _write_report(test, structure, n_train, n_val, n_test, epochs, out_dir,
+                   loss_weighting="none"):
     out_dir.mkdir(parents=True, exist_ok=True)
     lines = [
         "GSAT (Method C) -- stochastic-attention GIN on mimic_intra_patient_disease",
         f"  dataset          : {cfg.dataset_name}  (graphs reused from protgnn cache)",
         f"  graph structure  : {structure}",
+        f"  loss_weighting   : {loss_weighting}",
         f"  split            : train={n_train} val={n_val} test={n_test}",
         f"  backbone         : GIN dim={cfg.hidden_dim} x {cfg.num_layers} layers, "
         f"readout={cfg.readout}, dropout={cfg.dropout}",
@@ -101,17 +119,25 @@ def _validate_optional_positive_int(name, value):
 
 
 @isolated_callable(cfg)
-def main(graph_structure, max_epochs, limit, out_dir, canonical_split, seed):
+def main(graph_structure, max_epochs, limit, out_dir, canonical_split, seed,
+         loss_weighting="none"):
     """Run GSAT under the standardized benchmark contract.
 
     RNGs are seeded here. Cross-backend bitwise determinism is intentionally
     recorded by the run-manifest policy rather than forced: CUDA/MPS supported
     deterministic operations differ across installed torch/PyG versions.
+
+    loss_weighting: "none" (default, original unweighted cross-entropy) or
+    "sqrt_inverse" (dampened inverse-class-frequency weights from the TRAIN
+    fold only — see _class_weight_policy). Additive: omitting the flag
+    reproduces every prior run byte-for-byte.
     """
     if canonical_split is None:
         raise ValueError("Standardized GSAT runs require a canonical split.")
     if out_dir is None:
         raise ValueError("Standardized GSAT runs require an output directory.")
+    if loss_weighting not in LOSS_WEIGHTING_CHOICES:
+        raise ValueError(f"loss_weighting must be one of {LOSS_WEIGHTING_CHOICES}.")
     _validate_optional_positive_int("max_epochs", max_epochs)
     _validate_optional_positive_int("limit", limit)
     spec = BenchmarkSpec("gsat", graph_structure, seed)
@@ -123,7 +149,7 @@ def main(graph_structure, max_epochs, limit, out_dir, canonical_split, seed):
     os.environ[env_key] = str(canonical_split)
     try:
         return _run_training(
-            spec, max_epochs, limit, Path(out_dir), Path(canonical_split)
+            spec, max_epochs, limit, Path(out_dir), Path(canonical_split), loss_weighting
         )
     finally:
         if previous_split is None:
@@ -146,7 +172,7 @@ def _limit_fold_loaders(loaders, limit):
     }
 
 
-def _run_training(spec, max_epochs, limit, out_dir, canonical_split):
+def _run_training(spec, max_epochs, limit, out_dir, canonical_split, loss_weighting="none"):
     device = torch.device(cfg.device)
     max_epochs = cfg.max_epochs if max_epochs is None else max_epochs
     structure = resolve_structure(spec.structure, "gsat")
@@ -166,7 +192,11 @@ def _run_training(spec, max_epochs, limit, out_dir, canonical_split):
     n_val, n_test = len(val_loader.dataset), len(test_loader.dataset)
 
     x_dim = dataset[0].x.size(1)
-    gsat = build_model(x_dim, cfg.num_classes, device)
+    class_weights = _train_fold_class_weights(train_loader, cfg.num_classes, loss_weighting)
+    if class_weights is not None:
+        print(f"  loss_weighting   : {loss_weighting}  "
+              f"(min={class_weights.min():.3f} max={class_weights.max():.3f})")
+    gsat = build_model(x_dim, cfg.num_classes, device, class_weights=class_weights)
     opt = torch.optim.Adam(gsat.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
     parameter_count = sum(p.numel() for p in gsat.parameters())
     print(f"  params           : {parameter_count:,}")
@@ -216,6 +246,7 @@ def _run_training(spec, max_epochs, limit, out_dir, canonical_split):
     ckpt = out_dir / "gsat_model.pt"
     torch.save({"state_dict": gsat.state_dict(), "x_dim": x_dim,
                 "num_classes": cfg.num_classes, "structure": structure,
+                "loss_weighting": loss_weighting,
                 "config": {k: getattr(cfg, k) for k in (
                     "hidden_dim", "num_layers", "dropout", "readout",
                     "attention_level", "temperature", "info_loss_coef",
@@ -227,7 +258,7 @@ def _run_training(spec, max_epochs, limit, out_dir, canonical_split):
     test["parameter_count"] = parameter_count
     print(f"  TEST macro_f1 {test['macro_f1']:.4f} | micro_f1 {test['micro_f1']:.4f} "
           f"| acc {test['accuracy']:.4f}")
-    _write_report(test, structure, n_train, n_val, n_test, last_epoch, out_dir)
+    _write_report(test, structure, n_train, n_val, n_test, last_epoch, out_dir, loss_weighting)
     return test
 
 
@@ -245,6 +276,9 @@ def cli(argv=None):
     parser.add_argument("--out_dir", type=Path, required=True)
     parser.add_argument("--canonical_split", type=Path, required=True)
     parser.add_argument("--seed", type=int, required=True)
+    parser.add_argument("--loss_weighting", choices=LOSS_WEIGHTING_CHOICES, default="none",
+                        help="none (default, unweighted CE) | sqrt_inverse "
+                             "(train-fold class weighting for imbalance)")
     args = parser.parse_args(argv)
     return main(
         args.graph_structure,
@@ -253,6 +287,7 @@ def cli(argv=None):
         args.out_dir,
         args.canonical_split,
         args.seed,
+        loss_weighting=args.loss_weighting,
     )
 
 

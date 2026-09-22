@@ -84,10 +84,18 @@ class Checkpoint:
         self._save()
 
 
-def command_plan(root: Path = ROOT, *, cohort_size: int = COHORT_SIZE, cohort_path: Path = DEFAULT_COHORT) -> dict[str, list[list[str]]]:
-    """Return argv-only commands, delegating all scientific behavior."""
+def command_plan(root: Path = ROOT, *, cohort_size: int = COHORT_SIZE, cohort_path: Path = DEFAULT_COHORT,
+                 loss_weighting: str | None = None) -> dict[str, list[list[str]]]:
+    """Return argv-only commands, delegating all scientific behavior.
+
+    loss_weighting: None (default — each method keeps its own current loss)
+    or "sqrt_inverse"/"none", applied uniformly to all three training cells.
+    """
     validate_cohort_size(cohort_size)
+    if loss_weighting is not None and loss_weighting not in ("sqrt_inverse", "none"):
+        raise ValueError("loss_weighting must be 'sqrt_inverse' or 'none' when provided.")
     py = sys.executable
+    loss_flag = [] if loss_weighting is None else ["--loss-weighting", loss_weighting]
     return {
         "preflight": [[py, "-m", "comparison.standardized.run_benchmark", "--dry-run"]],
         "cache": [
@@ -95,7 +103,8 @@ def command_plan(root: Path = ROOT, *, cohort_size: int = COHORT_SIZE, cohort_pa
             [py, "-m", "comparison.standardized.audit_caches"],
         ],
         "train": [[py, "-m", "comparison.standardized.run_benchmark",
-                   "--methods", method, "--structures", topology, "--seeds", str(seed)]
+                   "--methods", method, "--structures", topology, "--seeds", str(seed),
+                   *loss_flag]
                   for method in ("protgnn", "gsat", "graphcare")
                   for topology in ("star", "cooccur") for seed in (1234, 1235, 1236)],
         "explain": [[py, "-m", "comparison.standardized.run_explanations",
@@ -199,10 +208,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     p.add_argument("--cohort", dest="cohort_path", type=Path, default=DEFAULT_COHORT)
     p.add_argument("--state", type=Path, default=STATE_PATH)
     p.add_argument("--events", type=Path, default=EVENTS_PATH)
+    p.add_argument("--loss-weighting", choices=("sqrt_inverse", "none"), default=None,
+                   help="Class-imbalance weighting applied uniformly to all three "
+                        "methods' training (train-fold-only). Omit to use each "
+                        "method's own unchanged default.")
     args = p.parse_args(argv)
     if args.archive_incomplete and not (args.resume and args.retry_failed):
         p.error("--archive-incomplete requires --resume --retry-failed")
-    plan = command_plan(cohort_size=args.cohort_size, cohort_path=args.cohort_path)
+    plan = command_plan(cohort_size=args.cohort_size, cohort_path=args.cohort_path,
+                        loss_weighting=args.loss_weighting)
     print(json.dumps({"phases": PHASES, "commands": plan}, indent=2, sort_keys=True))
     if args.dry_run or not args.execute:
         return 0

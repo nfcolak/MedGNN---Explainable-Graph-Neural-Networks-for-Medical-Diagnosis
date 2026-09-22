@@ -16,6 +16,7 @@ from pathlib import Path
 import sys
 import time
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 
@@ -31,6 +32,19 @@ from graphcare_analysis.build_kg import (
     validate_training_provenance,
 )
 from graphcare_analysis.adapter import build_loaders
+# Reused verbatim (pure numpy, no torch/PyG dependency — safe in this venv too)
+# so GraphCare, GSAT and ProtGNN compute class weights with the exact same
+# formula for this comparison — see --loss_weighting below.
+from comparison.standardized.performance_review import class_weights as _class_weight_policy
+
+LOSS_WEIGHTING_CHOICES = ("none", "sqrt_inverse")
+
+
+def _train_fold_class_weights(train_loader, num_classes, loss_weighting):
+    if loss_weighting == "none":
+        return None
+    labels = np.array([train_loader.dataset[i]["y"] for i in range(len(train_loader.dataset))])
+    return _class_weight_policy(labels, num_classes, loss_weighting)
 
 
 def _load_kg(kg_path, split_json=None):
@@ -97,12 +111,13 @@ def _evaluate(model, loader, device):
     return m
 
 
-def _write_report(test, C, kg, limit, epochs, out_dir=None):
+def _write_report(test, C, kg, limit, epochs, out_dir=None, loss_weighting="none"):
     out_dir = out_dir or cfg.OUTPUTS_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
     lines = [
         "GRAPHCARE (Method B) -- model-direct on merged_ed.csv",
         f"  dataset          : merged_ed.csv (limit={limit})",
+        f"  loss_weighting   : {loss_weighting}",
         f"  KG               : {kg['num_nodes']} nodes, {kg['num_rels']} rels (ontology+PMI)",
         f"  model            : GraphCare BAT-GNN, dim={cfg.emb_dim}, layers={cfg.num_layers}",
         f"  classes          : {C}",
@@ -143,11 +158,19 @@ def _validate_standardized_output(out_dir, spec):
 
 @isolated_callable(cfg)
 def main(limit=None, max_epochs=None, patience=10, min_delta=0.005,
-         split_json=None, out_dir=None, graph_structure=None, seed=None):
-    """Run GraphCare in fail-closed standardized mode or explicit legacy mode."""
+         split_json=None, out_dir=None, graph_structure=None, seed=None,
+         loss_weighting="none"):
+    """Run GraphCare in fail-closed standardized mode or explicit legacy mode.
+
+    loss_weighting: "none" (default, original unweighted cross-entropy) or
+    "sqrt_inverse" (train-fold-only class weighting, shared formula with
+    GSAT/ProtGNN). Additive: omitting the flag reproduces every prior run.
+    """
     _validate_optional_positive_int("limit", limit)
     _validate_optional_positive_int("max_epochs", max_epochs)
     _validate_optional_positive_int("patience", patience)
+    if loss_weighting not in LOSS_WEIGHTING_CHOICES:
+        raise ValueError(f"loss_weighting must be one of {LOSS_WEIGHTING_CHOICES}.")
     standardized = split_json is not None or seed is not None
     if standardized:
         required = {
@@ -188,13 +211,14 @@ def main(limit=None, max_epochs=None, patience=10, min_delta=0.005,
             out_dir=target_out,
             graph_structure=structure,
             seed=resolved_seed,
+            loss_weighting=loss_weighting,
         )
     finally:
         cfg.seed, cfg.graph_structure = previous
 
 
 def _run_training(*, limit, max_epochs, patience, min_delta, split_json,
-                  out_dir, graph_structure, seed):
+                  out_dir, graph_structure, seed, loss_weighting="none"):
     # torch 1.12 MPS is unreliable -> CPU for GraphCare
     device = torch.device("cpu" if cfg.device == "mps" else cfg.device)
     max_epochs = cfg.max_epochs if max_epochs is None else max_epochs
@@ -209,6 +233,13 @@ def _run_training(*, limit, max_epochs, patience, min_delta, split_json,
     model = build_graphcare_model(kg, C, device)
     opt = torch.optim.Adam(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
 
+    class_weights = _train_fold_class_weights(train_loader, C, loss_weighting)
+    weight_t = None if class_weights is None else torch.tensor(
+        class_weights, dtype=torch.float32, device=device)
+    if weight_t is not None:
+        print(f"  loss_weighting   : {loss_weighting}  "
+              f"(min={weight_t.min():.3f} max={weight_t.max():.3f})")
+
     best_f1 = -1.0
     best_for_patience = -1.0
     best_state, bad, t0 = None, 0, time.time()
@@ -218,7 +249,7 @@ def _run_training(*, limit, max_epochs, patience, min_delta, split_json,
         model.train()
         for b in train_loader:
             b = _move(b, device)
-            loss = F.cross_entropy(_forward(model, b), b["y"])
+            loss = F.cross_entropy(_forward(model, b), b["y"], weight=weight_t)
             opt.zero_grad(); loss.backward(); opt.step()
         val = _evaluate(model, val_loader, device)
         print(f"  epoch {epoch:3d} | val macro_f1 {val['macro_f1']:.4f} | "
@@ -251,13 +282,14 @@ def _run_training(*, limit, max_epochs, patience, min_delta, split_json,
             "seed": seed,
             "num_classes": C,
             "parameter_count": parameter_count,
+            "loss_weighting": loss_weighting,
         },
         checkpoint,
     )
     test = _evaluate(model, test_loader, device)
     test["parameter_count"] = parameter_count
     print(f"  TEST macro_f1 {test['macro_f1']:.4f} | micro_f1 {test['micro_f1']:.4f} | acc {test['accuracy']:.4f}")
-    _write_report(test, C, kg, limit, last_epoch, out_dir=out_dir)
+    _write_report(test, C, kg, limit, last_epoch, out_dir=out_dir, loss_weighting=loss_weighting)
     return test
 
 
@@ -274,6 +306,9 @@ def cli(argv=None):
                     help="Graph topology: star|cooccur|ontology|full|"
                          "full_kg_expanded (prompted interactively if omitted)")
     ap.add_argument("--seed", type=int, default=None)
+    ap.add_argument("--loss_weighting", choices=LOSS_WEIGHTING_CHOICES, default="none",
+                    help="none (default, unweighted CE) | sqrt_inverse "
+                         "(train-fold class weighting for imbalance)")
     args = ap.parse_args(argv)
     structure = args.graph_structure
     if structure is None and not any(
@@ -288,6 +323,7 @@ def cli(argv=None):
         out_dir=args.out_dir,
         graph_structure=structure,
         seed=args.seed,
+        loss_weighting=args.loss_weighting,
     )
 
 
