@@ -61,6 +61,7 @@ def test_gsat_main_exposes_standardized_benchmark_signature():
         "out_dir",
         "canonical_split",
         "seed",
+        "loss_weighting",
     ]
 
 
@@ -241,7 +242,9 @@ def test_gsat_cli_requires_and_forwards_standardized_arguments(tmp_path, monkeyp
     split_path = tmp_path / "split.json"
     out_dir = tmp_path / "out"
     calls = []
-    monkeypatch.setattr(train, "main", lambda *args: calls.append(args))
+    monkeypatch.setattr(
+        train, "main", lambda *args, **kwargs: calls.append((args, kwargs))
+    )
 
     train.cli(
         [
@@ -260,7 +263,9 @@ def test_gsat_cli_requires_and_forwards_standardized_arguments(tmp_path, monkeyp
         ]
     )
 
-    assert calls == [("cooccur", 2, 12, out_dir, split_path, 1236)]
+    assert calls == [
+        (("cooccur", 2, 12, out_dir, split_path, 1236), {"loss_weighting": "none"})
+    ]
 
 
 def test_gsat_selects_highest_validation_macro_f1_checkpoint(tmp_path, monkeypatch):
