@@ -68,3 +68,11 @@ comparison/standardized/matched_gchm_xgb_v1/runs/
 comparison/standardized/matched_gchm_xgb_v1/smoke/
 **/*.ubj
 **/*.npz
+
+# Generated clinical run folders and machine-local restoration inventories.
+# Public cleanup summaries live in docs/repository-cleanup-*.md instead.
+comparison/standardized/clinical_runs*/
+docs/cleanup-retired-experiments-*.json
+docs/cleanup-sections-*.json
+.pytest_cache/
+.superpowers/

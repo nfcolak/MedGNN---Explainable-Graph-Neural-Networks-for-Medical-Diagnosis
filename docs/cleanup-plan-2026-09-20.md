@@ -1,5 +1,14 @@
 # Temizlik planı — MedGNN (58 GB → ~28 GB)
 
+> **TARİHSEL KAYIT — UYGULAMAYIN (2026-09-25).** Aşağıdaki envanter, boyutlar,
+> “güncel” etiketleri, güvenlik iddiaları ve silme komutları 2026-09-20 anına aittir;
+> bugünkü bağımlılıkları veya silme iznini temsil etmez. Bazı bilimsel yorumlar da
+> sonraki incelemede sınırlandırılmıştır. Komutları kopyalayıp çalıştırmayın.
+> Güncel sınırlar: [STRUCTURE.md](../STRUCTURE.md). Gerçekleşen işlemler:
+> [2026-09-25 temizlik kaydı](repository-cleanup-2026-09-25.md).
+> Ayrıntılı geri yükleme manifestleri makineye özeldir ve yayımlanmaz.
+> İlk metin araştırma/karar geçmişi olarak aşağıda değiştirilmeden korunmuştur.
+
 Tarih: 2026-09-20. **Hiçbir şey silinmedi.** Her satır bağımlılık taramasıyla
 doğrulandı; "yeniden üretilebilir" diyorsam komutu da yazdım.
 
