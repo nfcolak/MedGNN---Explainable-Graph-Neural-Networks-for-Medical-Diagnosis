@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<style>
+  .wrap { display: inline-block; }
+  .hd { font-size: 13px; color: var(--muted-foreground); margin-bottom: 2px; }
+  .hd b { color: var(--foreground); }
+  svg text { fill: var(--foreground); }
+  .lbl { font-size: 12px; fill: var(--muted-foreground); }
+  .val { font-size: 12.5px; font-weight: 600; }
+  .nm  { font-size: 12.5px; }
+  .tiny { font-size: 10.5px; fill: var(--muted-foreground); }
+  .band { font-size: 11px; fill: var(--muted-foreground); letter-spacing: .04em; }
+  .node { fill: var(--card); stroke: var(--border); stroke-width: 1.2; }
+  .struct { stroke: var(--border); stroke-width: 1.3; fill: none; }
+  .info   { stroke: var(--accent); stroke-width: 1.8; fill: none; }
+  .rise { fill: #e2703a; }
+  .fall { fill: #3a8fd4; }
+  .flat { fill: var(--muted-foreground); }
+  .note { font-size: 12px; color: var(--muted-foreground); margin-top: 6px; max-width: 900px; }
+  .note b { color: var(--foreground); }
+  .key { font-size: 11.5px; color: var(--muted-foreground); margin-top: 4px; }
+  .sw { display:inline-block; width:22px; height:0; border-top:1.8px solid var(--accent); vertical-align:middle; margin:0 5px 0 12px; }
+  .sw2 { display:inline-block; width:22px; height:0; border-top:1.3px solid var(--border); vertical-align:middle; margin:0 5px 0 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="hd">Örnek graf — <b>37 düğüm, 51 kenar</b> · 17 informative / 34 structural · kesim (cutoff) = 0 sa</div>
+
+<svg width="940" height="700" viewBox="0 0 940 700" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+    </marker>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--border)"/>
+    </marker>
+  </defs>
+
+  <!-- ============ TRIAGE TIER ============ -->
+  <text class="band" x="0" y="14">TRİYAJ TIER · varış anı (−1,6 sa)</text>
+
+  <rect class="node" x="0" y="26" width="86" height="34" rx="6"/>
+  <text class="nm" x="43" y="47" text-anchor="middle">hasta</text>
+
+  <path class="struct" d="M88,43 L128,43" marker-end="url(#a2)"/>
+  <rect class="node" x="130" y="26" width="92" height="34" rx="6"/>
+  <text class="nm" x="176" y="47" text-anchor="middle">ziyaret</text>
+
+  <!-- complaints -->
+  <path class="struct" d="M224,38 L288,22" marker-end="url(#a2)"/>
+  <path class="struct" d="M224,50 L288,80" marker-end="url(#a2)"/>
+  <rect class="node" x="292" y="4" width="148" height="32" rx="6"/>
+  <text class="nm" x="366" y="24" text-anchor="middle">cc:b leg swelling</text>
+  <rect class="node" x="292" y="66" width="148" height="32" rx="6"/>
+  <text class="nm" x="366" y="86" text-anchor="middle">cc:dyspnea</text>
+
+  <!-- co_complaint : the informative pair edge -->
+  <path class="info" d="M312,38 C296,51 296,51 312,64" marker-end="url(#a1)"/>
+  <path class="info" d="M420,64 C436,51 436,51 420,38" marker-end="url(#a1)"/>
+  <text class="tiny" x="366" y="55" text-anchor="middle" style="fill:var(--accent)">co_complaint</text>
+
+  <!-- vitals -->
+  <path class="struct" d="M224,44 L470,44" marker-end="url(#a2)"/>
+  <text class="tiny" x="340" y="39" text-anchor="middle">observed_vital</text>
+  <g>
+    <rect class="node" x="474" y="4" width="104" height="30" rx="6"/>
+    <text class="tiny" x="484" y="23">nabız</text><text class="val" x="568" y="23" text-anchor="end">92</text>
+    <rect class="node" x="586" y="4" width="104" height="30" rx="6"/>
+    <text class="tiny" x="596" y="23">SKB</text><text class="val" x="680" y="23" text-anchor="end">134</text>
+    <rect class="node" x="698" y="4" width="104" height="30" rx="6"/>
+    <text class="tiny" x="708" y="23">DKB</text><text class="val" x="792" y="23" text-anchor="end">78</text>
+    <rect class="node" x="474" y="40" width="104" height="30" rx="6"/>
+    <text class="tiny" x="484" y="59">SpO₂</text><text class="val" x="568" y="59" text-anchor="end">95</text>
+    <rect class="node" x="586" y="40" width="104" height="30" rx="6"/>
+    <text class="tiny" x="596" y="59">sol. hızı</text><text class="val" x="680" y="59" text-anchor="end">16</text>
+    <rect class="node" x="698" y="40" width="104" height="30" rx="6"/>
+    <text class="tiny" x="708" y="59">ateş</text><text class="val" x="792" y="59" text-anchor="end">36,3</text>
+  </g>
+
+  <line x1="0" y1="116" x2="940" y2="116" stroke="var(--border)" stroke-width="1" stroke-dasharray="3 4"/>
+
+  <!-- ============ ANALYTE TIER ============ -->
+  <text class="band" x="0" y="140">ÖLÇÜM TIER · her satır bir analit</text>
+  <text class="tiny" x="196" y="164" text-anchor="middle">önceki ziyaret</text>
+  <text class="tiny" x="196" y="177" text-anchor="middle">−125 gün</text>
+  <text class="tiny" x="596" y="164" text-anchor="middle">bu ziyaret</text>
+  <text class="tiny" x="596" y="177" text-anchor="middle">−0,6 sa</text>
+  <text class="tiny" x="856" y="170" text-anchor="middle">dış bilgi</text>
+
+  <!-- rows -->
+  <g id="rows">
+    <!-- row template repeated 8x -->
+    <!-- 1 anion gap -->
+    <text class="nm" x="132" y="205" text-anchor="end">anyon açığı</text>
+    <rect class="node" x="158" y="188" width="76" height="28" rx="6"/><text class="val" x="196" y="207" text-anchor="middle">10,0</text>
+    <path class="info" d="M238,202 L554,202" marker-end="url(#a1)"/>
+    <text class="tiny flat" x="396" y="196" text-anchor="middle">Δ 0,0</text>
+    <rect class="node" x="558" y="188" width="76" height="28" rx="6"/><text class="val" x="596" y="207" text-anchor="middle">10,0</text>
+
+    <!-- 2 bicarbonate -->
+    <text class="nm" x="132" y="245" text-anchor="end">bikarbonat</text>
+    <rect class="node" x="158" y="228" width="76" height="28" rx="6"/><text class="val" x="196" y="247" text-anchor="middle">27,0</text>
+    <path class="info" d="M238,242 L554,242" marker-end="url(#a1)"/>
+    <text class="tiny rise" x="396" y="236" text-anchor="middle">Δ +2,0</text>
+    <rect class="node" x="558" y="228" width="76" height="28" rx="6"/><text class="val" x="596" y="247" text-anchor="middle">29,0</text>
+    <path class="info" d="M638,242 L788,242" marker-end="url(#a1)"/>
+
+    <!-- 3 chloride -->
+    <text class="nm" x="132" y="285" text-anchor="end">klorür</text>
+    <rect class="node" x="158" y="268" width="76" height="28" rx="6"/><text class="val" x="196" y="287" text-anchor="middle">103</text>
+    <path class="info" d="M238,282 L554,282" marker-end="url(#a1)"/>
+    <text class="tiny flat" x="396" y="276" text-anchor="middle">Δ 0,0</text>
+    <rect class="node" x="558" y="268" width="76" height="28" rx="6"/><text class="val" x="596" y="287" text-anchor="middle">103</text>
+    <path class="info" d="M638,282 L788,272" marker-end="url(#a1)"/>
+
+    <!-- 4 creatinine -->
+    <text class="nm" x="132" y="325" text-anchor="end">kreatinin</text>
+    <rect class="node" x="158" y="308" width="76" height="28" rx="6"/><text class="val" x="196" y="327" text-anchor="middle">0,6</text>
+    <path class="info" d="M238,322 L554,322" marker-end="url(#a1)"/>
+    <text class="tiny rise" x="396" y="316" text-anchor="middle">Δ +0,1</text>
+    <rect class="node" x="558" y="308" width="76" height="28" rx="6"/><text class="val" x="596" y="327" text-anchor="middle">0,7</text>
+    <path class="info" d="M638,322 L788,430" marker-end="url(#a1)"/>
+
+    <!-- 5 glucose -->
+    <text class="nm" x="132" y="365" text-anchor="end">glukoz</text>
+    <rect class="node" x="158" y="348" width="76" height="28" rx="6"/><text class="val" x="196" y="367" text-anchor="middle">96</text>
+    <path class="info" d="M238,362 L554,362" marker-end="url(#a1)" stroke-width="2.8"/>
+    <text class="val rise" x="396" y="355" text-anchor="middle">Δ +26,0</text>
+    <rect class="node" x="558" y="348" width="76" height="28" rx="6" stroke="#e2703a" stroke-width="2"/><text class="val" x="596" y="367" text-anchor="middle">122</text>
+    <path class="info" d="M638,362 L788,536" marker-end="url(#a1)"/>
+
+    <!-- 6 potassium -->
+    <text class="nm" x="132" y="405" text-anchor="end">potasyum</text>
+    <rect class="node" x="158" y="388" width="76" height="28" rx="6"/><text class="val" x="196" y="407" text-anchor="middle">4,5</text>
+    <path class="info" d="M238,402 L554,402" marker-end="url(#a1)"/>
+    <text class="tiny fall" x="396" y="396" text-anchor="middle">Δ −0,4</text>
+    <rect class="node" x="558" y="388" width="76" height="28" rx="6"/><text class="val" x="596" y="407" text-anchor="middle">4,1</text>
+    <path class="info" d="M638,402 L788,262" marker-end="url(#a1)"/>
+
+    <!-- 7 sodium -->
+    <text class="nm" x="132" y="445" text-anchor="end">sodyum</text>
+    <rect class="node" x="158" y="428" width="76" height="28" rx="6"/><text class="val" x="196" y="447" text-anchor="middle">140</text>
+    <path class="info" d="M238,442 L554,442" marker-end="url(#a1)"/>
+    <text class="tiny rise" x="396" y="436" text-anchor="middle">Δ +2,0</text>
+    <rect class="node" x="558" y="428" width="76" height="28" rx="6"/><text class="val" x="596" y="447" text-anchor="middle">142</text>
+    <path class="info" d="M638,442 L788,252" marker-end="url(#a1)"/>
+
+    <!-- 8 BUN -->
+    <text class="nm" x="132" y="485" text-anchor="end">BUN</text>
+    <rect class="node" x="158" y="468" width="76" height="28" rx="6"/><text class="val" x="196" y="487" text-anchor="middle">18,0</text>
+    <path class="info" d="M238,482 L554,482" marker-end="url(#a1)"/>
+    <text class="tiny rise" x="396" y="476" text-anchor="middle">Δ +3,0</text>
+    <rect class="node" x="558" y="468" width="76" height="28" rx="6"/><text class="val" x="596" y="487" text-anchor="middle">21,0</text>
+    <path class="info" d="M638,482 L788,440" marker-end="url(#a1)"/>
+  </g>
+
+  <text class="tiny" x="396" y="510" text-anchor="middle" style="fill:var(--accent)">baseline_of · her ok delta + 2996 sa aralık + hız taşır</text>
+
+  <!-- knowledge nodes -->
+  <rect class="node" x="790" y="238" width="146" height="30" rx="6"/>
+  <text class="tiny" x="863" y="257" text-anchor="middle">elektrolit paneli</text>
+  <rect class="node" x="790" y="416" width="146" height="30" rx="6"/>
+  <text class="tiny" x="863" y="435" text-anchor="middle">böbrek fonksiyonu</text>
+  <rect class="node" x="790" y="522" width="146" height="30" rx="6"/>
+  <text class="tiny" x="863" y="541" text-anchor="middle">kan glukozu</text>
+
+  <!-- cutoff line -->
+  <line x1="676" y1="150" x2="676" y2="500" stroke="var(--accent)" stroke-width="1.4" stroke-dasharray="5 4" opacity="0.55"/>
+  <text class="tiny" x="682" y="600" style="fill:var(--accent)">kesim (cutoff) · sağında hiçbir ölçüm yok</text>
+
+  <!-- footer facts -->
+  <line x1="0" y1="620" x2="940" y2="620" stroke="var(--border)" stroke-width="1" stroke-dasharray="3 4"/>
+  <text class="lbl" x="0" y="644">8 bazal bağ · 2 şikâyet · 6 vital · 7 bilgi kenarı · 1 önceki ziyaret</text>
+  <text class="lbl" x="0" y="666">structural kenarlar (has_visit, measured_in, instance_of, observed_vital) gri çizilmiştir ve hiçbir sonuçta gerekçe gösterilemez</text>
+</svg>
+
+<div class="key">
+  <span class="sw"></span>informative (delta / ikili terim taşır)
+  <span class="sw2"></span>structural (yalnız gezilebilirlik)
+</div>
+
+<div class="note">
+<b>Bu grafın tabloya sığmayan kısmı:</b> Hastanın 125 gün önceki aynı paneli var. Glukoz 96 → 122 (+26), BUN 18 → 21, kreatinin 0,6 → 0,7.
+Bir tablo modeli yalnız “şu anki glukoz = 122” kolonunu görür; “<b>bu hasta için</b> 125 günde +26 arttı” ifadesi iki uç noktaya birden bakmayı gerektirir
+ve karşılaştırma ortağı her hastada farklı olduğu için sabit genişlikli bir satırda yeri yoktur. Aynı şekilde <b>bacak şişliği + nefes darlığı</b> birlikteliği
+iki ayrı presence kolonunun toplamı değildir.
+</div>
+</div>
+</body>
+</html>
