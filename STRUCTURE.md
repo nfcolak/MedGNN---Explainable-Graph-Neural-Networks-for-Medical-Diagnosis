@@ -1,16 +1,20 @@
 # Repository navigation
 
-Scientific code stays in its existing packages: moving it would break imports,
-checkpoint paths, notebooks and cached graph recipes. Start with the
-[standardized runbook](comparison/standardized/README.md) and the
-[verification report](docs/usability-verification.md), not the older experiment
-scripts.
+Start with the [clinical v2/v3 runbook](comparison/standardized/clinical_graph_v2/README.md)
+for the current max6 / train-derived Top-10 task. The
+[native identical-input reference](docs/native-identical-input-v1.md) is a
+preserved, separate 30-class reproduction. Their inputs and scores are not
+interchangeable. The [older star/cooccur runbook](comparison/standardized/README.md)
+and [usability report](docs/usability-verification.md) describe historical tooling,
+not the current clinical entrypoint. Shared scientific packages stay in place.
 
 ## What lives where
 
 | Location | Role / maintenance boundary |
 |---|---|
-| `comparison/standardized/` | Current three-method benchmark: config, cache builder/audit, per-cell runner, orchestration, fixed-cohort explanations, summary. |
+| `comparison/standardized/clinical_graph_v2/` | Current multi-visit build, method adapters, training, audits and tabular control; max6 / train-derived Top-10 contract. |
+| `comparison/standardized/train_identical.py`, `native_reference_v1/` | Preserved native identical-input reproduction, separate 30-class task. |
+| `comparison/standardized/` | Also contains retained historical star/cooccur tooling and experimental protocols; not one interchangeable pipeline. |
 | `comparison/canonical_split.json` | Fixed class ordering and subject folds. Do not regenerate for a resumed benchmark. |
 | `protgnn_analysis/` | ProtGNN model, patient graph loader, training and explanation code. `scripts/` also contains legacy exploratory tools. |
 | `gsat_analysis/` | GSAT on the shared PyG patient graphs, trainer and explainers. |
@@ -23,9 +27,9 @@ scripts.
 | `data/` | Raw/merged CSVs, external data symlinks and graph caches. Not source code; never relocate as a cleanup side effect. |
 | `external/` | Third-party GraphXAI and GraphCare source. Keep upstream layout and separate dependency requirements. |
 | `visualizer/` | Independent React/TypeScript/Vite viewer; `scripts/export_protgnn_graphs.py` exports patient graphs. Export rewrites viewer data. |
-| `tests/` | Maintained Python tests; invoke `python3 -m pytest tests -q` explicitly to avoid vendored test collections. |
+| `tests/` | Maintained Python tests; only in an explicitly authorized testing phase. Use the explicit `tests` path to avoid vendored collection. |
 | `docs/` | Operating runbooks, current scientific evidence, verification and benchmark design specification. |
-| `docs-vault/` | Project-owned Obsidian knowledge vault; keep inside this repository. |
+| `docs-vault/` | Retained local navigation; canonical project decisions and work logs live in ProjectOS. Do not relocate this directory. |
 | `README.md`, `STRUCTURE.md` | Landing page and this navigation map. Nonruntime thesis/templates/proposals and obsolete TODO notes are no longer in the working tree. |
 | `requirements.txt`, `requirements-lock.txt`, `environment.yml` | Flexible and pinned main-Python dependencies. Not a replacement for the GraphCare environment. |
 | `.venv-graphcare/` | Existing isolated GraphCare runtime; do not merge into the main environment. |
@@ -40,7 +44,30 @@ the repository to a unique macOS Trash directory, not permanently deleted.
 extracted data by SHA-256; all extracted data stays in place. Earlier cleanup
 reports are historical evidence, not the current inventory.
 
-## One pipeline, explicit execution
+On 2026-09-25, the user authorized retirement of 15 old clinical artifact/run
+directories (failed/interrupted/smoke attempts and pre-repair v3 graphs/results).
+They were moved reversibly to macOS Trash, not permanently deleted. The
+[public cleanup record](docs/repository-cleanup-2026-09-25.md)
+describes the scope; machine-local restoration manifests retain exact paths and
+hashes and are not published. Historical report references to those directories
+now require restoration; current membership-max6 inputs, sample10k/full-Top10
+results, source indexes, target sidecars and model code remain in place.
+The experiment/failure retrospective is indexed in the ProjectOS MedGNN note.
+
+## Current and preserved entrypoints
+
+The current clinical build/train commands and output contracts are in the
+[clinical runbook](comparison/standardized/clinical_graph_v2/README.md).
+Real preprocessing, cache creation and training require explicit approval;
+output directories must be new and unoccupied. Never evaluate the held-out fold.
+
+The native reference can be planned without training:
+
+```bash
+python3 -m comparison.standardized.train_identical --output comparison/standardized/native_runs/<new_dir> --dry-run
+```
+
+## Historical star/cooccur orchestration (retained)
 
 Run from the repository root:
 
@@ -57,7 +84,7 @@ python3 -m comparison.standardized.run_explanations --topology star --seed 1234 
 # Read-only: preview cache construction; no caches are created by default.
 python3 -m comparison.standardized.build_caches --dry-run
 
-# Maintained tests (temporary fixture preprocessing and model forward/backward).
+# Only after the user explicitly opens the testing phase.
 python3 -m pytest tests -q
 ```
 
@@ -75,7 +102,15 @@ restart from scratch, not optimizer/epoch-level resume.**
 
 ## Output ownership
 
-- Current benchmark: `comparison/standardized/results/<method>/<topology>/seed_<seed>/`.
+- Current clinical inputs/results: the hash-bound paths in the clinical runbook;
+  preserve `clinical_graph_v3_membership_max6_20260923`, its source indexes and
+  target sidecars, and the corrected sample10k/full-Top10 result directories.
+- Native reference: `comparison/standardized/native_runs/<new-run>/`.
+
+The following paths belong to retained historical tooling, not the current
+max6/Top-10 task:
+
+- Historical matrix: `comparison/standardized/results/<method>/<topology>/seed_<seed>/`.
 - Fixed-cohort explanations: `comparison/standardized/explanations/<topology>/seed_<seed>/<method>/`.
 - Pipeline state/events: `comparison/standardized/checkpoint/` (outside result cells).
 - Preserved retry attempts: `comparison/standardized/attempts/` (excluded from summaries).
@@ -83,13 +118,30 @@ restart from scratch, not optimizer/epoch-level resume.**
 - Legacy method runs: each method's own `outputs/`, not a root `outputs/` directory.
 - Shared graphs: `data/graphs/<topology>/{protgnn,graphcare}/`; GSAT uses ProtGNN's PyG cache.
 
-Primary standardized topologies are `star` and `cooccur`. Additional legacy or
+Historical matrix topologies are `star` and `cooccur`. Additional legacy or
 method-specific graph variants are defined in `shared/lib/graph_structures.py`;
 they must not silently enter the primary aggregate. The contracts are enforced
 by code and tests; full-production graph parity still requires cache generation
 and the real audit, and has not been established by this usability pass.
 
 ## Legacy boundaries and cautions
+
+- Independent design/input probes, PNP entrypoints and its pilot outputs, and
+  PLQ/dropout analysis plus their run outputs were moved to a durable external
+  archive on 2026-09-25. See the
+  [public cleanup record](docs/repository-cleanup-2026-09-25.md); exact hashes and
+  recovery destinations remain in the machine-local sections 3–4 manifest.
+  Historical commands naming those paths require restoration first; the archive
+  is not a standalone installation. Scientific reports remain in `docs/`.
+- Legacy ProtGNN CLI files are retained: native `source_bindings()` fingerprints
+  the whole method package, and some CLIs have maintained test references.
+  A filename that looks unused is not sufficient reason to remove it.
+- The old EventGCHM chain remains intact because shared dependencies and an
+  unresolved migration need a separate closure decision. Agent `*-before`
+  snapshots differ from live files and remain rollback evidence.
+- `performance_diagnosis/` contains synthetic mechanism verification sources;
+  those are retained rather than changing test-only code outside a testing phase.
+- The 2026-09-20 cleanup plan is a historical record, not executable guidance.
 
 - `shared/data_prep/merge_ed.py` executes work at import time and both it and
   `extract_ed_labs.py` still derive `shared/data` rather than the root `data/`.
