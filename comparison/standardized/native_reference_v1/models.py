@@ -5,7 +5,32 @@ import torch
 from torch import nn
 from torch_geometric.data import Data
 
-METHODS = ('protgnn','gsat','graphcare','pna','pna_interaction')
+METHODS = ('protgnn','gsat','graphcare','pna','pna_interaction','gchm','gchm_additive','gchm_pairs',
+           'gchm_concept_dropout','gchm_plq','gchm_tabgnn','dtv_gnn')
+# Fitted-constant recipe for gchm_plq. Changing any value changes the model input
+# encoding, so the run binding records the fitted edge hash, not just this dict.
+PLQ = {'bins': 8, 'min_unique': 3, 'missing_value': 0.0, 'fit_fold': 0,
+       'recipe': 'train-fold quantiles of non-missing values; piecewise-linear code + missing flag'}
+# DTV-GNN hyperparameters, prespecified from the depth sweep (order two is all
+# this dataset supports) rather than tuned on validation.
+DTV = {'rank': 24, 'dropout': 0.1, 'interaction_scale': 1.0}
+
+
+def _fitted_sha(edges, continuous, binary):
+    """Hash the fitted encoder constants so a run binding pins them exactly.
+
+    A recipe dict alone is not enough: the same recipe on a different fold or a
+    different artifact yields different edges, and that silently changes the model
+    input. Hashing the realized arrays makes any such drift fail the resume check.
+    """
+    import hashlib
+    import numpy as np
+    h = hashlib.sha256()
+    for a in (np.ascontiguousarray(edges), np.ascontiguousarray(continuous),
+              np.ascontiguousarray(binary)):
+        h.update(str([a.dtype.str, a.shape]).encode())
+        h.update(a.tobytes())
+    return h.hexdigest()
 
 
 def canonical_input(batch):
@@ -49,6 +74,34 @@ def build_model(method, ref, device='cpu'):
             hidden_dim=cfg.emb_dim,out_channels=30,layers=cfg.num_layers,dropout=cfg.dropout,
             patient_mode='joint',use_alpha=True,use_beta=True,gnn='BAT').to(device)
         return model,cfg.lr,cfg.weight_decay
+    if method.startswith('gchm') or method == 'dtv_gnn':
+        from gchm_analysis.model import GCHM, PiecewiseLinearQuantileHub, fit_hub_quantiles
+        modulation = 'additive' if method == 'gchm_additive' else 'multiplicative'
+        encoder = None
+        if method in ('gchm_plq', 'gchm_tabgnn', 'dtv_gnn'):
+            # Fitted on fold 0 only; validation/test rows never enter the quantiles.
+            hub = ref.arrays['hub']
+            edges, continuous, binary, degenerate = fit_hub_quantiles(
+                hub, ref.arrays['folds'] == PLQ['fit_fold'], bins=PLQ['bins'],
+                missing_value=PLQ['missing_value'], min_unique=PLQ['min_unique'])
+            encoder = PiecewiseLinearQuantileHub(edges, continuous, binary, hub.shape[1])
+            encoder.fit_report = {**PLQ, 'continuous': int(len(continuous)),
+                                  'binary': int(len(binary)), 'degenerate_edges': degenerate,
+                                  'encoded_width': int(encoder.out_dim),
+                                  'edges_sha256': _fitted_sha(edges, continuous, binary)}
+        if method == 'dtv_gnn':
+            from gchm_analysis.dtv import DTVGNN
+            model = DTVGNN(classes=30, hub_encoder=encoder,
+                           degree_histogram=ref.degree_histogram(), **DTV).to(device)
+            return model, 1e-3, 1e-5
+        model = GCHM(classes=30, degree_histogram=ref.degree_histogram(),
+                     modulation=modulation,
+                     concept_pairs=method == 'gchm_pairs',
+                     concept_dropout=0.15 if method == 'gchm_concept_dropout' else 0.0,
+                     hub_encoder=encoder,
+                     hub_skip=method == 'gchm_tabgnn',
+                     ).to(device)
+        return model, 1e-3, 1e-5
     from pna_analysis.model import PNAPredictor
     return PNAPredictor(331,30,ref.degree_histogram(),interactions=method=='pna_interaction').to(device),1e-3,0.
 
@@ -56,6 +109,7 @@ def build_model(method, ref, device='cpu'):
 def predict(model, method, batch, epoch, training):
     canonical_input(batch)
     if method == 'graphcare': return model(**graphcare_arguments(batch)),0.
+    if method.startswith('gchm') or method == 'dtv_gnn': return model(batch),0.
     if method == 'gsat':
         out=model(batch,epoch=epoch,training=training)
         return out['logits'],out['info_loss'] if training else 0.
