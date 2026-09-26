@@ -1,0 +1,98 @@
+{
+  "graph_idx": 47,
+  "dataset_index": null,
+  "subject_id": 10072180,
+  "pred_label": 26,
+  "true_label": 16,
+  "correct": false,
+  "pred_class": "UTI or pyelonephritis",
+  "true_class": "Hypotension",
+  "num_nodes": 4,
+  "num_edges": 5,
+  "node_global_ids": [
+    115,
+    161,
+    165,
+    172
+  ],
+  "explanations": {
+    "GradExplainer": {
+      "node_importance": [
+        0.0,
+        0.005022579804062843,
+        -0.01759636029601097,
+        -0.015693429857492447
+      ],
+      "top_nodes": [
+        {
+          "index": 2,
+          "importance": -0.01759636029601097
+        },
+        {
+          "index": 3,
+          "importance": -0.015693429857492447
+        },
+        {
+          "index": 1,
+          "importance": 0.005022579804062843
+        },
+        {
+          "index": 0,
+          "importance": 0.0
+        }
+      ]
+    },
+    "IntegratedGradExplainer": {
+      "node_importance": [
+        0.0003517358563840389,
+        -0.003559224773198366,
+        0.026613809168338776,
+        0.0015734011540189385
+      ],
+      "top_nodes": [
+        {
+          "index": 2,
+          "importance": 0.026613809168338776
+        },
+        {
+          "index": 1,
+          "importance": -0.003559224773198366
+        },
+        {
+          "index": 3,
+          "importance": 0.0015734011540189385
+        },
+        {
+          "index": 0,
+          "importance": 0.0003517358563840389
+        }
+      ]
+    },
+    "GNNExplainer": {
+      "node_importance": [
+        1.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "top_nodes": [
+        {
+          "index": 3,
+          "importance": 1.0
+        },
+        {
+          "index": 2,
+          "importance": 1.0
+        },
+        {
+          "index": 0,
+          "importance": 1.0
+        },
+        {
+          "index": 1,
+          "importance": 0.0
+        }
+      ]
+    }
+  }
+}

@@ -1,41 +1,20 @@
-.DS_Store
-~$*
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-env/
-
-# Runtime outputs and heavy local artifacts
-checkpoint/
-checkpoints/
-log/
-logs/
-wandb/
-
-# Editor/system files
-.idea/
-.vscode/
-# Local/raw data generated outside source control
-data/Original CSVs/
-data/Changes Done/
-data/processed_*/
-data/merged_ed*.csv
-data/rxnorm_mapping.csv
-data/top300_meds.json
-
-# Vendored GraphXAI: keep source code, ignore bundled datasets/results
-external/GraphXAI-main/data/
-external/GraphXAI-main/formal/
-external/GraphXAI-main/examples/
-external/GraphXAI-main/graphxai/datasets/real_world/**/*.npz
-
-# GraphCare isolated env
+data_old/
+prot_gnn_core/
+**/processed_*/
+**/*.pt
+**/*.pth
+data/*.csv
+**/__pycache__/
 .venv-graphcare/
+.DS_Store
 
 # Vendored GraphCare (third-party clone; obtain via graphcare_analysis/README.md)
 external/GraphCare/
 # GraphXAI bundled extras (not part of this work)
+external/GraphXAI-main/data/
+external/GraphXAI-main/formal/
+external/GraphXAI-main/examples/
+external/GraphXAI-main/graphxai/datasets/real_world/**/*.npz
 external/GraphXAI-main/graphxai_flowchart.pptx
 external/GraphXAI-main/img/
 external/GraphXAI-main/test_scripts/
@@ -67,6 +46,8 @@ comparison/standardized/common_input_*/
 comparison/standardized/data_quality_balance_*/
 comparison/standardized/enriched_inputs/
 comparison/standardized/enriched_runs/
+comparison/standardized/event_inputs/
+comparison/standardized/event_training/
 comparison/standardized/graphxai_*/
 comparison/standardized/graphxai_execution_*/
 comparison/standardized/native_evidence/
@@ -80,3 +61,18 @@ comparison/standardized/results/
 comparison/standardized/zero_concept_verification/
 comparison/standardized/graphxai_current_run.txt
 comparison/standardized/training.log
+
+# Trained model binaries: the reports/ JSON keeps every metric, per-class table and
+# bootstrap interval, so results stay auditable without shipping ~0.5 GB of weights.
+comparison/standardized/matched_gchm_xgb_v1/runs/
+comparison/standardized/matched_gchm_xgb_v1/smoke/
+**/*.ubj
+**/*.npz
+
+# Generated clinical run folders and machine-local restoration inventories.
+# Public cleanup summaries live in docs/repository-cleanup-*.md instead.
+comparison/standardized/clinical_runs*/
+docs/cleanup-retired-experiments-*.json
+docs/cleanup-sections-*.json
+.pytest_cache/
+.superpowers/

@@ -1,0 +1,118 @@
+{
+  "graph_idx": 46,
+  "dataset_index": null,
+  "subject_id": 10069960,
+  "pred_label": 26,
+  "true_label": 6,
+  "correct": false,
+  "pred_class": "UTI or pyelonephritis",
+  "true_class": "Back or spine pain",
+  "num_nodes": 9,
+  "num_edges": 7,
+  "node_global_ids": [
+    111,
+    124,
+    130,
+    135,
+    169,
+    186,
+    196,
+    217,
+    250
+  ],
+  "explanations": {
+    "GradExplainer": {
+      "node_importance": [
+        0.003240915946662426,
+        -0.0006611114367842674,
+        -0.07320953160524368,
+        0.021845851093530655,
+        0.002822555834427476,
+        -0.0043085720390081406,
+        0.5569535493850708,
+        0.08977910876274109,
+        -0.030599800869822502
+      ],
+      "top_nodes": [
+        {
+          "index": 6,
+          "importance": 0.5569535493850708
+        },
+        {
+          "index": 7,
+          "importance": 0.08977910876274109
+        },
+        {
+          "index": 2,
+          "importance": -0.07320953160524368
+        },
+        {
+          "index": 8,
+          "importance": -0.030599800869822502
+        }
+      ]
+    },
+    "IntegratedGradExplainer": {
+      "node_importance": [
+        -0.02109716460108757,
+        -0.012796303257346153,
+        0.025022704154253006,
+        -0.03890916705131531,
+        -0.020782331004738808,
+        0.06225365400314331,
+        -1.1332460641860962,
+        -0.07310893386602402,
+        -0.02315317466855049
+      ],
+      "top_nodes": [
+        {
+          "index": 6,
+          "importance": -1.1332460641860962
+        },
+        {
+          "index": 7,
+          "importance": -0.07310893386602402
+        },
+        {
+          "index": 5,
+          "importance": 0.06225365400314331
+        },
+        {
+          "index": 3,
+          "importance": -0.03890916705131531
+        }
+      ]
+    },
+    "GNNExplainer": {
+      "node_importance": [
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "top_nodes": [
+        {
+          "index": 8,
+          "importance": 1.0
+        },
+        {
+          "index": 7,
+          "importance": 1.0
+        },
+        {
+          "index": 6,
+          "importance": 1.0
+        },
+        {
+          "index": 4,
+          "importance": 1.0
+        }
+      ]
+    }
+  }
+}

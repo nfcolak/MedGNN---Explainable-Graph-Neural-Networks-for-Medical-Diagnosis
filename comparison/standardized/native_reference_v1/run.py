@@ -65,7 +65,7 @@ def project(model, dataset, epoch, output):
 
 def source_bindings():
     paths=[]
-    for directory in ['comparison/standardized/native_reference_v1','protgnn_analysis','gsat_analysis','graphcare_analysis','pna_analysis','shared/lib','external/GraphCare/graphcare_']:
+    for directory in ['comparison/standardized/native_reference_v1','protgnn_analysis','gsat_analysis','graphcare_analysis','pna_analysis','gchm_analysis','shared/lib','external/GraphCare/graphcare_']:
         paths.extend(p for p in (REPO/directory).rglob('*.py') if 'outputs' not in p.parts)
     paths.extend(REPO/p for p in ['comparison/standardized/train_identical.py','comparison/standardized/common_input_improvement.py','comparison/standardized/performance_review.py'])
     return {str(p.relative_to(REPO)):sha(p) for p in sorted(set(paths))}
@@ -126,6 +126,11 @@ def run(args):
         'train_ordinals_sha256':digest(tr_idx.tolist()),'validation_ordinals_sha256':digest(va_idx.tolist()),
         'learning_rate':lr,'weight_decay':wd,'torch':torch.__version__,
         'projection_policy':'native MCTS + scored terminal root v1','selection':'validation macro_f1; full fixed epoch budget; no early stop'}
+    # Fitted input-encoder constants are part of the model input, not a hyperparameter:
+    # pin their realized hash so a resume/replay cannot accept a re-fitted encoder.
+    encoder=getattr(model,'hub_encoder',None)
+    if encoder is not None:
+        binding['hub_encoder']=encoder.fit_report
     report={'method':args.method,'counts':ref.contract['counts'],'selected_counts':[len(tr_idx),len(va_idx)],
         'parameters':sum(p.numel() for p in model.parameters()),'contract_sha256':ref.fingerprint,
         'scope':'bounded_wiring_not_benchmark' if args.limit else 'full_cohort','binding':binding}

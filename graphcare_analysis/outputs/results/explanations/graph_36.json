@@ -1,0 +1,114 @@
+{
+  "graph_idx": 36,
+  "dataset_index": null,
+  "subject_id": 10045796,
+  "pred_label": 3,
+  "true_label": 1,
+  "correct": false,
+  "pred_class": "Alcohol abuse with intoxication",
+  "true_class": "Acute pharyngitis",
+  "num_nodes": 8,
+  "num_edges": 6,
+  "node_global_ids": [
+    58,
+    102,
+    118,
+    142,
+    144,
+    193,
+    230,
+    254
+  ],
+  "explanations": {
+    "GradExplainer": {
+      "node_importance": [
+        0.3153115510940552,
+        -0.2482166737318039,
+        0.13390135765075684,
+        0.0263136588037014,
+        -0.02307424694299698,
+        -0.03766046464443207,
+        0.017963962629437447,
+        0.09515009075403214
+      ],
+      "top_nodes": [
+        {
+          "index": 0,
+          "importance": 0.3153115510940552
+        },
+        {
+          "index": 1,
+          "importance": -0.2482166737318039
+        },
+        {
+          "index": 2,
+          "importance": 0.13390135765075684
+        },
+        {
+          "index": 7,
+          "importance": 0.09515009075403214
+        }
+      ]
+    },
+    "IntegratedGradExplainer": {
+      "node_importance": [
+        0.032433878630399704,
+        0.04892570525407791,
+        -0.013097938150167465,
+        0.02277734875679016,
+        0.06572011858224869,
+        0.050558559596538544,
+        0.02959553338587284,
+        0.07350913435220718
+      ],
+      "top_nodes": [
+        {
+          "index": 7,
+          "importance": 0.07350913435220718
+        },
+        {
+          "index": 4,
+          "importance": 0.06572011858224869
+        },
+        {
+          "index": 5,
+          "importance": 0.050558559596538544
+        },
+        {
+          "index": 1,
+          "importance": 0.04892570525407791
+        }
+      ]
+    },
+    "GNNExplainer": {
+      "node_importance": [
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "top_nodes": [
+        {
+          "index": 7,
+          "importance": 1.0
+        },
+        {
+          "index": 6,
+          "importance": 1.0
+        },
+        {
+          "index": 1,
+          "importance": 1.0
+        },
+        {
+          "index": 5,
+          "importance": 0.0
+        }
+      ]
+    }
+  }
+}
