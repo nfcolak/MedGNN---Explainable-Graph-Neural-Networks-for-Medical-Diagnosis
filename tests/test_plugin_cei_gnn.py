@@ -163,6 +163,26 @@ def test_pyg_raw_logit_mask_algebra_and_parts_reconstruct():
     clear_masks(network)
 
 
+def test_direct_mask_clear_then_pyg_mask_switch_preserves_masking_and_gradient():
+    import torch
+    from torch_geometric.explain.algorithm.utils import set_masks, clear_masks
+
+    adapter, graph = _fixture()
+    network = adapter.network
+    features = adapter.continuous_inputs(graph)
+    unmasked = adapter.forward_continuous(features, graph.edge_index, graph)
+    network.set_edge_mask(torch.ones(graph.num_edges))
+    network.set_edge_mask(None)
+    raw_mask = torch.nn.Parameter(torch.tensor([-1.2, -0.3, 0.8]))
+    set_masks(network, raw_mask, graph.edge_index, apply_sigmoid=True)
+    masked = adapter.forward_continuous(features, graph.edge_index, graph)
+    assert not torch.allclose(masked, unmasked), "PyG mask was skipped after clearing a direct mask"
+    (masked * torch.tensor([[0.2, -0.7, 1.1]])).sum().backward()
+    assert raw_mask.grad is not None and torch.isfinite(raw_mask.grad).all()
+    assert raw_mask.grad.abs().sum() > 0, "PyG edge-mask gradient disconnected after direct-mask clear"
+    clear_masks(network)
+
+
 def test_batch_permutation_parallel_edges_and_empty_edge_graphs_are_supported():
     import torch
     from torch_geometric.data import Batch, Data
