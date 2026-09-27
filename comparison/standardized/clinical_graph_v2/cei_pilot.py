@@ -31,13 +31,10 @@ _EXCLUDED_TOP_LEVEL = {
     "method", "adaptation_version", "method_native_defaults", "method_overrides",
     "conv", "parameter_count", "active_parameter_count",
     "epochs", "patience", "min_delta", "early_stopping_start_epoch_index",
-    "selected_dev", "selected_validation", "selection", "device", "torch",
-    "total_seconds", "counts", "rewiring",
-    "class_counts_train", "num_relations", "num_meta_relations", "meta_relations",
-    "edge_feature_layout", "node_dim", "edge_dim", "vocabulary_size",
-    "dropped_rows", "kept_label_indices", "class_weight_values",
-    "parameter_shapes", "architecture", "use_interactions", "interaction_rank",
-    "treatment", "output", "output_path",
+    "selected_dev", "selected_validation", "selection", "device",
+    "total_seconds", "output", "output_path",
+    "parameter_shapes", "use_interactions", "interaction_rank",
+    "treatment",
 }
 _REQUIRED_BINDINGS = (
     "method", "artifact_graphs_sha256", "artifact_visit_membership_sha256",
@@ -200,6 +197,19 @@ def _load_json(path, label):
     return value
 
 
+def _validate_treatment(binding, treatment):
+    expected_method = "protgnn" if treatment == "control" else "cei_gnn"
+    if binding.get("method") != expected_method:
+        raise ValueError(f"{treatment} method mismatch: expected {expected_method}")
+    if treatment in {"candidate", "product_off", "smoke"}:
+        method_config = binding.get("method_config")
+        settings = method_config.get("effective_settings") if isinstance(method_config, dict) else None
+        value = settings.get("use_interactions") if isinstance(settings, dict) else binding.get("use_interactions")
+        expected = treatment != "product_off"
+        if type(value) is not bool or value is not expected:
+            raise ValueError(f"{treatment} use_interactions treatment mismatch; expected {expected}")
+
+
 def validate_completed_stages(stage_dirs):
     """Read complete dev-stage manifests, verify bindings, then expose summaries.
 
@@ -219,23 +229,29 @@ def validate_completed_stages(stage_dirs):
         if not result_path.is_file():
             raise ValueError(f"result.json missing in {directory}")
         binding = _load_json(binding_path, "binding.json")
-        result = _load_json(result_path, "result.json")
-        if result.get("status") != "completed":
-            raise ValueError(f"incomplete result status in {result_path}")
-        if result.get("binding") != binding:
-            raise ValueError(f"result/binding mismatch in {directory}")
-        if result.get("test_evaluated", binding.get("test_evaluated")) is not False:
-            raise ValueError(f"test-fold guard failed in {directory}")
-        if result.get("metrics") is not None or not isinstance(result.get("dev_metrics"), dict):
-            raise ValueError(f"dev-only result contract mismatch in {directory}")
         validate_pilot_binding(binding, expected_budget=(10000, 5000, 40))
-        loaded[directory.name] = (binding, result)
-    arms = [(name, loaded[name][0]) for name in sorted(expected_names)]
+        treatment = {"protgnn_control": "control", "cei_candidate": "candidate",
+                     "cei_product_off": "product_off"}[directory.name]
+        _validate_treatment(binding, treatment)
+        loaded[directory.name] = {"binding": binding, "result_path": result_path}
+    arms = [(name, loaded[name]["binding"]) for name in sorted(expected_names)]
     for index, (name, binding) in enumerate(arms):
         for other_name, other in arms[index + 1:]:
             assert_common_bindings(binding, other)
-    candidate = loaded["cei_candidate"][0]
-    product_off = loaded["cei_product_off"][0]
+    candidate = loaded["cei_candidate"]["binding"]
+    product_off = loaded["cei_product_off"]["binding"]
+    if "parameter_shapes" in candidate or "parameter_shapes" in product_off:
+        if candidate.get("parameter_shapes") != product_off.get("parameter_shapes"):
+            raise ValueError("candidate/product-off total parameter_shapes differs")
+    if "architecture" in candidate or "architecture" in product_off:
+        left_arch = candidate.get("architecture", {})
+        right_arch = product_off.get("architecture", {})
+        if not isinstance(left_arch, dict) or not isinstance(right_arch, dict):
+            raise ValueError("candidate/product-off architecture binding is malformed")
+        for shape_field in ("parameter_count", "parameter_shapes"):
+            if shape_field in left_arch or shape_field in right_arch:
+                if left_arch.get(shape_field) != right_arch.get(shape_field):
+                    raise ValueError(f"candidate/product-off total {shape_field} differs")
     for field in ("parameter_count", "method_config"):
         if candidate.get(field) != product_off.get(field):
             if field == "method_config":
@@ -249,9 +265,21 @@ def validate_completed_stages(stage_dirs):
                     raise ValueError("candidate/product-off total parameter_count differs")
             else:
                 raise ValueError("candidate/product-off total parameter_count differs")
+    for name in sorted(expected_names):
+        binding = loaded[name]["binding"]
+        result = _load_json(loaded[name]["result_path"], "result.json")
+        if result.get("status") != "completed":
+            raise ValueError(f"incomplete result status in {loaded[name]['result_path']}")
+        if result.get("binding") != binding:
+            raise ValueError(f"result/binding mismatch in {name}")
+        if result.get("test_evaluated", binding.get("test_evaluated")) is not False:
+            raise ValueError(f"test-fold guard failed in {name}")
+        if result.get("metrics") is not None or not isinstance(result.get("dev_metrics"), dict):
+            raise ValueError(f"dev-only result contract mismatch in {name}")
+        loaded[name]["result"] = result
     summaries = []
     for name in sorted(expected_names):
-        binding, result = loaded[name]
+        binding, result = loaded[name]["binding"], loaded[name]["result"]
         summaries.append({
             "stage": name, "status": "completed", "dev_metrics": result["dev_metrics"],
             "parameter_count": binding["parameter_count"],
@@ -267,7 +295,14 @@ def capture_bindings(stage):
                               capture_output=True, text=True).stdout.strip()
     status = subprocess.run(["git", "status", "--porcelain=v1"], check=True,
                             capture_output=True, text=True).stdout
-    source_state = _sha_json({"revision": revision, "working_tree": status})
+    package_root = Path(__file__).parent
+    source_hashes = {
+        path.relative_to(package_root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in sorted(package_root.rglob("*.py"))
+        if "__pycache__" not in path.parts
+    }
+    source_state = _sha_json({"revision": revision, "working_tree": status,
+                              "clinical_graph_v2_source": source_hashes})
     inputs = {"artifact": stage.argv[stage.argv.index("--artifact") + 1],
               "targets": stage.argv[stage.argv.index("--targets") + 1],
               "canonical": stage.argv[stage.argv.index("--canonical") + 1]}
@@ -311,6 +346,7 @@ def execute_plan(stages, *, journal_path):
     """Run fixed stages sequentially, journaling every outcome and refusing drift."""
     journal = {"status": "running", "stages": {}}
     expected_identity = None
+    completed_bindings = {}
     _write_journal(journal_path, journal)
     for stage in stages:
         output = Path(stage.output)
@@ -343,10 +379,9 @@ def execute_plan(stages, *, journal_path):
                 raise RuntimeError("training returned without complete binding/result files")
             binding = _load_json(binding_file, "binding.json")
             validate_pilot_binding(binding, expected_budget=stage.budget, expected_seed=stage.seed)
-            result = _load_json(result_file, "result.json")
-            if result.get("status") != "completed" or result.get("binding") != binding:
-                raise RuntimeError("stage result incomplete or binding mismatch")
-            journal["stages"][stage.name].update({"status": "completed", "postflight": after,
+            _validate_treatment(binding, stage.treatment)
+            completed_bindings[stage.name] = binding
+            journal["stages"][stage.name].update({"status": "bound", "postflight": after,
                                                   "stdout": completed.stdout,
                                                   "stderr": completed.stderr})
         except Exception as error:
@@ -355,6 +390,28 @@ def execute_plan(stages, *, journal_path):
             _write_journal(journal_path, journal)
             raise SystemExit(1) from error
         _write_journal(journal_path, journal)
+    try:
+        expected_names = {"cei_smoke", "protgnn_control", "cei_candidate", "cei_product_off"}
+        if set(completed_bindings) != expected_names:
+            raise ValueError("executor did not complete the exact four pilot stages")
+        output_root = Path(stages[0].output).parent
+        validate_completed_stages([
+            output_root / "protgnn_control", output_root / "cei_candidate",
+            output_root / "cei_product_off",
+        ])
+        smoke = _load_json(output_root / "cei_smoke" / "result.json", "smoke result.json")
+        if smoke.get("status") != "completed" or smoke.get("binding") != completed_bindings["cei_smoke"]:
+            raise ValueError("smoke result incomplete or binding mismatch")
+        if (smoke.get("metrics") is not None or not isinstance(smoke.get("dev_metrics"), dict)
+                or smoke.get("test_evaluated", False) is not False):
+            raise ValueError("smoke result violates dev-only/test-fold policy")
+    except Exception as error:
+        journal["status"] = "failed"
+        journal["validation_error"] = str(error)
+        _write_journal(journal_path, journal)
+        raise SystemExit(1) from error
+    for entry in journal["stages"].values():
+        entry["status"] = "completed"
     journal["status"] = "completed"
     _write_journal(journal_path, journal)
     return 0
