@@ -193,16 +193,18 @@ def export_explanations(output_dir, *, records, manifest):
     fd, journal_name = tempfile.mkstemp(prefix=f".{output.name}.", suffix=".journal", dir=output.parent)
     journal = Path(journal_name)
     published = False
+    record_values = []
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as stream:
             for record in records:
                 stream.write(json.dumps(record, sort_keys=True, allow_nan=False) + "\n")
-            stream.flush()
-            os.fsync(stream.fileno())
-        if not records:
-            raise ValueError("incomplete explanation export: no records")
+                stream.flush()
+                os.fsync(stream.fileno())
+                record_values.append(record)
+            if not record_values:
+                raise ValueError("incomplete explanation export: no records")
         sample_ids = []
-        for record in records:
+        for record in record_values:
             if not isinstance(record, Mapping) or type(record.get("sample_id")) is not str or not record["sample_id"]:
                 raise ValueError("incomplete explanation export: missing sample-keyed record")
             sample_ids.append(record["sample_id"])
@@ -239,7 +241,7 @@ def export_explanations(output_dir, *, records, manifest):
         (output / "records.jsonl").write_text(journal.read_text(encoding="utf-8"), encoding="utf-8")
         payload = dict(manifest)
         payload["status"] = "completed"
-        payload["record_count"] = len(records)
+        payload["record_count"] = len(record_values)
         (output / "manifest.json").write_text(json.dumps(payload, indent=2, sort_keys=True, allow_nan=False) + "\n", encoding="utf-8")
         published = True
         return output
