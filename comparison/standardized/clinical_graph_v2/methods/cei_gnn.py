@@ -164,6 +164,3 @@ class EvidenceInteractionNetwork(nn.Module):
             return logits
         return {"logits": logits, "node_contributions": node_parts,
                 "edge_contributions": edge_parts, "bias": self.bias}
-
-
-
