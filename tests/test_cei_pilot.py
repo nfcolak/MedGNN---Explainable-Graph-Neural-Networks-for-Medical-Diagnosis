@@ -125,6 +125,10 @@ def test_only_declared_treatment_fields_may_differ_and_unknowns_stay_strict():
     left = _bindings(method="protgnn", use_interactions=None)
     right = _bindings(method="cei_gnn", use_interactions=False)
     module.assert_common_bindings(left, right)
+    right["split_sample_ids_sha256"]["dev"] = "different-dev-sample"
+    with pytest.raises(ValueError, match="split_sample_ids_sha256.dev"):
+        module.assert_common_bindings(left, right)
+    right = _bindings(method="cei_gnn", use_interactions=False)
     right["surprise"] = "not silently ignored"
     with pytest.raises(ValueError, match="surprise"):
         module.assert_common_bindings(left, right)
