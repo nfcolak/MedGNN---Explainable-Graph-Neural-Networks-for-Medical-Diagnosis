@@ -79,3 +79,40 @@ def test_gps_registration_forward_backward_defaults_and_real_dimension_budget():
     assert model.run_config()["architecture"]["parameter_count"] == sum(
         p.numel() for p in model.parameters())
     assert relation_count(None) == model.num_relations
+
+
+def test_gps_rwse_path_step_two_and_attention_masks_graph_padding():
+    model = make_model().eval()
+    batch = two_graph_batch()
+    data = model._validated_batch(batch)
+    encoding = model._random_walk_encoding(data)
+    assert torch.allclose(encoding[:3, 1], torch.tensor([0.5, 1.0, 0.5]))
+
+    state = model._input_state(data)
+    _, weights, valid = model._global_attention(
+        state, data.batch_index, data.graph_count, 0, return_weights=True)
+    assert valid.tolist() == [[True, True, True], [True, True, False]]
+    assert torch.all(weights[1, :, :, 2] == 0)
+    assert torch.allclose(weights[0].sum(dim=-1), torch.ones_like(weights[0].sum(dim=-1)))
+    assert torch.allclose(weights[1, :, :2, :2].sum(dim=-1), torch.ones((4, 2)))
+
+
+def test_gps_batch_attention_and_importance_are_graph_local():
+    torch.manual_seed(103)
+    model = make_model().eval()
+    batch = two_graph_batch()
+    with torch.no_grad():
+        original = model(batch, epoch=0).logits
+        importance = model.explain(batch)
+        changed = batch.clone()
+        changed.x[3:] += 100.0
+        changed_logits = model(changed, epoch=0).logits
+        changed_importance = model.explain(changed)
+
+    assert torch.equal(original[0], changed_logits[0])
+    assert torch.allclose(importance[:3], changed_importance[:3])
+    assert importance.shape == (batch.num_nodes,)
+    assert torch.isfinite(importance).all()
+    assert torch.all(importance >= 0)
+    assert importance[:3].sum().item() == pytest.approx(1.0)
+    assert importance[3:].sum().item() == pytest.approx(1.0)
