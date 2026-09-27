@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 import torch
 from torch_geometric.data import Data
+from torch_geometric.nn import MessagePassing
 
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "comparison/standardized/clinical_graph_v2/cei_graphxai.py"
@@ -20,20 +21,39 @@ def graph_fixture():
     )
 
 
-class SyntheticAdapter:
+class SyntheticAdapter(torch.nn.Module):
+    class PassEdges(MessagePassing):
+        def __init__(self):
+            super().__init__(aggr="add")
+
+        def forward(self, x, edge_index):
+            return self.propagate(edge_index, x=x)
+
+        def message(self, x_j):
+            return x_j
+
     def __init__(self):
+        super().__init__()
+        self.predictor = torch.nn.Linear(2, 2, bias=False)
+        self.edge_pass = self.PassEdges()
         self.seen_features = None
+        with torch.no_grad():
+            self.predictor.weight.copy_(torch.tensor([[1.0, 2.0], [-1.0, 1.0]]))
 
     def continuous_inputs(self, graph):
-        return torch.tensor([[1.0, 2.0], [3.0, 4.0]])
+        rows = int(graph.num_nodes)
+        base = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
+        return base[:rows]
 
     def forward_continuous(self, features, edge_index, metadata, *, return_parts=False):
         self.seen_features = features
-        # Both continuous channels contribute; fixed edge metadata contributes too.
-        signal = features.sum(dim=1).sum().view(1, 1) + metadata.edge_attr.sum().view(1, 1)
+        # Both continuous channels and fixed edge payloads affect prediction; edge
+        # presence travels through a real PyG MessagePassing explanation hook.
+        node = self.predictor(features) + self.edge_pass(features, edge_index)
+        signal = node.sum().view(1, 1) + metadata.edge_attr.sum().view(1, 1)
         return torch.cat([signal, -signal], dim=1)
 
-    def __call__(self, graph, *, epoch):
+    def forward(self, graph, *, epoch):
         return type("Output", (), {"logits": self.forward_continuous(
             self.continuous_inputs(graph), graph.edge_index, graph
         )})()
@@ -76,12 +96,24 @@ def test_explain_graph_runs_real_algorithms_and_cleans_mask_state():
     from shared.lib.graphxai_standardized import ALGORITHMS
 
     adapter, graph = SyntheticAdapter(), graph_fixture()
-    result = implementation.explain_graph(adapter, graph, steps=4, epochs=3)
+    objectives = []
+    original_backward = torch.Tensor.backward
+    def checked_backward(loss, *args, **kwargs):
+        objectives.append(loss.detach())
+        assert torch.isfinite(loss).all(), "mask optimization objective must remain finite"
+        return original_backward(loss, *args, **kwargs)
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(torch.Tensor, "backward", checked_backward)
+    try:
+        result = implementation.explain_graph(adapter, graph, steps=4, epochs=3)
+    finally:
+        monkeypatch.undo()
+    assert objectives, "GNNExplainer optimization objective was not exercised"
     assert set(result) == set(ALGORITHMS)
     assert all(item["status"] == "success" for item in result.values())
     assert result["GNNExplainer"]["provenance"]["edge_gradient_verified"] is True
-    assert all(torch.isfinite(torch.tensor(item["objective"])).all() for item in result.values())
-    assert not any(getattr(module, "explain", False) for module in adapter.modules()) if hasattr(adapter, "modules") else True
+    assert all(torch.isfinite(torch.as_tensor(item["node_explanation"]["node_importance"])).all() for item in result.values())
+    assert not adapter.edge_pass.explain
 
 
 def test_dev_cohort_requires_exact_sample_ids_and_fail_closed_provenance():
@@ -97,6 +129,35 @@ def test_dev_cohort_requires_exact_sample_ids_and_fail_closed_provenance():
         implementation.validate_dev_cohort(
             requested_ids=["subject-1"], frozen_dev_ids=["visit-1"],
             validation_ids=[], test_ids=[],
+        )
+
+
+def test_real_algorithms_support_one_node_edgeless_graph():
+    implementation = module()
+    adapter = SyntheticAdapter()
+    graph = Data(
+        edge_index=torch.empty((2, 0), dtype=torch.long),
+        edge_attr=torch.empty((0, 1)),
+        edge_relation=torch.empty((0,), dtype=torch.long),
+        edge_triple=torch.empty((0,), dtype=torch.long),
+        batch=torch.zeros(1, dtype=torch.long),
+        num_nodes=1,
+        num_graphs=1,
+    )
+    result = implementation.explain_graph(adapter, graph, steps=4, epochs=3)
+    assert set(result) == {"GradExplainer", "IntegratedGradExplainer", "GNNExplainer"}
+    assert result["GNNExplainer"]["provenance"]["edge_gradient_verified"] is False
+    assert result["GNNExplainer"]["provenance"]["edge_gradient_status"] == "not_applicable_edgeless"
+    assert all(torch.isfinite(torch.as_tensor(item["node_explanation"]["node_importance"])).all() for item in result.values())
+
+
+def test_reconstruction_refuses_unbound_or_incompatible_adaptation():
+    implementation = module()
+    with pytest.raises(ValueError, match="incompatible method/adaptation"):
+        implementation.reconstruct_adapter(
+            {"method": "protgnn", "adaptation_version": "wrong"},
+            "unused.pt",
+            expected_source_sha256={},
         )
 
 
