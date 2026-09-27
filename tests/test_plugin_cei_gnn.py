@@ -162,6 +162,12 @@ def test_pyg_raw_logit_mask_algebra_and_parts_reconstruct():
                                + parts["edge_contributions"].sum(0), rtol=1e-6, atol=1e-6)
     assert not torch.allclose(effective_mask, effective_mask.sigmoid()), "raw-logit mask must be sigmoid'ed exactly once"
     clear_masks(network)
+    network.set_edge_mask(effective_mask.detach())
+    direct_parts = adapter.forward_continuous(features, graph.edge_index, graph, return_parts=True)
+    torch.testing.assert_close(direct_parts["logits"], parts["logits"], rtol=0, atol=0)
+    torch.testing.assert_close(direct_parts["edge_contributions"],
+                               parts["edge_contributions"], rtol=0, atol=0)
+    clear_masks(network)
 
 
 def test_direct_mask_clear_then_pyg_mask_switch_preserves_masking_and_gradient():
