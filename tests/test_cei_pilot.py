@@ -202,8 +202,9 @@ def test_executor_refuses_source_drift_between_stages(tmp_path, monkeypatch):
     root.mkdir()
     journal = root / "journal.json"
     stages = [
-        module.Stage(name=name, argv=["python", "train.py"], output=str(root / name),
-                     seed=1234, budget=(10000, 5000, 40), treatment=name)
+        module.Stage(name=name, argv=["python", "train.py", "--output", str(root / name)],
+                     output=str(root / name), seed=1234,
+                     budget=(10000, 5000, 40), treatment=name)
         for name in ("one", "two")
     ]
     identities = iter(("source-a", "source-a", "source-b"))
