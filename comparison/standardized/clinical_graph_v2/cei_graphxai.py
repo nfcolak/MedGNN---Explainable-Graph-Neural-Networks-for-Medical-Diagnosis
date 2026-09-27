@@ -1,6 +1,7 @@
 """Exact fixed-graph GraphXAI bridge for the clinical CEI adapter."""
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import os
@@ -27,9 +28,13 @@ class ClinicalGraphXAIWrapper(nn.Module):
     def __init__(self, adapter: Any, graph: Any):
         super().__init__()
         self.adapter = adapter
-        self.graph = graph
-        self._edge_index = graph.edge_index.detach().clone()
-        self._batch = _batch_of(graph)
+        self.graph = copy.deepcopy(graph)
+        for key in self.graph.keys():
+            value = getattr(self.graph, key)
+            if isinstance(value, torch.Tensor):
+                setattr(self.graph, key, value.detach().clone())
+        self._edge_index = self.graph.edge_index.detach().clone()
+        self._batch = _batch_of(self.graph)
 
     def forward(self, features: torch.Tensor, edge_index: torch.Tensor, batch=None):
         if not isinstance(features, torch.Tensor) or features.ndim != 2:
@@ -53,6 +58,15 @@ def _batch_of(graph):
     return batch.detach().clone()
 
 
+class GraphXAIExplanationError(RuntimeError):
+    """Failed explanation with a machine-readable record that cannot pass export."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.record = {"status": "failed", "error": str(message)}
+        self.partial_records = [self.record]
+
+
 def explain_graph(adapter, graph, *, steps=32, epochs=50) -> dict:
     """Run the repository's actual vendored GraphXAI algorithms on one graph."""
     features = adapter.continuous_inputs(graph).detach()
@@ -62,17 +76,20 @@ def explain_graph(adapter, graph, *, steps=32, epochs=50) -> dict:
     torch.testing.assert_close(actual, expected, rtol=0, atol=0)
     from shared.lib.graphxai_standardized import explain_algorithms
 
-    result = explain_algorithms(
-        wrapper, features, graph.edge_index, batch=_batch_of(graph), steps=steps, epochs=epochs
-    )
+    try:
+        result = explain_algorithms(
+            wrapper, features, graph.edge_index, batch=_batch_of(graph), steps=steps, epochs=epochs
+        )
+    except Exception as exc:
+        raise GraphXAIExplanationError(str(exc)) from exc
     if set(result) != set(REQUIRED_ALGORITHMS):
-        raise RuntimeError("incomplete GraphXAI algorithm set")
+        raise GraphXAIExplanationError("incomplete GraphXAI algorithm set")
     for name, item in result.items():
         if item.get("status") != "success":
-            raise RuntimeError(f"GraphXAI algorithm failed: {name}")
+            raise GraphXAIExplanationError(f"GraphXAI algorithm failed: {name}")
         importance = item.get("node_explanation", {}).get("node_importance")
         if importance is None or not torch.isfinite(torch.as_tensor(importance)).all():
-            raise RuntimeError(f"GraphXAI algorithm produced nonfinite/incomplete record: {name}")
+            raise GraphXAIExplanationError(f"GraphXAI algorithm produced nonfinite/incomplete record: {name}")
         item["provenance"].update(EXPLANATION_BOUNDARIES)
     return result
 
@@ -104,8 +121,10 @@ def _unique_ids(values, label):
     return ids
 
 
-def binding_hashes(*, source_files, graph_path, membership_path, checkpoint_path, cohort_ids):
-    """Compute explicit provenance digests without loading clinical contents."""
+def binding_hashes(*, package_root, graph_path, membership_path, checkpoint_path, cohort_ids):
+    """Compute runner-compatible provenance hashes from source and artifact files."""
+    from comparison.standardized.clinical_graph_v2.contracts import recursive_source_hashes
+
     def file_hash(path):
         digest = hashlib.sha256()
         with Path(path).open("rb") as stream:
@@ -113,7 +132,7 @@ def binding_hashes(*, source_files, graph_path, membership_path, checkpoint_path
                 digest.update(chunk)
         return digest.hexdigest()
 
-    source = {str(Path(path).resolve()): file_hash(path) for path in sorted(map(Path, source_files))}
+    source = recursive_source_hashes(package_root)
     cohort_digest = hashlib.sha256(json.dumps(list(cohort_ids), separators=(",", ":")).encode()).hexdigest()
     return {
         "source_sha256": source,
@@ -124,7 +143,7 @@ def binding_hashes(*, source_files, graph_path, membership_path, checkpoint_path
     }
 
 
-def reconstruct_adapter(binding: Mapping[str, Any], checkpoint_path, *, expected_source_sha256):
+def reconstruct_adapter(binding: Mapping[str, Any], checkpoint_path, *, expected_checkpoint_sha256):
     """Strictly rebuild CEI from the runner binding and state_dict checkpoint."""
     if binding.get("method") != "cei_gnn" or binding.get("adaptation_version") != ADAPTATION_VERSION:
         raise ValueError("incompatible method/adaptation binding")
@@ -135,33 +154,60 @@ def reconstruct_adapter(binding: Mapping[str, Any], checkpoint_path, *, expected
     effective = method_config.get("effective_settings")
     if not isinstance(architecture, Mapping) or not isinstance(effective, Mapping):
         raise ValueError("missing architecture/effective settings")
-    runner = binding.get("runner_settings")
+    runner = binding.get("runner_settings", binding)
     if not isinstance(runner, Mapping):
-        runner = binding
+        raise ValueError("runner settings are missing")
     dims = dict(architecture)
-    dims.update({
+    required_architecture = {
+        "num_tokens", "node_dim", "edge_dim", "num_triples", "num_relations",
+        "num_node_types", "num_classes", "hidden", "layers", "dropout",
+        "token_dim", "interaction_rank", "parameter_count",
+        "active_parameter_count", "inactive_parameter_count",
+    }
+    if not required_architecture <= set(dims):
+        raise ValueError("method architecture is missing required dimensions or parameter counts")
+    top_level = {
         "num_tokens": binding.get("vocabulary_size"),
-        "node_dim": binding.get("node_dim"),
-        "edge_dim": binding.get("edge_dim"),
-        "num_classes": binding.get("num_classes"),
+        "node_dim": binding.get("node_dim"), "edge_dim": binding.get("edge_dim"),
         "num_triples": binding.get("num_meta_relations"),
-    })
-    for key in ("hidden", "layers", "dropout", "token_dim"):
-        dims[key] = binding.get(key, dims.get(key))
-    required = ("num_tokens", "node_dim", "edge_dim", "num_classes", "hidden", "layers", "dropout", "token_dim", "num_triples")
-    if any(type(dims.get(key)) not in (int, float) for key in required):
+        "num_classes": binding.get("num_classes"), "hidden": binding.get("hidden"),
+        "layers": binding.get("layers"), "dropout": binding.get("dropout"),
+        "token_dim": binding.get("token_dim"), "num_relations": binding.get("num_relations"),
+    }
+    for key, value in top_level.items():
+        if value is None or dims.get(key) != value:
+            raise ValueError(f"runner binding {key} differs from method architecture")
+    constructor_keys = ("num_tokens", "node_dim", "edge_dim", "num_classes", "hidden",
+                        "layers", "dropout", "token_dim", "num_triples")
+    if any(type(dims.get(key)) not in (int, float) or isinstance(dims.get(key), bool)
+           for key in constructor_keys):
         raise ValueError("runner binding is missing constructor dimensions")
-    if effective.get("interaction_rank") != 16 or effective.get("use_interactions") not in (True, False):
-        raise ValueError("unsupported CEI effective settings")
-    if dims["layers"] != 1:
-        raise ValueError("unsupported CEI architecture depth")
+    if effective.get("interaction_rank") != dims["interaction_rank"] or dims["interaction_rank"] != 16:
+        raise ValueError("unsupported CEI interaction rank")
+    if effective.get("use_interactions") not in (True, False) or dims["layers"] != 1:
+        raise ValueError("unsupported CEI effective settings or architecture depth")
+    from comparison.standardized.clinical_graph_v2.contracts import recursive_source_hashes
     source_binding = binding.get("source_code")
-    if not isinstance(source_binding, Mapping) or source_binding != expected_source_sha256:
-        raise ValueError("source binding mismatch")
+    current_sources = recursive_source_hashes(Path(__file__).resolve().parent)
+    if not isinstance(source_binding, Mapping) or dict(source_binding) != current_sources:
+        raise ValueError("source binding differs from current package-relative source hashes")
+    expected_checkpoint_sha256 = str(expected_checkpoint_sha256)
+    if (len(expected_checkpoint_sha256) != 64 or
+            any(char not in "0123456789abcdef" for char in expected_checkpoint_sha256)):
+        raise ValueError("explicit expected checkpoint digest must be a lowercase SHA-256")
+    actual_checkpoint_sha256 = hashlib.sha256(Path(checkpoint_path).read_bytes()).hexdigest()
+    if actual_checkpoint_sha256 != expected_checkpoint_sha256:
+        raise ValueError("checkpoint digest does not match explicit expected digest")
     from comparison.standardized.clinical_graph_v2.methods.plugin_cei_gnn import EvidenceInteractionAdapter
+    from types import SimpleNamespace
 
-    args = type("RunnerArgs", (), dict(runner))()
-    adapter = EvidenceInteractionAdapter(**{key: dims[key] for key in required}, args=args)
+    args_values = dict(runner)
+    args_values["method_options"] = {
+        "interaction_rank": effective["interaction_rank"],
+        "use_interactions": effective["use_interactions"],
+    }
+    args = SimpleNamespace(**args_values)
+    adapter = EvidenceInteractionAdapter(**{key: dims[key] for key in constructor_keys}, args=args)
     config = adapter.run_config()
     if config.get("adaptation_version") != ADAPTATION_VERSION:
         raise ValueError("reconstructed adapter version mismatch")
@@ -178,37 +224,102 @@ def reconstruct_adapter(binding: Mapping[str, Any], checkpoint_path, *, expected
     return adapter.cpu().eval()
 
 
-def export_explanations(output_dir, *, records, manifest):
+def _finite_json_tree(value):
+    import math
+    from numbers import Real
+
+    if isinstance(value, Mapping):
+        return all(_finite_json_tree(key) and _finite_json_tree(item) for key, item in value.items())
+    if isinstance(value, (list, tuple)):
+        return all(_finite_json_tree(item) for item in value)
+    if isinstance(value, Real) and not isinstance(value, bool):
+        return math.isfinite(float(value))
+    return value is None or isinstance(value, (str, bool, int))
+
+
+def _validate_algorithm_record(name, item):
+    if not isinstance(item, Mapping) or item.get("status") != "success":
+        raise RuntimeError(f"incomplete explanation export: {name} did not succeed")
+    explanation = item.get("node_explanation")
+    expected_keys = {"target", "node_importance", "top_nodes", "top_k", "fidelity_plus",
+                     "fidelity_minus", "sparsity"}
+    if not isinstance(explanation, Mapping) or set(explanation) != expected_keys:
+        raise ValueError(f"{name} explanation does not match the genuine node explanation schema")
+    importance = explanation.get("node_importance")
+    if not isinstance(importance, (list, tuple)) or not importance or not _finite_json_tree(importance):
+        raise ValueError(f"{name} node explanation is missing or nonfinite")
+    target = explanation.get("target")
+    if (not isinstance(target, Mapping) or target.get("provenance") != "model_prediction"
+            or type(target.get("class_id")) is not int):
+        raise ValueError(f"{name} explanation target provenance is invalid")
+    if not _finite_json_tree(explanation):
+        raise ValueError(f"{name} explanation contains nonfinite metrics")
+    provenance = item.get("provenance")
+    if not isinstance(provenance, Mapping) or not {
+        "implementation", "source_sha256", "target", "node_gradients", "feature_zeroing", "causal_claim"
+    } <= set(provenance):
+        raise ValueError(f"{name} explanation provenance is missing")
+    hashes = provenance.get("source_sha256")
+    if (not isinstance(hashes, Mapping) or not hashes or
+            any(not isinstance(digest, str) or len(digest) != 64 or
+                any(char not in "0123456789abcdef" for char in digest) for digest in hashes.values())):
+        raise ValueError(f"{name} explanation source provenance is invalid")
+    if any(provenance.get(key) != value for key, value in EXPLANATION_BOUNDARIES.items()):
+        raise ValueError(f"{name} explanation interpretation boundaries are invalid")
+
+
+def export_explanations(
+    output_dir, *, records, manifest, binding=None, frozen_dev_ids=None,
+    graph_path=None, membership_path=None, checkpoint_path=None,
+    expected_checkpoint_sha256=None,
+):
     """Journal records beside a fresh output; publish manifest only when complete."""
     output = Path(output_dir)
-    if output.exists():
-        raise FileExistsError(f"refusing occupied explanation directory: {output}")
-    records = list(records)
     output.parent.mkdir(parents=True, exist_ok=True)
+    # mkdir(exist_ok=False) is the ownership boundary: a concurrent creator wins
+    # or this call does, and this function never removes the requested path.
+    output.mkdir(mode=0o700, exist_ok=False)
     fd, journal_name = tempfile.mkstemp(prefix=f".{output.name}.", suffix=".journal", dir=output.parent)
     journal = Path(journal_name)
     published = False
+    record_values = []
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as stream:
             for record in records:
                 stream.write(json.dumps(record, sort_keys=True, allow_nan=False) + "\n")
-            stream.flush()
-            os.fsync(stream.fileno())
-        if not records:
-            raise ValueError("incomplete explanation export: no records")
+                stream.flush()
+                os.fsync(stream.fileno())
+                record_values.append(record)
+            if not record_values:
+                raise ValueError("incomplete explanation export: no records")
         sample_ids = []
-        for record in records:
+        for record in record_values:
             if not isinstance(record, Mapping) or type(record.get("sample_id")) is not str or not record["sample_id"]:
                 raise ValueError("incomplete explanation export: missing sample-keyed record")
             sample_ids.append(record["sample_id"])
+        if len(set(sample_ids)) != len(sample_ids):
+            raise ValueError("incomplete explanation export: duplicate sample IDs")
+        if not isinstance(binding, Mapping) or not isinstance(frozen_dev_ids, Sequence):
+            raise ValueError("export requires the runner binding and frozen dev sample-ID roster")
+        dev_ids = _unique_ids(frozen_dev_ids, "frozen dev roster")
+        split_hashes = binding.get("split_sample_ids_sha256")
+        if not isinstance(split_hashes, Mapping) or not isinstance(split_hashes.get("dev"), str):
+            raise ValueError("runner binding is missing its dev sample-ID hash")
+        roster_hash = hashlib.sha256(json.dumps(list(dev_ids), separators=(",", ":"),
+                                               ensure_ascii=True).encode("utf-8")).hexdigest()
+        if split_hashes["dev"] != roster_hash:
+            raise ValueError("frozen dev roster hash does not match runner binding")
+        if not set(sample_ids) <= set(dev_ids):
+            raise ValueError("export records contain IDs outside the bound frozen dev roster")
+        for record in record_values:
             graphxai = record.get("graphxai")
             if not isinstance(graphxai, Mapping) or set(graphxai) != set(REQUIRED_ALGORITHMS):
                 raise ValueError("incomplete explanation export: required algorithms absent")
-            if any(not isinstance(graphxai[name], Mapping) or graphxai[name].get("status") != "success"
-                   for name in REQUIRED_ALGORITHMS):
-                raise RuntimeError("incomplete explanation export: an explainer failed")
-        if len(set(sample_ids)) != len(sample_ids):
-            raise ValueError("incomplete explanation export: duplicate sample IDs")
+            for name in REQUIRED_ALGORITHMS:
+                _validate_algorithm_record(name, graphxai[name])
+        label_order = binding.get("label_order")
+        if not isinstance(label_order, (list, tuple)) or not label_order:
+            raise ValueError("runner binding is missing ordered class labels")
         if not isinstance(manifest, Mapping):
             raise ValueError("manifest must be an object")
         required_hashes = {"source_sha256", "graph_sha256", "membership_sha256", "checkpoint_sha256", "cohort_ids_sha256"}
@@ -219,8 +330,12 @@ def export_explanations(output_dir, *, records, manifest):
             raise ValueError("manifest must explicitly bind the dev fold and integer seed")
         if not isinstance(manifest.get("class_order"), (list, tuple)) or not manifest["class_order"]:
             raise ValueError("manifest must contain a nonempty ordered class list")
+        if list(manifest["class_order"]) != list(label_order):
+            raise ValueError("manifest class order differs from the runner binding")
         if not isinstance(manifest.get("cohort_identity"), str) or not manifest["cohort_identity"].strip():
             raise ValueError("manifest must bind exact cohort identity")
+        if dict(manifest.get("interpretation_boundaries", {})) != EXPLANATION_BOUNDARIES:
+            raise ValueError("manifest interpretation boundaries do not match the fixed contract")
         for key in ("graph_sha256", "membership_sha256", "checkpoint_sha256", "cohort_ids_sha256"):
             value = manifest[key]
             if not isinstance(value, str) or len(value) != 64 or any(c not in "0123456789abcdef" for c in value):
@@ -230,18 +345,33 @@ def export_explanations(output_dir, *, records, manifest):
         actual_cohort_hash = hashlib.sha256(json.dumps(sample_ids, separators=(",", ":")).encode()).hexdigest()
         if manifest["cohort_ids_sha256"] != actual_cohort_hash:
             raise ValueError("manifest cohort hash does not match sample-keyed records")
-        output.mkdir(mode=0o700)
+        if any(path is None for path in (graph_path, membership_path, checkpoint_path)):
+            raise ValueError("export requires real graph, membership, and checkpoint file paths")
+        if (not isinstance(expected_checkpoint_sha256, str) or len(expected_checkpoint_sha256) != 64
+                or any(char not in "0123456789abcdef" for char in expected_checkpoint_sha256)):
+            raise ValueError("export requires an explicit lowercase checkpoint SHA-256")
+        derived = binding_hashes(
+            package_root=Path(__file__).resolve().parent, graph_path=graph_path,
+            membership_path=membership_path, checkpoint_path=checkpoint_path, cohort_ids=sample_ids,
+        )
+        if dict(binding.get("source_code", {})) != derived["source_sha256"]:
+            raise ValueError("runner source binding differs from current package source files")
+        if dict(manifest["source_sha256"]) != derived["source_sha256"]:
+            raise ValueError("manifest source hashes differ from current package source files")
+        if expected_checkpoint_sha256 != derived["checkpoint_sha256"]:
+            raise ValueError("checkpoint file digest differs from explicit expected digest")
+        for key in ("graph_sha256", "membership_sha256", "checkpoint_sha256"):
+            if manifest[key] != derived[key]:
+                raise ValueError(f"manifest {key} differs from the actual file")
         (output / "records.jsonl").write_text(journal.read_text(encoding="utf-8"), encoding="utf-8")
         payload = dict(manifest)
+        payload.update(derived)
         payload["status"] = "completed"
-        payload["record_count"] = len(records)
+        payload["record_count"] = len(record_values)
         (output / "manifest.json").write_text(json.dumps(payload, indent=2, sort_keys=True, allow_nan=False) + "\n", encoding="utf-8")
         published = True
         return output
     except Exception:
-        if output.exists():
-            import shutil
-            shutil.rmtree(output)
         raise
     finally:
         if published:
