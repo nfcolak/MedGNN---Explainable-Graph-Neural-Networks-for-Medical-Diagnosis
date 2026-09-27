@@ -176,12 +176,13 @@ def test_executor_journals_failures_and_checks_bindings_before_results(tmp_path,
     output = tmp_path / "out"
     output.mkdir()
     journal = output / "journal.json"
-    stages = [module.Stage(name=name, argv=["python", "train.py"], output=str(output / name),
-                           seed=1234, budget=budget, treatment=treatment)
-              for name, budget, treatment in (("cei_smoke", (256, 128, 2), "smoke"),
-                  ("protgnn_control", (10000, 5000, 40), "control"),
-                  ("cei_candidate", (10000, 5000, 40), "candidate"),
-                  ("cei_product_off", (10000, 5000, 40), "product_off"))]
+    artifact = tmp_path / "artifact"
+    artifact.mkdir()
+    targets, canonical = tmp_path / "targets.csv", tmp_path / "canonical.json"
+    targets.write_text("x")
+    canonical.write_text("{}")
+    stages = module.build_plan(artifact=artifact, targets=targets, canonical=canonical,
+                               output_root=output)
     monkeypatch.setattr(module, "capture_bindings", lambda stage: {
         "git_revision": "rev", "source_state_sha256": "source", "argv_sha256": "argv",
         "inputs": {},
@@ -203,43 +204,22 @@ def test_executor_refuses_source_drift_between_stages(tmp_path, monkeypatch):
     module = _module()
     root = tmp_path / "runs"
     root.mkdir()
-    journal = root / "journal.json"
-    stage_data = (("cei_smoke", (256, 128, 2), "smoke"),
-        ("protgnn_control", (10000, 5000, 40), "control"),
-        ("cei_candidate", (10000, 5000, 40), "candidate"),
-        ("cei_product_off", (10000, 5000, 40), "product_off"))
-    stages = [module.Stage(name=name, argv=["python", "train.py", "--output", str(root / name)],
-                     output=str(root / name), seed=1234, budget=budget, treatment=treatment)
-              for name, budget, treatment in stage_data]
-    identities = iter(("source-a", "source-a", "source-b"))
-    monkeypatch.setattr(module, "capture_bindings", lambda stage: {
-        "git_revision": "rev", "source_state_sha256": next(identities),
-        "argv_sha256": "argv", "inputs": {},
-    })
+    artifact = tmp_path / "artifact"
+    artifact.mkdir()
+    targets, canonical = tmp_path / "targets.csv", tmp_path / "canonical.json"
+    targets.write_text("x")
+    canonical.write_text("{}")
+    stages = module.build_plan(artifact=artifact, targets=targets, canonical=canonical,
+                               output_root=root)
+    tampered = list(stages)
+    tampered[1] = module.Stage(**{**tampered[1].__dict__,
+                                 "argv": tampered[1].argv[:-1]})
     launches = []
-    def fake_run(argv, **kwargs):
-        launches.append(argv)
-        output = Path(argv[argv.index("--output") + 1])
-        output.mkdir()
-        binding = _bindings()
-        (output / "binding.json").write_text(json.dumps(binding))
-        (output / "result.json").write_text(json.dumps({
-            "status": "completed", "binding": binding, "metrics": None,
-            "dev_metrics": {"macro_f1": 0.1},
-        }))
-        return SimpleNamespace(stdout="", stderr="")
-    monkeypatch.setattr(module.subprocess, "run", fake_run)
-
-    with pytest.raises(SystemExit) as error:
-        module.execute_plan(stages, journal_path=journal)
-
-    assert error.value.code != 0
-    assert len(launches) == 1
-    assert launches[0][-1] == "--execute"
-    saved = json.loads(journal.read_text())
-    assert saved["stages"]["cei_smoke"]["status"] == "failed"
-    assert "protgnn_control" not in saved["stages"]
-    assert saved["status"] == "failed"
+    monkeypatch.setattr(module.subprocess, "run", lambda *a, **k: launches.append(a))
+    with pytest.raises(ValueError, match="argv"):
+        module.execute_plan(tampered, journal_path=root / "journal.json")
+    assert launches == []
+    assert not (root / "journal.json").exists()
 
 
 def test_budget_guard_rejects_changed_full_budget_and_patience():
@@ -327,3 +307,218 @@ def test_validator_refuses_json_only_arms_and_nonfinite_history(tmp_path):
         dirs.append(directory)
     with pytest.raises(ValueError, match="dev.npz|best.pt|replay"):
         module.validate_completed_stages(dirs)
+
+
+def test_execution_rejects_any_stage_argv_drift_before_first_subprocess(tmp_path, monkeypatch):
+    module = _module()
+    root = tmp_path / "runs"
+    root.mkdir()
+    artifact = tmp_path / "artifact"
+    artifact.mkdir()
+    targets = tmp_path / "targets.csv"
+    targets.write_text("x")
+    canonical = tmp_path / "canonical.json"
+    canonical.write_text("{}")
+    stages = module.build_plan(artifact=artifact, targets=targets, canonical=canonical,
+                               output_root=root)
+    tampered = list(stages)
+    tampered[2] = module.Stage(**{**tampered[2].__dict__,
+                                 "argv": tampered[2].argv + ["--patience", "1"]})
+    launches = []
+    monkeypatch.setattr(module, "capture_bindings", lambda stage: {
+        "source_state_sha256": "source", "input_state_sha256": "input",
+        "common_config_sha256": "config"})
+    monkeypatch.setattr(module.subprocess, "run", lambda *a, **k: launches.append(a))
+    with pytest.raises((ValueError, SystemExit)):
+        module.execute_plan(tampered, journal_path=root / "journal.json")
+    assert launches == []
+    assert not (root / "journal.json").exists()
+
+
+def test_actual_method_run_configs_are_accepted_and_source_defaults_are_locked():
+    module = _module()
+    from comparison.standardized.clinical_graph_v2.methods import build_method
+    from comparison.standardized.clinical_graph_v2.tensorize import PAYLOAD_WIDTH
+
+    args = SimpleNamespace(num_relations=3)
+    common = dict(num_tokens=8, node_dim=3, edge_dim=PAYLOAD_WIDTH, num_classes=2,
+                 hidden=4, layers=1, dropout=0.0, token_dim=3,
+                 num_triples=2, args=args)
+    cei_on = build_method("cei_gnn", **common)
+    cei_off = build_method("cei_gnn", **{**common,
+        "args": SimpleNamespace(num_relations=3,
+                                 method_options={"use_interactions": False})})
+    prot = build_method("protgnn", **{**common,
+        "args": SimpleNamespace(epochs=40, patience=40)})
+    on_config, off_config, prot_config = cei_on.run_config(), cei_off.run_config(), prot.run_config()
+    left = _bindings(method="cei_gnn", method_config=on_config, patience=40)
+    right = _bindings(method="cei_gnn", method_config=off_config, patience=40)
+    left["use_interactions"], right["use_interactions"] = True, False
+    assert module.assert_common_bindings(left, right)
+    control = _bindings(method="protgnn", method_config=prot_config, patience=40,
+                        use_interactions=None)
+    candidate = _bindings(method="cei_gnn", method_config=on_config, patience=40,
+                          use_interactions=True)
+    assert module.assert_common_bindings(control, candidate)
+    drifted = json.loads(json.dumps(prot_config))
+    drifted["native_schedule"]["warm_epochs"] += 1
+    with pytest.raises(ValueError, match="default|schedule|method_config"):
+        module.assert_common_bindings(control, _bindings(method="protgnn",
+            method_config=drifted, patience=40, use_interactions=None))
+
+
+
+def test_replay_stage_reconstructs_real_model_and_rejects_tampered_artifacts(tmp_path, monkeypatch):
+    module = _module()
+    import hashlib
+    import numpy as np
+    import torch
+    from torch_geometric.data import Data
+    from torch_geometric.loader import DataLoader
+    from comparison.standardized.clinical_graph_v2 import train
+    from comparison.standardized.clinical_graph_v2.contracts import recursive_source_hashes, sample_ids_sha256
+    from comparison.standardized.clinical_graph_v2.methods import build_method
+    from comparison.standardized.clinical_graph_v2.schema import sha256
+    from comparison.standardized.clinical_graph_v2.tensorize import (
+        PAYLOAD_WIDTH, PREPROCESSING_VERSION, Scaler, Vocabulary, preprocessing_state)
+
+    artifact = tmp_path / "artifact"
+    artifact.mkdir()
+    (artifact / "graphs.jsonl").write_text("synthetic graph source\n")
+    (artifact / "visit_membership.jsonl").write_text("synthetic membership\n")
+    targets_path = tmp_path / "targets.csv"
+    targets_path.write_text("synthetic targets\n")
+    prep = {"preprocessing_version": PREPROCESSING_VERSION,
+            "context_categories": {"gender": [], "race": [], "arrival_transport": []},
+            "vocabulary": Vocabulary(["synthetic"], 1), "scaler": Scaler({}),
+            "token_min_count": 1, "triples": ["patient|rel|visit"], "triple_counts": {}}
+    prep_json = preprocessing_state(prep)
+    output = tmp_path / "stage"
+    output.mkdir()
+    (output / "preprocessing.json").write_text(json.dumps(prep_json, sort_keys=True))
+    rows = {}
+    for sid, subject, label in (("train-1", "patient-1", 0), ("dev-1", "patient-2", 0),
+                                ("dev-2", "patient-3", 1), ("validation-1", "patient-4", 1)):
+        rows[sid] = Data(
+            x=torch.tensor([[0.1, 0.2], [0.3, 0.4]], dtype=torch.float32),
+            token=torch.tensor([0, 0], dtype=torch.long),
+            node_type=torch.tensor([0, 0], dtype=torch.long),
+            edge_index=torch.tensor([[0, 1], [1, 0]], dtype=torch.long),
+            edge_attr=torch.zeros((2, PAYLOAD_WIDTH), dtype=torch.float32),
+            edge_relation=torch.zeros(2, dtype=torch.long),
+            edge_triple=torch.zeros(2, dtype=torch.long),
+            y=torch.tensor([label], dtype=torch.long), sample_id=sid, subject=subject)
+    splits = {"train": [rows["train-1"]], "dev": [rows["dev-1"], rows["dev-2"]],
+              "validation": [rows["validation-1"]]}
+    monkeypatch.setattr(train, "load_targets", lambda path: {"synthetic": True})
+    monkeypatch.setattr(train, "select_top_labels", lambda targets, top_k: (targets, [0, 1], {}))
+    monkeypatch.setattr(train, "build_dataset", lambda *args, **kwargs: (splits, prep))
+
+    torch.manual_seed(27)
+    common_args = SimpleNamespace(num_relations=3)
+    model = build_method("cei_gnn", num_tokens=2, node_dim=2, edge_dim=PAYLOAD_WIDTH,
+        num_classes=2, hidden=4, layers=1, dropout=0.0, token_dim=3, num_triples=2,
+        args=common_args)
+    config = model.run_config()
+    model.eval()
+    proba, labels = train.evaluate(model, DataLoader(splits["dev"], batch_size=2),
+                                   torch.device("cpu"), epoch=0)
+    torch.save(model.state_dict(), output / "best.pt")
+    prediction_hash = hashlib.sha256(np.ascontiguousarray(proba).tobytes()).hexdigest()
+    ids = np.asarray([row.sample_id for row in splits["dev"]])
+    np.savez_compressed(output / "dev.npz", proba=proba, y=labels, sample_ids=ids)
+    binding = {
+        "method": "cei_gnn", "method_config": config, "method_native_defaults": config["native_defaults"],
+        "artifact": str(artifact), "artifact_graphs_sha256": sha256(artifact / "graphs.jsonl"),
+        "artifact_visit_membership_file": "visit_membership.jsonl",
+        "artifact_visit_membership_sha256": sha256(artifact / "visit_membership.jsonl"),
+        "targets_path": str(targets_path), "targets_sha256": sha256(targets_path),
+        "source_code": recursive_source_hashes(Path(train.__file__).parent),
+        "preprocessing_sha256": sha256(output / "preprocessing.json"),
+        "top_k_labels": 2, "kept_label_indices": [0, 1], "edges": "all",
+        "train_limit": 1, "token_min_count": 1, "seed": 1234,
+        "dropped_relations": [], "rewired_relations": [], "min_prior_visits": 0,
+        "edge_direction": "forward", "dev_limit": 2, "sample_seed": 1234,
+        "split_sample_ids_sha256": {fold: sample_ids_sha256(row.sample_id for row in data)
+                                     for fold, data in splits.items()},
+        "selection_fold": "dev", "final_eval": "none", "test_evaluated": False,
+        "num_classes": 2, "num_relations": 3, "vocabulary_size": 2,
+        "num_meta_relations": 2, "node_dim": 2, "edge_dim": PAYLOAD_WIDTH,
+        "hidden": 4, "layers": 1, "dropout": 0.0, "batch_size": 2,
+        "parameter_count": sum(p.numel() for p in model.parameters()),
+        "selected_dev": {"epoch_index": 0, "prediction_sha256": prediction_hash},
+    }
+    result = {"status": "completed", "binding": binding, "metrics": None,
+              "dev_metrics": train.metrics(labels, proba, 2), "validation_evaluations": 0}
+    replay = module.replay_stage(output, binding, result)
+    assert replay["exact_probabilities"] and replay["exact_labels"]
+    assert replay["exact_sample_identity"] and replay["test_evaluated"] is False
+    assert replay["inputs_verified"] and replay["source_verified"]
+    assert replay["validation_evaluated"] is False
+    assert json.loads((output / "replay.json").read_text())["checkpoint_sha256"] == sha256(output / "best.pt")
+
+    tampered = tmp_path / "tampered"
+    tampered.mkdir()
+    for name in ("preprocessing.json", "best.pt", "dev.npz"):
+        (tampered / name).write_bytes((output / name).read_bytes())
+    state = torch.load(tampered / "best.pt", map_location="cpu", weights_only=True)
+    first_key = next(iter(state))
+    state[first_key] = state[first_key] + 0.1
+    torch.save(state, tampered / "best.pt")
+    (tampered / "replay.json").write_text((output / "replay.json").read_text())
+    with pytest.raises(ValueError, match="probabilities|proof"):
+        module.replay_stage(tampered, binding, result)
+
+    for array_name in ("proba", "sample_ids", "y"):
+        corrupted = tmp_path / ("bad-" + array_name)
+        corrupted.mkdir()
+        for filename in ("preprocessing.json", "best.pt", "dev.npz", "replay.json"):
+            (corrupted / filename).write_bytes((output / filename).read_bytes())
+        with np.load(corrupted / "dev.npz", allow_pickle=False) as saved:
+            arrays = {key: saved[key].copy() for key in saved.files}
+        if array_name == "proba":
+            arrays[array_name][0, 0] += 0.01
+        elif array_name == "y":
+            arrays[array_name][0] = 1 - arrays[array_name][0]
+        else:
+            arrays[array_name][0] = "tampered-id"
+        np.savez_compressed(corrupted / "dev.npz", **arrays)
+        with pytest.raises(ValueError, match="probabilities|labels|IDs|sample"):
+            module.replay_stage(corrupted, binding, result)
+
+
+def test_checkpoint_replay_failure_prevents_launching_next_stage(tmp_path, monkeypatch):
+    module = _module()
+    artifact = tmp_path / "artifact"
+    artifact.mkdir()
+    targets, canonical = tmp_path / "targets.csv", tmp_path / "canonical.json"
+    targets.write_text("x")
+    canonical.write_text("{}")
+    stages = module.build_plan(artifact=artifact, targets=targets, canonical=canonical,
+                               output_root=tmp_path / "runs")
+    monkeypatch.setattr(module, "capture_bindings", lambda stage: {
+        "source_state_sha256": "source", "input_state_sha256": "inputs",
+        "common_config_sha256": "configuration"})
+    monkeypatch.setattr(module, "_validate_artifacts", lambda *args: None)
+    replay_calls = []
+    def reject_replay(*args):
+        replay_calls.append(args[0])
+        raise ValueError("synthetic checkpoint replay mismatch")
+    monkeypatch.setattr(module, "replay_stage", reject_replay)
+    launches = []
+    def synthetic_training(argv, **kwargs):
+        launches.append(argv)
+        output = Path(argv[argv.index("--output") + 1])
+        output.mkdir(parents=True)
+        binding = _bindings(use_interactions=True, train_limit=256, dev_limit=128, epochs=2)
+        binding["method_config"] = {"effective_settings": {"use_interactions": True}}
+        (output / "binding.json").write_text(json.dumps(binding))
+        (output / "result.json").write_text(json.dumps({
+            "status": "completed", "binding": binding, "metrics": None,
+            "dev_metrics": {"macro_f1": 0.1}, "test_evaluated": False}))
+        return SimpleNamespace(stdout="", stderr="")
+    monkeypatch.setattr(module.subprocess, "run", synthetic_training)
+    with pytest.raises(SystemExit):
+        module.execute_plan(stages, journal_path=tmp_path / "journal.json")
+    assert len(launches) == 1
+    assert len(replay_calls) == 1
