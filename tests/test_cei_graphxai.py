@@ -220,8 +220,8 @@ def test_real_algorithms_support_one_node_edgeless_graph():
 
 def test_reconstruction_replays_candidate_and_product_off_state_dicts(tmp_path):
     implementation = module()
-    from types import SimpleNamespace
     from comparison.standardized.clinical_graph_v2.methods import METHOD_REGISTRY
+    from comparison.standardized.clinical_graph_v2 import train
     from torch_geometric.data import Data
 
     graph = Data(
@@ -233,12 +233,22 @@ def test_reconstruction_replays_candidate_and_product_off_state_dicts(tmp_path):
     )
     for enabled in (True, False):
         torch.manual_seed(88)
-        args = SimpleNamespace(method_options={"interaction_rank": 16, "use_interactions": enabled},
-                              edge_direction="forward")
+        parser = train.parser()
+        runner_args = train.normalize_method_args(parser.parse_args([
+            "--artifact", "<artifact>", "--targets", "<targets>", "--output", "<output>",
+            "--method", "cei_gnn", "--train-limit", "10000", "--dev-limit", "5000",
+            "--sample-seed", "1234", "--seed", "1234", "--top-k-labels", "10",
+            "--edges", "all", "--edge-direction", "forward", "--weights", "sqrt_inverse",
+            "--selection-fold", "dev", "--final-eval", "none", "--epochs", "40",
+            "--patience", "40", "--method-option",
+            f"use_interactions={'true' if enabled else 'false'}",
+        ]), parser)
         adapter = METHOD_REGISTRY["cei_gnn"](
-            num_tokens=8, node_dim=3, edge_dim=2, num_classes=3, hidden=8,
-            layers=1, dropout=0.0, token_dim=4, num_triples=3, args=args,
+            num_tokens=8, node_dim=3, edge_dim=2, num_classes=3, hidden=runner_args.hidden,
+            layers=runner_args.layers, dropout=runner_args.dropout,
+            token_dim=runner_args.token_dim, num_triples=3, args=runner_args,
         ).eval()
+        runner_args.num_relations = adapter.num_relations
         config = adapter.run_config()
         checkpoint = tmp_path / f"cei-{enabled}.pt"
         torch.save(adapter.state_dict(), checkpoint)
@@ -249,9 +259,9 @@ def test_reconstruction_replays_candidate_and_product_off_state_dicts(tmp_path):
             "method": "cei_gnn", "adaptation_version": config["adaptation_version"],
             "method_config": config,
             "source_code": recursive_source_hashes(MODULE_PATH.parents[0]),
-            "runner_settings": {"edge_direction": "forward"},
             "vocabulary_size": 8, "node_dim": 3, "edge_dim": 2, "num_classes": 3,
-            "hidden": 8, "layers": 1, "dropout": 0.0,
+            "hidden": runner_args.hidden, "layers": runner_args.layers,
+            "dropout": runner_args.dropout,
             "num_meta_relations": 3, "num_relations": config["architecture"]["num_relations"],
         }
         reconstructed = None

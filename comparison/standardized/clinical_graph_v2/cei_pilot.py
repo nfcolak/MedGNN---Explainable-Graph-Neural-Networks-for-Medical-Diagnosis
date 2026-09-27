@@ -38,6 +38,7 @@ _EXCLUDED_TOP_LEVEL = {
     "use_interactions",
     "treatment",
     "early_stopping_start_epoch_index",
+    "hidden", "layers", "dropout", "lr", "weight_decay", "batch_size", "min_delta",
 }
 _METHOD_CONFIG_KEYS = {"method", "adaptation_version", "native_defaults",
                        "effective_settings", "architecture", "native_schedule",
@@ -216,41 +217,102 @@ def assert_common_bindings(left, right):
 
 
 def _validate_method_config(binding):
-    """Recreate adapter configuration from the runner's actual bound arguments."""
-    config = binding["method_config"]
+    """Recreate method configuration from train.py defaults and frozen pilot argv."""
+    config = binding.get("method_config")
+    if not isinstance(config, dict):
+        raise ValueError("binding method_config must be an object")
     method = config.get("method", binding.get("method"))
-    if method not in {"cei_gnn", "protgnn"}:
+    if method not in {"cei_gnn", "protgnn"} or binding.get("method") != method:
         raise ValueError(f"unsupported pilot method_config method: {method}")
     architecture = config.get("architecture")
     if not isinstance(architecture, dict):
         raise ValueError("method_config architecture must be an object")
     required_dimensions = {"num_tokens", "node_dim", "edge_dim", "num_classes", "hidden",
-                           "layers", "dropout", "token_dim", "num_triples", "num_relations"}
-    # Minimal legacy/test manifests without an adapter architecture cannot establish
-    # source drift. Production pilot bindings always carry these dimensions; reject
-    # partial dimension maps rather than treating them as a valid replay proof.
+                           "layers", "dropout", "token_dim", "num_triples", "num_relations",
+                           "parameter_count"}
+    active_count_key = "joint_active_parameter_count" if method == "protgnn" else "active_parameter_count"
+    required_dimensions.add(active_count_key)
     if not required_dimensions.issubset(architecture):
-        return
-    from types import SimpleNamespace
-    from comparison.standardized.clinical_graph_v2.methods import build_method
-    settings = config.get("effective_settings", {})
-    args = dict(binding)
-    args.update(settings)
-    args["num_relations"] = architecture["num_relations"]
+        missing = sorted(required_dimensions - set(architecture))
+        raise ValueError(f"method_config architecture is missing dimensions/counts: {missing[0]}")
+
+    top_level_dimensions = {
+        "num_tokens": binding.get("vocabulary_size"),
+        "node_dim": binding.get("node_dim"),
+        "edge_dim": binding.get("edge_dim"),
+        "num_triples": binding.get("num_meta_relations"),
+        "num_classes": binding.get("num_classes"),
+        "hidden": binding.get("hidden"),
+        "layers": binding.get("layers"),
+        "dropout": binding.get("dropout"),
+        "num_relations": binding.get("num_relations"),
+    }
+    for key, value in top_level_dimensions.items():
+        if value is None or architecture[key] != value:
+            raise ValueError(f"runner binding {key} differs from method architecture")
+    if binding.get("token_dim") is not None and binding["token_dim"] != architecture["token_dim"]:
+        raise ValueError("runner binding token_dim differs from method architecture")
+
+    # These are the only policy overrides permitted for the pilot. In particular,
+    # method-native defaults and effective settings below are never used as inputs.
+    epochs, patience = binding.get("epochs"), binding.get("patience")
+    if epochs not in (2, 40) or patience != 40:
+        raise ValueError("method configuration violates the frozen epoch/patience policy")
+    expected_train, expected_dev = (256, 128) if epochs == 2 else (10000, 5000)
+    frozen_policy = {
+        "train_limit": expected_train, "dev_limit": expected_dev,
+        "seed": 1234, "sample_seed": 1234, "top_k_labels": 10,
+        "edges": "all", "edge_direction": "forward", "weights": "sqrt_inverse",
+        "selection_fold": "dev", "final_eval": "none", "test_evaluated": False,
+    }
+    for key, value in frozen_policy.items():
+        if binding.get(key) != value:
+            raise ValueError(f"runner binding violates frozen pilot policy for {key}")
+    argv = ["--artifact", "<bound-artifact>", "--targets", "<bound-targets>",
+            "--output", "<bound-output>", "--method", method,
+            "--train-limit", str(binding.get("train_limit")),
+            "--dev-limit", str(binding.get("dev_limit")),
+            "--sample-seed", str(binding.get("sample_seed")),
+            "--seed", str(binding.get("seed")),
+            "--top-k-labels", str(binding.get("top_k_labels")),
+            "--edges", str(binding.get("edges")),
+            "--edge-direction", str(binding.get("edge_direction")),
+            "--weights", str(binding.get("weights")),
+            "--selection-fold", str(binding.get("selection_fold")),
+            "--final-eval", str(binding.get("final_eval")),
+            "--epochs", str(epochs), "--patience", str(patience)]
     if method == "cei_gnn":
-        args["method_options"] = dict(settings)
+        effective = config.get("effective_settings")
+        if not isinstance(effective, dict) or set(effective) != {"interaction_rank", "use_interactions"}:
+            raise ValueError("CEI effective settings must contain only the product treatment")
+        if type(effective.get("use_interactions")) is not bool:
+            raise ValueError("CEI use_interactions must be the sole boolean treatment")
+        argv.extend(["--method-option", f"use_interactions={'true' if effective['use_interactions'] else 'false'}"])
+
+    from comparison.standardized.clinical_graph_v2 import train
+    parser = train.parser()
+    args = parser.parse_args(argv)
+    args = train.normalize_method_args(args, parser)
+    if architecture["hidden"] != args.hidden or architecture["layers"] != args.layers:
+        raise ValueError("method architecture differs from source runner defaults")
+    if architecture["dropout"] != args.dropout or architecture["token_dim"] != args.token_dim:
+        raise ValueError("method architecture differs from source runner dimensions")
+    args.num_relations = architecture["num_relations"]
+    args.num_triples = architecture["num_triples"]
+    from comparison.standardized.clinical_graph_v2.methods import build_method
     model = build_method(
         method, num_tokens=architecture["num_tokens"], node_dim=architecture["node_dim"],
         edge_dim=architecture["edge_dim"], num_classes=architecture["num_classes"],
-        hidden=architecture["hidden"], layers=architecture["layers"],
-        dropout=architecture["dropout"], token_dim=architecture["token_dim"],
-        num_triples=architecture["num_triples"], args=SimpleNamespace(**args))
+        hidden=args.hidden, layers=args.layers, dropout=args.dropout,
+        token_dim=args.token_dim, num_triples=architecture["num_triples"], args=args)
     if model.run_config() != config:
         raise ValueError(f"{method} source-derived defaults/schedule/run_config drift")
-    if "early_stopping_start_epoch_index" in binding:
-        expected_start = int(model.proj_epochs) if method == "protgnn" else 0
-        if binding["early_stopping_start_epoch_index"] != expected_start:
-            raise ValueError(f"{method} early-stopping schedule start differs from source")
+    expected_start = train.early_stopping_start_epoch(method, model)
+    if binding.get("early_stopping_start_epoch_index") != expected_start:
+        raise ValueError(f"{method} early-stopping schedule start differs from source")
+    for field in ("lr", "weight_decay", "batch_size", "min_delta"):
+        if binding.get(field) != getattr(args, field):
+            raise ValueError(f"runner binding {field} differs from source defaults/pilot policy")
 
 
 def validate_pilot_binding(binding, *, expected_budget, expected_seed=1234):
