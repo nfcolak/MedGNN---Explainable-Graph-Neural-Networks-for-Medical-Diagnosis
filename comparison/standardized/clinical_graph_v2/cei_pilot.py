@@ -386,6 +386,7 @@ def validate_completed_stages(stage_dirs):
             else:
                 raise ValueError("candidate/product-off total parameter_count differs")
     for name in sorted(expected_names):
+        directory = next(path for path in directories if path.name == name)
         binding = loaded[name]["binding"]
         result = _load_json(loaded[name]["result_path"], "result.json")
         if result.get("status") != "completed":
@@ -397,8 +398,8 @@ def validate_completed_stages(stage_dirs):
         if result.get("metrics") is not None or not isinstance(result.get("dev_metrics"), dict):
             raise ValueError(f"dev-only result contract mismatch in {name}")
         _validate_artifacts(directory, binding, result)
-        loaded[directory.name]["replay"] = replay_stage(directory, binding, result)
-        loaded[directory.name]["result"] = result
+        loaded[name]["replay"] = replay_stage(directory, binding, result)
+        loaded[name]["result"] = result
     summaries = []
     for name in sorted(expected_names):
         binding, result = loaded[name]["binding"], loaded[name]["result"]
