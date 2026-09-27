@@ -392,6 +392,59 @@ def test_common_comparator_accepts_runner_native_early_stop_start_per_method():
         module.assert_common_bindings(wrong_schedule, candidate)
 
 
+def test_three_arm_validation_uses_each_directory_for_artifacts_and_replay(tmp_path, monkeypatch):
+    module = _module()
+    from comparison.standardized.clinical_graph_v2.methods import build_method
+    from comparison.standardized.clinical_graph_v2.tensorize import PAYLOAD_WIDTH
+
+    common = dict(num_tokens=8, node_dim=3, edge_dim=PAYLOAD_WIDTH, num_classes=2,
+                  hidden=4, layers=1, dropout=0.0, token_dim=3, num_triples=2)
+    arms = (
+        ("protgnn_control", "protgnn", None),
+        ("cei_candidate", "cei_gnn", True),
+        ("cei_product_off", "cei_gnn", False),
+    )
+    directories = []
+    artifact_calls, replay_calls = [], []
+    for name, method_name, interactions in arms:
+        options = {"use_interactions": interactions} if method_name == "cei_gnn" else {}
+        args = SimpleNamespace(epochs=40, patience=40, num_relations=3,
+                               method_options=options)
+        model = build_method(method_name, **common, args=args)
+        config = model.run_config()
+        binding = _bindings(
+            method=method_name, method_config=config,
+            method_native_defaults=config["native_defaults"],
+            early_stopping_start_epoch_index=(int(model.proj_epochs)
+                                               if method_name == "protgnn" else 0),
+            use_interactions=interactions, patience=40,
+        )
+        directory = tmp_path / name
+        directory.mkdir()
+        (directory / "binding.json").write_text(json.dumps(binding))
+        result = {"status": "completed", "binding": binding, "metrics": None,
+                  "dev_metrics": {"macro_f1": 0.2}, "test_evaluated": False}
+        (directory / "result.json").write_text(json.dumps(result))
+        directories.append(directory)
+
+    def validate_artifacts(directory, binding, result):
+        artifact_calls.append((Path(directory).name, binding["method"], result["binding"]["method"]))
+
+    def replay(directory, binding, result):
+        replay_calls.append((Path(directory).name, binding["method"], result["binding"]["method"]))
+        return {"status": "verified"}
+
+    monkeypatch.setattr(module, "_validate_artifacts", validate_artifacts)
+    monkeypatch.setattr(module, "replay_stage", replay)
+    summary = module.validate_completed_stages(directories)
+
+    expected = [(name, method, method) for name, method, _ in arms]
+    assert sorted(artifact_calls) == sorted(expected)
+    assert sorted(replay_calls) == sorted(expected)
+    assert summary["status"] == "compatible"
+    assert {entry["stage"] for entry in summary["arms"]} == {name for name, _, _ in arms}
+
+
 
 def test_replay_stage_reconstructs_real_model_and_rejects_tampered_artifacts(tmp_path, monkeypatch):
     module = _module()
