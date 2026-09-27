@@ -16,7 +16,12 @@ def _module():
     spec = importlib.util.spec_from_file_location("cei_pilot_under_test", MODULE_PATH)
     module = importlib.util.module_from_spec(spec)
     assert spec and spec.loader
-    spec.loader.exec_module(module)
+    import sys
+    sys.modules[spec.name] = module
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.modules.pop(spec.name, None)
     return module
 
 
