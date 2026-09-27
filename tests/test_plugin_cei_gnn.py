@@ -49,6 +49,32 @@ def test_continuous_core_is_exact_and_uses_supplied_channels_not_metadata_x():
     assert not torch.allclose(ordinary, embedded_logits), "supplied embedding channels were ignored"
 
 
+def test_ordered_low_rank_product_has_nonzero_endpoint_cross_difference():
+    import torch
+    import torch.nn.functional as F
+
+    adapter, graph = _fixture()
+    net = adapter.network
+    features = adapter.continuous_inputs(graph)
+    h = F.gelu(net.node_norm(net.node_encoder(features)))
+    context = (net.relation_embedding(graph.edge_relation)
+               + net.triple_embedding(graph.edge_triple)
+               + net.edge_feature_projection(graph.edge_attr))
+    source, target, fixed_context = h[0], h[1], context[0]
+
+    def product(left, right):
+        return (net.endpoint_source(left).tanh()
+                * net.endpoint_target(right).tanh()
+                * net.interaction_context(fixed_context).sigmoid())
+
+    delta_source = torch.tensor([0.3, -0.2, 0.1, 0.4, -0.5, 0.2, 0.1, -0.3])
+    delta_target = torch.tensor([-0.1, 0.4, 0.2, -0.3, 0.2, 0.5, -0.4, 0.1])
+    cross = (product(source + delta_source, target + delta_target)
+             - product(source + delta_source, target)
+             - product(source, target + delta_target) + product(source, target))
+    assert cross.abs().sum() > 1e-7, "ordered endpoint product collapsed to an additive response"
+
+
 def test_edge_mask_is_applied_once_to_numerator_and_denominator_and_parts_reconstruct():
     import torch
     import torch.nn.functional as F
@@ -163,6 +189,9 @@ def test_all_active_predictive_blocks_receive_finite_gradients():
     assert graph.edge_attr.grad is not None and graph.edge_attr.grad.abs().sum() > 0
     token_grad = network.token_embedding.weight.grad
     assert token_grad is not None and torch.isfinite(token_grad).all() and token_grad.abs().sum() > 0
+    for name, parameter in network.named_parameters():
+        assert parameter.grad is not None, f"parameter is disconnected: {name}"
+        assert torch.isfinite(parameter.grad).all(), f"nonfinite parameter gradient: {name}"
 
 
 def test_constructor_rejects_unsupported_depth_unknown_options_and_cross_graph_edges():
@@ -238,3 +267,25 @@ def test_invalid_continuous_inputs_masks_and_metadata_fail_closed():
                      torch.full((graph.num_edges,), 1.1)):
         with pytest.raises(ValueError, match="edge mask"):
             adapter.network.set_edge_mask(bad_mask)
+
+
+def test_invalid_vocabulary_indices_and_edge_payloads_are_rejected():
+    import pytest
+    from comparison.standardized.clinical_graph_v2 import NODE_KINDS
+
+    adapter, graph = _fixture()
+    cases = (
+        ("token", 0, adapter.num_tokens, "token index"),
+        ("node_type", 0, len(NODE_KINDS), "node_type index"),
+        ("edge_relation", 0, adapter.num_relations, "edge_relation index"),
+        ("edge_triple", 0, adapter.num_triples, "edge_triple index"),
+    )
+    for field, row, invalid_value, message in cases:
+        malformed = graph.clone()
+        getattr(malformed, field)[row] = invalid_value
+        with pytest.raises(ValueError, match=message):
+            adapter(malformed, epoch=0)
+    malformed = graph.clone()
+    malformed.edge_attr[0, 0] = float("inf")
+    with pytest.raises(ValueError, match="finite"):
+        adapter(malformed, epoch=0)
