@@ -90,6 +90,9 @@ class EvidenceInteractionNetwork(nn.Module):
         if edge_index.dtype != torch.long or edge_index.ndim != 2 or edge_index.size(0) != 2:
             raise ValueError("edge_index must be a long tensor with shape [2, edges]")
         edge_count = edge_index.size(1)
+        edge_mask = self.edge_aggregator._edge_mask
+        if edge_mask is not None and (edge_mask.ndim != 1 or edge_mask.numel() != edge_count):
+            raise ValueError("edge mask length differs from the edge list")
         if edge_count:
             if int(edge_index.min()) < 0 or int(edge_index.max()) >= node_count:
                 raise ValueError("edge_index refers to a node outside the batch")
