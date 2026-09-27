@@ -94,7 +94,8 @@ class EvidenceInteractionAdapter(ClinicalMethodAdapter):
         inactive = (self.network.endpoint_source.weight.numel()
                     + self.network.endpoint_target.weight.numel()
                     + self.network.interaction_context.weight.numel()
-                    + self.network.interaction_context.bias.numel()) if not self.use_interactions else 0
+                    + self.network.interaction_context.bias.numel()
+                    + self.network.edge_head[0].weight[:, -self.interaction_rank:].numel()) if not self.use_interactions else 0
         return {
             "method": "cei_gnn",
             "adaptation_version": self.adaptation_version,
