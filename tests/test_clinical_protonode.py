@@ -154,3 +154,45 @@ def test_protonode_runner_namespaced_options_and_early_stopping(tmp_path):
         train.normalize_method_args(parser.parse_args(base + ["--method", "protonode",
             "--protgnn-warm-epochs", "2"]), parser)
     assert not (tmp_path / "o").exists()
+
+
+@pytest.mark.parametrize("readout", ["both", "node_max", "graph_mean"])
+def test_readout_feeds_the_matching_prototype_activations_to_the_classifier(readout):
+    # Supervisor mutation check: swapping node/graph activations must turn this red.
+    torch.manual_seed(3)
+    model = make_protonode(protonode_readout=readout, protonode_no_wide=True)
+    model.eval()
+    source = batch()
+    with torch.no_grad():
+        nodes, means, graph_ids, count, _, _ = model._encode(source)
+        node_a = model._similarity(model._node_min_distances(nodes, graph_ids, count)[0])
+        graph_a = model._similarity(model._distances(means))
+        features = {"both": torch.cat([node_a, graph_a], 1), "node_max": node_a,
+                    "graph_mean": graph_a}[readout]
+        expected = model.prototype_classifier(features)
+        output = model(source, epoch=0)
+    assert torch.allclose(output.logits, expected)
+    assert not torch.allclose(node_a, graph_a)
+
+
+def test_cluster_pulls_own_class_and_separation_pushes_other_class_prototypes():
+    # Distinct prototypes per class, so own-class and wrong-class distances differ.
+    model = make_protonode(protonode_readout="graph_mean", protonode_prototypes_per_class=1,
+                           protonode_margin=100.0, protonode_no_wide=True)
+    model.eval()
+    source = batch()
+    with torch.no_grad():
+        means = model._encode(source)[1]
+        model.prototype_vectors[0].copy_(means[0])          # class 0 prototype on graph 0
+        model.prototype_vectors[1].copy_(means[1] + 0.5)    # class 1 prototype near graph 1
+        distances = model._distances(means)
+        output = model(source, epoch=0)
+    expected_cluster = (distances[0, 0] + distances[1, 1]) / 2
+    expected_separation = (torch.relu(100.0 - distances[0, 1])
+                           + torch.relu(100.0 - distances[1, 0])) / 2
+    assert distances[0, 0].item() == pytest.approx(0.0, abs=1e-6)
+    # own-class and wrong-class sums must differ, or a class-mask swap goes unnoticed
+    assert abs((distances[0, 0] + distances[1, 1]) - (distances[0, 1] + distances[1, 0])) > 1e-3
+    assert output.diagnostics["cluster_loss"] == pytest.approx(expected_cluster.item(), rel=1e-5)
+    assert output.diagnostics["separation_loss"] == pytest.approx(expected_separation.item(), rel=1e-5)
+
