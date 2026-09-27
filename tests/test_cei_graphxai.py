@@ -423,6 +423,20 @@ def test_explainer_failure_is_representable_as_an_explicit_failed_record(monkeyp
     assert "synthetic algorithm interruption" in error.value.record["error"]
 
 
+def test_algorithm_status_failure_is_representable_as_failed_record(monkeypatch):
+    implementation = module()
+    import shared.lib.graphxai_standardized as graphxai
+    adapter, graph = SyntheticAdapter(), graph_fixture()
+    monkeypatch.setattr(graphxai, "explain_algorithms", lambda *args, **kwargs: {
+        name: {"status": "failed"} for name in implementation.REQUIRED_ALGORITHMS
+    })
+    with pytest.raises(Exception) as error:
+        implementation.explain_graph(adapter, graph, steps=4, epochs=3)
+    assert isinstance(error.value, getattr(implementation, "GraphXAIExplanationError", ()))
+    assert error.value.record["status"] == "failed"
+    assert "GradExplainer" in error.value.record["error"]
+
+
 def test_export_refuses_status_only_graphxai_records(tmp_path):
     implementation = module()
     record = {
