@@ -453,6 +453,8 @@ def test_replay_stage_reconstructs_real_model_and_rejects_tampered_artifacts(tmp
     replay = module.replay_stage(output, binding, result)
     assert replay["exact_probabilities"] and replay["exact_labels"]
     assert replay["exact_sample_identity"] and replay["test_evaluated"] is False
+    assert replay["inputs_verified"] and replay["source_verified"]
+    assert replay["validation_evaluated"] is False
     assert json.loads((output / "replay.json").read_text())["checkpoint_sha256"] == sha256(output / "best.pt")
 
     tampered = tmp_path / "tampered"
@@ -466,3 +468,40 @@ def test_replay_stage_reconstructs_real_model_and_rejects_tampered_artifacts(tmp
     (tampered / "replay.json").write_text((output / "replay.json").read_text())
     with pytest.raises(ValueError, match="probabilities|proof"):
         module.replay_stage(tampered, binding, result)
+
+
+def test_checkpoint_replay_failure_prevents_launching_next_stage(tmp_path, monkeypatch):
+    module = _module()
+    artifact = tmp_path / "artifact"
+    artifact.mkdir()
+    targets, canonical = tmp_path / "targets.csv", tmp_path / "canonical.json"
+    targets.write_text("x")
+    canonical.write_text("{}")
+    stages = module.build_plan(artifact=artifact, targets=targets, canonical=canonical,
+                               output_root=tmp_path / "runs")
+    monkeypatch.setattr(module, "capture_bindings", lambda stage: {
+        "source_state_sha256": "source", "input_state_sha256": "inputs",
+        "common_config_sha256": "configuration"})
+    monkeypatch.setattr(module, "_validate_artifacts", lambda *args: None)
+    replay_calls = []
+    def reject_replay(*args):
+        replay_calls.append(args[0])
+        raise ValueError("synthetic checkpoint replay mismatch")
+    monkeypatch.setattr(module, "replay_stage", reject_replay)
+    launches = []
+    def synthetic_training(argv, **kwargs):
+        launches.append(argv)
+        output = Path(argv[argv.index("--output") + 1])
+        output.mkdir(parents=True)
+        binding = _bindings(use_interactions=True, train_limit=256, dev_limit=128, epochs=2)
+        binding["method_config"] = {"effective_settings": {"use_interactions": True}}
+        (output / "binding.json").write_text(json.dumps(binding))
+        (output / "result.json").write_text(json.dumps({
+            "status": "completed", "binding": binding, "metrics": None,
+            "dev_metrics": {"macro_f1": 0.1}, "test_evaluated": False}))
+        return SimpleNamespace(stdout="", stderr="")
+    monkeypatch.setattr(module.subprocess, "run", synthetic_training)
+    with pytest.raises(SystemExit):
+        module.execute_plan(stages, journal_path=tmp_path / "journal.json")
+    assert len(launches) == 1
+    assert len(replay_calls) == 1
