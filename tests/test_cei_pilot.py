@@ -155,6 +155,11 @@ def test_report_validator_rejects_incomplete_and_smoke_is_not_an_arm(tmp_path):
         directory = tmp_path / name
         directory.mkdir(exist_ok=True)
         binding = _bindings(**treatment)
+        binding["method_config"] = {
+            "method": binding["method"],
+            "effective_settings": {"use_interactions": treatment.get("use_interactions")},
+            "architecture": {"parameter_count": 123, "active_parameter_count": 120},
+        }
         result = {"status": "completed", "binding": binding, "metrics": None,
                   "dev_metrics": {"macro_f1": 0.1}, "test_evaluated": False}
         (directory / "binding.json").write_text(json.dumps(binding))
@@ -164,6 +169,14 @@ def test_report_validator_rejects_incomplete_and_smoke_is_not_an_arm(tmp_path):
     assert report["status"] == "compatible"
     assert len(report["arms"]) == 3
     assert "smoke" not in json.dumps(report)
+    product = json.loads((stages[-1] / "binding.json").read_text())
+    product["method_config"]["effective_settings"]["use_interactions"] = True
+    (stages[-1] / "binding.json").write_text(json.dumps(product))
+    bad_result = json.loads((stages[-1] / "result.json").read_text())
+    bad_result["binding"] = product
+    (stages[-1] / "result.json").write_text(json.dumps(bad_result))
+    with pytest.raises(ValueError, match="use_interactions"):
+        module.validate_completed_stages(stages)
     bad = json.loads((stages[-1] / "result.json").read_text())
     bad["binding"]["parameter_count"] = 999
     (stages[-1] / "result.json").write_text(json.dumps(bad))
