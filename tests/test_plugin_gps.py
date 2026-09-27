@@ -116,3 +116,30 @@ def test_gps_batch_attention_and_importance_are_graph_local():
     assert torch.all(importance >= 0)
     assert importance[:3].sum().item() == pytest.approx(1.0)
     assert importance[3:].sum().item() == pytest.approx(1.0)
+
+
+def test_gps_options_defaults_effects_and_unknown_option_validation():
+    default = make_model()
+    assert default.rwse is True
+    assert default.rwse_steps == 8
+    assert default.rwse_projection is not None
+    assert default.run_config()["native_defaults"]["rwse"] is True
+    assert default.run_config()["native_defaults"]["rwse_steps"] == 8
+
+    disabled = make_model(method_options={"rwse": "false"})
+    assert disabled.rwse is False
+    assert disabled.rwse_projection is None
+    assert disabled.run_config()["effective_settings"]["rwse"] is False
+
+    short_walk = make_model(method_options={"rwse_steps": "2"})
+    assert short_walk.rwse_steps == 2
+    assert short_walk.rwse_projection.in_features == 2
+    assert short_walk.run_config()["effective_settings"]["rwse_steps"] == 2
+    batch = two_graph_batch()
+    assert default._random_walk_encoding(default._validated_batch(batch)).shape == (5, 8)
+    assert short_walk._random_walk_encoding(short_walk._validated_batch(batch)).shape == (5, 2)
+
+    with pytest.raises(ValueError, match="unknown method option"):
+        make_model(method_options={"rwse_step": "4"})
+    with pytest.raises(ValueError, match="rwse_steps"):
+        make_model(method_options={"rwse_steps": "0"})
