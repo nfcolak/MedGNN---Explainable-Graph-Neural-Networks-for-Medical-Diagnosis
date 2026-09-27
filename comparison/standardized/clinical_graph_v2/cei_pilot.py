@@ -30,6 +30,7 @@ class Stage:
 _EXCLUDED_TOP_LEVEL = {
     "method", "adaptation_version", "method_native_defaults", "method_overrides",
     "conv", "parameter_count", "active_parameter_count",
+    "hidden", "layers", "dropout", "lr", "weight_decay", "batch_size", "optimizer",
     "epochs", "patience", "min_delta", "early_stopping_start_epoch_index",
     "selected_dev", "selected_validation", "selection", "device",
     "total_seconds", "output", "output_path",
@@ -122,7 +123,11 @@ def _first_difference(left, right, path=""):
             if path == "method_config":
                 ignored = {"method", "adaptation_version", "native_defaults", "effective_settings"}
             elif path == "architecture" or path.endswith(".architecture"):
-                ignored = {"parameter_count", "active_parameter_count", "parameter_shapes"}
+                ignored = {
+                    "parameter_count", "active_parameter_count", "parameter_shapes",
+                    "hidden", "layers", "dropout", "lr", "weight_decay", "batch_size",
+                    "optimizer", "heads", "interaction_rank", "use_interactions",
+                }
             if key in ignored:
                 continue
             if key not in left or key not in right:
