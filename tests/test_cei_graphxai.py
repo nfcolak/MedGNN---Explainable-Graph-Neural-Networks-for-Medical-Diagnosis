@@ -358,8 +358,17 @@ def test_export_clean_integrated_record_derives_file_hashes(tmp_path):
         expected_checkpoint_sha256=hashes["checkpoint_sha256"],
     )
     import json
-    assert json.loads((output / "manifest.json").read_text())["status"] == "completed"
-    assert json.loads((output / "manifest.json").read_text())["source_sha256"] == hashes["source_sha256"]
+    exported = json.loads((output / "manifest.json").read_text())
+    assert exported["status"] == "completed"
+    assert exported["source_sha256"] == hashes["source_sha256"]
+    wrong_order_manifest = dict(manifest, class_order=["class-b", "class-a"])
+    with pytest.raises(ValueError, match="class order"):
+        implementation.export_explanations(
+            tmp_path / "wrong-class-order", records=[record], manifest=wrong_order_manifest,
+            binding=binding, frozen_dev_ids=ids, graph_path=files["graph"],
+            membership_path=files["membership"], checkpoint_path=files["checkpoint"],
+            expected_checkpoint_sha256=hashes["checkpoint_sha256"],
+        )
 
 
 def test_export_requires_binding_checked_frozen_dev_membership(tmp_path):
