@@ -109,8 +109,10 @@ def _unique_ids(values, label):
     return ids
 
 
-def binding_hashes(*, source_files, graph_path, membership_path, checkpoint_path, cohort_ids):
-    """Compute explicit provenance digests without loading clinical contents."""
+def binding_hashes(*, package_root, graph_path, membership_path, checkpoint_path, cohort_ids):
+    """Compute runner-compatible provenance hashes from source and artifact files."""
+    from comparison.standardized.clinical_graph_v2.contracts import recursive_source_hashes
+
     def file_hash(path):
         digest = hashlib.sha256()
         with Path(path).open("rb") as stream:
@@ -118,7 +120,7 @@ def binding_hashes(*, source_files, graph_path, membership_path, checkpoint_path
                 digest.update(chunk)
         return digest.hexdigest()
 
-    source = {str(Path(path).resolve()): file_hash(path) for path in sorted(map(Path, source_files))}
+    source = recursive_source_hashes(package_root)
     cohort_digest = hashlib.sha256(json.dumps(list(cohort_ids), separators=(",", ":")).encode()).hexdigest()
     return {
         "source_sha256": source,
