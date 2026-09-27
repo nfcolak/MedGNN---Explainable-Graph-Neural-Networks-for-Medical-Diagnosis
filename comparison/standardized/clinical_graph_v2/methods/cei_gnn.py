@@ -65,17 +65,20 @@ class EvidenceInteractionNetwork(nn.Module):
                           self.node_type_embedding(clinical.node_type)), dim=-1)
 
     def set_edge_mask(self, mask):
-        """Install a PyG explanation mask, applied once to both message blocks."""
-        if mask is None:
-            self.edge_aggregator._edge_mask = None
-            self.edge_aggregator.explain = False
-            return
-        if mask.ndim != 1 or not torch.isfinite(mask).all():
-            raise ValueError("edge mask must be a finite vector")
-        if (mask < 0).any() or (mask > 1).any():
-            raise ValueError("edge mask values must be in [0, 1]")
-        self.edge_aggregator._edge_mask = mask
-        self.edge_aggregator.explain = True
+        """Install a direct probability mask or restore PyG's neutral mask state."""
+        aggregator = self.edge_aggregator
+        if mask is not None:
+            if mask.ndim != 1 or not torch.isfinite(mask).all():
+                raise ValueError("edge mask must be a finite vector")
+            if (mask < 0).any() or (mask > 1).any():
+                raise ValueError("edge mask values must be in [0, 1]")
+        # PyG registers its explanation mask as a Parameter. Direct masks are
+        # probabilities, so remove that registration before accepting a tensor.
+        if "_edge_mask" in aggregator._parameters:
+            del aggregator._parameters["_edge_mask"]
+        aggregator._edge_mask = mask
+        aggregator.explain = None if mask is None else True
+        aggregator._apply_sigmoid = False if mask is not None else True
 
     def forward_continuous(self, features, edge_index, metadata, *, return_parts=False):
         node_count = int(features.size(0))
