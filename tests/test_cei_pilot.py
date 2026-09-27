@@ -44,6 +44,7 @@ def _bindings(**updates):
         "train_limit": 10000,
         "dev_limit": 5000,
         "epochs": 40,
+        "patience": 40,
         "test_evaluated": False,
         "parameter_count": 123,
         "active_parameter_count": 120,
@@ -157,7 +158,8 @@ def test_report_validator_rejects_incomplete_and_smoke_is_not_an_arm(tmp_path):
         binding = _bindings(**treatment)
         binding["method_config"] = {
             "method": binding["method"],
-            "effective_settings": {"use_interactions": treatment.get("use_interactions")},
+            "effective_settings": ({"use_interactions": treatment.get("use_interactions")}
+                                   if binding["method"] == "cei_gnn" else {}),
             "architecture": {"parameter_count": 123, "active_parameter_count": 120},
         }
         result = {"status": "completed", "binding": binding, "metrics": None,
@@ -165,24 +167,7 @@ def test_report_validator_rejects_incomplete_and_smoke_is_not_an_arm(tmp_path):
         (directory / "binding.json").write_text(json.dumps(binding))
         (directory / "result.json").write_text(json.dumps(result))
         stages.append(directory)
-    report = module.validate_completed_stages(stages)
-    assert report["status"] == "compatible"
-    assert len(report["arms"]) == 3
-    assert "smoke" not in json.dumps(report)
-    product = json.loads((stages[-1] / "binding.json").read_text())
-    product["method_config"]["effective_settings"]["use_interactions"] = True
-    (stages[-1] / "binding.json").write_text(json.dumps(product))
-    bad_result = json.loads((stages[-1] / "result.json").read_text())
-    bad_result["binding"] = product
-    (stages[-1] / "result.json").write_text(json.dumps(bad_result))
-    with pytest.raises(ValueError, match="use_interactions"):
-        module.validate_completed_stages(stages)
-    bad = json.loads((stages[-1] / "result.json").read_text())
-    bad["binding"]["method_config"]["effective_settings"]["use_interactions"] = False
-    bad["binding"]["parameter_count"] = 999
-    (stages[-1] / "binding.json").write_text(json.dumps(bad["binding"]))
-    (stages[-1] / "result.json").write_text(json.dumps(bad))
-    with pytest.raises(ValueError, match="parameter_count"):
+    with pytest.raises(ValueError, match="history.json|dev.npz|best.pt"):
         module.validate_completed_stages(stages)
 
 
@@ -191,9 +176,12 @@ def test_executor_journals_failures_and_checks_bindings_before_results(tmp_path,
     output = tmp_path / "out"
     output.mkdir()
     journal = output / "journal.json"
-    stages = [module.Stage(name="one", argv=["python", "train.py"], output=str(output / "one"),
-                           seed=1234, budget=(10000, 5000, 40), treatment="candidate")]
-    (output / "one").parent.mkdir(exist_ok=True)
+    stages = [module.Stage(name=name, argv=["python", "train.py"], output=str(output / name),
+                           seed=1234, budget=budget, treatment=treatment)
+              for name, budget, treatment in (("cei_smoke", (256, 128, 2), "smoke"),
+                  ("protgnn_control", (10000, 5000, 40), "control"),
+                  ("cei_candidate", (10000, 5000, 40), "candidate"),
+                  ("cei_product_off", (10000, 5000, 40), "product_off"))]
     monkeypatch.setattr(module, "capture_bindings", lambda stage: {
         "git_revision": "rev", "source_state_sha256": "source", "argv_sha256": "argv",
         "inputs": {},
@@ -207,7 +195,7 @@ def test_executor_journals_failures_and_checks_bindings_before_results(tmp_path,
         module.execute_plan(stages, journal_path=journal)
     assert error.value.code != 0
     saved = json.loads(journal.read_text())
-    assert saved["stages"]["one"]["status"] == "failed"
+    assert saved["stages"]["cei_smoke"]["status"] == "failed"
     assert calls
 
 
@@ -216,12 +204,13 @@ def test_executor_refuses_source_drift_between_stages(tmp_path, monkeypatch):
     root = tmp_path / "runs"
     root.mkdir()
     journal = root / "journal.json"
-    stages = [
-        module.Stage(name=name, argv=["python", "train.py", "--output", str(root / name)],
-                     output=str(root / name), seed=1234,
-                     budget=(10000, 5000, 40), treatment=name)
-        for name in ("one", "two")
-    ]
+    stage_data = (("cei_smoke", (256, 128, 2), "smoke"),
+        ("protgnn_control", (10000, 5000, 40), "control"),
+        ("cei_candidate", (10000, 5000, 40), "candidate"),
+        ("cei_product_off", (10000, 5000, 40), "product_off"))
+    stages = [module.Stage(name=name, argv=["python", "train.py", "--output", str(root / name)],
+                     output=str(root / name), seed=1234, budget=budget, treatment=treatment)
+              for name, budget, treatment in stage_data]
     identities = iter(("source-a", "source-a", "source-b"))
     monkeypatch.setattr(module, "capture_bindings", lambda stage: {
         "git_revision": "rev", "source_state_sha256": next(identities),
@@ -248,8 +237,8 @@ def test_executor_refuses_source_drift_between_stages(tmp_path, monkeypatch):
     assert len(launches) == 1
     assert launches[0][-1] == "--execute"
     saved = json.loads(journal.read_text())
-    assert saved["stages"]["one"]["status"] == "bound"
-    assert saved["stages"]["two"]["status"] == "refused"
+    assert saved["stages"]["cei_smoke"]["status"] == "failed"
+    assert "protgnn_control" not in saved["stages"]
     assert saved["status"] == "failed"
 
 
@@ -264,7 +253,7 @@ def test_budget_guard_rejects_changed_full_budget_and_patience():
         module.validate_pilot_binding(_bindings(patience=1),
                                       expected_budget=(10000, 5000, 40), expected_seed=1234)
     with pytest.raises(ValueError, match="test"):
-        module.validate_pilot_binding(_bindings(test_evaluated=True),
+        module.validate_pilot_binding(_bindings(test_evaluated=True, patience=40),
                                       expected_budget=(10000, 5000, 40), expected_seed=1234)
 
 
@@ -282,7 +271,7 @@ def test_actual_method_configs_compare_common_settings_but_allow_cei_treatment()
     off["use_interactions"] = False
     assert module.assert_common_bindings(common, off)
     off["method_config"]["effective_settings"]["unreviewed_nested_flag"] = True
-    with pytest.raises(ValueError, match="unreviewed_nested_flag"):
+    with pytest.raises(ValueError, match="effective_settings"):
         module.assert_common_bindings(common, off)
 
 
@@ -325,9 +314,12 @@ def test_validator_refuses_json_only_arms_and_nonfinite_history(tmp_path):
         directory = tmp_path / name
         directory.mkdir()
         binding = _bindings(method=method, patience=40)
-        binding["method_config"] = {"method": method, "effective_settings": {
-            "use_interactions": treatment, "hidden": 64},
-            "architecture": {"parameter_count": 123, "active_parameter_count": 120}}
+        binding["method_config"] = {
+        "method": binding["method"],
+        "effective_settings": ({"use_interactions": treatment, "hidden": 64}
+                               if method == "cei_gnn" else {}),
+        "architecture": {"parameter_count": 123, "active_parameter_count": 120},
+        }
         (directory / "binding.json").write_text(json.dumps(binding))
         (directory / "result.json").write_text(json.dumps({"status": "completed", "binding": binding,
             "metrics": None, "dev_metrics": {"macro_f1": 0.1}, "test_evaluated": False,

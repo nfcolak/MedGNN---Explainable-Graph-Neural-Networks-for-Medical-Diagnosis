@@ -8,11 +8,14 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import subprocess
 import sys
 from dataclasses import asdict, dataclass
+
+import numpy as np
 
 
 @dataclass(frozen=True)
@@ -30,13 +33,21 @@ class Stage:
 _EXCLUDED_TOP_LEVEL = {
     "method", "adaptation_version", "method_native_defaults", "method_overrides",
     "conv", "parameter_count", "active_parameter_count",
-    "hidden", "layers", "dropout", "lr", "weight_decay", "batch_size", "optimizer",
-    "epochs", "patience", "min_delta", "early_stopping_start_epoch_index",
     "selected_dev", "selected_validation", "selection", "device",
     "total_seconds", "output", "output_path",
-    "parameter_shapes", "use_interactions", "interaction_rank",
+    "use_interactions",
     "treatment",
 }
+_METHOD_CONFIG_KEYS = {"method", "adaptation_version", "native_defaults",
+                       "effective_settings", "architecture", "native_schedule",
+                       "objective_coefficients", "mechanism_settings"}
+_CEI_EFFECTIVE_KEYS = {"num_tokens", "node_dim", "edge_dim", "num_classes", "hidden",
+                       "token_dim", "num_triples", "num_relations", "dropout",
+                       "interaction_rank", "use_interactions", "num_node_types"}
+_CEI_ARCH_KEYS = {"parameter_count", "active_parameter_count"}
+_PROTGNN_EFFECTIVE_KEYS = {"warm_epochs", "proj_epochs", "proj_interval", "nearest_graphs",
+                           "prototypes_per_class", "cluster_weight", "separation_weight",
+                           "margin", "rollout", "min_atoms", "max_atoms", "expand_atoms", "c_puct"}
 _REQUIRED_BINDINGS = (
     "method", "artifact_graphs_sha256", "artifact_visit_membership_sha256",
     "targets_sha256", "target_binding_sha256", "label_order", "source_code",
@@ -119,15 +130,7 @@ def _first_difference(left, right, path=""):
         keys = sorted(set(left) | set(right))
         for key in keys:
             child = f"{path}.{key}" if path else str(key)
-            ignored = set()
-            if path == "method_config":
-                ignored = {"method", "adaptation_version", "native_defaults", "effective_settings"}
-            elif path == "architecture" or path.endswith(".architecture"):
-                ignored = {
-                    "parameter_count", "active_parameter_count", "parameter_shapes",
-                    "hidden", "layers", "dropout", "lr", "weight_decay", "batch_size",
-                    "optimizer", "heads", "interaction_rank", "use_interactions",
-                }
+            ignored = {"use_interactions"} if path.endswith("effective_settings") else set()
             if key in ignored:
                 continue
             if key not in left or key not in right:
@@ -167,10 +170,38 @@ def assert_common_bindings(left, right):
     differing_keys = sorted((left_keys ^ right_keys) - _EXCLUDED_TOP_LEVEL)
     if differing_keys:
         raise ValueError(f"binding field set differs: {differing_keys[0]}")
-    for key in sorted((left_keys & right_keys) - _EXCLUDED_TOP_LEVEL):
+    # The runner intentionally emits heterogeneous method_config schemas. Validate
+    # each against its source-derived allowlist, then compare CEI treatment arms
+    # without erasing unknown nested settings.
+    for binding in (left, right):
+        config = binding.get("method_config")
+        if not isinstance(config, dict):
+            raise ValueError("binding method_config must be an object")
+        unknown = set(config) - _METHOD_CONFIG_KEYS
+        if unknown:
+            raise ValueError(f"unknown method_config key: {sorted(unknown)[0]}")
+        if config.get("method") == "cei_gnn":
+            settings = config.get("effective_settings", {})
+            architecture = config.get("architecture", {})
+            if not isinstance(settings, dict) or set(settings) - _CEI_EFFECTIVE_KEYS:
+                raise ValueError("unknown CEI effective_settings key")
+            if not isinstance(architecture, dict) or set(architecture) - _CEI_ARCH_KEYS:
+                raise ValueError("unknown CEI architecture key")
+        elif config.get("method") == "protgnn":
+            settings = config.get("effective_settings", {})
+            if not isinstance(settings, dict) or set(settings) - _PROTGNN_EFFECTIVE_KEYS:
+                raise ValueError("unknown ProtGNN effective_settings key")
+    for key in sorted((left_keys & right_keys) - _EXCLUDED_TOP_LEVEL - {"method_config"}):
         difference = _first_difference(left[key], right[key], key)
         if difference:
             raise ValueError(f"common binding differs: {difference}")
+    if left.get("method") == right.get("method") == "cei_gnn":
+        a, b = left["method_config"], right["method_config"]
+        normalized_a, normalized_b = json.loads(json.dumps(a)), json.loads(json.dumps(b))
+        normalized_a.get("effective_settings", {}).pop("use_interactions", None)
+        normalized_b.get("effective_settings", {}).pop("use_interactions", None)
+        if normalized_a != normalized_b:
+            raise ValueError("common binding differs: method_config")
     return True
 
 
@@ -182,6 +213,7 @@ def validate_pilot_binding(binding, *, expected_budget, expected_seed=1234):
     train_limit, dev_limit, epochs = expected_budget
     expected = {
         "train_limit": train_limit, "dev_limit": dev_limit, "epochs": epochs,
+        "patience": 40,
         "seed": expected_seed, "sample_seed": 1234, "selection_fold": "dev",
         "final_eval": "none", "test_evaluated": False, "weights": "sqrt_inverse",
         "edges": "all", "edge_direction": "forward", "top_k_labels": 10,
@@ -281,6 +313,7 @@ def validate_completed_stages(stage_dirs):
             raise ValueError(f"test-fold guard failed in {name}")
         if result.get("metrics") is not None or not isinstance(result.get("dev_metrics"), dict):
             raise ValueError(f"dev-only result contract mismatch in {name}")
+        _validate_artifacts(directory, binding, result)
         loaded[name]["result"] = result
     summaries = []
     for name in sorted(expected_names):
@@ -294,23 +327,92 @@ def validate_completed_stages(stage_dirs):
     return {"status": "compatible", "arms": summaries, "test_evaluated": False}
 
 
+def _finite_tree(value, path="result"):
+    if isinstance(value, bool) or value is None or isinstance(value, str):
+        return
+    if isinstance(value, (int, float)):
+        if not math.isfinite(float(value)):
+            raise ValueError(f"nonfinite value in {path}")
+        return
+    if isinstance(value, dict):
+        for key, child in value.items():
+            _finite_tree(child, f"{path}.{key}")
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            _finite_tree(child, f"{path}[{index}]")
+
+
+def _validate_artifacts(directory, binding, result):
+    """Check train.py's actual history and npz result contract before reporting."""
+    history_path, dev_path, checkpoint = (directory / "history.json", directory / "dev.npz",
+                                          directory / "best.pt")
+    if not history_path.is_file() or not dev_path.is_file() or not checkpoint.is_file():
+        raise ValueError(f"required history.json, dev.npz, or best.pt missing in {directory}")
+    history = json.loads(history_path.read_text())
+    if not isinstance(history, list) or len(history) != result["binding"]["epochs"]:
+        raise ValueError(f"history length differs from bound epochs in {directory}")
+    _finite_tree(history, "history")
+    _finite_tree(result.get("dev_metrics"), "dev_metrics")
+    if not isinstance(result.get("total_seconds"), (int, float)) or not math.isfinite(result["total_seconds"]):
+        raise ValueError(f"finite total_seconds missing in {directory}")
+    for row in history:
+        if not isinstance(row, dict) or not {"epoch", "train_loss", "seconds"}.issubset(row):
+            raise ValueError(f"incomplete optimization history in {directory}")
+    with np.load(dev_path, allow_pickle=False) as saved:
+        required = {"proba", "y", "sample_ids"}
+        if not required.issubset(saved.files):
+            raise ValueError(f"dev.npz missing {sorted(required - set(saved.files))}")
+        proba, y = saved["proba"], saved["y"]
+        ids = saved["sample_ids"]
+    if proba.ndim != 2 or y.ndim != 1 or ids.ndim != 1 or not (len(proba) == len(y) == len(ids)):
+        raise ValueError(f"dev prediction alignment invalid in {directory}")
+    if not np.isfinite(proba).all() or not np.isfinite(y).all() or (proba < 0).any():
+        raise ValueError(f"nonfinite/invalid dev predictions in {directory}")
+    digest = hashlib.sha256(np.ascontiguousarray(proba).tobytes()).hexdigest()
+    selected = binding.get("selected_dev")
+    if not isinstance(selected, dict) or selected.get("prediction_sha256") != digest:
+        raise ValueError(f"dev prediction digest mismatch in {directory}")
+    if result.get("dev_proba_sha256") != digest or selected.get("sample_ids_sha256") != binding["split_sample_ids_sha256"]["dev"]:
+        raise ValueError(f"dev prediction binding mismatch in {directory}")
+    if ids.size == 0:
+        raise ValueError(f"empty dev sample IDs in {directory}")
+    id_digest = hashlib.sha256(json.dumps(ids.tolist(), separators=(",", ":"),
+                                ensure_ascii=True).encode("utf-8")).hexdigest()
+    if id_digest != binding["split_sample_ids_sha256"]["dev"]:
+        raise ValueError(f"dev sample IDs differ from binding in {directory}")
+    _finite_tree(proba.tolist(), "dev_proba")
+
+
 def capture_bindings(stage):
     """Capture execution identity before launch without opening clinical inputs."""
     revision = subprocess.run(["git", "rev-parse", "HEAD"], check=True,
                               capture_output=True, text=True).stdout.strip()
     status = subprocess.run(["git", "status", "--porcelain=v1"], check=True,
                             capture_output=True, text=True).stdout
-    package_root = Path(__file__).parent
-    source_hashes = {
-        path.relative_to(package_root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
-        for path in sorted(package_root.rglob("*.py"))
-        if "__pycache__" not in path.parts
-    }
+    repo_root = Path(__file__).resolve().parents[5]
+    source_roots = [repo_root / "comparison/standardized/clinical_graph_v2",
+                    repo_root / "shared/lib", repo_root / "external"]
+    source_hashes = {}
+    for root in source_roots:
+        if not root.exists():
+            continue
+        for path in sorted(root.rglob("*.py")):
+            if "__pycache__" not in path.parts and ".venv" not in path.parts:
+                source_hashes[path.relative_to(repo_root).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
     source_state = _sha_json({"revision": revision, "working_tree": status,
                               "clinical_graph_v2_source": source_hashes})
     inputs = {"artifact": stage.argv[stage.argv.index("--artifact") + 1],
               "targets": stage.argv[stage.argv.index("--targets") + 1],
               "canonical": stage.argv[stage.argv.index("--canonical") + 1]}
+    input_hashes = {}
+    for label, raw_path in inputs.items():
+        path = Path(raw_path).resolve(strict=True)
+        if path.is_dir():
+            files = {child.relative_to(path).as_posix(): hashlib.sha256(child.read_bytes()).hexdigest()
+                     for child in sorted(path.rglob("*")) if child.is_file()}
+            input_hashes[label] = _sha_json(files)
+        else:
+            input_hashes[label] = hashlib.sha256(path.read_bytes()).hexdigest()
     removed = {"--output", "--train-limit", "--dev-limit", "--epochs", "--method",
                "--method-option", "--patience"}
     shared_argv = []
@@ -328,8 +430,9 @@ def capture_bindings(stage):
         "source_state_sha256": source_state,
         "argv_sha256": _sha_json(stage.argv),
         "common_config_sha256": _sha_json(shared_argv),
-        "input_state_sha256": _sha_json(inputs),
+        "input_state_sha256": _sha_json(input_hashes),
         "inputs": inputs,
+        "input_hashes": input_hashes,
     }
 
 
@@ -349,6 +452,12 @@ def _write_journal(path, journal):
 
 def execute_plan(stages, *, journal_path):
     """Run fixed stages sequentially, journaling every outcome and refusing drift."""
+    if len(stages) != 4 or [stage.name for stage in stages] != [
+            "cei_smoke", "protgnn_control", "cei_candidate", "cei_product_off"]:
+        raise ValueError("execution requires the exact authorized four-stage order")
+    journal_path = Path(journal_path)
+    if journal_path.exists():
+        raise FileExistsError(f"Refusing occupied journal {journal_path}")
     journal = {"status": "running", "stages": {}}
     expected_identity = None
     completed_bindings = {}
@@ -385,6 +494,14 @@ def execute_plan(stages, *, journal_path):
             binding = _load_json(binding_file, "binding.json")
             validate_pilot_binding(binding, expected_budget=stage.budget, expected_seed=stage.seed)
             _validate_treatment(binding, stage.treatment)
+            result = _load_json(result_file, "result.json")
+            if result.get("status") != "completed" or result.get("binding") != binding:
+                raise RuntimeError(f"{stage.name} did not produce a completed bound result")
+            if result.get("metrics") is not None or not isinstance(result.get("dev_metrics"), dict):
+                raise RuntimeError(f"{stage.name} violated dev-only result contract")
+            if result.get("test_evaluated", False) is not False:
+                raise RuntimeError(f"{stage.name} evaluated test fold")
+            _validate_artifacts(output, binding, result)
             completed_bindings[stage.name] = binding
             journal["stages"][stage.name].update({"status": "bound", "postflight": after,
                                                   "stdout": completed.stdout,
