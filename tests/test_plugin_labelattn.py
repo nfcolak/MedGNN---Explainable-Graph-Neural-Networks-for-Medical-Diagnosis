@@ -163,6 +163,25 @@ def test_native_options_defaults_effects_and_validation():
         make(attn_dropout="1")
 
 
+def test_attention_dropout_is_train_only_and_changes_training_logits():
+    plain = make(attn_dropout="0").eval()
+    dropped = make(attn_dropout="0.75").eval()
+    dropped.load_state_dict(plain.state_dict())
+    source = batch()
+    with torch.no_grad():
+        plain_eval = plain(source, epoch=0).logits
+        dropped_eval = dropped(source, epoch=0).logits
+    assert torch.allclose(plain_eval, dropped_eval)
+
+    plain.train()
+    dropped.train()
+    torch.manual_seed(101)
+    plain_train = plain(source, epoch=0).logits
+    torch.manual_seed(101)
+    dropped_train = dropped(source, epoch=0).logits
+    assert not torch.allclose(plain_train, dropped_train)
+
+
 def test_labelattn_parser_smoke_prints_not_executed_defaults(capsys):
     args = train.parser().parse_args([
         "--artifact", "x", "--targets", "y", "--output", "z", "--method", "labelattn",
