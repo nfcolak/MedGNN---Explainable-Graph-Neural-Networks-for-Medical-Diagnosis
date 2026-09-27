@@ -32,20 +32,17 @@ def test_continuous_core_is_exact_and_uses_supplied_channels_not_metadata_x():
 
     altered = features.clone()
     altered[:, :adapter.node_dim] += 0.7
-    supplied_changed = adapter.forward_continuous(altered, graph.edge_index,
-                                                   adapter._read(graph))
+    supplied_changed = adapter.forward_continuous(altered, graph.edge_index, graph)
     assert not torch.allclose(ordinary, supplied_changed), "supplied numeric channels were ignored"
 
     metadata_changed = graph.clone()
     metadata_changed.x = metadata_changed.x + 100
-    held_features = adapter.forward_continuous(features, graph.edge_index,
-                                               adapter._read(metadata_changed))
+    held_features = adapter.forward_continuous(features, graph.edge_index, metadata_changed)
     torch.testing.assert_close(ordinary, held_features, rtol=0, atol=0)
 
     embedded_changed = features.clone()
     embedded_changed[:, adapter.node_dim:adapter.node_dim + adapter.token_dim] += 0.6
-    embedded_logits = adapter.forward_continuous(embedded_changed, graph.edge_index,
-                                                  adapter._read(graph))
+    embedded_logits = adapter.forward_continuous(embedded_changed, graph.edge_index, graph)
     assert not torch.allclose(ordinary, embedded_logits), "supplied embedding channels were ignored"
 
 
