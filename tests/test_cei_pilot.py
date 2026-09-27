@@ -469,6 +469,23 @@ def test_replay_stage_reconstructs_real_model_and_rejects_tampered_artifacts(tmp
     with pytest.raises(ValueError, match="probabilities|proof"):
         module.replay_stage(tampered, binding, result)
 
+    for array_name in ("proba", "sample_ids", "y"):
+        corrupted = tmp_path / ("bad-" + array_name)
+        corrupted.mkdir()
+        for filename in ("preprocessing.json", "best.pt", "dev.npz", "replay.json"):
+            (corrupted / filename).write_bytes((output / filename).read_bytes())
+        with np.load(corrupted / "dev.npz", allow_pickle=False) as saved:
+            arrays = {key: saved[key].copy() for key in saved.files}
+        if array_name == "proba":
+            arrays[array_name][0, 0] += 0.01
+        elif array_name == "y":
+            arrays[array_name][0] = 1 - arrays[array_name][0]
+        else:
+            arrays[array_name][0] = "tampered-id"
+        np.savez_compressed(corrupted / "dev.npz", **arrays)
+        with pytest.raises(ValueError, match="probabilities|labels|IDs|sample"):
+            module.replay_stage(corrupted, binding, result)
+
 
 def test_checkpoint_replay_failure_prevents_launching_next_stage(tmp_path, monkeypatch):
     module = _module()
