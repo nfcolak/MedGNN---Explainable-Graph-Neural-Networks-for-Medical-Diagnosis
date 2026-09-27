@@ -175,6 +175,10 @@ def reconstruct_adapter(binding: Mapping[str, Any], checkpoint_path, *, expected
         "token_dim": binding.get("token_dim"), "num_relations": binding.get("num_relations"),
     }
     for key, value in top_level.items():
+        # The current runner records token_dim only inside method_config.architecture.
+        # If a future runner also emits a top-level value, it must agree.
+        if key == "token_dim" and value is None:
+            continue
         if value is None or dims.get(key) != value:
             raise ValueError(f"runner binding {key} differs from method architecture")
     constructor_keys = ("num_tokens", "node_dim", "edge_dim", "num_classes", "hidden",
