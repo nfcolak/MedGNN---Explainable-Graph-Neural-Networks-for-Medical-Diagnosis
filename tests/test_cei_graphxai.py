@@ -392,6 +392,71 @@ def test_export_clean_integrated_record_derives_file_hashes(tmp_path):
         )
 
 
+@pytest.mark.parametrize(("field", "wrong_value"), [
+    ("artifact_graphs_sha256", "0" * 64),
+    ("artifact_visit_membership_sha256", "1" * 64),
+    ("seed", 9999),
+])
+def test_export_rejects_graph_membership_or_seed_not_bound_to_runner(
+        tmp_path, field, wrong_value):
+    implementation = module()
+    import hashlib
+    import json
+
+    ids = ["dev-synthetic-1"]
+    files = {}
+    for key, name in (("graph", "graphs.jsonl"), ("membership", "membership.jsonl"),
+                      ("checkpoint", "best.pt")):
+        path = tmp_path / name
+        path.write_bytes(("bound-" + key).encode())
+        files[key] = path
+    hashes = implementation.binding_hashes(
+        package_root=MODULE_PATH.parent, graph_path=files["graph"],
+        membership_path=files["membership"], checkpoint_path=files["checkpoint"],
+        cohort_ids=ids,
+    )
+    digest = hashlib.sha256(json.dumps(ids, separators=(",", ":")).encode()).hexdigest()
+    boundaries = implementation.EXPLANATION_BOUNDARIES
+    algorithms = {}
+    for name in implementation.REQUIRED_ALGORITHMS:
+        algorithms[name] = {
+            "status": "success",
+            "node_explanation": {
+                "target": {"provenance": "model_prediction", "class_id": 0},
+                "node_importance": [0.25], "top_nodes": [0], "top_k": 1,
+                "fidelity_plus": 0.1, "fidelity_minus": 0.2, "sparsity": 0.5,
+            },
+            "provenance": {
+                "implementation": name, "source_sha256": {"source.py": "a" * 64},
+                "target": "model_prediction", **boundaries,
+            },
+        }
+    record = {"sample_id": ids[0], "graphxai": algorithms}
+    binding = {
+        "source_code": hashes["source_sha256"],
+        "split_sample_ids_sha256": {"dev": _runner_binding(ids)["split_sample_ids_sha256"]["dev"]},
+        "label_order": ["class-a", "class-b"],
+        "artifact_graphs_sha256": hashes["graph_sha256"],
+        "artifact_visit_membership_sha256": hashes["membership_sha256"],
+        "seed": 1234,
+    }
+    manifest = _valid_export_manifest(ids, **hashes, fold="dev",
+                                      interpretation_boundaries=boundaries)
+    if field == "seed":
+        manifest[field] = wrong_value
+    else:
+        binding[field] = wrong_value
+    output = tmp_path / ("mismatch-" + field)
+    with pytest.raises(ValueError, match="binding|runner|seed"):
+        implementation.export_explanations(
+            output, records=[record], manifest=manifest, binding=binding,
+            frozen_dev_ids=ids, graph_path=files["graph"],
+            membership_path=files["membership"], checkpoint_path=files["checkpoint"],
+            expected_checkpoint_sha256=hashes["checkpoint_sha256"],
+        )
+    assert not (output / "manifest.json").exists()
+
+
 def test_export_requires_binding_checked_frozen_dev_membership(tmp_path):
     implementation = module()
     import inspect
