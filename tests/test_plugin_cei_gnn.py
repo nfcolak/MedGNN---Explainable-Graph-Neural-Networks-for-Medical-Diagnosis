@@ -147,6 +147,16 @@ def test_all_active_predictive_blocks_receive_finite_gradients():
             assert torch.isfinite(parameter.grad).all(), f"nonfinite gradient: {name}"
             assert parameter.grad.abs().sum() > 0, f"zero gradient: {name}"
 
+    adapter.zero_grad(set_to_none=True)
+    graph.x.requires_grad_(True)
+    graph.edge_attr.requires_grad_(True)
+    ordinary = adapter(graph, epoch=0).logits
+    (ordinary * weights).sum().backward()
+    assert graph.x.grad is not None and graph.x.grad.abs().sum() > 0
+    assert graph.edge_attr.grad is not None and graph.edge_attr.grad.abs().sum() > 0
+    token_grad = network.token_embedding.weight.grad
+    assert token_grad is not None and torch.isfinite(token_grad).all() and token_grad.abs().sum() > 0
+
 
 def test_constructor_rejects_unsupported_depth_unknown_options_and_cross_graph_edges():
     import pytest
@@ -191,6 +201,12 @@ def test_product_off_is_same_capacity_control_and_interaction_changes_prediction
     assert enabled.run_config()["architecture"]["active_parameter_count"] == sum(
         p.numel() for p in enabled.parameters())
     assert disabled.run_config()["architecture"]["inactive_parameter_count"] > 0
+    inactive_expected = (disabled.network.endpoint_source.weight.numel()
+                         + disabled.network.endpoint_target.weight.numel()
+                         + disabled.network.interaction_context.weight.numel()
+                         + disabled.network.interaction_context.bias.numel()
+                         + disabled.network.edge_head[0].weight[:, -disabled.interaction_rank:].numel())
+    assert disabled.run_config()["architecture"]["inactive_parameter_count"] == inactive_expected
     assert not torch.allclose(enabled(graph, epoch=0).logits,
                               disabled(graph, epoch=0).logits), "explicit q product had no predictive effect"
 
