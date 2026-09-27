@@ -248,7 +248,7 @@ def test_executor_refuses_source_drift_between_stages(tmp_path, monkeypatch):
     assert len(launches) == 1
     assert launches[0][-1] == "--execute"
     saved = json.loads(journal.read_text())
-    assert saved["stages"]["one"]["status"] == "completed"
+    assert saved["stages"]["one"]["status"] == "bound"
     assert saved["stages"]["two"]["status"] == "refused"
     assert saved["status"] == "failed"
 
