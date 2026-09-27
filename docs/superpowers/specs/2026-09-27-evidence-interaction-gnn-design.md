@@ -1,7 +1,7 @@
 # CEI-GNN: Class-specific Evidence Interaction Graph Network
 
 Date: 2026-09-27
-Status: design direction and bounded testing/training pilot approved in chat; written specification pending user review. No candidate implementation or training has run.
+Status: written specification approved through the in-session review prompt on 2026-09-27 (user selected “Onayla; kodlama ve sınırlı pilotla devam et”). Candidate implementation and the bounded four-run pilot are authorized; the full comparison remains unapproved.
 Base: `f94e4076b0f1425eaae7c418a15eb5876a19ab4c` (`feature/round2-methods`).
 Design branch: `docs/evidence-interaction-design`.
 
