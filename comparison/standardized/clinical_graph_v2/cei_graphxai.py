@@ -1,6 +1,7 @@
 """Exact fixed-graph GraphXAI bridge for the clinical CEI adapter."""
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import os
@@ -27,9 +28,13 @@ class ClinicalGraphXAIWrapper(nn.Module):
     def __init__(self, adapter: Any, graph: Any):
         super().__init__()
         self.adapter = adapter
-        self.graph = graph
-        self._edge_index = graph.edge_index.detach().clone()
-        self._batch = _batch_of(graph)
+        self.graph = copy.deepcopy(graph)
+        for key in self.graph.keys():
+            value = getattr(self.graph, key)
+            if isinstance(value, torch.Tensor):
+                setattr(self.graph, key, value.detach().clone())
+        self._edge_index = self.graph.edge_index.detach().clone()
+        self._batch = _batch_of(self.graph)
 
     def forward(self, features: torch.Tensor, edge_index: torch.Tensor, batch=None):
         if not isinstance(features, torch.Tensor) or features.ndim != 2:
