@@ -77,7 +77,7 @@ def test_planner_builds_exact_bounded_four_stages_with_separate_seeds(tmp_path):
         assert argv[argv.index("--selection-fold") + 1] == "dev"
         assert argv[argv.index("--final-eval") + 1] == "none"
         assert argv[argv.index("--seed") + 1] == str(stage.seed)
-    assert stages[0].seed != 1234
+    assert all(stage.seed == 1234 for stage in stages)
 
 
 def test_plan_refuses_missing_or_occupied_paths(tmp_path):
