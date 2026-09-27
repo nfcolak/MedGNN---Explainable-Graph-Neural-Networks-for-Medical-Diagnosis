@@ -37,6 +37,7 @@ _EXCLUDED_TOP_LEVEL = {
     "total_seconds", "output", "output_path",
     "use_interactions",
     "treatment",
+    "early_stopping_start_epoch_index",
 }
 _METHOD_CONFIG_KEYS = {"method", "adaptation_version", "native_defaults",
                        "effective_settings", "architecture", "native_schedule",
@@ -246,6 +247,10 @@ def _validate_method_config(binding):
         num_triples=architecture["num_triples"], args=SimpleNamespace(**args))
     if model.run_config() != config:
         raise ValueError(f"{method} source-derived defaults/schedule/run_config drift")
+    if "early_stopping_start_epoch_index" in binding:
+        expected_start = int(model.proj_epochs) if method == "protgnn" else 0
+        if binding["early_stopping_start_epoch_index"] != expected_start:
+            raise ValueError(f"{method} early-stopping schedule start differs from source")
 
 
 def validate_pilot_binding(binding, *, expected_budget, expected_seed=1234):
