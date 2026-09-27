@@ -94,3 +94,124 @@ def test_edge_mask_is_applied_once_to_numerator_and_denominator_and_parts_recons
     zero_parts = adapter.forward_continuous(features, graph.edge_index, graph, return_parts=True)
     torch.testing.assert_close(zero_parts["logits"][0], net.bias + node_term)
     torch.testing.assert_close(zero_parts["edge_contributions"], torch.zeros_like(edge_vote))
+
+
+def test_batch_permutation_parallel_edges_and_empty_edge_graphs_are_supported():
+    import torch
+    from torch_geometric.data import Batch, Data
+
+    adapter, graph = _fixture()
+    second = graph.clone()
+    second.x = second.x * -0.4
+    second.token = torch.tensor([4, 5, 6])
+    batched = Batch.from_data_list([graph, second])
+    batch_logits = adapter(batched, epoch=0).logits
+    torch.testing.assert_close(batch_logits[0], adapter(graph, epoch=0).logits[0])
+    torch.testing.assert_close(batch_logits[1], adapter(second, epoch=0).logits[0])
+
+    node_order = torch.tensor([2, 0, 1])
+    old_to_new = torch.empty_like(node_order)
+    old_to_new[node_order] = torch.arange(node_order.numel())
+    edge_order = torch.tensor([2, 1, 0])
+    permuted = graph.clone()
+    for key in ("x", "token", "node_type"):
+        setattr(permuted, key, getattr(graph, key)[node_order])
+    permuted.edge_index = old_to_new[graph.edge_index[:, edge_order]]
+    for key in ("edge_attr", "edge_relation", "edge_triple"):
+        setattr(permuted, key, getattr(graph, key)[edge_order])
+    torch.testing.assert_close(adapter(permuted, epoch=0).logits,
+                               adapter(graph, epoch=0).logits, rtol=1e-6, atol=1e-6)
+
+    empty = Data(x=torch.ones((1, 3)), token=torch.tensor([2]), node_type=torch.tensor([0]),
+                 edge_index=torch.empty((2, 0), dtype=torch.long),
+                 edge_attr=torch.empty((0, 2)), edge_relation=torch.empty((0,), dtype=torch.long),
+                 edge_triple=torch.empty((0,), dtype=torch.long))
+    output = adapter(empty, epoch=0).logits
+    assert output.shape == (1, 3) and torch.isfinite(output).all()
+
+
+def test_all_active_predictive_blocks_receive_finite_gradients():
+    import torch
+
+    adapter, graph = _fixture()
+    features = adapter.continuous_inputs(graph).detach().requires_grad_(True)
+    # Unequal class weights avoid cancellation in the small synthetic graph.
+    weights = torch.tensor([[0.2, -0.7, 1.1]])
+    logits = adapter.forward_continuous(features, graph.edge_index, graph)
+    (logits * weights).sum().backward()
+    assert features.grad is not None and torch.isfinite(features.grad).all()
+    network = adapter.network
+    for name, parameter in network.named_parameters():
+        if "endpoint_" in name or "interaction_context" in name or "edge_head" in name or "node_head" in name or "relation_embedding" in name or "triple_embedding" in name or "edge_feature_projection" in name:
+            assert parameter.grad is not None, f"active parameter block disconnected: {name}"
+            assert torch.isfinite(parameter.grad).all(), f"nonfinite gradient: {name}"
+            assert parameter.grad.abs().sum() > 0, f"zero gradient: {name}"
+
+
+def test_constructor_rejects_unsupported_depth_unknown_options_and_cross_graph_edges():
+    import pytest
+    import torch
+    from torch_geometric.data import Batch
+    from comparison.standardized.clinical_graph_v2.methods import METHOD_REGISTRY
+
+    adapter_type = METHOD_REGISTRY["cei_gnn"]
+    with pytest.raises(ValueError, match="layers=1"):
+        adapter_type(num_tokens=8, node_dim=3, edge_dim=2, num_classes=3, hidden=8,
+                     layers=2, dropout=0, token_dim=4, num_triples=3, args={})
+    with pytest.raises(ValueError, match="unknown method option"):
+        adapter_type(num_tokens=8, node_dim=3, edge_dim=2, num_classes=3, hidden=8,
+                     layers=1, dropout=0, token_dim=4, num_triples=3,
+                     args={"method_options": {"use_interactons": False}})
+
+    adapter, graph = _fixture()
+    batched = Batch.from_data_list([graph, graph.clone()])
+    batched.edge_index[:, 0] = torch.tensor([0, graph.num_nodes])
+    with pytest.raises(ValueError, match="cross-graph"):
+        adapter(batched, epoch=0)
+
+
+def test_product_off_is_same_capacity_control_and_interaction_changes_predictions():
+    import torch
+    from argparse import Namespace
+    from comparison.standardized.clinical_graph_v2.methods import METHOD_REGISTRY
+
+    _, graph = _fixture()
+    cls = METHOD_REGISTRY["cei_gnn"]
+    common = dict(num_tokens=8, node_dim=3, edge_dim=2, num_classes=3, hidden=8,
+                  layers=1, dropout=0.0, token_dim=4, num_triples=3)
+    enabled = cls(**common, args=Namespace(method_options={"interaction_rank": 4,
+                                                           "use_interactions": True})).eval()
+    disabled = cls(**common, args=Namespace(method_options={"interaction_rank": 4,
+                                                            "use_interactions": False})).eval()
+    disabled.load_state_dict(enabled.state_dict())
+    assert sorted(tuple(p.shape) for p in enabled.parameters()) == sorted(
+        tuple(p.shape) for p in disabled.parameters())
+    assert sum(p.numel() for p in enabled.parameters()) == sum(
+        p.numel() for p in disabled.parameters())
+    assert enabled.run_config()["architecture"]["active_parameter_count"] == sum(
+        p.numel() for p in enabled.parameters())
+    assert disabled.run_config()["architecture"]["inactive_parameter_count"] > 0
+    assert not torch.allclose(enabled(graph, epoch=0).logits,
+                              disabled(graph, epoch=0).logits), "explicit q product had no predictive effect"
+
+
+def test_invalid_continuous_inputs_masks_and_metadata_fail_closed():
+    import pytest
+    import torch
+
+    adapter, graph = _fixture()
+    features = adapter.continuous_inputs(graph)
+    with pytest.raises(ValueError, match="finite"):
+        invalid = features.clone()
+        invalid[0, 0] = float("nan")
+        adapter.forward_continuous(invalid, graph.edge_index, graph)
+    with pytest.raises(ValueError, match="edge_index differs"):
+        adapter.forward_continuous(features, graph.edge_index.roll(1, dims=1), graph)
+    with pytest.raises(ValueError, match="edge mask length"):
+        adapter.network.set_edge_mask(torch.ones(graph.num_edges + 1))
+        adapter.forward_continuous(features, graph.edge_index, graph)
+    adapter.network.set_edge_mask(None)
+    for bad_mask in (torch.tensor([float("nan")] * graph.num_edges),
+                     torch.full((graph.num_edges,), 1.1)):
+        with pytest.raises(ValueError, match="edge mask"):
+            adapter.network.set_edge_mask(bad_mask)
