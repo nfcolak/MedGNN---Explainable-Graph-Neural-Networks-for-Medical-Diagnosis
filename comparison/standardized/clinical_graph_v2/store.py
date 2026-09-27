@@ -68,11 +68,12 @@ class ClinicalStore:
     def measurements(self, stay, cutoff):
         """Every representable result of this encounter available by the cutoff."""
         iso = cutoff.isoformat()
-        return [{'id': r['id'], 'token': r['token'], 'value': r['value'], 'unit': r['unit'],
+        return [{'id': r['id'], 'stay': r['stay'],
+                 'token': r['token'], 'value': r['value'], 'unit': r['unit'],
                  'time': r['time'], 'available': r['available'], 'source': r['source'],
                  'timing_basis': r['timing_basis']}
                 for r in self.events.execute(
-                    'SELECT id, token, value, unit, time, available, source, timing_basis '
+                    'SELECT id, stay, token, value, unit, time, available, source, timing_basis '
                     'FROM events WHERE stay=? AND time<=? AND available<=? ORDER BY time, id',
                     (stay, iso, iso))]
 
@@ -86,11 +87,12 @@ class ClinicalStore:
             return []
         iso = cutoff.isoformat()
         placeholders = ','.join('?' * len(prior_stays))
-        return [{'id': r['id'], 'token': r['token'], 'value': r['value'], 'unit': r['unit'],
+        return [{'id': r['id'], 'stay': r['stay'],
+                 'token': r['token'], 'value': r['value'], 'unit': r['unit'],
                  'time': r['time'], 'available': r['available'], 'source': r['source'],
                  'timing_basis': r['timing_basis']}
                 for r in self.events.execute(
-                    'SELECT id, token, value, unit, time, available, source, timing_basis '
+                    'SELECT id, stay, token, value, unit, time, available, source, timing_basis '
                     'FROM events WHERE subject=? AND token=? AND stay IN (%s) '
                     'AND time<=? AND available<=? ORDER BY time, id' % placeholders,
                     (subject, token, *prior_stays, iso, iso))]
