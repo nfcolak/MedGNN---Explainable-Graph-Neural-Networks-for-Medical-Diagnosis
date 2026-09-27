@@ -94,6 +94,13 @@ def test_edge_mask_is_applied_once_to_numerator_and_denominator_and_parts_recons
     zero_parts = adapter.forward_continuous(features, graph.edge_index, graph, return_parts=True)
     torch.testing.assert_close(zero_parts["logits"][0], net.bias + node_term)
     torch.testing.assert_close(zero_parts["edge_contributions"], torch.zeros_like(edge_vote))
+    adapter.zero_grad(set_to_none=True)
+    zero_parts["logits"].sum().backward()
+    for name in ("edge_head.0.weight", "edge_head.0.bias", "edge_head.3.weight",
+                 "edge_head.3.bias", "endpoint_source.weight", "endpoint_target.weight",
+                 "interaction_context.weight", "interaction_context.bias"):
+        parameter = dict(net.named_parameters())[name]
+        assert parameter.grad is not None and torch.isfinite(parameter.grad).all(), name
 
 
 def test_batch_permutation_parallel_edges_and_empty_edge_graphs_are_supported():
