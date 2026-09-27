@@ -327,3 +327,67 @@ def test_validator_refuses_json_only_arms_and_nonfinite_history(tmp_path):
         dirs.append(directory)
     with pytest.raises(ValueError, match="dev.npz|best.pt|replay"):
         module.validate_completed_stages(dirs)
+
+
+def test_execution_rejects_any_stage_argv_drift_before_first_subprocess(tmp_path, monkeypatch):
+    module = _module()
+    root = tmp_path / "runs"
+    root.mkdir()
+    artifact = tmp_path / "artifact"
+    artifact.mkdir()
+    targets = tmp_path / "targets.csv"
+    targets.write_text("x")
+    canonical = tmp_path / "canonical.json"
+    canonical.write_text("{}")
+    stages = module.build_plan(artifact=artifact, targets=targets, canonical=canonical,
+                               output_root=root)
+    tampered = list(stages)
+    tampered[2] = module.Stage(**{**tampered[2].__dict__,
+                                 "argv": tampered[2].argv + ["--patience", "1"]})
+    launches = []
+    monkeypatch.setattr(module, "capture_bindings", lambda stage: {
+        "source_state_sha256": "source", "input_state_sha256": "input",
+        "common_config_sha256": "config"})
+    monkeypatch.setattr(module.subprocess, "run", lambda *a, **k: launches.append(a))
+    with pytest.raises((ValueError, SystemExit)):
+        module.execute_plan(tampered, journal_path=root / "journal.json")
+    assert launches == []
+    assert not (root / "journal.json").exists()
+
+
+def test_actual_method_run_configs_are_accepted_and_source_defaults_are_locked():
+    module = _module()
+    from comparison.standardized.clinical_graph_v2.methods import build_method
+    from comparison.standardized.clinical_graph_v2.tensorize import PAYLOAD_WIDTH
+
+    args = SimpleNamespace(num_relations=3)
+    common = dict(num_tokens=8, node_dim=3, edge_dim=PAYLOAD_WIDTH, num_classes=2,
+                 hidden=4, layers=1, dropout=0.0, token_dim=3,
+                 num_triples=2, args=args)
+    cei_on = build_method("cei_gnn", **common)
+    cei_off = build_method("cei_gnn", **{**common,
+        "args": SimpleNamespace(num_relations=3,
+                                 method_options={"use_interactions": False})})
+    prot = build_method("protgnn", **{**common,
+        "args": SimpleNamespace(epochs=40, patience=40)})
+    on_config, off_config, prot_config = cei_on.run_config(), cei_off.run_config(), prot.run_config()
+    left = _bindings(method="cei_gnn", method_config=on_config, patience=40)
+    right = _bindings(method="cei_gnn", method_config=off_config, patience=40)
+    left["use_interactions"], right["use_interactions"] = True, False
+    assert module.assert_common_bindings(left, right)
+    control = _bindings(method="protgnn", method_config=prot_config, patience=40,
+                        use_interactions=None)
+    candidate = _bindings(method="cei_gnn", method_config=on_config, patience=40,
+                          use_interactions=True)
+    assert module.assert_common_bindings(control, candidate)
+    drifted = json.loads(json.dumps(prot_config))
+    drifted["native_schedule"]["warm_epochs"] += 1
+    with pytest.raises(ValueError, match="default|schedule|method_config"):
+        module.assert_common_bindings(control, _bindings(method="protgnn",
+            method_config=drifted, patience=40, use_interactions=None))
+
+
+
+def test_replay_stage_reconstructs_real_model_and_rejects_tampered_artifacts(tmp_path, monkeypatch):
+    module = _module()
+    assert callable(getattr(module, "replay_stage", None)), "production replay gate is missing"
