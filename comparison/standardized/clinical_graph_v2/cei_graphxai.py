@@ -83,13 +83,13 @@ def explain_graph(adapter, graph, *, steps=32, epochs=50) -> dict:
     except Exception as exc:
         raise GraphXAIExplanationError(str(exc)) from exc
     if set(result) != set(REQUIRED_ALGORITHMS):
-        raise RuntimeError("incomplete GraphXAI algorithm set")
+        raise GraphXAIExplanationError("incomplete GraphXAI algorithm set")
     for name, item in result.items():
         if item.get("status") != "success":
-            raise RuntimeError(f"GraphXAI algorithm failed: {name}")
+            raise GraphXAIExplanationError(f"GraphXAI algorithm failed: {name}")
         importance = item.get("node_explanation", {}).get("node_importance")
         if importance is None or not torch.isfinite(torch.as_tensor(importance)).all():
-            raise RuntimeError(f"GraphXAI algorithm produced nonfinite/incomplete record: {name}")
+            raise GraphXAIExplanationError(f"GraphXAI algorithm produced nonfinite/incomplete record: {name}")
         item["provenance"].update(EXPLANATION_BOUNDARIES)
     return result
 
