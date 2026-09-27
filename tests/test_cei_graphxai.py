@@ -130,6 +130,59 @@ def test_explain_graph_runs_real_algorithms_and_cleans_mask_state():
     assert not adapter.edge_pass.explain
 
 
+def test_binding_hashes_use_runner_package_relative_source_manifest(tmp_path):
+    implementation = module()
+    from comparison.standardized.clinical_graph_v2.contracts import recursive_source_hashes
+    import inspect
+    assert "package_root" in inspect.signature(implementation.binding_hashes).parameters
+    artifacts = []
+    for name in ("graphs.jsonl", "membership.jsonl", "best.pt"):
+        path = tmp_path / name
+        path.write_bytes(name.encode())
+        artifacts.append(path)
+    result = implementation.binding_hashes(
+        package_root=MODULE_PATH.parent, graph_path=artifacts[0],
+        membership_path=artifacts[1], checkpoint_path=artifacts[2], cohort_ids=["synthetic-1"],
+    )
+    expected = recursive_source_hashes(MODULE_PATH.parent)
+    assert result["source_sha256"] == expected
+    assert all(not Path(key).is_absolute() for key in result["source_sha256"])
+
+
+def test_integrated_cei_runs_all_three_algorithms_with_edgeless_graph():
+    from types import SimpleNamespace
+    from comparison.standardized.clinical_graph_v2.methods import METHOD_REGISTRY
+
+    adapter = METHOD_REGISTRY["cei_gnn"](
+        num_tokens=8, node_dim=3, edge_dim=2, num_classes=3, hidden=8,
+        layers=1, dropout=0.0, token_dim=4, num_triples=3,
+        args=SimpleNamespace(method_options={"interaction_rank": 16, "use_interactions": True},
+                             edge_direction="forward"),
+    ).eval()
+    graph = Data(
+        x=torch.tensor([[0.2, -0.3, 0.5], [0.8, 0.1, -0.4], [-0.1, 0.7, 0.2]]),
+        token=torch.tensor([1, 2, 3]), node_type=torch.tensor([0, 1, 2]),
+        edge_index=torch.tensor([[0, 1, 0], [1, 2, 1]]),
+        edge_attr=torch.tensor([[0.2, 0.1], [0.4, -0.3], [-0.2, 0.6]]),
+        edge_relation=torch.tensor([0, 1, 0]), edge_triple=torch.tensor([0, 1, 2]),
+    )
+    result = module().explain_graph(adapter, graph, steps=4, epochs=3)
+    assert set(result) == {"GradExplainer", "IntegratedGradExplainer", "GNNExplainer"}
+    assert all(item["status"] == "success" for item in result.values())
+    assert all(torch.isfinite(torch.tensor(item["node_explanation"]["node_importance"])).all()
+               for item in result.values())
+
+    edgeless = graph.clone()
+    edgeless.edge_index = torch.empty((2, 0), dtype=torch.long)
+    edgeless.edge_attr = torch.empty((0, 2))
+    edgeless.edge_relation = torch.empty((0,), dtype=torch.long)
+    edgeless.edge_triple = torch.empty((0,), dtype=torch.long)
+    empty_result = module().explain_graph(adapter, edgeless, steps=4, epochs=3)
+    assert empty_result["GNNExplainer"]["provenance"]["edge_gradient_status"] == "not_applicable_edgeless"
+    assert all(torch.isfinite(torch.tensor(item["node_explanation"]["node_importance"])).all()
+               for item in empty_result.values())
+
+
 def test_dev_cohort_requires_exact_sample_ids_and_fail_closed_provenance():
     implementation = module()
     cohort = implementation.validate_dev_cohort(
