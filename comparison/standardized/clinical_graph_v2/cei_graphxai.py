@@ -58,6 +58,15 @@ def _batch_of(graph):
     return batch.detach().clone()
 
 
+class GraphXAIExplanationError(RuntimeError):
+    """Failed explanation with a machine-readable record that cannot pass export."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.record = {"status": "failed", "error": str(message)}
+        self.partial_records = [self.record]
+
+
 def explain_graph(adapter, graph, *, steps=32, epochs=50) -> dict:
     """Run the repository's actual vendored GraphXAI algorithms on one graph."""
     features = adapter.continuous_inputs(graph).detach()
@@ -67,9 +76,12 @@ def explain_graph(adapter, graph, *, steps=32, epochs=50) -> dict:
     torch.testing.assert_close(actual, expected, rtol=0, atol=0)
     from shared.lib.graphxai_standardized import explain_algorithms
 
-    result = explain_algorithms(
-        wrapper, features, graph.edge_index, batch=_batch_of(graph), steps=steps, epochs=epochs
-    )
+    try:
+        result = explain_algorithms(
+            wrapper, features, graph.edge_index, batch=_batch_of(graph), steps=steps, epochs=epochs
+        )
+    except Exception as exc:
+        raise GraphXAIExplanationError(str(exc)) from exc
     if set(result) != set(REQUIRED_ALGORITHMS):
         raise RuntimeError("incomplete GraphXAI algorithm set")
     for name, item in result.items():
