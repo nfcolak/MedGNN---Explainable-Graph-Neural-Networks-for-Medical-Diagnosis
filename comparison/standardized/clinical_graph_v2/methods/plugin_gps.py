@@ -222,7 +222,7 @@ class GPSAdapter(ClinicalMethodAdapter):
                     local_scores = []
                     for weights, valid in self._last_attention:
                         count = int(valid[graph_id].sum().item())
-                        received = weights[graph_id, :, :count, :count].sum(dim=1).mean(dim=0)
+                        received = weights[graph_id, :, :count, :count].mean(dim=1).mean(dim=0)
                         local_scores.append(received)
                     scores[node_ids] = torch.stack(local_scores).mean(dim=0)
                 return scores.clamp_min_(0.0)
