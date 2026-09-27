@@ -4,6 +4,7 @@ from __future__ import annotations
 import importlib.util
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -193,6 +194,47 @@ def test_executor_journals_failures_and_checks_bindings_before_results(tmp_path,
     saved = json.loads(journal.read_text())
     assert saved["stages"]["one"]["status"] == "failed"
     assert calls
+
+
+def test_executor_refuses_source_drift_between_stages(tmp_path, monkeypatch):
+    module = _module()
+    root = tmp_path / "runs"
+    root.mkdir()
+    journal = root / "journal.json"
+    stages = [
+        module.Stage(name=name, argv=["python", "train.py"], output=str(root / name),
+                     seed=1234, budget=(10000, 5000, 40), treatment=name)
+        for name in ("one", "two")
+    ]
+    identities = iter(("source-a", "source-a", "source-b"))
+    monkeypatch.setattr(module, "capture_bindings", lambda stage: {
+        "git_revision": "rev", "source_state_sha256": next(identities),
+        "argv_sha256": "argv", "inputs": {},
+    })
+    launches = []
+    def fake_run(argv, **kwargs):
+        launches.append(argv)
+        output = Path(argv[argv.index("--output") + 1])
+        output.mkdir()
+        binding = _bindings()
+        (output / "binding.json").write_text(json.dumps(binding))
+        (output / "result.json").write_text(json.dumps({
+            "status": "completed", "binding": binding, "metrics": None,
+            "dev_metrics": {"macro_f1": 0.1},
+        }))
+        return SimpleNamespace(stdout="", stderr="")
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+
+    with pytest.raises(SystemExit) as error:
+        module.execute_plan(stages, journal_path=journal)
+
+    assert error.value.code != 0
+    assert len(launches) == 1
+    assert launches[0][-1] == "--execute"
+    saved = json.loads(journal.read_text())
+    assert saved["stages"]["one"]["status"] == "completed"
+    assert saved["stages"]["two"]["status"] == "refused"
+    assert saved["status"] == "failed"
 
 
 def test_budget_guard_rejects_changed_full_budget_before_comparison():
