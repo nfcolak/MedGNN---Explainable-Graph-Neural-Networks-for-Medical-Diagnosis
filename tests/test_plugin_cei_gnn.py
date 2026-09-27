@@ -3,6 +3,7 @@ def _fixture():
     from torch_geometric.data import Data
     from comparison.standardized.clinical_graph_v2.methods import METHOD_REGISTRY
 
+    torch.manual_seed(20260927)
     adapter = METHOD_REGISTRY["cei_gnn"](
         num_tokens=8, node_dim=3, edge_dim=2, num_classes=3, hidden=8,
         layers=1, dropout=0.0, token_dim=4, num_triples=3, args={})
@@ -242,6 +243,18 @@ def test_batch_permutation_parallel_edges_and_empty_edge_graphs_are_supported():
                  edge_triple=torch.empty((0,), dtype=torch.long))
     output = adapter(empty, epoch=0).logits
     assert output.shape == (1, 3) and torch.isfinite(output).all()
+
+
+def test_directed_edge_reversal_changes_asymmetric_predictions():
+    import torch
+
+    adapter, graph = _fixture()
+    reversed_graph = graph.clone()
+    reversed_graph.edge_index = graph.edge_index.flip(0)
+    forward_logits = adapter(graph, epoch=0).logits
+    reversed_logits = adapter(reversed_graph, epoch=0).logits
+    difference = (forward_logits - reversed_logits).abs().max()
+    assert difference > 1e-6, f"directed reversal was invariant: max delta={difference.item()}"
 
 
 def test_all_active_predictive_blocks_receive_finite_gradients():
