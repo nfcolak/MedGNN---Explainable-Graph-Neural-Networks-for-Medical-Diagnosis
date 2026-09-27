@@ -126,6 +126,43 @@ def test_edge_mask_is_applied_once_to_numerator_and_denominator_and_parts_recons
         assert parameter.grad is not None and torch.isfinite(parameter.grad).all(), name
 
 
+def test_pyg_raw_logit_mask_algebra_and_parts_reconstruct():
+    import torch
+    import torch.nn.functional as F
+    from torch_geometric.explain.algorithm.utils import set_masks, clear_masks
+
+    adapter, graph = _fixture()
+    network = adapter.network
+    features = adapter.continuous_inputs(graph)
+    src, dst = graph.edge_index
+    h = F.gelu(network.node_norm(network.node_encoder(features)))
+    node_vote, node_gate_logits = network.node_head(h).chunk(2, dim=-1)
+    node_gate = node_gate_logits.sigmoid()
+    context = (network.relation_embedding(graph.edge_relation)
+               + network.triple_embedding(graph.edge_triple)
+               + network.edge_feature_projection(graph.edge_attr))
+    q = (network.endpoint_source(h[src]).tanh() * network.endpoint_target(h[dst]).tanh()
+         * network.interaction_context(context).sigmoid())
+    edge_vote, edge_gate_logits = network.edge_head(
+        torch.cat((h[src], h[dst], context, q), dim=-1)).chunk(2, dim=-1)
+    edge_gate = edge_gate_logits.sigmoid()
+    raw_mask = torch.nn.Parameter(torch.tensor([-0.9, 0.3, 1.1]))
+    effective_mask = raw_mask.sigmoid()
+    node_term = (node_gate * node_vote).sum(0) / (1 + node_gate.sum(0))
+    numerator = (effective_mask[:, None] * edge_gate * edge_vote).sum(0)
+    denominator = 1 + (effective_mask[:, None] * edge_gate).sum(0)
+    expected = network.bias + node_term + numerator / denominator
+
+    set_masks(network, raw_mask, graph.edge_index, apply_sigmoid=True)
+    parts = adapter.forward_continuous(features, graph.edge_index, graph, return_parts=True)
+    torch.testing.assert_close(parts["logits"][0], expected, rtol=1e-6, atol=1e-6)
+    torch.testing.assert_close(parts["logits"][0], parts["bias"]
+                               + parts["node_contributions"].sum(0)
+                               + parts["edge_contributions"].sum(0), rtol=1e-6, atol=1e-6)
+    assert not torch.allclose(effective_mask, effective_mask.sigmoid()), "raw-logit mask must be sigmoid'ed exactly once"
+    clear_masks(network)
+
+
 def test_batch_permutation_parallel_edges_and_empty_edge_graphs_are_supported():
     import torch
     from torch_geometric.data import Batch, Data
