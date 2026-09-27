@@ -371,6 +371,17 @@ def test_export_clean_integrated_record_derives_file_hashes(tmp_path):
     exported = json.loads((output / "manifest.json").read_text())
     assert exported["status"] == "completed"
     assert exported["source_sha256"] == hashes["source_sha256"]
+    import copy
+    nonfinite_record = copy.deepcopy(record)
+    nonfinite_record["graphxai"]["GradExplainer"]["node_explanation"]["node_importance"][0] = float("nan")
+    failed = tmp_path / "nonfinite"
+    with pytest.raises(ValueError, match="Out of range float values"):
+        implementation.export_explanations(
+            failed, records=[nonfinite_record], manifest=manifest, binding=binding,
+            frozen_dev_ids=ids, graph_path=files["graph"], membership_path=files["membership"],
+            checkpoint_path=files["checkpoint"], expected_checkpoint_sha256=hashes["checkpoint_sha256"],
+        )
+    assert not (failed / "manifest.json").exists(), "nonfinite explanation was marked completed"
     wrong_order_manifest = dict(manifest, class_order=["class-b", "class-a"])
     with pytest.raises(ValueError, match="class order"):
         implementation.export_explanations(
