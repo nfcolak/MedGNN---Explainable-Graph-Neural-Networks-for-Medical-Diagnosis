@@ -253,13 +253,85 @@ def test_executor_refuses_source_drift_between_stages(tmp_path, monkeypatch):
     assert saved["status"] == "failed"
 
 
-def test_budget_guard_rejects_changed_full_budget_before_comparison():
+def test_budget_guard_rejects_changed_full_budget_and_patience():
     module = _module()
-    valid = _bindings()
+    valid = _bindings(patience=40)
     module.validate_pilot_binding(valid, expected_budget=(10000, 5000, 40), expected_seed=1234)
     with pytest.raises(ValueError, match="budget"):
-        module.validate_pilot_binding(_bindings(train_limit=9999),
+        module.validate_pilot_binding(_bindings(train_limit=9999, patience=40),
+                                      expected_budget=(10000, 5000, 40), expected_seed=1234)
+    with pytest.raises(ValueError, match="patience"):
+        module.validate_pilot_binding(_bindings(patience=1),
                                       expected_budget=(10000, 5000, 40), expected_seed=1234)
     with pytest.raises(ValueError, match="test"):
         module.validate_pilot_binding(_bindings(test_evaluated=True),
                                       expected_budget=(10000, 5000, 40), expected_seed=1234)
+
+
+def test_actual_method_configs_compare_common_settings_but_allow_cei_treatment():
+    module = _module()
+    common = _bindings(method="cei_gnn", patience=40)
+    common["method_config"] = {
+        "method": "cei_gnn", "adaptation_version": "cei-v1",
+        "native_defaults": {"hidden": 64, "interaction_rank": 8},
+        "effective_settings": {"hidden": 64, "interaction_rank": 8, "use_interactions": True},
+        "architecture": {"parameter_count": 321, "active_parameter_count": 321},
+    }
+    off = json.loads(json.dumps(common))
+    off["method_config"]["effective_settings"]["use_interactions"] = False
+    off["use_interactions"] = False
+    assert module.assert_common_bindings(common, off)
+    off["method_config"]["effective_settings"]["unreviewed_nested_flag"] = True
+    with pytest.raises(ValueError, match="unreviewed_nested_flag"):
+        module.assert_common_bindings(common, off)
+
+
+def test_capture_bindings_detects_same_path_input_byte_drift(tmp_path, monkeypatch):
+    module = _module()
+    artifact = tmp_path / "artifact"
+    artifact.mkdir()
+    (artifact / "manifest.json").write_text("first")
+    targets = tmp_path / "targets.csv"
+    targets.write_bytes(b"targets-a")
+    canonical = tmp_path / "canonical.json"
+    canonical.write_bytes(b"canonical")
+    stage = module.Stage("arm", ["python", "train.py", "--artifact", str(artifact),
+        "--targets", str(targets), "--canonical", str(canonical)], str(tmp_path / "out"),
+        1234, (10000, 5000, 40), "candidate")
+    monkeypatch.setattr(module.subprocess, "run", lambda *a, **k: SimpleNamespace(stdout="rev\n"))
+    before = module.capture_bindings(stage)
+    targets.write_bytes(b"targets-b")
+    after = module.capture_bindings(stage)
+    assert module._execution_identity(before) != module._execution_identity(after)
+
+
+def test_executor_refuses_occupied_journal_without_modifying_it(tmp_path):
+    module = _module()
+    journal = tmp_path / "journal.json"
+    journal.write_text("preserve evidence\\n")
+    stage = module.Stage("cei_smoke", ["python", "train.py"], str(tmp_path / "cei_smoke"),
+                         1234, (256, 128, 2), "smoke")
+    with pytest.raises((FileExistsError, ValueError)):
+        module.execute_plan([stage], journal_path=journal)
+    assert journal.read_text() == "preserve evidence\\n"
+
+
+def test_validator_refuses_json_only_arms_and_nonfinite_history(tmp_path):
+    module = _module()
+    dirs = []
+    for name, method, treatment in (("protgnn_control", "protgnn", None),
+                                    ("cei_candidate", "cei_gnn", True),
+                                    ("cei_product_off", "cei_gnn", False)):
+        directory = tmp_path / name
+        directory.mkdir()
+        binding = _bindings(method=method, patience=40)
+        binding["method_config"] = {"method": method, "effective_settings": {
+            "use_interactions": treatment, "hidden": 64},
+            "architecture": {"parameter_count": 123, "active_parameter_count": 120}}
+        (directory / "binding.json").write_text(json.dumps(binding))
+        (directory / "result.json").write_text(json.dumps({"status": "completed", "binding": binding,
+            "metrics": None, "dev_metrics": {"macro_f1": 0.1}, "test_evaluated": False,
+            "history": [{"epoch": 1, "train_loss": 1.0, "seconds": 1.0}], "total_seconds": 1.0}))
+        dirs.append(directory)
+    with pytest.raises(ValueError, match="dev.npz|best.pt|replay"):
+        module.validate_completed_stages(dirs)
