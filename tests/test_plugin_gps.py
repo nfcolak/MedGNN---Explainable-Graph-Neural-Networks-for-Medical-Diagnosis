@@ -139,6 +139,10 @@ def test_gps_options_defaults_effects_and_unknown_option_validation():
     assert default._random_walk_encoding(default._validated_batch(batch)).shape == (5, 8)
     assert short_walk._random_walk_encoding(short_walk._validated_batch(batch)).shape == (5, 2)
 
+    more_heads = make_model(method_options={"heads": "8"})
+    assert more_heads.heads == 8
+    assert more_heads.run_config()["effective_settings"]["heads"] == 8
+
     with pytest.raises(ValueError, match="unknown method option"):
         make_model(method_options={"rwse_step": "4"})
     with pytest.raises(ValueError, match="rwse_steps"):
