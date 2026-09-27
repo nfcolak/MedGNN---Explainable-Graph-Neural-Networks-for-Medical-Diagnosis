@@ -82,7 +82,7 @@ class GPSAdapter(ClinicalMethodAdapter):
             for _ in range(self.layers_count)
         ])
         self.attention_layers = nn.ModuleList([
-            nn.MultiheadAttention(self.hidden, self.heads, dropout=self.dropout_rate,
+            nn.MultiheadAttention(self.hidden, self.heads, dropout=0.0,
                                   batch_first=True)
             for _ in range(self.layers_count)
         ])
