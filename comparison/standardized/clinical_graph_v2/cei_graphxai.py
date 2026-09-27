@@ -181,10 +181,10 @@ def reconstruct_adapter(binding: Mapping[str, Any], checkpoint_path, *, expected
 def export_explanations(output_dir, *, records, manifest):
     """Journal records beside a fresh output; publish manifest only when complete."""
     output = Path(output_dir)
-    if output.exists():
-        raise FileExistsError(f"refusing occupied explanation directory: {output}")
-    records = list(records)
     output.parent.mkdir(parents=True, exist_ok=True)
+    # mkdir(exist_ok=False) is the ownership boundary: a concurrent creator wins
+    # or this call does, and this function never removes the requested path.
+    output.mkdir(mode=0o700, exist_ok=False)
     fd, journal_name = tempfile.mkstemp(prefix=f".{output.name}.", suffix=".journal", dir=output.parent)
     journal = Path(journal_name)
     published = False
@@ -239,9 +239,6 @@ def export_explanations(output_dir, *, records, manifest):
         published = True
         return output
     except Exception:
-        if output.exists():
-            import shutil
-            shutil.rmtree(output)
         raise
     finally:
         if published:

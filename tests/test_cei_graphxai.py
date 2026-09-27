@@ -170,20 +170,23 @@ def test_export_refuses_occupied_directory_and_incomplete_algorithm_records(tmp_
     fresh = tmp_path / "fresh"
     with pytest.raises(ValueError, match="incomplete"):
         implementation.export_explanations(fresh, records=[{"graphxai": {}}], manifest={})
-    assert not fresh.exists(), "failed export must not leave a completed output directory"
+    assert fresh.is_dir(), "failed output reservation is retained for recovery"
+    assert not (fresh / "manifest.json").exists(), "failed export must not publish completion"
 
 
 def test_export_race_preserves_directory_created_by_another_actor(tmp_path, monkeypatch):
     implementation = module()
     out = tmp_path / "raced"
-    original_mkstemp = implementation.tempfile.mkstemp
+    original_mkdir = Path.mkdir
 
-    def create_foreign_directory(*args, **kwargs):
-        out.mkdir()
-        (out / "foreign_marker.txt").write_text("not ours")
-        return original_mkstemp(*args, **kwargs)
+    def create_foreign_directory(path, *args, **kwargs):
+        if path == out:
+            original_mkdir(path, *args, **kwargs)
+            (out / "foreign_marker.txt").write_text("not ours")
+            raise FileExistsError(path)
+        return original_mkdir(path, *args, **kwargs)
 
-    monkeypatch.setattr(implementation.tempfile, "mkstemp", create_foreign_directory)
-    with pytest.raises((FileExistsError, ValueError, RuntimeError)):
-        implementation.export_explanations(out, records=[{"graphxai": {}}], manifest={})
+    monkeypatch.setattr(Path, "mkdir", create_foreign_directory)
+    with pytest.raises(FileExistsError):
+        implementation.export_explanations(out, records=[], manifest={})
     assert (out / "foreign_marker.txt").read_text() == "not ours", "exporter deleted unowned output"
