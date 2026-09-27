@@ -47,7 +47,9 @@ def _bindings(**updates):
         "parameter_count": 123,
         "active_parameter_count": 120,
         "method_config": {"architecture": {"parameter_count": 123, "active_parameter_count": 120}},
-        "use_interactions": True,
+        "edge_direction": "forward", "edges": "all", "top_k_labels": 10,
+        "message_passing": True, "edge_payload": True, "num_classes": 2,
+        "input_contract_version": "prep-v1", "weights": "sqrt_inverse",
     }
     base.update(updates)
     return base
@@ -133,11 +135,16 @@ def test_only_declared_treatment_fields_may_differ_and_unknowns_stay_strict():
 
 def test_report_validator_rejects_incomplete_and_smoke_is_not_an_arm(tmp_path):
     module = _module()
-    incomplete = tmp_path / "incomplete"
+    incomplete = tmp_path / "cei_candidate"
     incomplete.mkdir()
     (incomplete / "binding.json").write_text(json.dumps(_bindings()))
+    others = []
+    for name in ("protgnn_control", "cei_product_off"):
+        directory = tmp_path / name
+        directory.mkdir()
+        others.append(directory)
     with pytest.raises(ValueError, match="result.json"):
-        module.validate_completed_stages([incomplete])
+        module.validate_completed_stages([incomplete, *others])
 
     stages = []
     for name, treatment in (("protgnn_control", {"method": "protgnn", "use_interactions": None}),
@@ -169,7 +176,7 @@ def test_executor_journals_failures_and_checks_bindings_before_results(tmp_path,
     journal = output / "journal.json"
     stages = [module.Stage(name="one", argv=["python", "train.py"], output=str(output / "one"),
                            seed=1234, budget=(10000, 5000, 40), treatment="candidate")]
-    (output / "one").mkdir()
+    (output / "one").parent.mkdir(exist_ok=True)
     monkeypatch.setattr(module, "capture_bindings", lambda stage: _bindings())
     calls = []
     def fail_run(argv, **kwargs):
