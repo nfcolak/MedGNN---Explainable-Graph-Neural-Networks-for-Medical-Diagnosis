@@ -251,7 +251,7 @@ def test_reconstruction_replays_candidate_and_product_off_state_dicts(tmp_path):
             "source_code": recursive_source_hashes(MODULE_PATH.parents[0]),
             "runner_settings": {"edge_direction": "forward"},
             "vocabulary_size": 8, "node_dim": 3, "edge_dim": 2, "num_classes": 3,
-            "hidden": 8, "layers": 1, "dropout": 0.0, "token_dim": 4,
+            "hidden": 8, "layers": 1, "dropout": 0.0,
             "num_meta_relations": 3, "num_relations": config["architecture"]["num_relations"],
         }
         reconstructed = None
