@@ -474,6 +474,41 @@ def test_execution_source_snapshot_hashes_its_own_worktree_and_runner_package(tm
         module._assert_runner_source_binding(snapshot_after, binding)
 
 
+def test_native_config_rejects_coordinated_schedule_drift_from_runner_defaults():
+    module = _module()
+    from comparison.standardized.clinical_graph_v2.methods import build_method
+    from comparison.standardized.clinical_graph_v2.tensorize import PAYLOAD_WIDTH
+
+    args = SimpleNamespace(epochs=40, patience=40, num_relations=3)
+    model = build_method("protgnn", num_tokens=8, node_dim=3, edge_dim=PAYLOAD_WIDTH,
+                         num_classes=2, hidden=4, layers=1, dropout=0.0,
+                         token_dim=3, num_triples=2, args=args)
+    binding = _bindings(method="protgnn", method_config=model.run_config())
+    module._validate_method_config(binding)
+
+    drifted = json.loads(json.dumps(binding))
+    drifted["method_config"]["effective_settings"]["warm_epochs"] += 1
+    drifted["method_config"]["native_schedule"]["warm_epochs"] += 1
+    with pytest.raises(ValueError, match="source-derived|defaults|schedule|run_config"):
+        module._validate_method_config(drifted)
+
+
+def test_native_config_rejects_incomplete_architecture_dimensions():
+    module = _module()
+    from comparison.standardized.clinical_graph_v2.methods import build_method
+    from comparison.standardized.clinical_graph_v2.tensorize import PAYLOAD_WIDTH
+
+    model = build_method("cei_gnn", num_tokens=8, node_dim=3, edge_dim=PAYLOAD_WIDTH,
+                         num_classes=2, hidden=4, layers=1, dropout=0.0,
+                         token_dim=3, num_triples=2,
+                         args=SimpleNamespace(num_relations=3,
+                             method_options={"use_interactions": True}))
+    binding = _bindings(method_config=model.run_config())
+    del binding["method_config"]["architecture"]["token_dim"]
+    with pytest.raises(ValueError, match="architecture|dimension"):
+        module._validate_method_config(binding)
+
+
 
 def test_replay_stage_reconstructs_real_model_and_rejects_tampered_artifacts(tmp_path, monkeypatch):
     module = _module()
