@@ -227,7 +227,7 @@ def _validate_algorithm_record(name, item):
         raise ValueError(f"{name} explanation interpretation boundaries are invalid")
 
 
-def export_explanations(output_dir, *, records, manifest):
+def export_explanations(output_dir, *, records, manifest, binding=None, frozen_dev_ids=None):
     """Journal records beside a fresh output; publish manifest only when complete."""
     output = Path(output_dir)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -252,13 +252,29 @@ def export_explanations(output_dir, *, records, manifest):
             if not isinstance(record, Mapping) or type(record.get("sample_id")) is not str or not record["sample_id"]:
                 raise ValueError("incomplete explanation export: missing sample-keyed record")
             sample_ids.append(record["sample_id"])
+        if len(set(sample_ids)) != len(sample_ids):
+            raise ValueError("incomplete explanation export: duplicate sample IDs")
+        if not isinstance(binding, Mapping) or not isinstance(frozen_dev_ids, Sequence):
+            raise ValueError("export requires the runner binding and frozen dev sample-ID roster")
+        dev_ids = _unique_ids(frozen_dev_ids, "frozen dev roster")
+        split_hashes = binding.get("split_sample_ids_sha256")
+        if not isinstance(split_hashes, Mapping) or not isinstance(split_hashes.get("dev"), str):
+            raise ValueError("runner binding is missing its dev sample-ID hash")
+        roster_hash = hashlib.sha256(json.dumps(list(dev_ids), separators=(",", ":"),
+                                               ensure_ascii=True).encode("utf-8")).hexdigest()
+        if split_hashes["dev"] != roster_hash:
+            raise ValueError("frozen dev roster hash does not match runner binding")
+        if not set(sample_ids) <= set(dev_ids):
+            raise ValueError("export records contain IDs outside the bound frozen dev roster")
+        for record in record_values:
             graphxai = record.get("graphxai")
             if not isinstance(graphxai, Mapping) or set(graphxai) != set(REQUIRED_ALGORITHMS):
                 raise ValueError("incomplete explanation export: required algorithms absent")
             for name in REQUIRED_ALGORITHMS:
                 _validate_algorithm_record(name, graphxai[name])
-        if len(set(sample_ids)) != len(sample_ids):
-            raise ValueError("incomplete explanation export: duplicate sample IDs")
+        label_order = binding.get("label_order")
+        if not isinstance(label_order, (list, tuple)) or not label_order:
+            raise ValueError("runner binding is missing ordered class labels")
         if not isinstance(manifest, Mapping):
             raise ValueError("manifest must be an object")
         required_hashes = {"source_sha256", "graph_sha256", "membership_sha256", "checkpoint_sha256", "cohort_ids_sha256"}
@@ -269,6 +285,8 @@ def export_explanations(output_dir, *, records, manifest):
             raise ValueError("manifest must explicitly bind the dev fold and integer seed")
         if not isinstance(manifest.get("class_order"), (list, tuple)) or not manifest["class_order"]:
             raise ValueError("manifest must contain a nonempty ordered class list")
+        if list(manifest["class_order"]) != list(label_order):
+            raise ValueError("manifest class order differs from the runner binding")
         if not isinstance(manifest.get("cohort_identity"), str) or not manifest["cohort_identity"].strip():
             raise ValueError("manifest must bind exact cohort identity")
         if dict(manifest.get("interpretation_boundaries", {})) != EXPLANATION_BOUNDARIES:

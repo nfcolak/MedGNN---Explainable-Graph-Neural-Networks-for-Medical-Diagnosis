@@ -183,7 +183,11 @@ def test_export_refuses_occupied_directory_and_incomplete_algorithm_records(tmp_
         implementation.export_explanations(out, records=[], manifest={})
     fresh = tmp_path / "fresh"
     with pytest.raises(ValueError, match="incomplete"):
-        implementation.export_explanations(fresh, records=[{"graphxai": {}}], manifest={})
+        implementation.export_explanations(
+            fresh, records=[{"sample_id": "dev-1", "graphxai": {}}],
+            manifest=_valid_export_manifest(["dev-1"]),
+            binding=_runner_binding(["dev-1"]), frozen_dev_ids=["dev-1"],
+        )
     assert fresh.is_dir(), "failed output reservation is retained for recovery"
     assert not (fresh / "manifest.json").exists(), "failed export must not publish completion"
 
@@ -202,9 +206,21 @@ def _valid_export_manifest(sample_ids, **overrides):
         "seed": 1234,
         "class_order": ["class-a", "class-b"],
         "cohort_identity": "synthetic-dev",
+        "interpretation_boundaries": {
+            "node_gradients": "continuous numeric and embedding channels, conditional on fixed edge metadata",
+            "feature_zeroing": "continuous-representation intervention; not clinical event deletion",
+            "causal_claim": False,
+        },
     }
     manifest.update(overrides)
     return manifest
+
+
+def _runner_binding(dev_ids):
+    import hashlib
+    import json
+    digest = hashlib.sha256(json.dumps(dev_ids, separators=(",", ":"), ensure_ascii=True).encode()).hexdigest()
+    return {"split_sample_ids_sha256": {"dev": digest}, "label_order": ["class-a", "class-b"]}
 
 
 def test_export_requires_binding_checked_frozen_dev_membership(tmp_path):
@@ -212,10 +228,7 @@ def test_export_requires_binding_checked_frozen_dev_membership(tmp_path):
     import inspect
     assert {"binding", "frozen_dev_ids"} <= set(inspect.signature(implementation.export_explanations).parameters)
     ids = ["dev-sample-1"]
-    binding = {
-        "split_sample_ids_sha256": {"dev": "0" * 64},
-        "label_order": ["class-a", "class-b"],
-    }
+    binding = _runner_binding(ids)
     record = {"sample_id": "validation-sample-id", "graphxai": {}}
     with pytest.raises(ValueError, match="dev roster|membership|hash"):
         implementation.export_explanations(
@@ -235,6 +248,7 @@ def test_export_refuses_status_only_graphxai_records(tmp_path):
         implementation.export_explanations(
             tmp_path / "status-only", records=[record],
             manifest=_valid_export_manifest(["dev-1"]),
+            binding=_runner_binding(["dev-1"]), frozen_dev_ids=["dev-1"],
         )
     assert not (tmp_path / "status-only" / "manifest.json").exists()
 
