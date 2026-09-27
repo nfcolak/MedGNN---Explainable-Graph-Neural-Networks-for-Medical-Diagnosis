@@ -189,17 +189,23 @@ def test_reconstruction_replays_candidate_and_product_off_state_dicts(tmp_path):
         config = adapter.run_config()
         checkpoint = tmp_path / f"cei-{enabled}.pt"
         torch.save(adapter.state_dict(), checkpoint)
+        from comparison.standardized.clinical_graph_v2.contracts import recursive_source_hashes
+        import hashlib
+        from pathlib import Path
         binding = {
             "method": "cei_gnn", "adaptation_version": config["adaptation_version"],
-            "method_config": config, "source_code": {}, "runner_settings": {"edge_direction": "forward"},
+            "method_config": config,
+            "source_code": recursive_source_hashes(MODULE_PATH.parents[0]),
+            "runner_settings": {"edge_direction": "forward"},
             "vocabulary_size": 8, "node_dim": 3, "edge_dim": 2, "num_classes": 3,
             "hidden": 8, "layers": 1, "dropout": 0.0, "token_dim": 4,
-            "num_meta_relations": 3,
+            "num_meta_relations": 3, "num_relations": config["architecture"]["num_relations"],
         }
         reconstructed = None
         try:
             reconstructed = implementation.reconstruct_adapter(
-                binding, checkpoint, expected_source_sha256={},
+                binding, checkpoint,
+                expected_checkpoint_sha256=hashlib.sha256(checkpoint.read_bytes()).hexdigest(),
             )
         except Exception:
             pass
@@ -215,7 +221,7 @@ def test_reconstruction_refuses_unbound_or_incompatible_adaptation():
         implementation.reconstruct_adapter(
             {"method": "protgnn", "adaptation_version": "wrong"},
             "unused.pt",
-            expected_source_sha256={},
+            expected_checkpoint_sha256="0" * 64,
         )
 
 
