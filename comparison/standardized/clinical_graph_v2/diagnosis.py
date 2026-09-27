@@ -10,44 +10,18 @@ Timing caveat, stated because it cannot be resolved from the source: MIMIC's
 `diagnosis.csv` carries no timestamp at all -- only `stay_id` and `seq_num`. So
 "before the cutoff" is established structurally (the diagnosis belongs to an
 encounter that had already FINISHED before the index encounter began), never by a
-recorded diagnosis time. A diagnosis is billing-coded after its encounter closes,
-which is why a completed prior encounter is the correct unit.
+recorded diagnosis time. Availability at encounter completion is an unverified
+assumption: this source does not prove when a billing diagnosis became visible.
 
-ICD-9 and ICD-10 are both present (49%/51%) and 38.6% of patients have their index
-and prior encounters coded in different versions. Comparing raw codes across that
-boundary silently misses recurrences, so codes are normalized to ICD-10 through the
-repository's own GEM table before comparison. Measured effect: recurrence detection
-rises from 43.9% to 48.7% of eligible patients; GEM covers 99.2% of ICD-9 codes seen.
+ICD-9 and ICD-10 can occur in different encounters of the same patient. Comparing
+raw codes across that boundary misses recurrences, so both history and targets
+use the shared, historical target producer's GEM row-selection policy.
 Approximate mappings are flagged on the node, never silently treated as exact.
 """
 from collections import defaultdict
-import csv
+from comparison.standardized.icd_mapping import load_icd_map, normalize_icd10
 
-from .schema import identifier, rows
-
-
-def load_icd_map(path):
-    """Load the repository's ICD-9 -> ICD-10 GEM table.
-
-    `no_map=1` rows are dropped: those ICD-9 codes have no ICD-10 equivalent and
-    inventing one would be a clinical judgement. `approximate=1` is retained as a
-    flag so downstream consumers can see the mapping is not exact.
-    """
-    mapping, approximate = {}, set()
-    for row in rows(path, {'icd9_code', 'icd10_code', 'approximate', 'no_map'}):
-        code = row['icd9_code'].strip()
-        target = row['icd10_code'].strip()
-        if not code or not target or row['no_map'] == '1':
-            continue
-        if code in mapping and mapping[code] != target:
-            # Keep the first mapping deterministically rather than picking arbitrarily.
-            continue
-        mapping[code] = target
-        if row['approximate'] == '1':
-            approximate.add(code)
-    if not mapping:
-        raise ValueError('Empty ICD-9 to ICD-10 mapping')
-    return mapping, approximate
+from .schema import rows
 
 
 def normalize(version, code, mapping, approximate):
@@ -56,17 +30,16 @@ def normalize(version, code, mapping, approximate):
     An unmappable ICD-9 code keeps its own namespace instead of being forced into
     the ICD-10 space, so it can still match other ICD-9 occurrences of itself.
     """
-    code = code.strip()
+    code = code.strip().upper()
+    target = normalize_icd10(version, code, mapping)
     if not code:
         return None, False
     if version == '10':
         return 'dx:icd10:' + code, False
     if version == '9':
-        target = mapping.get(code)
         if target is None:
             return 'dx:icd9:' + code, False
         return 'dx:icd10:' + target, code in approximate
-    raise ValueError('Unsupported ICD version: ' + version)
 
 
 class DiagnosisIndex:
@@ -121,6 +94,7 @@ class DiagnosisIndex:
         Refuses the index stay even if a caller passes it in the prior list, so the
         guarantee does not depend on the caller getting the list right.
         """
+        prior_stays = list(dict.fromkeys(prior_stays))
         if index_stay in prior_stays:
             raise ValueError('Index encounter is not prior history; its diagnoses are the label')
         history = {}
@@ -129,13 +103,15 @@ class DiagnosisIndex:
                 if record['stay'] == index_stay:
                     raise ValueError('Index-encounter diagnosis reached the history path')
                 existing = history.get(record['token'])
-                # Keep every occurrence so recurrence count and first/last are real.
+                # Recurrence is a count of completed stays, not diagnosis rows.
+                # Multiple source codes can also map to the same token in a stay.
                 if existing is None:
-                    history[record['token']] = {**record, 'occurrences': [stay],
+                    history[record['token']] = {**record, 'occurrences': {stay},
                                                 'titles': {record['title']},
                                                 'approximate_mapping': record['approximate_mapping']}
                 else:
-                    existing['occurrences'].append(stay)
+                    existing['occurrences'].add(stay)
                     existing['titles'].add(record['title'])
                     existing['approximate_mapping'] |= record['approximate_mapping']
-        return [history[token] for token in sorted(history)]
+        return [{**history[token], 'occurrences': sorted(history[token]['occurrences'])}
+                for token in sorted(history)]

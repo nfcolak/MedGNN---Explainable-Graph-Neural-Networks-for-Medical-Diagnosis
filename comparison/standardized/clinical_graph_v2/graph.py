@@ -37,12 +37,37 @@ from collections import defaultdict
 from itertools import combinations
 
 from . import SCHEMA_VERSION
+from .contracts import VISIT_MEMBERSHIP_CONTRACT_VERSION
 from .schema import timestamp
+from comparison.standardized.icd_mapping import ICD_MAPPING_POLICY
+
+LOGIC_CONTRACT_VERSION = 'clinical_graph_logic_v2'
 
 
-def build_graph(store, sample, knowledge, vocabulary, diagnoses=None,
-                max_nodes=20000, max_edges=200000):
-    """Build one graph for one (stay, cutoff) sample.
+def temporal_contract(with_diagnosis):
+    """Recorded proxy bounds are testable; actual clinician availability is not."""
+    assumptions = ['triage_at_encounter_intime', 'storetime_as_availability_proxy']
+    if with_diagnosis:
+        assumptions.append('prior_diagnosis_available_at_encounter_completion')
+    return {'temporal_clean': False, 'early_triage_eligible': False,
+            'temporal_validation': 'proxy_bounds_only; availability_assumptions_unverified',
+            'availability_assumptions': assumptions}
+
+
+def assumed_timing(source, basis):
+    return {'timestamp_source': source, 'timing_basis': basis,
+            'source_timestamp_present': False,
+            'availability_assumed': True, 'availability_verified': False}
+
+
+def lab_availability():
+    return {'availability_basis': 'database_storetime_proxy',
+            'availability_verified': False, 'availability_source': 'labevents.csv:storetime'}
+
+
+def build_graph_with_visit_membership(store, sample, knowledge, vocabulary, diagnoses=None,
+                                      max_nodes=20000, max_edges=200000):
+    """Build one graph and its source-derived visit-membership sidecar row.
 
     `store` exposes the read-only v1 SQLite event index plus the v2 triage/arrival
     tables. `vocabulary` is the train-fitted complaint allowlist. `diagnoses` is an
@@ -56,7 +81,15 @@ def build_graph(store, sample, knowledge, vocabulary, diagnoses=None,
     if not index['start'] <= cutoff.isoformat() <= (index['finish'] or index['start']):
         raise ValueError('Cutoff falls outside the index encounter')
 
+    prior_visits = store.prior_visits(sample['subject_id'], index['start'])
+    ordered_stays = [*prior_visits, sample['stay_id']]
+    stay_to_ordinal = {stay: ordinal for ordinal, stay in enumerate(ordered_stays)}
+    if len(stay_to_ordinal) != len(ordered_stays):
+        raise ValueError('Duplicate source stay in visit order')
+
     nodes, edges, lookup, times = [], [], {}, {}
+    node_visits = defaultdict(set)
+    global_nodes = set()
     dropped = defaultdict(int)
 
     def hours(value):
@@ -86,27 +119,38 @@ def build_graph(store, sample, knowledge, vocabulary, diagnoses=None,
         edges.append({'source': source, 'target': target, 'relation': relation,
                       'informative': informative, **payload})
 
+    def add_membership(node_id, stay):
+        try:
+            node_visits[node_id].add(stay_to_ordinal[stay])
+        except KeyError as exc:
+            raise ValueError('Node source stay is outside the sample visit lineage') from exc
+
     # ---------------------------------------------------------------- patient/visit
     arrival = store.arrival(sample['stay_id'])
     patient = node(('patient',), 'patient', 'patient',
                    age=arrival.get('age'), gender=arrival.get('gender'),
                    race=arrival.get('race'), arrival_transport=arrival.get('arrival_transport'))
+    global_nodes.add(patient)
     visit = node(('visit', sample['stay_id']), 'visit', 'visit:index',
                  time=index['start'], available=index['start'],
-                 acuity=arrival.get('acuity'))
+                 acuity=arrival.get('acuity'),
+                 acuity_timing=assumed_timing('edstays.csv:intime', 'encounter_intime_assumption'))
+    add_membership(visit, sample['stay_id'])
     edge(patient, visit, 'has_visit', False)
     edge(visit, patient, 'index_visit_of', False)
 
     # ------------------------------------------------------------------- complaints
-    # Recorded at triage, i.e. at `intime`, which the producer verifies is <= cutoff
-    # for every cohort visit. Out-of-vocabulary surface forms are counted, not bucketed.
+    # Triage has NO independent timestamp. Assigning intime is an assumption,
+    # not evidence that complaints/vitals/acuity were actually visible by cutoff.
     complaint_ids = []
     for token in store.complaints(sample['stay_id']):
         if token not in vocabulary:
             dropped['complaint_out_of_vocabulary'] += 1
             continue
         cid = node(('complaint', token), 'complaint', 'cc:' + token,
-                   time=index['start'], available=index['start'])
+                   time=index['start'], available=index['start'], source_table='triage.csv',
+                   **assumed_timing('edstays.csv:intime', 'encounter_intime_assumption'))
+        add_membership(cid, sample['stay_id'])
         edge(visit, cid, 'reports_complaint', False)
         complaint_ids.append(cid)
     # Conjunction, not summation: this is the pairwise term a presence vector lacks.
@@ -117,7 +161,10 @@ def build_graph(store, sample, knowledge, vocabulary, diagnoses=None,
     # ---------------------------------------------------------------- triage vitals
     for field, value, unit, source_unit in store.triage_vitals(sample['stay_id']):
         vid = node(('vital', field), 'vital', 'vital:' + field, value=value, unit=unit,
-                   source_unit=source_unit, time=index['start'], available=index['start'])
+                   source_unit=source_unit, time=index['start'], available=index['start'],
+                   source_table='triage.csv',
+                   **assumed_timing('edstays.csv:intime', 'encounter_intime_assumption'))
+        add_membership(vid, sample['stay_id'])
         edge(visit, vid, 'observed_vital', False)
 
     # ------------------------------------------------- index-visit lab measurements
@@ -130,11 +177,13 @@ def build_graph(store, sample, knowledge, vocabulary, diagnoses=None,
                    value=record['value'], unit=record['unit'],
                    time=record['time'], available=record['available'],
                    source_record=record['source'], timing_basis=record['timing_basis'],
-                   scope='index')
+                   scope='index', **lab_availability())
+        add_membership(mid, record['stay'])
         analyte = analyte_nodes.get(record['token'])
         if analyte is None:
             analyte = node(('analyte', record['token']), 'analyte', record['token'])
             analyte_nodes[record['token']] = analyte
+        add_membership(analyte, record['stay'])
         edge(visit, mid, 'measured_in', False)
         edge(mid, analyte, 'instance_of', False)
         index_by_analyte[record['token']].append((record['time'], mid, record))
@@ -144,7 +193,6 @@ def build_graph(store, sample, knowledge, vocabulary, diagnoses=None,
     # whole point: an unmatched historical value is a feature column, while a matched
     # one defines a delta that needs both endpoints. v1 dumped every historical event
     # regardless of match, producing 18 GB and, as measured, no signal.
-    prior_visits = store.prior_visits(sample['subject_id'], index['start'])
     baseline_links = 0
     for analyte_token, index_records in index_by_analyte.items():
         history = store.analyte_history(sample['subject_id'], prior_visits, analyte_token, cutoff)
@@ -157,7 +205,9 @@ def build_graph(store, sample, knowledge, vocabulary, diagnoses=None,
                        value=record['value'], unit=record['unit'],
                        time=record['time'], available=record['available'],
                        source_record=record['source'], timing_basis=record['timing_basis'],
-                       scope='prior')
+                       scope='prior', **lab_availability())
+            add_membership(hid, record['stay'])
+            add_membership(analyte_nodes[analyte_token], record['stay'])
             edge(hid, analyte_nodes[analyte_token], 'instance_of', False)
             history_ids.append((record, hid))
             if previous is not None:
@@ -179,21 +229,25 @@ def build_graph(store, sample, knowledge, vocabulary, diagnoses=None,
         visit_end = {stay: store.visit(stay)['finish'] for stay in prior_visits}
         by_encounter = defaultdict(list)
         for record in history:
+            ends = [visit_end[stay] for stay in record['occurrences'] if visit_end.get(stay)]
+            last_seen = max(ends) if ends else None
             did = node(('diagnosis', record['token']), 'diagnosis', record['token'],
                        source_version=record['source_version'],
                        source_code=record['source_code'],
                        approximate_mapping=record['approximate_mapping'],
-                       prior_encounters=len(record['occurrences']))
+                       prior_encounters=len(record['occurrences']), source_table='diagnosis.csv',
+                       assumed_available_hours=hours(last_seen),
+                       **assumed_timing('edstays.csv:outtime', 'completed_prior_encounter_end_assumption'))
+            for stay in record['occurrences']:
+                add_membership(did, stay)
             diagnosis_nodes[record['token']] = did
             edge(visit, did, 'has_prior_diagnosis', False)
             # Recency is the two-endpoint quantity: a condition coded three times,
             # most recently 40 days ago, is different evidence from a history flag.
-            ends = [visit_end[stay] for stay in record['occurrences'] if visit_end.get(stay)]
-            last_seen = max(ends) if ends else None
             age_hours = hours(last_seen) if last_seen else None
             edge(did, visit, 'recurrence_of', True,
                  prior_encounters=len(record['occurrences']),
-                 last_seen_hours=age_hours)
+                 last_seen_hours=age_hours, recency_basis='completed_prior_encounter_end_assumption')
             recurrence_links += 1
             for stay in record['occurrences']:
                 by_encounter[stay].append(record['token'])
@@ -211,13 +265,20 @@ def build_graph(store, sample, knowledge, vocabulary, diagnoses=None,
         if anchor is None:
             continue
         target = node(('knowledge', triple['target_token']), 'knowledge', triple['target_token'])
+        anchor_visits = node_visits.get(anchor, set())
+        if not anchor_visits:
+            raise ValueError('Knowledge anchor has no source visit membership')
+        node_visits[target].update(anchor_visits)
         edge(anchor, target, 'medical:' + triple['relation'], True,
              provenance={k: triple[k] for k in ('source_uri', 'source_version', 'reviewed_by')})
         knowledge_edges += 1
 
     informative = sum(1 for e in edges if e['informative'])
-    return {
+    graph = {
         'schema_version': SCHEMA_VERSION,
+        'logic_contract_version': LOGIC_CONTRACT_VERSION,
+        'icd_mapping_policy': ICD_MAPPING_POLICY,
+        **temporal_contract(diagnoses is not None),
         'sample_id': sample['sample_id'],
         'split': sample['split'],
         'nodes': nodes,
@@ -238,13 +299,42 @@ def build_graph(store, sample, knowledge, vocabulary, diagnoses=None,
         'limitations': [
             'Recorded order is not causality.',
             'Triage complaint text is a surface-form allowlist, not a clinical ontology.',
-            'Triage fields are bound to encounter intime; the producer verifies intime <= cutoff.',
+            'Triage timestamps are unverified encounter-intime assumptions; checking intime <= cutoff does not prove triage availability.',
             'Laboratory availability uses storetime, a database proxy for clinician visibility.',
-            'Diagnoses carry no source timestamp; eligibility is structural (prior encounter finished before this one began), not a recorded diagnosis time.',
+            'Diagnoses carry no source timestamp; completion-time availability is assumed, not verified. Structural prior-stay eligibility does not prove coding availability.',
             'ICD-9 codes are mapped to ICD-10 through the repository GEM table; approximate mappings are flagged, unmappable codes keep their ICD-9 namespace.',
             'Knowledge relations are source-checked, not clinically reviewed.',
         ],
     }
+    membership_pairs = []
+    global_node_mask = []
+    for node_index, graph_node in enumerate(nodes):
+        node_id = graph_node['id']
+        is_global = node_id in global_nodes
+        visits = node_visits.get(node_id, set())
+        if is_global:
+            if visits:
+                raise ValueError('Global node also has visit-specific provenance')
+        elif not visits:
+            raise ValueError('Visit-specific graph node has no source membership')
+        global_node_mask.append(is_global)
+        membership_pairs.extend([ordinal, node_index] for ordinal in sorted(visits))
+    sidecar_record = {
+        'contract_version': VISIT_MEMBERSHIP_CONTRACT_VERSION,
+        'sample_id': sample['sample_id'],
+        'visit_ordinals': list(range(len(ordered_stays))),
+        'membership_pairs': sorted(membership_pairs),
+        'global_node_mask': global_node_mask,
+    }
+    return graph, sidecar_record
+
+
+def build_graph(store, sample, knowledge, vocabulary, diagnoses=None,
+                max_nodes=20000, max_edges=200000):
+    """Compatibility wrapper preserving the original graph-only API."""
+    graph, _ = build_graph_with_visit_membership(
+        store, sample, knowledge, vocabulary, diagnoses, max_nodes, max_edges)
+    return graph
 
 
 def _link(edge, source_id, target_id, relation, source_record, target_record):
