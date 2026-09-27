@@ -183,6 +183,50 @@ def reconstruct_adapter(binding: Mapping[str, Any], checkpoint_path, *, expected
     return adapter.cpu().eval()
 
 
+def _finite_json_tree(value):
+    import math
+    from numbers import Real
+
+    if isinstance(value, Mapping):
+        return all(_finite_json_tree(key) and _finite_json_tree(item) for key, item in value.items())
+    if isinstance(value, (list, tuple)):
+        return all(_finite_json_tree(item) for item in value)
+    if isinstance(value, Real) and not isinstance(value, bool):
+        return math.isfinite(float(value))
+    return value is None or isinstance(value, (str, bool, int))
+
+
+def _validate_algorithm_record(name, item):
+    if not isinstance(item, Mapping) or item.get("status") != "success":
+        raise RuntimeError(f"incomplete explanation export: {name} did not succeed")
+    explanation = item.get("node_explanation")
+    expected_keys = {"target", "node_importance", "top_nodes", "top_k", "fidelity_plus",
+                     "fidelity_minus", "sparsity"}
+    if not isinstance(explanation, Mapping) or set(explanation) != expected_keys:
+        raise ValueError(f"{name} explanation does not match the genuine node explanation schema")
+    importance = explanation.get("node_importance")
+    if not isinstance(importance, (list, tuple)) or not importance or not _finite_json_tree(importance):
+        raise ValueError(f"{name} node explanation is missing or nonfinite")
+    target = explanation.get("target")
+    if (not isinstance(target, Mapping) or target.get("provenance") != "model_prediction"
+            or type(target.get("class_id")) is not int):
+        raise ValueError(f"{name} explanation target provenance is invalid")
+    if not _finite_json_tree(explanation):
+        raise ValueError(f"{name} explanation contains nonfinite metrics")
+    provenance = item.get("provenance")
+    if not isinstance(provenance, Mapping) or not {
+        "implementation", "source_sha256", "target", "node_gradients", "feature_zeroing", "causal_claim"
+    } <= set(provenance):
+        raise ValueError(f"{name} explanation provenance is missing")
+    hashes = provenance.get("source_sha256")
+    if (not isinstance(hashes, Mapping) or not hashes or
+            any(not isinstance(digest, str) or len(digest) != 64 or
+                any(char not in "0123456789abcdef" for char in digest) for digest in hashes.values())):
+        raise ValueError(f"{name} explanation source provenance is invalid")
+    if any(provenance.get(key) != value for key, value in EXPLANATION_BOUNDARIES.items()):
+        raise ValueError(f"{name} explanation interpretation boundaries are invalid")
+
+
 def export_explanations(output_dir, *, records, manifest):
     """Journal records beside a fresh output; publish manifest only when complete."""
     output = Path(output_dir)
@@ -211,9 +255,8 @@ def export_explanations(output_dir, *, records, manifest):
             graphxai = record.get("graphxai")
             if not isinstance(graphxai, Mapping) or set(graphxai) != set(REQUIRED_ALGORITHMS):
                 raise ValueError("incomplete explanation export: required algorithms absent")
-            if any(not isinstance(graphxai[name], Mapping) or graphxai[name].get("status") != "success"
-                   for name in REQUIRED_ALGORITHMS):
-                raise RuntimeError("incomplete explanation export: an explainer failed")
+            for name in REQUIRED_ALGORITHMS:
+                _validate_algorithm_record(name, graphxai[name])
         if len(set(sample_ids)) != len(sample_ids):
             raise ValueError("incomplete explanation export: duplicate sample IDs")
         if not isinstance(manifest, Mapping):
@@ -228,6 +271,8 @@ def export_explanations(output_dir, *, records, manifest):
             raise ValueError("manifest must contain a nonempty ordered class list")
         if not isinstance(manifest.get("cohort_identity"), str) or not manifest["cohort_identity"].strip():
             raise ValueError("manifest must bind exact cohort identity")
+        if dict(manifest.get("interpretation_boundaries", {})) != EXPLANATION_BOUNDARIES:
+            raise ValueError("manifest interpretation boundaries do not match the fixed contract")
         for key in ("graph_sha256", "membership_sha256", "checkpoint_sha256", "cohort_ids_sha256"):
             value = manifest[key]
             if not isinstance(value, str) or len(value) != 64 or any(c not in "0123456789abcdef" for c in value):
@@ -237,7 +282,6 @@ def export_explanations(output_dir, *, records, manifest):
         actual_cohort_hash = hashlib.sha256(json.dumps(sample_ids, separators=(",", ":")).encode()).hexdigest()
         if manifest["cohort_ids_sha256"] != actual_cohort_hash:
             raise ValueError("manifest cohort hash does not match sample-keyed records")
-        output.mkdir(mode=0o700)
         (output / "records.jsonl").write_text(journal.read_text(encoding="utf-8"), encoding="utf-8")
         payload = dict(manifest)
         payload["status"] = "completed"
