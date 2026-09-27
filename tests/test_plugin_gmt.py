@@ -78,7 +78,7 @@ def test_gmt_options_change_architecture_behavior_and_reject_unknown():
     changed = make_gmt(seeds="3", heads="2", sab="false", mean_skip="false")
     assert (defaults.seeds, defaults.heads, defaults.sab_enabled, defaults.mean_skip) == (8, 4, True, True)
     assert (changed.seeds, changed.heads, changed.sab_enabled, changed.mean_skip) == (3, 2, False, False)
-    assert changed.gmpool_g.seeds.shape[0] == 3
+    assert changed.gmpool_g.seeds.shape[1] == 3
     with pytest.raises(ValueError, match="unknown method option"):
         make_gmt(typo="1")
 
