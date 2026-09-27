@@ -147,3 +147,9 @@ def test_gps_options_defaults_effects_and_unknown_option_validation():
         make_model(method_options={"rwse_step": "4"})
     with pytest.raises(ValueError, match="rwse_steps"):
         make_model(method_options={"rwse_steps": "0"})
+
+
+def test_gps_attention_dropout_is_applied_only_after_multihead_attention():
+    model = make_model()
+    assert model.dropout.p == pytest.approx(0.3)
+    assert all(layer.dropout == 0.0 for layer in model.attention_layers)
