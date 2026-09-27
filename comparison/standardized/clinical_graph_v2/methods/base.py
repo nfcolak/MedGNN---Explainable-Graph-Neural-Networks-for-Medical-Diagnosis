@@ -188,3 +188,35 @@ def graph_mean(values, batch_index, graph_count, mask=None):
 
 def parameter_count(module: nn.Module) -> int:
     return int(sum(parameter.numel() for parameter in module.parameters()))
+
+
+def _method_options(args) -> dict:
+    if isinstance(args, Mapping):
+        options = args.get("method_options")
+    else:
+        options = getattr(args, "method_options", None) if args is not None else None
+    return dict(options or {})
+
+
+def method_option(args, key, default, cast, *, minimum=None, maximum=None, choices=None):
+    """Read one `--method-option key=value` setting of a plugin method, validated."""
+    options = _method_options(args)
+    value = cast(options[key]) if key in options else default
+    if cast is bool and key in options:
+        value = str(options[key]).strip().lower() in ("1", "true", "yes", "on")
+    if isinstance(value, float) and not math.isfinite(value):
+        raise ValueError(f"method option {key} must be finite")
+    if minimum is not None and value < minimum:
+        raise ValueError(f"method option {key} must be >= {minimum}")
+    if maximum is not None and value > maximum:
+        raise ValueError(f"method option {key} must be <= {maximum}")
+    if choices is not None and value not in choices:
+        raise ValueError(f"method option {key} must be one of {list(choices)}")
+    return value
+
+
+def reject_unknown_options(args, known) -> None:
+    """Fail closed on a misspelled plugin option instead of silently ignoring it."""
+    unknown = sorted(set(_method_options(args)) - set(known))
+    if unknown:
+        raise ValueError(f"unknown method option(s): {unknown}; known: {sorted(known)}")
