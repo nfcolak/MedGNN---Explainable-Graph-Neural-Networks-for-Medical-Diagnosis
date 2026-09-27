@@ -1,0 +1,388 @@
+{
+  "status": "verified",
+  "seed_count": 1,
+  "seed": 1234,
+  "train_count": 10000,
+  "dev_count": 5000,
+  "dev_patients": 4841,
+  "source_revision": "5f23c8297294172b7cc4ba482377eead772debbe",
+  "arms": [
+    {
+      "stage": "protgnn_control",
+      "dev_metrics": {
+        "accuracy": 0.627,
+        "balanced_acc": 0.649068,
+        "macro_f1": 0.643315,
+        "micro_f1": 0.627,
+        "top3_acc": 0.8444,
+        "top5_acc": 0.9296
+      },
+      "patient_equal_metrics": {
+        "accuracy": 0.6258,
+        "balanced_acc": 0.64754,
+        "macro_f1": 0.641669,
+        "micro_f1": 0.6258,
+        "top3_acc": 0.844454,
+        "top5_acc": 0.92987
+      },
+      "parameters": 399884,
+      "active_parameters": 399884,
+      "epochs": 40,
+      "optimizer_steps_derived": 3160,
+      "batch_size": 128,
+      "selected_epoch": 15,
+      "total_seconds": 222.4,
+      "per_class": [
+        {
+          "label": "Back or spine pain",
+          "precision": 0.8046218487394958,
+          "recall": 0.6098726114649682,
+          "f1": 0.6938405797101449,
+          "false_positives": 93,
+          "support": 628
+        },
+        {
+          "label": "Cardiovascular risk factor",
+          "precision": 0.58719646799117,
+          "recall": 0.6059225512528473,
+          "f1": 0.5964125560538116,
+          "false_positives": 374,
+          "support": 878
+        },
+        {
+          "label": "Diabetes mellitus",
+          "precision": 0.44522144522144524,
+          "recall": 0.4029535864978903,
+          "f1": 0.4230343300110742,
+          "false_positives": 238,
+          "support": 474
+        },
+        {
+          "label": "GI bleed",
+          "precision": 0.8484848484848485,
+          "recall": 0.806282722513089,
+          "f1": 0.8268456375838926,
+          "false_positives": 55,
+          "support": 382
+        },
+        {
+          "label": "Head injury",
+          "precision": 0.5925925925925926,
+          "recall": 0.8071216617210683,
+          "f1": 0.6834170854271356,
+          "false_positives": 187,
+          "support": 337
+        },
+        {
+          "label": "Limb injury or pain",
+          "precision": 0.5084427767354597,
+          "recall": 0.4972477064220184,
+          "f1": 0.5027829313543599,
+          "false_positives": 262,
+          "support": 545
+        },
+        {
+          "label": "Lower respiratory disease",
+          "precision": 0.5979381443298969,
+          "recall": 0.6345733041575492,
+          "f1": 0.6157112526539278,
+          "false_positives": 195,
+          "support": 457
+        },
+        {
+          "label": "Major depressive disorder",
+          "precision": 0.9216867469879518,
+          "recall": 0.8973607038123167,
+          "f1": 0.9093610698365527,
+          "false_positives": 26,
+          "support": 341
+        },
+        {
+          "label": "Skin or soft-tissue infection",
+          "precision": 0.5578947368421052,
+          "recall": 0.6592039800995025,
+          "f1": 0.6043329532497149,
+          "false_positives": 210,
+          "support": 402
+        },
+        {
+          "label": "UTI or pyelonephritis",
+          "precision": 0.584870848708487,
+          "recall": 0.5701438848920863,
+          "f1": 0.5774134790528234,
+          "false_positives": 225,
+          "support": 556
+        }
+      ]
+    },
+    {
+      "stage": "cei_candidate",
+      "dev_metrics": {
+        "accuracy": 0.63,
+        "balanced_acc": 0.647898,
+        "macro_f1": 0.649207,
+        "micro_f1": 0.63,
+        "top3_acc": 0.8512,
+        "top5_acc": 0.9426
+      },
+      "patient_equal_metrics": {
+        "accuracy": 0.627074,
+        "balanced_acc": 0.644614,
+        "macro_f1": 0.646061,
+        "micro_f1": 0.627074,
+        "top3_acc": 0.850444,
+        "top5_acc": 0.942574
+      },
+      "parameters": 111906,
+      "active_parameters": 111906,
+      "epochs": 40,
+      "optimizer_steps_derived": 3160,
+      "batch_size": 128,
+      "selected_epoch": 37,
+      "total_seconds": 127.7,
+      "per_class": [
+        {
+          "label": "Back or spine pain",
+          "precision": 0.8278867102396514,
+          "recall": 0.6050955414012739,
+          "f1": 0.6991720331186753,
+          "false_positives": 79,
+          "support": 628
+        },
+        {
+          "label": "Cardiovascular risk factor",
+          "precision": 0.5765957446808511,
+          "recall": 0.6173120728929385,
+          "f1": 0.5962596259625963,
+          "false_positives": 398,
+          "support": 878
+        },
+        {
+          "label": "Diabetes mellitus",
+          "precision": 0.4279835390946502,
+          "recall": 0.4388185654008439,
+          "f1": 0.43333333333333335,
+          "false_positives": 278,
+          "support": 474
+        },
+        {
+          "label": "GI bleed",
+          "precision": 0.911042944785276,
+          "recall": 0.7774869109947644,
+          "f1": 0.8389830508474576,
+          "false_positives": 29,
+          "support": 382
+        },
+        {
+          "label": "Head injury",
+          "precision": 0.6580310880829016,
+          "recall": 0.7537091988130564,
+          "f1": 0.7026279391424619,
+          "false_positives": 132,
+          "support": 337
+        },
+        {
+          "label": "Limb injury or pain",
+          "precision": 0.5262135922330097,
+          "recall": 0.4972477064220184,
+          "f1": 0.5113207547169811,
+          "false_positives": 244,
+          "support": 545
+        },
+        {
+          "label": "Lower respiratory disease",
+          "precision": 0.6280623608017817,
+          "recall": 0.6170678336980306,
+          "f1": 0.6225165562913907,
+          "false_positives": 167,
+          "support": 457
+        },
+        {
+          "label": "Major depressive disorder",
+          "precision": 0.9026548672566371,
+          "recall": 0.8973607038123167,
+          "f1": 0.9,
+          "false_positives": 33,
+          "support": 341
+        },
+        {
+          "label": "Skin or soft-tissue infection",
+          "precision": 0.5645514223194749,
+          "recall": 0.6417910447761194,
+          "f1": 0.6006984866123399,
+          "false_positives": 199,
+          "support": 402
+        },
+        {
+          "label": "UTI or pyelonephritis",
+          "precision": 0.5474339035769828,
+          "recall": 0.6330935251798561,
+          "f1": 0.5871559633027523,
+          "false_positives": 291,
+          "support": 556
+        }
+      ]
+    },
+    {
+      "stage": "cei_product_off",
+      "dev_metrics": {
+        "accuracy": 0.632,
+        "balanced_acc": 0.648406,
+        "macro_f1": 0.64973,
+        "micro_f1": 0.632,
+        "top3_acc": 0.8532,
+        "top5_acc": 0.9406
+      },
+      "patient_equal_metrics": {
+        "accuracy": 0.630276,
+        "balanced_acc": 0.646351,
+        "macro_f1": 0.647799,
+        "micro_f1": 0.630276,
+        "top3_acc": 0.85251,
+        "top5_acc": 0.940405
+      },
+      "parameters": 111906,
+      "active_parameters": 103698,
+      "epochs": 40,
+      "optimizer_steps_derived": 3160,
+      "batch_size": 128,
+      "selected_epoch": 37,
+      "total_seconds": 123.9,
+      "per_class": [
+        {
+          "label": "Back or spine pain",
+          "precision": 0.8384279475982532,
+          "recall": 0.6114649681528662,
+          "f1": 0.7071823204419889,
+          "false_positives": 74,
+          "support": 628
+        },
+        {
+          "label": "Cardiovascular risk factor",
+          "precision": 0.5778008298755186,
+          "recall": 0.6343963553530751,
+          "f1": 0.6047774158523345,
+          "false_positives": 407,
+          "support": 878
+        },
+        {
+          "label": "Diabetes mellitus",
+          "precision": 0.43612334801762115,
+          "recall": 0.4177215189873418,
+          "f1": 0.4267241379310345,
+          "false_positives": 256,
+          "support": 474
+        },
+        {
+          "label": "GI bleed",
+          "precision": 0.9024390243902439,
+          "recall": 0.774869109947644,
+          "f1": 0.8338028169014085,
+          "false_positives": 32,
+          "support": 382
+        },
+        {
+          "label": "Head injury",
+          "precision": 0.6538461538461539,
+          "recall": 0.7566765578635015,
+          "f1": 0.7015130674002751,
+          "false_positives": 135,
+          "support": 337
+        },
+        {
+          "label": "Limb injury or pain",
+          "precision": 0.5083487940630798,
+          "recall": 0.5027522935779817,
+          "f1": 0.5055350553505535,
+          "false_positives": 265,
+          "support": 545
+        },
+        {
+          "label": "Lower respiratory disease",
+          "precision": 0.631004366812227,
+          "recall": 0.6323851203501094,
+          "f1": 0.6316939890710382,
+          "false_positives": 169,
+          "support": 457
+        },
+        {
+          "label": "Major depressive disorder",
+          "precision": 0.8967551622418879,
+          "recall": 0.8914956011730205,
+          "f1": 0.8941176470588236,
+          "false_positives": 35,
+          "support": 341
+        },
+        {
+          "label": "Skin or soft-tissue infection",
+          "precision": 0.5707964601769911,
+          "recall": 0.6417910447761194,
+          "f1": 0.6042154566744731,
+          "false_positives": 194,
+          "support": 402
+        },
+        {
+          "label": "UTI or pyelonephritis",
+          "precision": 0.558252427184466,
+          "recall": 0.6205035971223022,
+          "f1": 0.5877342419080068,
+          "false_positives": 273,
+          "support": 556
+        }
+      ]
+    }
+  ],
+  "comparisons": [
+    {
+      "candidate": "cei_candidate",
+      "reference": "protgnn_control",
+      "macro_f1_delta": 0.005892000000000008,
+      "patient_cluster_bootstrap_95_interval": [
+        -0.0025084996471770146,
+        0.014267715181986418
+      ],
+      "classes_f1_improved": 7,
+      "mean_precision_delta": 0.01215057164377637,
+      "mean_recall_delta": -0.0011699609442117898,
+      "median_f1_delta": 0.007671563500042056,
+      "false_positive_delta": -15
+    },
+    {
+      "candidate": "cei_candidate",
+      "reference": "cei_product_off",
+      "macro_f1_delta": -0.0005230000000000512,
+      "patient_cluster_bootstrap_95_interval": [
+        -0.004995374396089103,
+        0.003932325230129062
+      ],
+      "classes_f1_improved": 5,
+      "mean_precision_delta": -0.00033383411352261305,
+      "mean_recall_delta": -0.0005073063912743536,
+      "median_f1_delta": 0.00026829656846616423,
+      "false_positive_delta": 10
+    },
+    {
+      "candidate": "cei_product_off",
+      "reference": "protgnn_control",
+      "macro_f1_delta": 0.0064150000000000595,
+      "patient_cluster_bootstrap_95_interval": [
+        -0.0017847217254629677,
+        0.014863084512693253
+      ],
+      "classes_f1_improved": 8,
+      "mean_precision_delta": 0.012484405757298983,
+      "mean_recall_delta": -0.0006626545529374361,
+      "median_f1_delta": 0.007661019558019344,
+      "false_positive_delta": -25
+    }
+  ],
+  "bootstrap": {
+    "replicates": 1000,
+    "seed": 2026,
+    "unit": "patient, preserving all visits per draw",
+    "interpretation": "conditional sampling uncertainty on selected dev checkpoints; not seed variation or independent test uncertainty"
+  },
+  "validation_evaluated": false,
+  "test_evaluated": false,
+  "temporal_clean": false
+}
