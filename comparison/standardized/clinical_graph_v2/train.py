@@ -501,6 +501,14 @@ def early_stopping_start_epoch(method, model):
     return 0
 
 
+def clip_gradients(method, model):
+    """Method-native gradient clipping; prototype arms share ProtGNN's value clip."""
+    if method == 'clinical_gnn':
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
+    elif method in ('protgnn', 'protonode'):
+        torch.nn.utils.clip_grad_value_(model.parameters(), 2.0)
+
+
 def run(args):
     args = normalize_method_args(args)
     if args.method != 'clinical_gnn':
@@ -822,10 +830,7 @@ def run(args):
             else:
                 loss = criterion(model(batch), batch.y.view(-1))
             loss.backward()
-            if args.method == 'clinical_gnn':
-                torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
-            elif args.method == 'protgnn':
-                torch.nn.utils.clip_grad_value_(model.parameters(), 2.0)
+            clip_gradients(args.method, model)
             optimizer.step()
             total += float(loss.detach()) * batch.num_graphs
             seen += batch.num_graphs
