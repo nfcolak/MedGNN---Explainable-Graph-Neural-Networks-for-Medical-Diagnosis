@@ -54,7 +54,7 @@ from .contracts import (VISIT_MEMBERSHIP_CONTRACT_VERSION, VISIT_MEMBERSHIP_FILE
                         validate_artifact_manifest, validate_control_configuration,
                         verify_graph_file, verify_target_binding,
                         verify_visit_membership_file)
-from .methods import ClinicalMethodAdapter, build_method
+from .methods import CORE_METHODS, METHOD_REGISTRY, ClinicalMethodAdapter, build_method
 from .gchm_v2 import AGGREGATIONS, GCHMv2, READOUTS
 from .gchm_v3 import GCHMv3
 from .gchm_v3 import READOUTS as V3_READOUTS
@@ -124,7 +124,37 @@ def method_defaults(method, conv=None):
         return dict(GCHM_V2_DEFAULTS)
     if method == 'clinical_gnn' and conv == 'gchm_v3':
         return dict(GCHM_V3_DEFAULTS)
+    if method not in METHOD_DEFAULTS and method in METHOD_REGISTRY:
+        return plugin_defaults(method)
     return dict(METHOD_DEFAULTS[method])
+
+
+PLUGIN_PROFILE_KEYS = ('hidden', 'layers', 'dropout', 'lr', 'weight_decay', 'batch_size',
+                       'epochs', 'patience', 'min_delta')
+
+
+def is_plugin(method):
+    return method in METHOD_REGISTRY and method not in CORE_METHODS
+
+
+def plugin_defaults(method):
+    """A plugin adapter declares its full common runner profile as `runner_defaults`."""
+    profile = getattr(METHOD_REGISTRY[method], 'runner_defaults', None)
+    if not isinstance(profile, dict) or set(profile) != set(PLUGIN_PROFILE_KEYS):
+        raise ValueError(f'plugin method {method!r} must declare runner_defaults with '
+                         f'exactly {list(PLUGIN_PROFILE_KEYS)}')
+    return dict(profile)
+
+
+def parse_method_options(values):
+    """`--method-option key=value` (repeatable) -> ordered dict of raw strings."""
+    options = {}
+    for item in values or ():
+        key, sep, value = str(item).partition('=')
+        if not sep or not key.strip():
+            raise ValueError(f'--method-option expects key=value, got {item!r}')
+        options[key.strip()] = value.strip()
+    return options
 
 
 def normalize_method_args(args, parser=None):
@@ -139,8 +169,14 @@ def normalize_method_args(args, parser=None):
 
     if not hasattr(args, 'method') or args.method is None:
         args.method = 'clinical_gnn'
-    if args.method not in METHOD_DEFAULTS:
+    if args.method not in METHOD_DEFAULTS and not is_plugin(args.method):
         raise ValueError('Unknown clinical method: ' + str(args.method))
+    try:
+        args.method_options = parse_method_options(getattr(args, 'method_option', None))
+    except ValueError as error:
+        fail(str(error))
+    if args.method_options and not is_plugin(args.method):
+        fail('--method-option is only valid with a plugin method')
     if args.method != 'clinical_gnn' and getattr(args, 'conv', None) is not None:
         fail('--conv is only valid with --method clinical_gnn')
     if args.method == 'clinical_gnn' and getattr(args, 'conv', None) is None:
@@ -204,7 +240,10 @@ def normalize_method_args(args, parser=None):
                 option = '--' + method + '-' + option_name.replace('_', '-')
                 fail(f'{option} is only valid with --method {method}')
             method_overrides.append(name)
-    defaults = method_defaults(args.method, args.conv)
+    try:
+        defaults = method_defaults(args.method, args.conv)
+    except ValueError as error:
+        fail(str(error))
     supplied = []
     for name, default in defaults.items():
         if getattr(args, name, None) is None:
@@ -229,7 +268,8 @@ def normalize_method_args(args, parser=None):
     if args.min_delta is not None and args.min_delta < 0.0:
         raise ValueError('min-delta must be nonnegative when configured')
     args._common_overrides = sorted(set(supplied))
-    args._method_overrides = sorted(set(method_overrides))
+    args._method_overrides = sorted(set(method_overrides)
+                                    | {'option:' + key for key in args.method_options})
     args._method_args_normalized = True
     return args
 
@@ -498,6 +538,9 @@ def early_stopping_start_epoch(method, model):
     """Return the first zero-based epoch where patience may be consumed."""
     if method in ('protgnn', 'protonode'):
         return int(model.proj_epochs)
+    start = getattr(model, 'early_stopping_start', None)
+    if is_plugin(method) and callable(start):
+        return int(start())
     return 0
 
 
@@ -507,6 +550,13 @@ def clip_gradients(method, model):
         torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
     elif method in ('protgnn', 'protonode'):
         torch.nn.utils.clip_grad_value_(model.parameters(), 2.0)
+    elif is_plugin(method):
+        value = getattr(model, 'grad_clip_value', None)
+        norm = getattr(model, 'grad_clip_norm', None)
+        if value is not None:
+            torch.nn.utils.clip_grad_value_(model.parameters(), float(value))
+        if norm is not None:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), float(norm))
 
 
 def run(args):
@@ -961,7 +1011,10 @@ def parser():
     p.add_argument('--targets', required=True)
     p.add_argument('--canonical', default='comparison/canonical_split.json')
     p.add_argument('--output', required=True)
-    p.add_argument('--method', choices=sorted(METHOD_DEFAULTS), default='clinical_gnn')
+    p.add_argument('--method', choices=sorted(set(METHOD_DEFAULTS) | set(METHOD_REGISTRY)),
+                   default='clinical_gnn')
+    p.add_argument('--method-option', action='append', metavar='KEY=VALUE',
+                   help='plugin methods only: method-native setting; repeatable')
     p.add_argument('--edges', choices=['all', 'informative', 'structural'], default='all')
     p.add_argument('--edge-direction', choices=list(EDGE_DIRECTIONS), default=None,
                    help="'bidirectional' appends a typed reverse edge for every "

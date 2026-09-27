@@ -5,6 +5,9 @@ validation remain in the clinical_graph_v2 runner.
 """
 from __future__ import annotations
 
+import importlib
+import pkgutil
+
 from .base import ClinicalMethodAdapter, MethodOutput
 from .graphcare import GraphCareAdapter
 from .gsat import GSATAdapter
@@ -17,6 +20,45 @@ METHOD_REGISTRY: dict[str, type[ClinicalMethodAdapter]] = {
     "protgnn": ProtGNNAdapter,
     "protonode": ProtoNodeAdapter,
 }
+CORE_METHODS = frozenset(METHOD_REGISTRY)
+
+
+def register_plugins(modules, base_registry) -> dict:
+    """Merge each module's `REGISTER = {name: AdapterClass}` into a copy of the registry.
+
+    A plugin may not replace a registered method, so core arms stay byte-identical.
+    """
+    registry = dict(base_registry)
+    for module in modules:
+        register = getattr(module, "REGISTER", None)
+        if not isinstance(register, dict):
+            raise ValueError(f"plugin {module.__name__} must define REGISTER = {{name: class}}")
+        for name, adapter_type in register.items():
+            if name in registry:
+                raise ValueError(f"method {name!r} is already registered")
+            if not (isinstance(adapter_type, type)
+                    and issubclass(adapter_type, ClinicalMethodAdapter)):
+                raise ValueError(f"plugin method {name!r} is not a ClinicalMethodAdapter")
+            registry[name] = adapter_type
+    return registry
+
+
+def _discover_plugins():
+    modules = [importlib.import_module(f"{__name__}.{info.name}")
+               for info in sorted(pkgutil.iter_modules(__path__), key=lambda i: i.name)
+               if info.name.startswith("plugin_")]
+    return register_plugins(modules, base_registry={})
+
+
+class _PluginSet:
+    """All discovered plugins as one module-like REGISTER, checked against the core."""
+    __name__ = "discovered_plugins"
+
+    def __init__(self, register):
+        self.REGISTER = register
+
+
+METHOD_REGISTRY = register_plugins([_PluginSet(_discover_plugins())], base_registry=METHOD_REGISTRY)
 
 
 def build_method(name, *, num_tokens, node_dim, edge_dim, num_classes, hidden,
