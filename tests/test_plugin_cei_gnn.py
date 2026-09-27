@@ -202,7 +202,10 @@ def test_pyg_clear_then_direct_probability_tensor_including_zero_mask():
     clear_masks(network)
 
     zero_mask = torch.zeros(graph.num_edges)
-    network.set_edge_mask(zero_mask)
+    try:
+        network.set_edge_mask(zero_mask)
+    except TypeError as error:
+        assert False, f"PyG Parameter slot rejected a direct tensor mask: {error}"
     assert network.edge_aggregator._apply_sigmoid is False
     parts = adapter.forward_continuous(features, graph.edge_index, graph, return_parts=True)
     h = torch.nn.functional.gelu(network.node_norm(network.node_encoder(features)))
