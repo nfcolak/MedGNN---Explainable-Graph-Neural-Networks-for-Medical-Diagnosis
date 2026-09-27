@@ -149,6 +149,8 @@ class EvidenceInteractionNetwork(nn.Module):
             edge_mask = edge_mask.to(device=edge_gate.device, dtype=edge_gate.dtype)
             if edge_mask.numel() != edge_count:
                 raise ValueError("edge mask length differs from the edge list")
+            if getattr(self.edge_aggregator, "_apply_sigmoid", False):
+                edge_mask = edge_mask.sigmoid()
             effective_gate_vote = edge_mask[:, None] * edge_gate * edge_vote
             effective_gate = edge_mask[:, None] * edge_gate
         edge_parts = (effective_gate_vote / edge_denominator[batch_index[src]]
