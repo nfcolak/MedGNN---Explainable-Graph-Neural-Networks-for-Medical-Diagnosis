@@ -156,6 +156,18 @@ def test_protonode_runner_namespaced_options_and_early_stopping(tmp_path):
     assert not (tmp_path / "o").exists()
 
 
+def test_protonode_gets_the_same_gradient_clipping_as_protgnn():
+    # Fairness: the runner clips ProtGNN gradients by value 2.0; the challenger must match.
+    model = make_protonode()
+    for parameter in model.parameters():
+        parameter.grad = torch.full_like(parameter, 50.0)
+    clip = getattr(train, "clip_gradients", None)
+    if clip is None:
+        pytest.fail("runner gradient clipping for protonode missing")
+    clip("protonode", model)
+    assert max(parameter.grad.abs().max().item() for parameter in model.parameters()) <= 2.0
+
+
 @pytest.mark.parametrize("readout", ["both", "node_max", "graph_mean"])
 def test_readout_feeds_the_matching_prototype_activations_to_the_classifier(readout):
     # Supervisor mutation check: swapping node/graph activations must turn this red.
