@@ -54,4 +54,55 @@ def test_registration_forward_backward_defaults_and_real_dimension_budget():
     assert model.grad_clip_value == 2.0
     assert model.early_stopping_start() == 20
     assert sum(p.numel() for p in model.parameters()) <= 405_000
-    assert model.optimizer_groups(Namespace()) == [{"params": list(model.parameters())}]
+    groups = model.optimizer_groups(Namespace())
+    assert len(groups) == 1
+    assert groups[0]["params"] == list(model.parameters())
+
+
+def test_virtual_node_transmits_information_and_isolates_graphs():
+    model = make().eval()
+    batch = make_batch()
+    baseline = model._encode(batch)[0].detach()
+    changed = batch.clone()
+    changed.x[1] += 5.0  # node 1 has no edges and shares graph 0 with node 0
+    after_same_graph_change = model._encode(changed)[0].detach()
+    assert not torch.allclose(baseline[0], after_same_graph_change[0]), (
+        "isolated node should receive same-graph information through the virtual node")
+
+    output = model(batch, epoch=0).logits.detach()
+    changed_other_graph = batch.clone()
+    changed_other_graph.x[3:] -= 7.0
+    output_after_other_graph_change = model(changed_other_graph, epoch=0).logits.detach()
+    assert torch.allclose(output[0], output_after_other_graph_change[0], atol=1e-7, rtol=1e-6), (
+        "virtual-node state must not leak across graphs")
+
+
+def test_vn_pool_option_changes_outputs():
+    summed = make().eval()
+    averaged = make(args=Namespace(method_options={"vn_pool": "mean"})).eval()
+    averaged.load_state_dict(summed.state_dict())
+    batch = make_batch()
+    sum_logits = summed(batch, epoch=0).logits
+    mean_logits = averaged(batch, epoch=0).logits
+    assert not torch.allclose(sum_logits, mean_logits), "vn_pool=sum and mean must differ"
+    assert summed.run_config()["effective_settings"]["vn_pool"] == "sum"
+    assert averaged.run_config()["effective_settings"]["vn_pool"] == "mean"
+
+
+def test_options_are_validated_and_explain_is_finite_nonnegative_and_graph_local():
+    with pytest.raises(ValueError, match="unknown method option"):
+        make(args=Namespace(method_options={"vn_poo": "sum"}))
+    with pytest.raises(ValueError, match="vn_pool"):
+        make(args=Namespace(method_options={"vn_pool": "max"}))
+
+    model = make().eval()
+    batch = make_batch()
+    importance = model.explain(batch)
+    assert importance.shape == (batch.num_nodes,)
+    assert torch.isfinite(importance).all()
+    assert (importance >= 0).all()
+    changed = batch.clone()
+    changed.x[3:] += 11.0
+    changed_importance = model.explain(changed)
+    assert torch.allclose(importance[:3], changed_importance[:3], atol=1e-7, rtol=1e-6)
+    assert model.run_config()["native_defaults"]["vn_pool"] == "sum"
