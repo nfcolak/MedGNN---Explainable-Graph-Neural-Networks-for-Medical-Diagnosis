@@ -45,6 +45,10 @@ _CEI_EFFECTIVE_KEYS = {"num_tokens", "node_dim", "edge_dim", "num_classes", "hid
                        "token_dim", "num_triples", "num_relations", "dropout",
                        "interaction_rank", "use_interactions", "num_node_types"}
 _CEI_ARCH_KEYS = {"parameter_count", "active_parameter_count"}
+_CEI_ARCH_KEYS.update({"node_dim", "edge_dim", "num_tokens", "num_triples",
+                       "num_relations", "num_node_types", "num_classes", "hidden",
+                       "layers", "dropout", "token_dim", "interaction_rank",
+                       "inactive_parameter_count"})
 _PROTGNN_EFFECTIVE_KEYS = {"warm_epochs", "proj_epochs", "proj_interval", "nearest_graphs",
                            "prototypes_per_class", "cluster_weight", "separation_weight",
                            "margin", "rollout", "min_atoms", "max_atoms", "expand_atoms", "c_puct"}
@@ -191,6 +195,7 @@ def assert_common_bindings(left, right):
             settings = config.get("effective_settings", {})
             if not isinstance(settings, dict) or set(settings) - _PROTGNN_EFFECTIVE_KEYS:
                 raise ValueError("unknown ProtGNN effective_settings key")
+        _validate_method_config(binding)
     for key in sorted((left_keys & right_keys) - _EXCLUDED_TOP_LEVEL - {"method_config"}):
         difference = _first_difference(left[key], right[key], key)
         if difference:
@@ -200,9 +205,47 @@ def assert_common_bindings(left, right):
         normalized_a, normalized_b = json.loads(json.dumps(a)), json.loads(json.dumps(b))
         normalized_a.get("effective_settings", {}).pop("use_interactions", None)
         normalized_b.get("effective_settings", {}).pop("use_interactions", None)
+        for normalized in (normalized_a, normalized_b):
+            architecture = normalized.get("architecture", {})
+            architecture.pop("active_parameter_count", None)
+            architecture.pop("inactive_parameter_count", None)
         if normalized_a != normalized_b:
             raise ValueError("common binding differs: method_config")
     return True
+
+
+def _validate_method_config(binding):
+    """Recreate adapter configuration from the runner's actual bound arguments."""
+    config = binding["method_config"]
+    method = config.get("method", binding.get("method"))
+    if method not in {"cei_gnn", "protgnn"}:
+        raise ValueError(f"unsupported pilot method_config method: {method}")
+    architecture = config.get("architecture")
+    if not isinstance(architecture, dict):
+        raise ValueError("method_config architecture must be an object")
+    required_dimensions = {"num_tokens", "node_dim", "edge_dim", "num_classes", "hidden",
+                           "layers", "dropout", "token_dim", "num_triples", "num_relations"}
+    # Minimal legacy/test manifests without an adapter architecture cannot establish
+    # source drift. Production pilot bindings always carry these dimensions; reject
+    # partial dimension maps rather than treating them as a valid replay proof.
+    if not required_dimensions.issubset(architecture):
+        return
+    from types import SimpleNamespace
+    from comparison.standardized.clinical_graph_v2.methods import build_method
+    settings = config.get("effective_settings", {})
+    args = dict(binding)
+    args.update(settings)
+    args["num_relations"] = architecture["num_relations"]
+    if method == "cei_gnn":
+        args["method_options"] = dict(settings)
+    model = build_method(
+        method, num_tokens=architecture["num_tokens"], node_dim=architecture["node_dim"],
+        edge_dim=architecture["edge_dim"], num_classes=architecture["num_classes"],
+        hidden=architecture["hidden"], layers=architecture["layers"],
+        dropout=architecture["dropout"], token_dim=architecture["token_dim"],
+        num_triples=architecture["num_triples"], args=SimpleNamespace(**args))
+    if model.run_config() != config:
+        raise ValueError(f"{method} source-derived defaults/schedule/run_config drift")
 
 
 def validate_pilot_binding(binding, *, expected_budget, expected_seed=1234):
@@ -245,6 +288,41 @@ def _validate_treatment(binding, treatment):
         expected = treatment != "product_off"
         if type(value) is not bool or value is not expected:
             raise ValueError(f"{treatment} use_interactions treatment mismatch; expected {expected}")
+
+
+def _validate_exact_stage_plan(stages):
+    """Reject any argv/metadata edit to the four frozen build_plan tuples."""
+    specs = (
+        ("cei_smoke", "cei_gnn", (256, 128, 2), "smoke", False),
+        ("protgnn_control", "protgnn", (10000, 5000, 40), "control", False),
+        ("cei_candidate", "cei_gnn", (10000, 5000, 40), "candidate", False),
+        ("cei_product_off", "cei_gnn", (10000, 5000, 40), "product_off", True),
+    )
+    if len(stages) != len(specs):
+        raise ValueError("execution requires the exact authorized four-stage plan")
+    shared_paths = None
+    for stage, (name, method, budget, treatment, product_off) in zip(stages, specs):
+        if (stage.name, stage.budget, stage.seed, stage.treatment) != (
+                name, budget, 1234, treatment):
+            raise ValueError(f"unauthorized stage tuple/order: {stage.name}")
+        try:
+            paths = tuple(stage.argv[stage.argv.index(flag) + 1]
+                          for flag in ("--artifact", "--targets", "--canonical"))
+        except (ValueError, IndexError) as error:
+            raise ValueError(f"{name} argv is missing required input path") from error
+        if shared_paths is None:
+            shared_paths = paths
+        elif paths != shared_paths:
+            raise ValueError("stage plan input paths differ")
+        if not all(Path(path).is_absolute() for path in paths):
+            raise ValueError("stage plan inputs must use build_plan's absolute paths")
+        expected = _stage(name, method, *paths, Path(stage.output), budget, treatment,
+                          product_off=product_off)
+        if stage.argv != expected.argv:
+            raise ValueError(f"unauthorized argv for {name}")
+        if Path(stage.output).resolve() != Path(
+                stage.argv[stage.argv.index("--output") + 1]).resolve():
+            raise ValueError(f"stage output differs from argv for {name}")
 
 
 def validate_completed_stages(stage_dirs):
@@ -314,7 +392,8 @@ def validate_completed_stages(stage_dirs):
         if result.get("metrics") is not None or not isinstance(result.get("dev_metrics"), dict):
             raise ValueError(f"dev-only result contract mismatch in {name}")
         _validate_artifacts(directory, binding, result)
-        loaded[name]["result"] = result
+        loaded[directory.name]["replay"] = replay_stage(directory, binding, result)
+        loaded[directory.name]["result"] = result
     summaries = []
     for name in sorted(expected_names):
         binding, result = loaded[name]["binding"], loaded[name]["result"]
@@ -381,6 +460,148 @@ def _validate_artifacts(directory, binding, result):
     if id_digest != binding["split_sample_ids_sha256"]["dev"]:
         raise ValueError(f"dev sample IDs differ from binding in {directory}")
     _finite_tree(proba.tolist(), "dev_proba")
+
+
+def replay_stage(output_dir, binding, result):
+    """Rebuild the bound adapter and replay only saved dev predictions exactly.
+
+    Dataset construction may materialize validation tensors as part of the runner
+    helper contract, but this function never creates test tensors or evaluates
+    validation. A proof is written with exclusive-create semantics.
+    """
+    output = Path(output_dir)
+    if result.get("status") != "completed" or result.get("binding") != binding:
+        raise ValueError("replay requires a completed result bound to binding.json")
+    if (binding.get("selection_fold") != "dev" or binding.get("final_eval") != "none"
+            or binding.get("test_evaluated") is not False or result.get("metrics") is not None):
+        raise ValueError("replay is restricted to dev-selected, no-final-evaluation runs")
+    if result.get("validation_evaluations") != 0:
+        raise ValueError("validation evaluation is forbidden during replay")
+    if result.get("test_evaluated", False) is not False:
+        raise ValueError("test evaluation is forbidden during replay")
+    if (output / "validation.npz").exists():
+        raise ValueError("validation prediction artifact is forbidden")
+
+    import numpy as np
+    import torch
+    from torch_geometric.loader import DataLoader
+    from types import SimpleNamespace
+    from comparison.standardized.clinical_graph_v2 import train
+    from comparison.standardized.clinical_graph_v2.contracts import recursive_source_hashes, sample_ids_sha256
+    from comparison.standardized.clinical_graph_v2.methods import build_method
+    from comparison.standardized.clinical_graph_v2.schema import sha256
+    from comparison.standardized.clinical_graph_v2.tensorize import preprocessing_state
+
+    source = recursive_source_hashes(Path(train.__file__).parent)
+    if source != binding.get("source_code"):
+        raise ValueError("replay source code differs from run binding")
+    artifact = Path(binding["artifact"])
+    if sha256(artifact / "graphs.jsonl") != binding["artifact_graphs_sha256"]:
+        raise ValueError("replay graph artifact hash differs")
+    if sha256(artifact / binding["artifact_visit_membership_file"]) != binding["artifact_visit_membership_sha256"]:
+        raise ValueError("replay membership artifact hash differs")
+    if sha256(binding["targets_path"]) != binding["targets_sha256"]:
+        raise ValueError("replay targets hash differs")
+    prep_path = output / "preprocessing.json"
+    if sha256(prep_path) != binding["preprocessing_sha256"]:
+        raise ValueError("replay preprocessing file hash differs")
+
+    targets = train.load_targets(binding["targets_path"])
+    targets, kept, _ = train.select_top_labels(targets, binding["top_k_labels"])
+    if kept != binding["kept_label_indices"]:
+        raise ValueError("replay top-label order differs")
+    splits, prep = train.build_dataset(
+        artifact, targets, binding["edges"], binding["train_limit"],
+        binding["token_min_count"], binding["seed"],
+        drop_relations=tuple(binding["dropped_relations"]),
+        rewire_relations=tuple(binding["rewired_relations"]),
+        min_prior_visits=binding["min_prior_visits"],
+        edge_direction=binding["edge_direction"], dev_limit=binding["dev_limit"],
+        sample_seed=binding["sample_seed"])
+    if "test" in splits or set(("train", "dev", "validation")) - set(splits):
+        raise ValueError("replay dataset splits violate train/dev-only selection contract")
+    hashes = {fold: sample_ids_sha256(row.sample_id for row in rows)
+              for fold, rows in splits.items()}
+    if hashes != binding["split_sample_ids_sha256"]:
+        raise ValueError("replayed split sample identities differ")
+    if preprocessing_state(prep) != json.loads(prep_path.read_text()):
+        raise ValueError("replayed preprocessing state differs")
+    if {row.subject for row in splits["train"]} & {row.subject for row in splits["dev"]}:
+        raise ValueError("replayed train/dev patient overlap")
+
+    method_config = binding["method_config"]
+    _validate_method_config(binding)
+    architecture = method_config["architecture"]
+    args = dict(binding)
+    args.update(method_config.get("effective_settings", {}))
+    args["num_relations"] = architecture["num_relations"]
+    if binding["method"] == "cei_gnn":
+        args["method_options"] = dict(method_config.get("effective_settings", {}))
+    model = build_method(
+        binding["method"], num_tokens=binding["vocabulary_size"],
+        node_dim=binding["node_dim"], edge_dim=binding["edge_dim"],
+        num_classes=binding["num_classes"], hidden=binding["hidden"],
+        layers=binding["layers"], dropout=binding["dropout"],
+        token_dim=architecture["token_dim"], num_triples=binding["num_meta_relations"],
+        args=SimpleNamespace(**args))
+    checkpoint = output / "best.pt"
+    checkpoint_hash = sha256(checkpoint)
+    state = torch.load(checkpoint, map_location="cpu", weights_only=True)
+    model.load_state_dict(state, strict=True)
+    model.eval()
+    if sum(param.numel() for param in model.parameters()) != binding["parameter_count"]:
+        raise ValueError("replayed parameter count differs")
+    loader = DataLoader(splits["dev"], batch_size=binding["batch_size"], shuffle=False)
+    probabilities, labels = train.evaluate(
+        model, loader, torch.device("cpu"), epoch=binding["selected_dev"]["epoch_index"])
+    metrics = train.metrics(labels, probabilities, binding["num_classes"])
+    dev_path = output / "dev.npz"
+    with np.load(dev_path, allow_pickle=False) as saved:
+        ids = np.asarray([row.sample_id for row in splits["dev"]])
+        if not np.array_equal(ids, saved["sample_ids"]):
+            raise ValueError("replayed dev sample IDs differ")
+        if not np.array_equal(labels, saved["y"]):
+            raise ValueError("replayed dev labels differ")
+        if not np.array_equal(probabilities, saved["proba"]):
+            raise ValueError("checkpoint replay probabilities differ")
+        prediction_hash = hashlib.sha256(np.ascontiguousarray(saved["proba"]).tobytes()).hexdigest()
+        labels_hash = hashlib.sha256(np.ascontiguousarray(saved["y"]).tobytes()).hexdigest()
+        ids_hash = hashlib.sha256(np.ascontiguousarray(saved["sample_ids"]).tobytes()).hexdigest()
+    if prediction_hash != binding["selected_dev"]["prediction_sha256"]:
+        raise ValueError("replayed probabilities do not match selected checkpoint proof")
+    if metrics != result.get("dev_metrics"):
+        raise ValueError("replayed dev metrics differ")
+    proof_path = output / "replay.json"
+    proof = {"status": "verified", "method": binding["method"],
+             "checkpoint_sha256": checkpoint_hash, "proba_sha256": prediction_hash,
+             "labels_sha256": labels_hash, "sample_ids_sha256": ids_hash,
+             "source_code": source, "preprocessing_sha256": binding["preprocessing_sha256"],
+             "input_hashes": {"graphs": binding["artifact_graphs_sha256"],
+                              "visit_membership": binding["artifact_visit_membership_sha256"],
+                              "targets": binding["targets_sha256"]},
+             "inputs_verified": True, "source_verified": True,
+             "preprocessing_verified": True,
+             "split_sample_ids_sha256": hashes, "dev_count": len(labels),
+             "exact_probabilities": True, "exact_labels": True,
+             "exact_sample_identity": True, "patient_disjoint": True,
+             "validation_evaluated": False, "test_evaluated": False,
+             "dev_metrics": metrics}
+    if proof_path.exists():
+        existing = _load_json(proof_path, "replay.json")
+        for key in ("checkpoint_sha256", "proba_sha256", "labels_sha256", "sample_ids_sha256",
+                    "source_code", "preprocessing_sha256", "split_sample_ids_sha256",
+                    "input_hashes", "inputs_verified", "source_verified",
+                    "preprocessing_verified", "dev_metrics", "validation_evaluated",
+                    "test_evaluated"):
+            if existing.get(key) != proof[key]:
+                raise ValueError(f"existing replay proof {key} differs")
+        if existing.get("status") != "verified":
+            raise ValueError("existing replay proof is not verified")
+        return existing
+    with proof_path.open("x") as stream:
+        json.dump(proof, stream, indent=2, sort_keys=True)
+        stream.write("\n")
+    return proof
 
 
 def capture_bindings(stage):
@@ -452,9 +673,7 @@ def _write_journal(path, journal):
 
 def execute_plan(stages, *, journal_path):
     """Run fixed stages sequentially, journaling every outcome and refusing drift."""
-    if len(stages) != 4 or [stage.name for stage in stages] != [
-            "cei_smoke", "protgnn_control", "cei_candidate", "cei_product_off"]:
-        raise ValueError("execution requires the exact authorized four-stage order")
+    _validate_exact_stage_plan(stages)
     journal_path = Path(journal_path)
     if journal_path.exists():
         raise FileExistsError(f"Refusing occupied journal {journal_path}")
@@ -502,8 +721,10 @@ def execute_plan(stages, *, journal_path):
             if result.get("test_evaluated", False) is not False:
                 raise RuntimeError(f"{stage.name} evaluated test fold")
             _validate_artifacts(output, binding, result)
+            replay = replay_stage(output, binding, result)
             completed_bindings[stage.name] = binding
             journal["stages"][stage.name].update({"status": "bound", "postflight": after,
+                                                  "replay": replay,
                                                   "stdout": completed.stdout,
                                                   "stderr": completed.stderr})
         except Exception as error:
