@@ -396,6 +396,22 @@ def test_export_requires_binding_checked_frozen_dev_membership(tmp_path):
         )
 
 
+def test_explainer_failure_is_representable_as_an_explicit_failed_record(monkeypatch):
+    implementation = module()
+    import shared.lib.graphxai_standardized as graphxai
+    adapter, graph = SyntheticAdapter(), graph_fixture()
+
+    def fail_after_start(*args, **kwargs):
+        raise RuntimeError("synthetic algorithm interruption")
+
+    monkeypatch.setattr(graphxai, "explain_algorithms", fail_after_start)
+    with pytest.raises(Exception) as error:
+        implementation.explain_graph(adapter, graph, steps=4, epochs=3)
+    assert isinstance(error.value, getattr(implementation, "GraphXAIExplanationError", ()))
+    assert error.value.record["status"] == "failed"
+    assert "synthetic algorithm interruption" in error.value.record["error"]
+
+
 def test_export_refuses_status_only_graphxai_records(tmp_path):
     implementation = module()
     record = {
