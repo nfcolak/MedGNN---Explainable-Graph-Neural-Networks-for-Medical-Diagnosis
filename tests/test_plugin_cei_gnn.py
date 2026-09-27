@@ -183,6 +183,33 @@ def test_direct_mask_clear_then_pyg_mask_switch_preserves_masking_and_gradient()
     clear_masks(network)
 
 
+def test_pyg_clear_then_direct_probability_tensor_including_zero_mask():
+    import torch
+    from torch_geometric.explain.algorithm.utils import set_masks, clear_masks
+
+    adapter, graph = _fixture()
+    network = adapter.network
+    features = adapter.continuous_inputs(graph)
+    raw_mask = torch.nn.Parameter(torch.tensor([-0.8, 0.2, 1.0]))
+    set_masks(network, raw_mask, graph.edge_index, apply_sigmoid=True)
+    clear_masks(network)
+
+    zero_mask = torch.zeros(graph.num_edges)
+    network.set_edge_mask(zero_mask)
+    assert network.edge_aggregator._apply_sigmoid is False
+    parts = adapter.forward_continuous(features, graph.edge_index, graph, return_parts=True)
+    h = torch.nn.functional.gelu(network.node_norm(network.node_encoder(features)))
+    node_vote, node_gate_logits = network.node_head(h).chunk(2, dim=-1)
+    node_term = (node_gate_logits.sigmoid() * node_vote).sum(0) / (
+        1 + node_gate_logits.sigmoid().sum(0))
+    torch.testing.assert_close(parts["logits"][0], network.bias + node_term)
+    torch.testing.assert_close(parts["edge_contributions"],
+                               torch.zeros_like(parts["edge_contributions"]))
+    torch.testing.assert_close(parts["logits"][0], parts["bias"]
+                               + parts["node_contributions"].sum(0)
+                               + parts["edge_contributions"].sum(0), rtol=1e-6, atol=1e-6)
+
+
 def test_batch_permutation_parallel_edges_and_empty_edge_graphs_are_supported():
     import torch
     from torch_geometric.data import Batch, Data
@@ -321,6 +348,25 @@ def test_invalid_continuous_inputs_masks_and_metadata_fail_closed():
                      torch.full((graph.num_edges,), 1.1)):
         with pytest.raises(ValueError, match="edge mask"):
             adapter.network.set_edge_mask(bad_mask)
+
+
+def test_float_category_and_index_dtypes_are_rejected_before_shared_casting():
+    import pytest
+    import torch
+    from torch_geometric.data import Batch
+
+    adapter, graph = _fixture()
+    for field in ("token", "node_type", "edge_relation", "edge_triple", "edge_index"):
+        malformed = graph.clone()
+        value = getattr(malformed, field)
+        setattr(malformed, field, value.to(torch.float32) + 0.5)
+        with pytest.raises(ValueError, match="integer dtype"):
+            adapter(malformed, epoch=0)
+
+    batched = Batch.from_data_list([graph.clone(), graph.clone()])
+    batched.batch = batched.batch.to(torch.float32) + 0.5
+    with pytest.raises(ValueError, match="integer dtype"):
+        adapter(batched, epoch=0)
 
 
 def test_invalid_vocabulary_indices_and_edge_payloads_are_rejected():
