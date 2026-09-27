@@ -129,7 +129,7 @@ def binding_hashes(*, source_files, graph_path, membership_path, checkpoint_path
     }
 
 
-def reconstruct_adapter(binding: Mapping[str, Any], checkpoint_path, *, expected_source_sha256):
+def reconstruct_adapter(binding: Mapping[str, Any], checkpoint_path, *, expected_checkpoint_sha256):
     """Strictly rebuild CEI from the runner binding and state_dict checkpoint."""
     if binding.get("method") != "cei_gnn" or binding.get("adaptation_version") != ADAPTATION_VERSION:
         raise ValueError("incompatible method/adaptation binding")
@@ -140,33 +140,60 @@ def reconstruct_adapter(binding: Mapping[str, Any], checkpoint_path, *, expected
     effective = method_config.get("effective_settings")
     if not isinstance(architecture, Mapping) or not isinstance(effective, Mapping):
         raise ValueError("missing architecture/effective settings")
-    runner = binding.get("runner_settings")
+    runner = binding.get("runner_settings", binding)
     if not isinstance(runner, Mapping):
-        runner = binding
+        raise ValueError("runner settings are missing")
     dims = dict(architecture)
-    dims.update({
+    required_architecture = {
+        "num_tokens", "node_dim", "edge_dim", "num_triples", "num_relations",
+        "num_node_types", "num_classes", "hidden", "layers", "dropout",
+        "token_dim", "interaction_rank", "parameter_count",
+        "active_parameter_count", "inactive_parameter_count",
+    }
+    if not required_architecture <= set(dims):
+        raise ValueError("method architecture is missing required dimensions or parameter counts")
+    top_level = {
         "num_tokens": binding.get("vocabulary_size"),
-        "node_dim": binding.get("node_dim"),
-        "edge_dim": binding.get("edge_dim"),
-        "num_classes": binding.get("num_classes"),
+        "node_dim": binding.get("node_dim"), "edge_dim": binding.get("edge_dim"),
         "num_triples": binding.get("num_meta_relations"),
-    })
-    for key in ("hidden", "layers", "dropout", "token_dim"):
-        dims[key] = binding.get(key, dims.get(key))
-    required = ("num_tokens", "node_dim", "edge_dim", "num_classes", "hidden", "layers", "dropout", "token_dim", "num_triples")
-    if any(type(dims.get(key)) not in (int, float) for key in required):
+        "num_classes": binding.get("num_classes"), "hidden": binding.get("hidden"),
+        "layers": binding.get("layers"), "dropout": binding.get("dropout"),
+        "token_dim": binding.get("token_dim"), "num_relations": binding.get("num_relations"),
+    }
+    for key, value in top_level.items():
+        if value is None or dims.get(key) != value:
+            raise ValueError(f"runner binding {key} differs from method architecture")
+    constructor_keys = ("num_tokens", "node_dim", "edge_dim", "num_classes", "hidden",
+                        "layers", "dropout", "token_dim", "num_triples")
+    if any(type(dims.get(key)) not in (int, float) or isinstance(dims.get(key), bool)
+           for key in constructor_keys):
         raise ValueError("runner binding is missing constructor dimensions")
-    if effective.get("interaction_rank") != 16 or effective.get("use_interactions") not in (True, False):
-        raise ValueError("unsupported CEI effective settings")
-    if dims["layers"] != 1:
-        raise ValueError("unsupported CEI architecture depth")
+    if effective.get("interaction_rank") != dims["interaction_rank"] or dims["interaction_rank"] != 16:
+        raise ValueError("unsupported CEI interaction rank")
+    if effective.get("use_interactions") not in (True, False) or dims["layers"] != 1:
+        raise ValueError("unsupported CEI effective settings or architecture depth")
+    from comparison.standardized.clinical_graph_v2.contracts import recursive_source_hashes
     source_binding = binding.get("source_code")
-    if not isinstance(source_binding, Mapping) or source_binding != expected_source_sha256:
-        raise ValueError("source binding mismatch")
+    current_sources = recursive_source_hashes(Path(__file__).resolve().parent)
+    if not isinstance(source_binding, Mapping) or dict(source_binding) != current_sources:
+        raise ValueError("source binding differs from current package-relative source hashes")
+    expected_checkpoint_sha256 = str(expected_checkpoint_sha256)
+    if (len(expected_checkpoint_sha256) != 64 or
+            any(char not in "0123456789abcdef" for char in expected_checkpoint_sha256)):
+        raise ValueError("explicit expected checkpoint digest must be a lowercase SHA-256")
+    actual_checkpoint_sha256 = hashlib.sha256(Path(checkpoint_path).read_bytes()).hexdigest()
+    if actual_checkpoint_sha256 != expected_checkpoint_sha256:
+        raise ValueError("checkpoint digest does not match explicit expected digest")
     from comparison.standardized.clinical_graph_v2.methods.plugin_cei_gnn import EvidenceInteractionAdapter
+    from types import SimpleNamespace
 
-    args = type("RunnerArgs", (), dict(runner))()
-    adapter = EvidenceInteractionAdapter(**{key: dims[key] for key in required}, args=args)
+    args_values = dict(runner)
+    args_values["method_options"] = {
+        "interaction_rank": effective["interaction_rank"],
+        "use_interactions": effective["use_interactions"],
+    }
+    args = SimpleNamespace(**args_values)
+    adapter = EvidenceInteractionAdapter(**{key: dims[key] for key in constructor_keys}, args=args)
     config = adapter.run_config()
     if config.get("adaptation_version") != ADAPTATION_VERSION:
         raise ValueError("reconstructed adapter version mismatch")
