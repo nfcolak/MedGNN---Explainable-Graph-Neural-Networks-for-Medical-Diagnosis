@@ -52,6 +52,11 @@ class EvidenceInteractionAdapter(ClinicalMethodAdapter):
             use_interactions=self.use_interactions, num_node_types=len(NODE_KINDS))
 
     def _read(self, batch):
+        integer_dtypes = (torch.uint8, torch.int8, torch.int16, torch.int32, torch.int64)
+        for field in ("token", "node_type", "edge_index", "edge_relation", "edge_triple", "batch"):
+            value = getattr(batch, field, None)
+            if value is not None and (not torch.is_tensor(value) or value.dtype not in integer_dtypes):
+                raise ValueError(f"{field} must use an integer dtype")
         return read_clinical_batch(
             batch, method="cei_gnn", node_dim=self.node_dim, edge_dim=self.edge_dim,
             num_tokens=self.num_tokens, num_triples=self.num_triples,
