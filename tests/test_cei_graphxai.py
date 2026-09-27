@@ -207,6 +207,24 @@ def _valid_export_manifest(sample_ids, **overrides):
     return manifest
 
 
+def test_export_requires_binding_checked_frozen_dev_membership(tmp_path):
+    implementation = module()
+    import inspect
+    assert {"binding", "frozen_dev_ids"} <= set(inspect.signature(implementation.export_explanations).parameters)
+    ids = ["dev-sample-1"]
+    binding = {
+        "split_sample_ids_sha256": {"dev": "0" * 64},
+        "label_order": ["class-a", "class-b"],
+    }
+    record = {"sample_id": "validation-sample-id", "graphxai": {}}
+    with pytest.raises(ValueError, match="dev roster|membership|hash"):
+        implementation.export_explanations(
+            tmp_path / "not-dev", records=[record],
+            manifest=_valid_export_manifest(["validation-sample-id"]),
+            binding=binding, frozen_dev_ids=ids,
+        )
+
+
 def test_export_refuses_status_only_graphxai_records(tmp_path):
     implementation = module()
     record = {
