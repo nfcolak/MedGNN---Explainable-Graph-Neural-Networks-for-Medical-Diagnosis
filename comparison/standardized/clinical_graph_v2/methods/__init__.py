@@ -9,11 +9,13 @@ from .base import ClinicalMethodAdapter, MethodOutput
 from .graphcare import GraphCareAdapter
 from .gsat import GSATAdapter
 from .protgnn import ProtGNNAdapter
+from .protonode import ProtoNodeAdapter
 
 METHOD_REGISTRY: dict[str, type[ClinicalMethodAdapter]] = {
     "graphcare": GraphCareAdapter,
     "gsat": GSATAdapter,
     "protgnn": ProtGNNAdapter,
+    "protonode": ProtoNodeAdapter,
 }
 
 
@@ -48,5 +50,6 @@ __all__ = [
     "GraphCareAdapter",
     "GSATAdapter",
     "ProtGNNAdapter",
+    "ProtoNodeAdapter",
     "build_method",
 ]
