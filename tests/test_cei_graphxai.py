@@ -326,6 +326,42 @@ def _runner_binding(dev_ids):
     return {"split_sample_ids_sha256": {"dev": digest}, "label_order": ["class-a", "class-b"]}
 
 
+def test_export_clean_integrated_record_derives_file_hashes(tmp_path):
+    implementation = module()
+    import inspect
+    required = {"graph_path", "membership_path", "checkpoint_path", "expected_checkpoint_sha256"}
+    assert required <= set(inspect.signature(implementation.export_explanations).parameters)
+    adapter, graph = SyntheticAdapter(), graph_fixture()
+    result = implementation.explain_graph(adapter, graph, steps=4, epochs=3)
+    record = {"sample_id": "dev-synthetic-1", "graphxai": result}
+    ids = [record["sample_id"]]
+    files = {}
+    for key, name in (("graph", "graphs.jsonl"), ("membership", "membership.jsonl"),
+                      ("checkpoint", "best.pt")):
+        path = tmp_path / name
+        path.write_bytes(("synthetic-" + key).encode())
+        files[key] = path
+    hashes = implementation.binding_hashes(
+        package_root=MODULE_PATH.parent, graph_path=files["graph"],
+        membership_path=files["membership"], checkpoint_path=files["checkpoint"], cohort_ids=ids,
+    )
+    binding = {
+        "source_code": hashes["source_sha256"],
+        "split_sample_ids_sha256": {"dev": _runner_binding(ids)["split_sample_ids_sha256"]["dev"]},
+        "label_order": ["class-a", "class-b"],
+    }
+    manifest = _valid_export_manifest(ids, **hashes, fold="dev")
+    output = implementation.export_explanations(
+        tmp_path / "clean", records=[record], manifest=manifest, binding=binding,
+        frozen_dev_ids=ids, graph_path=files["graph"], membership_path=files["membership"],
+        checkpoint_path=files["checkpoint"],
+        expected_checkpoint_sha256=hashes["checkpoint_sha256"],
+    )
+    import json
+    assert json.loads((output / "manifest.json").read_text())["status"] == "completed"
+    assert json.loads((output / "manifest.json").read_text())["source_sha256"] == hashes["source_sha256"]
+
+
 def test_export_requires_binding_checked_frozen_dev_membership(tmp_path):
     implementation = module()
     import inspect
