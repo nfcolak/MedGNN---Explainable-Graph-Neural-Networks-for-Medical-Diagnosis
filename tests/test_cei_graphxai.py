@@ -91,6 +91,20 @@ def test_wrapper_rejects_reordered_edges_and_changed_batch_identity():
         wrapper(features, graph.edge_index, batch=torch.tensor([0, 1]))
 
 
+def test_wrapper_predictions_are_immutable_to_caller_metadata_mutation():
+    implementation = module()
+    adapter, graph = SyntheticAdapter(), graph_fixture()
+    wrapper = implementation.ClinicalGraphXAIWrapper(adapter, graph).eval()
+    features = adapter.continuous_inputs(graph)
+    expected = wrapper(features, graph.edge_index, batch=graph.batch).detach().clone()
+    graph.edge_attr.add_(100)
+    graph.edge_relation.fill_(99)
+    graph.edge_triple.fill_(88)
+    graph.edge_index[:] = graph.edge_index.flip(1)
+    actual = wrapper(features, wrapper._edge_index, batch=wrapper._batch)
+    assert torch.equal(actual, expected), "caller mutation altered bound graph prediction payload"
+
+
 def test_explain_graph_runs_real_algorithms_and_cleans_mask_state():
     implementation = module()
     from shared.lib.graphxai_standardized import ALGORITHMS
