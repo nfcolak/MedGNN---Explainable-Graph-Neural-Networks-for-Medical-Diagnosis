@@ -188,6 +188,30 @@ def test_export_refuses_occupied_directory_and_incomplete_algorithm_records(tmp_
     assert not (fresh / "manifest.json").exists(), "failed export must not publish completion"
 
 
+def test_export_generator_failure_fsyncs_and_preserves_prior_records(tmp_path, monkeypatch):
+    implementation = module()
+    out = tmp_path / "interrupted"
+    fsync_calls = []
+    original_fsync = implementation.os.fsync
+
+    def observed_fsync(fd):
+        fsync_calls.append(fd)
+        return original_fsync(fd)
+
+    monkeypatch.setattr(implementation.os, "fsync", observed_fsync)
+
+    def partial_records():
+        yield {"sample_id": "dev-1", "graphxai": {}}
+        raise RuntimeError("synthetic interrupted generator")
+
+    with pytest.raises(RuntimeError, match="synthetic interrupted"):
+        implementation.export_explanations(out, records=partial_records(), manifest={})
+    journals = list(tmp_path.glob(".*.failed.journal"))
+    assert journals, "partial journal must remain discoverable after iterator failure"
+    assert fsync_calls, "each yielded record must be fsynced before requesting the next"
+    assert journals[0].read_text().strip() == '{"graphxai": {}, "sample_id": "dev-1"}'
+
+
 def test_export_race_preserves_directory_created_by_another_actor(tmp_path, monkeypatch):
     implementation = module()
     out = tmp_path / "raced"
