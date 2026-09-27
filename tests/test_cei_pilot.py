@@ -178,9 +178,11 @@ def test_report_validator_rejects_incomplete_and_smoke_is_not_an_arm(tmp_path):
     with pytest.raises(ValueError, match="use_interactions"):
         module.validate_completed_stages(stages)
     bad = json.loads((stages[-1] / "result.json").read_text())
+    bad["binding"]["method_config"]["effective_settings"]["use_interactions"] = False
     bad["binding"]["parameter_count"] = 999
+    (stages[-1] / "binding.json").write_text(json.dumps(bad["binding"]))
     (stages[-1] / "result.json").write_text(json.dumps(bad))
-    with pytest.raises(ValueError, match="binding"):
+    with pytest.raises(ValueError, match="parameter_count"):
         module.validate_completed_stages(stages)
 
 
