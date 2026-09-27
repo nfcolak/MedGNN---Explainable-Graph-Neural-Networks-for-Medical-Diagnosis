@@ -188,6 +188,39 @@ def test_export_refuses_occupied_directory_and_incomplete_algorithm_records(tmp_
     assert not (fresh / "manifest.json").exists(), "failed export must not publish completion"
 
 
+def _valid_export_manifest(sample_ids, **overrides):
+    import hashlib
+    import json
+    digest = hashlib.sha256(json.dumps(sample_ids, separators=(",", ":")).encode()).hexdigest()
+    manifest = {
+        "source_sha256": {"module.py": "a" * 64},
+        "graph_sha256": "b" * 64,
+        "membership_sha256": "c" * 64,
+        "checkpoint_sha256": "d" * 64,
+        "cohort_ids_sha256": digest,
+        "fold": "dev",
+        "seed": 1234,
+        "class_order": ["class-a", "class-b"],
+        "cohort_identity": "synthetic-dev",
+    }
+    manifest.update(overrides)
+    return manifest
+
+
+def test_export_refuses_status_only_graphxai_records(tmp_path):
+    implementation = module()
+    record = {
+        "sample_id": "dev-1",
+        "graphxai": {name: {"status": "success"} for name in implementation.REQUIRED_ALGORITHMS},
+    }
+    with pytest.raises(ValueError, match="explanation|provenance|finite"):
+        implementation.export_explanations(
+            tmp_path / "status-only", records=[record],
+            manifest=_valid_export_manifest(["dev-1"]),
+        )
+    assert not (tmp_path / "status-only" / "manifest.json").exists()
+
+
 def test_export_generator_failure_fsyncs_and_preserves_prior_records(tmp_path, monkeypatch):
     implementation = module()
     out = tmp_path / "interrupted"
