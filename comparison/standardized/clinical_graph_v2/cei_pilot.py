@@ -616,18 +616,16 @@ def capture_bindings(stage):
                               capture_output=True, text=True).stdout.strip()
     status = subprocess.run(["git", "status", "--porcelain=v1"], check=True,
                             capture_output=True, text=True).stdout
-    repo_root = Path(__file__).resolve().parents[5]
-    source_roots = [repo_root / "comparison/standardized/clinical_graph_v2",
-                    repo_root / "shared/lib", repo_root / "external"]
-    source_hashes = {}
-    for root in source_roots:
-        if not root.exists():
-            continue
-        for path in sorted(root.rglob("*.py")):
-            if "__pycache__" not in path.parts and ".venv" not in path.parts:
-                source_hashes[path.relative_to(repo_root).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+    root_value = subprocess.run(["git", "rev-parse", "--show-toplevel"], check=True,
+                                capture_output=True, text=True).stdout.strip()
+    repo_root = Path(root_value).resolve(strict=True)
+    try:
+        Path(__file__).resolve(strict=True).relative_to(repo_root)
+    except ValueError as error:
+        raise ValueError("active runner file is outside git's reported worktree") from error
+    executable_sources = _capture_executable_sources(repo_root)
     source_state = _sha_json({"revision": revision, "working_tree": status,
-                              "clinical_graph_v2_source": source_hashes})
+                              "clinical_graph_v2_source": executable_sources["source_hashes"]})
     inputs = {"artifact": stage.argv[stage.argv.index("--artifact") + 1],
               "targets": stage.argv[stage.argv.index("--targets") + 1],
               "canonical": stage.argv[stage.argv.index("--canonical") + 1]}
@@ -655,6 +653,7 @@ def capture_bindings(stage):
     return {
         "git_revision": revision,
         "source_state_sha256": source_state,
+        "executable_sources": executable_sources,
         "argv_sha256": _sha_json(stage.argv),
         "common_config_sha256": _sha_json(shared_argv),
         "input_state_sha256": _sha_json(input_hashes),
@@ -675,6 +674,42 @@ def _write_journal(path, journal):
     temporary = path.with_name(path.name + ".tmp")
     temporary.write_text(json.dumps(journal, indent=2, sort_keys=True) + "\n")
     os.replace(temporary, path)
+
+
+def _capture_executable_sources(repo_root):
+    """Hash executable source bytes rooted at the active repository worktree."""
+    repo_root = Path(repo_root).resolve(strict=True)
+    package = repo_root / "comparison/standardized/clinical_graph_v2"
+    required = (package / "cei_pilot.py", package / "methods/plugin_cei_gnn.py")
+    if any(not path.is_file() for path in required):
+        raise ValueError("active worktree is missing CEI runner or plugin source")
+    source_roots = (package, repo_root / "shared/lib", repo_root / "external")
+    source_hashes = {}
+    for root in source_roots:
+        if not root.exists():
+            continue
+        for path in sorted(root.rglob("*.py")):
+            if "__pycache__" not in path.parts and ".venv" not in path.parts:
+                source_hashes[path.relative_to(repo_root).as_posix()] = hashlib.sha256(
+                    path.read_bytes()).hexdigest()
+    prefix = "comparison/standardized/clinical_graph_v2/"
+    clinical = {path[len(prefix):]: digest for path, digest in source_hashes.items()
+                if path.startswith(prefix)}
+    if not {"cei_pilot.py", "methods/plugin_cei_gnn.py"} <= set(clinical):
+        raise ValueError("executable source map omits the CEI runner or plugin")
+    return {"source_hashes": source_hashes,
+            "clinical_source_hashes": clinical,
+            "source_state_sha256": _sha_json(source_hashes)}
+
+
+def _assert_runner_source_binding(snapshot, binding):
+    """Require package bytes used by the executor to equal the runner's binding."""
+    runner_source = binding.get("source_code")
+    if not isinstance(runner_source, dict) or not runner_source:
+        raise ValueError("runner source binding is missing")
+    if runner_source != snapshot.get("clinical_source_hashes"):
+        raise ValueError("runner source binding differs from active worktree bytes")
+    return True
 
 
 def execute_plan(stages, *, journal_path):
@@ -717,6 +752,7 @@ def execute_plan(stages, *, journal_path):
             if not binding_file.is_file() or not result_file.is_file():
                 raise RuntimeError("training returned without complete binding/result files")
             binding = _load_json(binding_file, "binding.json")
+            _assert_runner_source_binding(after["executable_sources"], binding)
             validate_pilot_binding(binding, expected_budget=stage.budget, expected_seed=stage.seed)
             _validate_treatment(binding, stage.treatment)
             result = _load_json(result_file, "result.json")

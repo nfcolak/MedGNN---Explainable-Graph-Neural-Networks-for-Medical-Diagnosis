@@ -267,7 +267,10 @@ def test_capture_bindings_detects_same_path_input_byte_drift(tmp_path, monkeypat
     stage = module.Stage("arm", ["python", "train.py", "--artifact", str(artifact),
         "--targets", str(targets), "--canonical", str(canonical)], str(tmp_path / "out"),
         1234, (10000, 5000, 40), "candidate")
-    monkeypatch.setattr(module.subprocess, "run", lambda *a, **k: SimpleNamespace(stdout="rev\n"))
+    def fake_git(command, **kwargs):
+        output = str(MODULE_PATH.parents[3]) + "\n" if "--show-toplevel" in command else "rev\n"
+        return SimpleNamespace(stdout=output)
+    monkeypatch.setattr(module.subprocess, "run", fake_git)
     before = module.capture_bindings(stage)
     targets.write_bytes(b"targets-b")
     after = module.capture_bindings(stage)
@@ -464,7 +467,7 @@ def test_execution_source_snapshot_hashes_its_own_worktree_and_runner_package(tm
     assert snapshot_before["clinical_source_hashes"] != snapshot_after["clinical_source_hashes"]
     assert snapshot_before["source_state_sha256"] != snapshot_after["source_state_sha256"]
 
-    binding = {"source_code": snapshot_after["clinical_source_hashes"]}
+    binding = {"source_code": dict(snapshot_after["clinical_source_hashes"])}
     assert module._assert_runner_source_binding(snapshot_after, binding)
     binding["source_code"]["methods/plugin_cei_gnn.py"] = "0" * 64
     with pytest.raises(ValueError, match="runner source|source binding"):
