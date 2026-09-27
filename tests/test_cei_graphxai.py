@@ -266,6 +266,16 @@ def test_reconstruction_replays_candidate_and_product_off_state_dicts(tmp_path):
         expected = adapter(graph, epoch=0).logits.softmax(-1)
         actual = reconstructed(graph, epoch=0).logits.softmax(-1)
         torch.testing.assert_close(actual, expected, rtol=0, atol=0)
+        tampered_source = dict(binding, source_code={**binding["source_code"], "contracts.py": "0" * 64})
+        with pytest.raises(ValueError, match="source binding"):
+            implementation.reconstruct_adapter(
+                tampered_source, checkpoint,
+                expected_checkpoint_sha256=hashlib.sha256(checkpoint.read_bytes()).hexdigest(),
+            )
+        with pytest.raises(ValueError, match="checkpoint digest"):
+            implementation.reconstruct_adapter(
+                binding, checkpoint, expected_checkpoint_sha256="0" * 64,
+            )
 
 
 def test_reconstruction_refuses_unbound_or_incompatible_adaptation():
