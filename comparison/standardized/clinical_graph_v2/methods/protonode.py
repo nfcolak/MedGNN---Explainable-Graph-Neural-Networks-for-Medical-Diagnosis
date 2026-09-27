@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
 
 import torch
 import torch.nn as nn
@@ -13,7 +14,9 @@ from .base import (ClinicalMethodAdapter, MethodOutput, diagnostic_float, graph_
                    method_setting, read_clinical_batch, relation_count)
 from .protgnn import _RelationPayloadLayer
 
-_NATIVE_DEFAULTS = {"warm_epochs": 10, "proj_epochs": 20, "proj_interval": 25,
+_NATIVE_DEFAULTS = {"max_epochs": 300, "lr": 1.79e-3, "batch_size": 128,
+    "weight_decay": 4.3e-5, "patience": 10, "min_delta": 0.005,
+    "warm_epochs": 10, "proj_epochs": 20, "proj_interval": 25,
     "nearest_graphs": 200, "prototypes_per_class": 3, "cluster_weight": 0.1,
     "separation_weight": 0.1, "margin": 1.0, "readout": "both", "wide": True,
     "wide_l1": 1e-4}
@@ -53,7 +56,8 @@ class ProtoNodeAdapter(ClinicalMethodAdapter):
         self.readout = setting("readout", "both", str)
         if self.readout not in ("both", "node_max", "graph_mean"):
             raise ValueError("protonode_readout must be both, node_max, or graph_mean")
-        self.wide = not bool(getattr(args, "protonode_no_wide", False))
+        self.wide = not bool(args.get("protonode_no_wide", False) if isinstance(args, Mapping)
+                             else getattr(args, "protonode_no_wide", False))
         self.wide_l1 = setting("wide_l1", 1e-4, float, 0.0)
         self.num_prototypes = self.num_classes * self.prototypes_per_class
         self.token_embedding = nn.Embedding(self.num_tokens, self.token_dim, padding_idx=0)
@@ -246,6 +250,10 @@ class ProtoNodeAdapter(ClinicalMethodAdapter):
                 "num_prototypes": self.num_prototypes, "prototypes_per_class": self.prototypes_per_class,
                 "prototype_classifier_bias": False, "parameter_count": total,
                 "warmup_active_parameter_count": total - classifier, "joint_active_parameter_count": total},
+            "native_schedule": {"optimizer": "Adam", "max_epochs": 300, "warm_epochs": self.warm_epochs,
+                "proj_epochs": self.proj_epochs, "proj_interval": self.proj_interval,
+                "nearest_graphs": self.nearest_graphs, "learning_rate": 1.79e-3,
+                "batch_size": 128, "weight_decay": 4.3e-5, "patience": 10, "min_delta": 0.005},
             "objective_coefficients": {"cluster": self.cluster_weight, "separation": self.separation_weight,
                 "cross_class_l1": self.cross_class_l1_coefficient, "wide_l1": self.wide_l1, "margin": self.margin},
             "mechanism_settings": {"readout": self.readout, "wide": self.wide,
