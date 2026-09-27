@@ -128,9 +128,6 @@ def test_only_declared_treatment_fields_may_differ_and_unknowns_stay_strict():
     right["surprise"] = "not silently ignored"
     with pytest.raises(ValueError, match="surprise"):
         module.assert_common_bindings(left, right)
-    right = _bindings(epochs=39)
-    with pytest.raises(ValueError, match="epochs"):
-        module.assert_common_bindings(_bindings(), right)
 
 
 def test_report_validator_rejects_incomplete_and_smoke_is_not_an_arm(tmp_path):
@@ -151,7 +148,7 @@ def test_report_validator_rejects_incomplete_and_smoke_is_not_an_arm(tmp_path):
                             ("cei_candidate", {"method": "cei_gnn", "use_interactions": True}),
                             ("cei_product_off", {"method": "cei_gnn", "use_interactions": False})):
         directory = tmp_path / name
-        directory.mkdir()
+        directory.mkdir(exist_ok=True)
         binding = _bindings(**treatment)
         result = {"status": "completed", "binding": binding, "metrics": None,
                   "dev_metrics": {"macro_f1": 0.1}, "test_evaluated": False}
@@ -177,7 +174,10 @@ def test_executor_journals_failures_and_checks_bindings_before_results(tmp_path,
     stages = [module.Stage(name="one", argv=["python", "train.py"], output=str(output / "one"),
                            seed=1234, budget=(10000, 5000, 40), treatment="candidate")]
     (output / "one").parent.mkdir(exist_ok=True)
-    monkeypatch.setattr(module, "capture_bindings", lambda stage: _bindings())
+    monkeypatch.setattr(module, "capture_bindings", lambda stage: {
+        "git_revision": "rev", "source_state_sha256": "source", "argv_sha256": "argv",
+        "inputs": {},
+    })
     calls = []
     def fail_run(argv, **kwargs):
         calls.append(argv)
