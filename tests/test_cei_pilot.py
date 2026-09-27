@@ -367,6 +367,31 @@ def test_actual_method_run_configs_are_accepted_and_source_defaults_are_locked()
             method_config=drifted, patience=40, use_interactions=None))
 
 
+def test_common_comparator_accepts_runner_native_early_stop_start_per_method():
+    module = _module()
+    from comparison.standardized.clinical_graph_v2.methods import build_method
+    from comparison.standardized.clinical_graph_v2.tensorize import PAYLOAD_WIDTH
+
+    common = dict(num_tokens=8, node_dim=3, edge_dim=PAYLOAD_WIDTH, num_classes=2,
+                  hidden=4, layers=1, dropout=0.0, token_dim=3,
+                  num_triples=2)
+    prot = build_method("protgnn", **common,
+                        args=SimpleNamespace(epochs=40, patience=40, num_relations=3))
+    cei = build_method("cei_gnn", **common,
+                       args=SimpleNamespace(epochs=40, patience=40, num_relations=3,
+                                            method_options={"use_interactions": True}))
+    control = _bindings(method="protgnn", method_config=prot.run_config(),
+                        early_stopping_start_epoch_index=prot.proj_epochs,
+                        use_interactions=None, patience=40)
+    candidate = _bindings(method="cei_gnn", method_config=cei.run_config(),
+                          early_stopping_start_epoch_index=0,
+                          use_interactions=True, patience=40)
+    assert module.assert_common_bindings(control, candidate)
+    wrong_schedule = dict(control, early_stopping_start_epoch_index=0)
+    with pytest.raises(ValueError, match="schedule|early_stopping"):
+        module.assert_common_bindings(wrong_schedule, candidate)
+
+
 
 def test_replay_stage_reconstructs_real_model_and_rejects_tampered_artifacts(tmp_path, monkeypatch):
     module = _module()
