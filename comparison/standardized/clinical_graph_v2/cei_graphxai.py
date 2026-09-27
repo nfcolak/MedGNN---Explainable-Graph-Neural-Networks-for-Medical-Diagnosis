@@ -256,7 +256,11 @@ def _validate_algorithm_record(name, item):
         raise ValueError(f"{name} explanation interpretation boundaries are invalid")
 
 
-def export_explanations(output_dir, *, records, manifest, binding=None, frozen_dev_ids=None):
+def export_explanations(
+    output_dir, *, records, manifest, binding=None, frozen_dev_ids=None,
+    graph_path=None, membership_path=None, checkpoint_path=None,
+    expected_checkpoint_sha256=None,
+):
     """Journal records beside a fresh output; publish manifest only when complete."""
     output = Path(output_dir)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -329,8 +333,27 @@ def export_explanations(output_dir, *, records, manifest, binding=None, frozen_d
         actual_cohort_hash = hashlib.sha256(json.dumps(sample_ids, separators=(",", ":")).encode()).hexdigest()
         if manifest["cohort_ids_sha256"] != actual_cohort_hash:
             raise ValueError("manifest cohort hash does not match sample-keyed records")
+        if any(path is None for path in (graph_path, membership_path, checkpoint_path)):
+            raise ValueError("export requires real graph, membership, and checkpoint file paths")
+        if (not isinstance(expected_checkpoint_sha256, str) or len(expected_checkpoint_sha256) != 64
+                or any(char not in "0123456789abcdef" for char in expected_checkpoint_sha256)):
+            raise ValueError("export requires an explicit lowercase checkpoint SHA-256")
+        derived = binding_hashes(
+            package_root=Path(__file__).resolve().parent, graph_path=graph_path,
+            membership_path=membership_path, checkpoint_path=checkpoint_path, cohort_ids=sample_ids,
+        )
+        if dict(binding.get("source_code", {})) != derived["source_sha256"]:
+            raise ValueError("runner source binding differs from current package source files")
+        if dict(manifest["source_sha256"]) != derived["source_sha256"]:
+            raise ValueError("manifest source hashes differ from current package source files")
+        if expected_checkpoint_sha256 != derived["checkpoint_sha256"]:
+            raise ValueError("checkpoint file digest differs from explicit expected digest")
+        for key in ("graph_sha256", "membership_sha256", "checkpoint_sha256"):
+            if manifest[key] != derived[key]:
+                raise ValueError(f"manifest {key} differs from the actual file")
         (output / "records.jsonl").write_text(journal.read_text(encoding="utf-8"), encoding="utf-8")
         payload = dict(manifest)
+        payload.update(derived)
         payload["status"] = "completed"
         payload["record_count"] = len(record_values)
         (output / "manifest.json").write_text(json.dumps(payload, indent=2, sort_keys=True, allow_nan=False) + "\n", encoding="utf-8")
