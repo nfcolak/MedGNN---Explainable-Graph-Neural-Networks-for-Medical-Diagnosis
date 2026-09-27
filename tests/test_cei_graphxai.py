@@ -165,6 +165,50 @@ def test_real_algorithms_support_one_node_edgeless_graph():
     assert all(torch.isfinite(torch.as_tensor(item["node_explanation"]["node_importance"])).all() for item in result.values())
 
 
+def test_reconstruction_replays_candidate_and_product_off_state_dicts(tmp_path):
+    implementation = module()
+    from types import SimpleNamespace
+    from comparison.standardized.clinical_graph_v2.methods import METHOD_REGISTRY
+    from torch_geometric.data import Data
+
+    graph = Data(
+        x=torch.tensor([[0.2, -0.3, 0.5], [0.8, 0.1, -0.4]]),
+        token=torch.tensor([1, 2]), node_type=torch.tensor([0, 1]),
+        edge_index=torch.tensor([[0, 1], [1, 0]]),
+        edge_attr=torch.tensor([[0.2, 0.1], [0.4, -0.3]]),
+        edge_relation=torch.tensor([0, 1]), edge_triple=torch.tensor([0, 1]),
+    )
+    for enabled in (True, False):
+        torch.manual_seed(88)
+        args = SimpleNamespace(method_options={"interaction_rank": 16, "use_interactions": enabled},
+                              edge_direction="forward")
+        adapter = METHOD_REGISTRY["cei_gnn"](
+            num_tokens=8, node_dim=3, edge_dim=2, num_classes=3, hidden=8,
+            layers=1, dropout=0.0, token_dim=4, num_triples=3, args=args,
+        ).eval()
+        config = adapter.run_config()
+        checkpoint = tmp_path / f"cei-{enabled}.pt"
+        torch.save(adapter.state_dict(), checkpoint)
+        binding = {
+            "method": "cei_gnn", "adaptation_version": config["adaptation_version"],
+            "method_config": config, "source_code": {}, "runner_settings": {"edge_direction": "forward"},
+            "vocabulary_size": 8, "node_dim": 3, "edge_dim": 2, "num_classes": 3,
+            "hidden": 8, "layers": 1, "dropout": 0.0, "token_dim": 4,
+            "num_meta_relations": 3,
+        }
+        reconstructed = None
+        try:
+            reconstructed = implementation.reconstruct_adapter(
+                binding, checkpoint, expected_source_sha256={},
+            )
+        except Exception:
+            pass
+        assert reconstructed is not None, f"failed to reconstruct use_interactions={enabled}"
+        expected = adapter(graph, epoch=0).logits.softmax(-1)
+        actual = reconstructed(graph, epoch=0).logits.softmax(-1)
+        torch.testing.assert_close(actual, expected, rtol=0, atol=0)
+
+
 def test_reconstruction_refuses_unbound_or_incompatible_adaptation():
     implementation = module()
     with pytest.raises(ValueError, match="incompatible method/adaptation"):
