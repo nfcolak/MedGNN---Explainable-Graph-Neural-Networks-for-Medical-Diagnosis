@@ -360,10 +360,19 @@ def export_explanations(
         )
         if dict(binding.get("source_code", {})) != derived["source_sha256"]:
             raise ValueError("runner source binding differs from current package source files")
-        if dict(manifest["source_sha256"]) != derived["source_sha256"]:
+        if dict(manifest.get("source_sha256", {})) != derived["source_sha256"]:
             raise ValueError("manifest source hashes differ from current package source files")
         if expected_checkpoint_sha256 != derived["checkpoint_sha256"]:
             raise ValueError("checkpoint file digest differs from explicit expected digest")
+        runner_input_hashes = {
+            "artifact_graphs_sha256": derived["graph_sha256"],
+            "artifact_visit_membership_sha256": derived["membership_sha256"],
+        }
+        for binding_key, actual_hash in runner_input_hashes.items():
+            if binding.get(binding_key) != actual_hash:
+                raise ValueError(f"runner binding {binding_key} differs from the actual file")
+        if type(binding.get("seed")) is not int or manifest["seed"] != binding["seed"]:
+            raise ValueError("manifest seed differs from the runner binding")
         for key in ("graph_sha256", "membership_sha256", "checkpoint_sha256"):
             if manifest[key] != derived[key]:
                 raise ValueError(f"manifest {key} differs from the actual file")

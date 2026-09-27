@@ -359,6 +359,9 @@ def test_export_clean_integrated_record_derives_file_hashes(tmp_path):
         "source_code": hashes["source_sha256"],
         "split_sample_ids_sha256": {"dev": _runner_binding(ids)["split_sample_ids_sha256"]["dev"]},
         "label_order": ["class-a", "class-b"],
+        "artifact_graphs_sha256": hashes["graph_sha256"],
+        "artifact_visit_membership_sha256": hashes["membership_sha256"],
+        "seed": 1234,
     }
     manifest = _valid_export_manifest(ids, **hashes, fold="dev")
     output = implementation.export_explanations(
