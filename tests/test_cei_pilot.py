@@ -26,6 +26,43 @@ def _module():
     return module
 
 
+from functools import lru_cache
+import copy
+
+
+@lru_cache(maxsize=None)
+def _source_method_config(method, use_interactions=True):
+    from comparison.standardized.clinical_graph_v2 import train
+    from comparison.standardized.clinical_graph_v2.methods import build_method
+    from comparison.standardized.clinical_graph_v2.tensorize import PAYLOAD_WIDTH
+
+    argv = ["--artifact", "<artifact>", "--targets", "<targets>", "--output", "<output>",
+            "--method", method, "--train-limit", "10000", "--dev-limit", "5000",
+            "--sample-seed", "1234", "--seed", "1234", "--top-k-labels", "10",
+            "--edges", "all", "--edge-direction", "forward", "--weights", "sqrt_inverse",
+            "--selection-fold", "dev", "--final-eval", "none", "--epochs", "40",
+            "--patience", "40"]
+    if method == "cei_gnn":
+        argv.extend(["--method-option", f"use_interactions={'true' if use_interactions else 'false'}"])
+    parser = train.parser()
+    args = train.normalize_method_args(parser.parse_args(argv), parser)
+    args.num_relations = 3
+    args.num_triples = 2
+    model = build_method(method, num_tokens=8, node_dim=3, edge_dim=PAYLOAD_WIDTH,
+                         num_classes=2, hidden=args.hidden, layers=args.layers,
+                         dropout=args.dropout, token_dim=args.token_dim,
+                         num_triples=2, args=args)
+    return copy.deepcopy(model.run_config()), {
+        "vocabulary_size": 8, "num_classes": 2, "node_dim": 3,
+        "edge_dim": PAYLOAD_WIDTH, "hidden": args.hidden, "layers": args.layers,
+        "dropout": args.dropout, "num_relations": model.num_relations,
+        "num_meta_relations": 2,
+        "lr": args.lr, "weight_decay": args.weight_decay,
+        "batch_size": args.batch_size, "min_delta": args.min_delta,
+        "early_stopping_start_epoch_index": train.early_stopping_start_epoch(method, model),
+    }
+
+
 def _bindings(**updates):
     base = {
         "method": "cei_gnn",
@@ -48,12 +85,36 @@ def _bindings(**updates):
         "test_evaluated": False,
         "parameter_count": 123,
         "active_parameter_count": 120,
-        "method_config": {"architecture": {"parameter_count": 123, "active_parameter_count": 120}},
         "edge_direction": "forward", "edges": "all", "top_k_labels": 10,
         "message_passing": True, "edge_payload": True, "num_classes": 2,
         "input_contract_version": "prep-v1", "weights": "sqrt_inverse",
     }
     base.update(updates)
+    method = base["method"]
+    interactions = (base.get("use_interactions") is not False)
+    config = updates.get("method_config")
+    source_config, runner_fields = _source_method_config(method, interactions)
+    config = copy.deepcopy(config if config is not None else source_config)
+    base["method_config"] = config
+    base["method_native_defaults"] = config["native_defaults"]
+    base.update(runner_fields)
+    architecture = config["architecture"]
+    active_count = (architecture.get("joint_active_parameter_count")
+                    if method == "protgnn" else architecture["active_parameter_count"])
+    base.update({
+        "parameter_count": architecture["parameter_count"],
+        "active_parameter_count": active_count,
+        "vocabulary_size": architecture["num_tokens"],
+        "num_classes": architecture["num_classes"],
+        "node_dim": architecture["node_dim"],
+        "edge_dim": architecture["edge_dim"],
+        "hidden": architecture["hidden"], "layers": architecture["layers"],
+        "dropout": architecture["dropout"],
+        "num_relations": architecture["num_relations"],
+        "num_meta_relations": architecture["num_triples"],
+    })
+    if "early_stopping_start_epoch_index" in updates:
+        base["early_stopping_start_epoch_index"] = updates["early_stopping_start_epoch_index"]
     return base
 
 
@@ -156,12 +217,6 @@ def test_report_validator_rejects_incomplete_and_smoke_is_not_an_arm(tmp_path):
         directory = tmp_path / name
         directory.mkdir(exist_ok=True)
         binding = _bindings(**treatment)
-        binding["method_config"] = {
-            "method": binding["method"],
-            "effective_settings": ({"use_interactions": treatment.get("use_interactions")}
-                                   if binding["method"] == "cei_gnn" else {}),
-            "architecture": {"parameter_count": 123, "active_parameter_count": 120},
-        }
         result = {"status": "completed", "binding": binding, "metrics": None,
                   "dev_metrics": {"macro_f1": 0.1}, "test_evaluated": False}
         (directory / "binding.json").write_text(json.dumps(binding))
@@ -239,16 +294,8 @@ def test_budget_guard_rejects_changed_full_budget_and_patience():
 
 def test_actual_method_configs_compare_common_settings_but_allow_cei_treatment():
     module = _module()
-    common = _bindings(method="cei_gnn", patience=40)
-    common["method_config"] = {
-        "method": "cei_gnn", "adaptation_version": "cei-v1",
-        "native_defaults": {"hidden": 64, "interaction_rank": 8},
-        "effective_settings": {"hidden": 64, "interaction_rank": 8, "use_interactions": True},
-        "architecture": {"parameter_count": 321, "active_parameter_count": 321},
-    }
-    off = json.loads(json.dumps(common))
-    off["method_config"]["effective_settings"]["use_interactions"] = False
-    off["use_interactions"] = False
+    common = _bindings(method="cei_gnn", use_interactions=True)
+    off = _bindings(method="cei_gnn", use_interactions=False)
     assert module.assert_common_bindings(common, off)
     off["method_config"]["effective_settings"]["unreviewed_nested_flag"] = True
     with pytest.raises(ValueError, match="effective_settings"):
@@ -296,13 +343,7 @@ def test_validator_refuses_json_only_arms_and_nonfinite_history(tmp_path):
                                     ("cei_product_off", "cei_gnn", False)):
         directory = tmp_path / name
         directory.mkdir()
-        binding = _bindings(method=method, patience=40)
-        binding["method_config"] = {
-        "method": binding["method"],
-        "effective_settings": ({"use_interactions": treatment, "hidden": 64}
-                               if method == "cei_gnn" else {}),
-        "architecture": {"parameter_count": 123, "active_parameter_count": 120},
-        }
+        binding = _bindings(method=method, patience=40, use_interactions=treatment)
         (directory / "binding.json").write_text(json.dumps(binding))
         (directory / "result.json").write_text(json.dumps({"status": "completed", "binding": binding,
             "metrics": None, "dev_metrics": {"macro_f1": 0.1}, "test_evaluated": False,
@@ -340,55 +381,24 @@ def test_execution_rejects_any_stage_argv_drift_before_first_subprocess(tmp_path
 
 def test_actual_method_run_configs_are_accepted_and_source_defaults_are_locked():
     module = _module()
-    from comparison.standardized.clinical_graph_v2.methods import build_method
-    from comparison.standardized.clinical_graph_v2.tensorize import PAYLOAD_WIDTH
-
-    args = SimpleNamespace(num_relations=3)
-    common = dict(num_tokens=8, node_dim=3, edge_dim=PAYLOAD_WIDTH, num_classes=2,
-                 hidden=4, layers=1, dropout=0.0, token_dim=3,
-                 num_triples=2, args=args)
-    cei_on = build_method("cei_gnn", **common)
-    cei_off = build_method("cei_gnn", **{**common,
-        "args": SimpleNamespace(num_relations=3,
-                                 method_options={"use_interactions": False})})
-    prot = build_method("protgnn", **{**common,
-        "args": SimpleNamespace(epochs=40, patience=40)})
-    on_config, off_config, prot_config = cei_on.run_config(), cei_off.run_config(), prot.run_config()
-    left = _bindings(method="cei_gnn", method_config=on_config, patience=40)
-    right = _bindings(method="cei_gnn", method_config=off_config, patience=40)
-    left["use_interactions"], right["use_interactions"] = True, False
+    left, right = _bindings(use_interactions=True), _bindings(use_interactions=False)
     assert module.assert_common_bindings(left, right)
-    control = _bindings(method="protgnn", method_config=prot_config, patience=40,
-                        use_interactions=None)
-    candidate = _bindings(method="cei_gnn", method_config=on_config, patience=40,
-                          use_interactions=True)
+    control = _bindings(method="protgnn", use_interactions=None)
+    candidate = _bindings(method="cei_gnn", use_interactions=True)
     assert module.assert_common_bindings(control, candidate)
-    drifted = json.loads(json.dumps(prot_config))
-    drifted["native_schedule"]["warm_epochs"] += 1
-    with pytest.raises(ValueError, match="default|schedule|method_config"):
-        module.assert_common_bindings(control, _bindings(method="protgnn",
-            method_config=drifted, patience=40, use_interactions=None))
+    drifted = json.loads(json.dumps(control))
+    drifted["method_config"]["effective_settings"]["warm_epochs"] += 1
+    drifted["method_config"]["native_schedule"]["warm_epochs"] += 1
+    with pytest.raises(ValueError, match="defaults|schedule|run_config"):
+        module.assert_common_bindings(control, drifted)
 
 
 def test_common_comparator_accepts_runner_native_early_stop_start_per_method():
     module = _module()
-    from comparison.standardized.clinical_graph_v2.methods import build_method
-    from comparison.standardized.clinical_graph_v2.tensorize import PAYLOAD_WIDTH
-
-    common = dict(num_tokens=8, node_dim=3, edge_dim=PAYLOAD_WIDTH, num_classes=2,
-                  hidden=4, layers=1, dropout=0.0, token_dim=3,
-                  num_triples=2)
-    prot = build_method("protgnn", **common,
-                        args=SimpleNamespace(epochs=40, patience=40, num_relations=3))
-    cei = build_method("cei_gnn", **common,
-                       args=SimpleNamespace(epochs=40, patience=40, num_relations=3,
-                                            method_options={"use_interactions": True}))
-    control = _bindings(method="protgnn", method_config=prot.run_config(),
-                        early_stopping_start_epoch_index=prot.proj_epochs,
-                        use_interactions=None, patience=40)
-    candidate = _bindings(method="cei_gnn", method_config=cei.run_config(),
-                          early_stopping_start_epoch_index=0,
-                          use_interactions=True, patience=40)
+    control = _bindings(method="protgnn", use_interactions=None)
+    candidate = _bindings(method="cei_gnn", use_interactions=True)
+    assert control["early_stopping_start_epoch_index"] == 20
+    assert candidate["early_stopping_start_epoch_index"] == 0
     assert module.assert_common_bindings(control, candidate)
     wrong_schedule = dict(control, early_stopping_start_epoch_index=0)
     with pytest.raises(ValueError, match="schedule|early_stopping"):
@@ -397,11 +407,6 @@ def test_common_comparator_accepts_runner_native_early_stop_start_per_method():
 
 def test_three_arm_validation_uses_each_directory_for_artifacts_and_replay(tmp_path, monkeypatch):
     module = _module()
-    from comparison.standardized.clinical_graph_v2.methods import build_method
-    from comparison.standardized.clinical_graph_v2.tensorize import PAYLOAD_WIDTH
-
-    common = dict(num_tokens=8, node_dim=3, edge_dim=PAYLOAD_WIDTH, num_classes=2,
-                  hidden=4, layers=1, dropout=0.0, token_dim=3, num_triples=2)
     arms = (
         ("protgnn_control", "protgnn", None),
         ("cei_candidate", "cei_gnn", True),
@@ -410,18 +415,7 @@ def test_three_arm_validation_uses_each_directory_for_artifacts_and_replay(tmp_p
     directories = []
     artifact_calls, replay_calls = [], []
     for name, method_name, interactions in arms:
-        options = {"use_interactions": interactions} if method_name == "cei_gnn" else {}
-        args = SimpleNamespace(epochs=40, patience=40, num_relations=3,
-                               method_options=options)
-        model = build_method(method_name, **common, args=args)
-        config = model.run_config()
-        binding = _bindings(
-            method=method_name, method_config=config,
-            method_native_defaults=config["native_defaults"],
-            early_stopping_start_epoch_index=(int(model.proj_epochs)
-                                               if method_name == "protgnn" else 0),
-            use_interactions=interactions, patience=40,
-        )
+        binding = _bindings(method=method_name, use_interactions=interactions)
         directory = tmp_path / name
         directory.mkdir()
         (directory / "binding.json").write_text(json.dumps(binding))
@@ -476,16 +470,8 @@ def test_execution_source_snapshot_hashes_its_own_worktree_and_runner_package(tm
 
 def test_native_config_rejects_coordinated_schedule_drift_from_runner_defaults():
     module = _module()
-    from comparison.standardized.clinical_graph_v2.methods import build_method
-    from comparison.standardized.clinical_graph_v2.tensorize import PAYLOAD_WIDTH
-
-    args = SimpleNamespace(epochs=40, patience=40, num_relations=3)
-    model = build_method("protgnn", num_tokens=8, node_dim=3, edge_dim=PAYLOAD_WIDTH,
-                         num_classes=2, hidden=4, layers=1, dropout=0.0,
-                         token_dim=3, num_triples=2, args=args)
-    binding = _bindings(method="protgnn", method_config=model.run_config())
+    binding = _bindings(method="protgnn", use_interactions=None)
     module._validate_method_config(binding)
-
     drifted = json.loads(json.dumps(binding))
     drifted["method_config"]["effective_settings"]["warm_epochs"] += 1
     drifted["method_config"]["native_schedule"]["warm_epochs"] += 1
@@ -495,15 +481,7 @@ def test_native_config_rejects_coordinated_schedule_drift_from_runner_defaults()
 
 def test_native_config_rejects_incomplete_architecture_dimensions():
     module = _module()
-    from comparison.standardized.clinical_graph_v2.methods import build_method
-    from comparison.standardized.clinical_graph_v2.tensorize import PAYLOAD_WIDTH
-
-    model = build_method("cei_gnn", num_tokens=8, node_dim=3, edge_dim=PAYLOAD_WIDTH,
-                         num_classes=2, hidden=4, layers=1, dropout=0.0,
-                         token_dim=3, num_triples=2,
-                         args=SimpleNamespace(num_relations=3,
-                             method_options={"use_interactions": True}))
-    binding = _bindings(method_config=model.run_config())
+    binding = _bindings(method="cei_gnn", use_interactions=True)
     del binding["method_config"]["architecture"]["token_dim"]
     with pytest.raises(ValueError, match="architecture|dimension"):
         module._validate_method_config(binding)
@@ -557,13 +535,23 @@ def test_replay_stage_reconstructs_real_model_and_rejects_tampered_artifacts(tmp
     monkeypatch.setattr(train, "build_dataset", lambda *args, **kwargs: (splits, prep))
 
     torch.manual_seed(27)
-    common_args = SimpleNamespace(num_relations=3)
+    parser = train.parser()
+    runner_args = train.normalize_method_args(parser.parse_args([
+        "--artifact", str(artifact), "--targets", str(targets_path),
+        "--output", str(output), "--method", "cei_gnn", "--train-limit", "10000",
+        "--dev-limit", "5000", "--sample-seed", "1234", "--seed", "1234",
+        "--top-k-labels", "10", "--edges", "all", "--edge-direction", "forward",
+        "--weights", "sqrt_inverse", "--selection-fold", "dev", "--final-eval", "none",
+        "--epochs", "40", "--patience", "40", "--method-option", "use_interactions=true",
+    ]), parser)
     model = build_method("cei_gnn", num_tokens=2, node_dim=2, edge_dim=PAYLOAD_WIDTH,
-        num_classes=2, hidden=4, layers=1, dropout=0.0, token_dim=3, num_triples=2,
-        args=common_args)
+        num_classes=2, hidden=runner_args.hidden, layers=runner_args.layers,
+        dropout=runner_args.dropout, token_dim=runner_args.token_dim, num_triples=2,
+        args=runner_args)
+    runner_args.num_relations = model.num_relations
     config = model.run_config()
     model.eval()
-    proba, labels = train.evaluate(model, DataLoader(splits["dev"], batch_size=2),
+    proba, labels = train.evaluate(model, DataLoader(splits["dev"], batch_size=runner_args.batch_size),
                                    torch.device("cpu"), epoch=0)
     torch.save(model.state_dict(), output / "best.pt")
     prediction_hash = hashlib.sha256(np.ascontiguousarray(proba).tobytes()).hexdigest()
@@ -577,16 +565,21 @@ def test_replay_stage_reconstructs_real_model_and_rejects_tampered_artifacts(tmp
         "targets_path": str(targets_path), "targets_sha256": sha256(targets_path),
         "source_code": recursive_source_hashes(Path(train.__file__).parent),
         "preprocessing_sha256": sha256(output / "preprocessing.json"),
-        "top_k_labels": 2, "kept_label_indices": [0, 1], "edges": "all",
-        "train_limit": 1, "token_min_count": 1, "seed": 1234,
+        "top_k_labels": 10, "kept_label_indices": [0, 1], "edges": "all",
+        "train_limit": 10000, "token_min_count": 1, "seed": 1234,
         "dropped_relations": [], "rewired_relations": [], "min_prior_visits": 0,
-        "edge_direction": "forward", "dev_limit": 2, "sample_seed": 1234,
+        "edge_direction": "forward", "dev_limit": 5000, "sample_seed": 1234,
         "split_sample_ids_sha256": {fold: sample_ids_sha256(row.sample_id for row in data)
                                      for fold, data in splits.items()},
         "selection_fold": "dev", "final_eval": "none", "test_evaluated": False,
-        "num_classes": 2, "num_relations": 3, "vocabulary_size": 2,
+        "weights": "sqrt_inverse",
+        "num_classes": 2, "num_relations": model.num_relations, "vocabulary_size": 2,
         "num_meta_relations": 2, "node_dim": 2, "edge_dim": PAYLOAD_WIDTH,
-        "hidden": 4, "layers": 1, "dropout": 0.0, "batch_size": 2,
+        "hidden": runner_args.hidden, "layers": runner_args.layers,
+        "dropout": runner_args.dropout, "batch_size": runner_args.batch_size,
+        "lr": runner_args.lr, "weight_decay": runner_args.weight_decay,
+        "min_delta": runner_args.min_delta, "patience": 40, "epochs": 40,
+        "early_stopping_start_epoch_index": 0,
         "parameter_count": sum(p.numel() for p in model.parameters()),
         "selected_dev": {"epoch_index": 0, "prediction_sha256": prediction_hash},
     }
@@ -640,7 +633,8 @@ def test_checkpoint_replay_failure_prevents_launching_next_stage(tmp_path, monke
                                output_root=tmp_path / "runs")
     monkeypatch.setattr(module, "capture_bindings", lambda stage: {
         "source_state_sha256": "source", "input_state_sha256": "inputs",
-        "common_config_sha256": "configuration"})
+        "common_config_sha256": "configuration", "executable_sources": {}})
+    monkeypatch.setattr(module, "_assert_runner_source_binding", lambda *args: True)
     monkeypatch.setattr(module, "_validate_artifacts", lambda *args: None)
     replay_calls = []
     def reject_replay(*args):
@@ -653,7 +647,6 @@ def test_checkpoint_replay_failure_prevents_launching_next_stage(tmp_path, monke
         output = Path(argv[argv.index("--output") + 1])
         output.mkdir(parents=True)
         binding = _bindings(use_interactions=True, train_limit=256, dev_limit=128, epochs=2)
-        binding["method_config"] = {"effective_settings": {"use_interactions": True}}
         (output / "binding.json").write_text(json.dumps(binding))
         (output / "result.json").write_text(json.dumps({
             "status": "completed", "binding": binding, "metrics": None,
