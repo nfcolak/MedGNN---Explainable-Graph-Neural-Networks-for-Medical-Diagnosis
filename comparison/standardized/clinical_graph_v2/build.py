@@ -4,12 +4,14 @@ Inherits cohort, folds, cutoffs and sample ids byte-identically from the v1 even
 artifact, whose sha256 bindings are verified before any row is read. The expensive
 18 GB lab scan is reused, never repeated.
 
-Every claim this artifact makes is re-derived by `verify_artifact` from the source
-index after writing, not trusted from the builder.
+Checkable cutoff, lineage and payload claims are re-derived by `verify_artifact`
+from the source index after writing. Clinician-availability assumptions remain
+explicitly unverified; passing proxy bounds does not establish temporal cleanliness.
 """
 import argparse
 from collections import Counter, defaultdict
 from datetime import datetime
+from itertools import zip_longest
 import json
 import os
 from pathlib import Path
@@ -17,7 +19,14 @@ import shutil
 
 from . import INFORMATIVE_RELATIONS, NODE_KINDS, SCHEMA_VERSION, STRUCTURAL_RELATIONS
 from .diagnosis import DiagnosisIndex, load_icd_map
-from .graph import build_graph
+from .graph import (LOGIC_CONTRACT_VERSION, assumed_timing,
+                    build_graph_with_visit_membership, lab_availability,
+                    temporal_contract)
+from .contracts import (VISIT_MEMBERSHIP_CONTRACT_VERSION, VISIT_MEMBERSHIP_FILENAME,
+                        validate_artifact_manifest, validate_visit_membership_record,
+                        verify_visit_membership_file)
+from comparison.standardized import icd_mapping
+from comparison.standardized.icd_mapping import ICD_MAPPING_POLICY
 from .schema import (fit_complaint_vocabulary, read_cohort, read_knowledge,
                      save_json, sha256, timestamp)
 from .store import ClinicalStore, build_triage_index, complaint_counts
@@ -38,6 +47,116 @@ def progress(root, stage, **data):
     print(json.dumps(value, sort_keys=True), flush=True)
 
 
+def _source_visit_memberships(graph, sample, store, ordered_stays, diagnoses=None):
+    """Re-derive each node's visit set from source encounters and event/diagnosis rows."""
+    stay_to_ordinal = {stay: ordinal for ordinal, stay in enumerate(ordered_stays)}
+    nodes = graph['nodes']
+    node_index = {node['id']: index for index, node in enumerate(nodes)}
+    expected = {index: set() for index in range(len(nodes))}
+    index_ordinal = stay_to_ordinal[sample['stay_id']]
+    prior_stays = ordered_stays[:-1]
+
+    for index, node in enumerate(nodes):
+        kind = node['kind']
+        if kind == 'patient':
+            continue
+        if kind in ('visit', 'complaint', 'vital'):
+            expected[index].add(index_ordinal)
+
+    measurement_nodes = [node for node in nodes if node['kind'] == 'measurement']
+    source_records = {}
+
+    def remember_source(record):
+        source = record['source']
+        if source in source_records:
+            raise ValueError('Conflicting source measurement provenance')
+        source_records[source] = record
+
+    for record in store.measurements(sample['stay_id'], sample['cutoff']):
+        remember_source(record)
+    prior_tokens = {node['token'] for node in measurement_nodes if node.get('scope') == 'prior'}
+    for token in sorted(prior_tokens):
+        for record in store.analyte_history(sample['subject_id'], prior_stays, token,
+                                            sample['cutoff']):
+            remember_source(record)
+
+    for index, node in enumerate(nodes):
+        if node['kind'] != 'measurement':
+            continue
+        scope = node.get('scope')
+        record = source_records.get(node.get('source_record'))
+        if record is None or record['token'] != node['token']:
+            raise ValueError('Measurement source stay cannot be re-derived')
+        if (record['value'], record['unit']) != (node.get('value'), node.get('unit')):
+            raise ValueError('Measurement source payload conflicts with its provenance')
+        if scope == 'index':
+            if record['stay'] != sample['stay_id']:
+                raise ValueError('Index measurement has conflicting source stay')
+        elif scope == 'prior':
+            if record['stay'] not in stay_to_ordinal or record['stay'] == sample['stay_id']:
+                raise ValueError('Historical measurement has conflicting source stay')
+        else:
+            raise ValueError('Measurement has an unknown visit scope')
+        expected[index].add(stay_to_ordinal[record['stay']])
+
+    diagnosis_history = {}
+    if diagnoses is not None:
+        index_visit = store.visit(sample['stay_id'])
+        history = diagnoses.prior_history(
+            sample['stay_id'], store.prior_visits(sample['subject_id'], index_visit['start']))
+        diagnosis_history = {record['token']: record for record in history}
+    for index, node in enumerate(nodes):
+        if node['kind'] != 'diagnosis':
+            continue
+        record = diagnosis_history.get(node['token'])
+        if record is None:
+            raise ValueError('Diagnosis provenance cannot be re-derived from prior encounters')
+        for stay in record['occurrences']:
+            if stay not in stay_to_ordinal or stay == sample['stay_id']:
+                raise ValueError('Diagnosis occurrence is outside source visit lineage')
+            expected[index].add(stay_to_ordinal[stay])
+
+    analyte_indices = {node['token']: index for index, node in enumerate(nodes)
+                       if node['kind'] == 'analyte'}
+    for index, node in enumerate(nodes):
+        if node['kind'] != 'measurement':
+            continue
+        analyte_index = analyte_indices.get(node['token'])
+        if analyte_index is None:
+            raise ValueError('Measurement has no analyte anchor')
+        expected[analyte_index].update(expected[index])
+
+    knowledge_indices = {node['id']: index for index, node in enumerate(nodes)
+                         if node['kind'] == 'knowledge'}
+    for edge_record in graph['edges']:
+        if not edge_record['relation'].startswith('medical:'):
+            continue
+        target_index = knowledge_indices.get(edge_record['target'])
+        source_index = node_index.get(edge_record['source'])
+        if target_index is None or source_index is None:
+            raise ValueError('Knowledge provenance edge has an invalid endpoint')
+        if nodes[source_index]['kind'] not in ('analyte', 'vital'):
+            raise ValueError('Knowledge node is attached to a non-clinical anchor')
+        expected[target_index].update(expected[source_index])
+
+    for index, node in enumerate(nodes):
+        if node['kind'] != 'patient' and not expected[index]:
+            raise ValueError('Visit-specific node has no source-derived membership')
+    return expected
+
+
+def _iter_graph_membership_lines(root):
+    graph_path = root / 'graphs.jsonl'
+    membership_path = root / VISIT_MEMBERSHIP_FILENAME
+    if not membership_path.is_file():
+        raise ValueError('Missing visit-membership sidecar; historical artifacts are not upgraded')
+    with graph_path.open() as graph_stream, membership_path.open() as membership_stream:
+        for graph_line, membership_line in zip_longest(graph_stream, membership_stream):
+            if graph_line is None or membership_line is None:
+                raise ValueError('Graph and visit-membership sample counts differ')
+            yield graph_line, membership_line
+
+
 def verify_artifact(root, samples, store, vocabulary, diagnoses=None):
     """Full readback. Re-derives cutoff, lineage and payloads from the source index."""
     expected = {s['sample_id']: s for s in samples}
@@ -48,9 +167,17 @@ def verify_artifact(root, samples, store, vocabulary, diagnoses=None):
     vocabulary = set(vocabulary)
     label_leaks = 0
     checked_diagnoses = 0
-    for line in (root / 'graphs.jsonl').open():
+    membership_rows = 0
+    for row_index, (line, membership_line) in enumerate(_iter_graph_membership_lines(root), 1):
         graph = json.loads(line)
+        membership_record = json.loads(membership_line)
+        if graph.get('logic_contract_version') != LOGIC_CONTRACT_VERSION:
+            raise ValueError('Graph logic contract mismatch; regenerate into a new artifact')
+        if any(graph.get(k) != v for k, v in temporal_contract(diagnoses is not None).items()):
+            raise ValueError('Unsupported graph temporal availability claim')
         sid = graph['sample_id']
+        if (row_index > len(samples) or sid != samples[row_index - 1]['sample_id']):
+            raise ValueError('Graph sample order differs from the inherited cohort')
         if sid in seen or sid not in expected:
             raise ValueError('Graph identity mismatch')
         if 'target' in graph:
@@ -60,9 +187,21 @@ def verify_artifact(root, samples, store, vocabulary, diagnoses=None):
         if graph['split'] != sample['split']:
             raise ValueError('Fold mismatch')
         index = store.visit(sample['stay_id'])
-        if index['subject'] != sample['subject_id']:
+        if index is None or index['subject'] != sample['subject_id']:
             raise ValueError('Visit lineage mismatch')
         cutoff = sample['cutoff']
+        prior_stays = store.prior_visits(sample['subject_id'], index['start'])
+        ordered_stays = [*prior_stays, sample['stay_id']]
+        if len(set(ordered_stays)) != len(ordered_stays):
+            raise ValueError('Duplicate source stay in visit order')
+        expected_ordinals = list(range(len(ordered_stays)))
+        membership_by_node = validate_visit_membership_record(
+            graph, membership_record, expected_ordinals)
+        source_membership = _source_visit_memberships(
+            graph, sample, store, ordered_stays, diagnoses)
+        if membership_by_node != source_membership:
+            raise ValueError('Visit-membership sidecar conflicts with source provenance')
+        membership_rows += 1
 
         nodes = {n['id']: n for n in graph['nodes']}
         if len(nodes) != len(graph['nodes']):
@@ -75,6 +214,20 @@ def verify_artifact(root, samples, store, vocabulary, diagnoses=None):
                     raise ValueError('Node dated after the cutoff')
             if n['kind'] == 'complaint' and n['token'][3:] not in vocabulary:
                 raise ValueError('Out-of-vocabulary complaint node emitted')
+            timing = {}
+            if n['kind'] in ('complaint', 'vital'):
+                timing = assumed_timing('edstays.csv:intime', 'encounter_intime_assumption')
+            elif n['kind'] == 'diagnosis':
+                timing = assumed_timing('edstays.csv:outtime', 'completed_prior_encounter_end_assumption')
+            elif n['kind'] == 'measurement':
+                timing = lab_availability()
+                if n.get('timing_basis') != 'storetime':
+                    raise ValueError('Measurement lacks storetime availability proxy')
+            elif n['kind'] == 'visit':
+                if n.get('acuity_timing') != assumed_timing('edstays.csv:intime', 'encounter_intime_assumption'):
+                    raise ValueError('Acuity lacks unverified triage timing assumption')
+            if any(n.get(k) != v for k, v in timing.items()):
+                raise ValueError('Node lacks explicit temporal availability assumption/proxy')
 
         # Index-visit measurements must equal the cutoff-filtered source multiset.
         source_index = Counter((r['source'], r['token'], r['value'], r['unit'])
@@ -99,9 +252,19 @@ def verify_artifact(root, samples, store, vocabulary, diagnoses=None):
         if diagnoses is not None:
             index = store.visit(sample['stay_id'])
             prior_stays = store.prior_visits(sample['subject_id'], index['start'])
-            allowed = {r['token'] for r in diagnoses.prior_history(sample['stay_id'], prior_stays)}
+            history = {r['token']: r for r in diagnoses.prior_history(sample['stay_id'], prior_stays)}
+            allowed = set(history)
             if emitted_dx != allowed:
                 raise ValueError('Diagnosis nodes differ from the recomputed prior history')
+            for n in graph['nodes']:
+                if n['kind'] == 'diagnosis':
+                    count = len(set(history[n['token']]['occurrences']))
+                    if n['prior_encounters'] != count:
+                        raise ValueError('Diagnosis prior encounter count mismatch')
+                    recurrence = [e for e in graph['edges']
+                                  if e['relation'] == 'recurrence_of' and e['source'] == n['id']]
+                    if len(recurrence) != 1 or recurrence[0]['prior_encounters'] != count:
+                        raise ValueError('Recurrence prior encounter count mismatch')
             index_only = diagnoses.index_tokens(sample['stay_id']) - allowed
             leaked = emitted_dx & index_only
             if leaked:
@@ -158,9 +321,16 @@ def verify_artifact(root, samples, store, vocabulary, diagnoses=None):
             progress(root, 'artifact_readback', verified=len(seen), requested=len(samples))
     if seen != set(expected):
         raise ValueError('Missing samples')
+    if membership_rows != len(samples):
+        raise ValueError('Graph and visit-membership sample counts differ')
     if not totals['informative_edges']:
         raise ValueError('Artifact contains no informative edges; the graph would be redundant')
     return {'status': 'verified', 'counts': dict(totals),
+            'logic_contract_version': LOGIC_CONTRACT_VERSION,
+            'visit_membership_contract_version': VISIT_MEMBERSHIP_CONTRACT_VERSION,
+            'visit_membership_file': VISIT_MEMBERSHIP_FILENAME,
+            'visit_membership_rows': membership_rows,
+            **temporal_contract(diagnoses is not None),
             'coverage': {k: dict(v) for k, v in folds.items()},
             'relation_counts': dict(relations),
             'cutoff_violations': 0, 'lineage_violations': 0, 'targets_present': 0,
@@ -178,11 +348,20 @@ def run(args):
     root = args.output.resolve()
     inherited = args.inherit_from.resolve()
     v1_manifest = json.loads((inherited / 'manifest.json').read_text())
-    if v1_manifest['status'] != 'completed':
-        raise ValueError('Inherited artifact is not completed')
+    from .repair_metadata import LOCK, PENDING, validate_index_ready
+    if (inherited / PENDING).exists() or (inherited / LOCK).exists():
+        raise ValueError('Inherited metadata repair is incomplete or locked')
+    if v1_manifest['status'] == 'index_ready':
+        validate_index_ready(inherited, v1_manifest)
+    elif v1_manifest['status'] != 'completed' or not (inherited / 'graphs.jsonl').is_file():
+        raise ValueError('Inherited artifact needs completed graphs or verified index_ready metadata')
 
     code = {str(p.resolve()): p.resolve() for p in Path(__file__).parent.glob('*.py')}
+    shared_icd_code = Path(icd_mapping.__file__).resolve()
+    code[str(shared_icd_code)] = shared_icd_code
     sources = {
+        'inherited_manifest': inherited / 'manifest.json',
+        'inherited_prepared_index': inherited / 'prepared_index.json',
         'inherited_cohort': inherited / 'cohort.csv',
         'inherited_event_index': inherited / 'events.sqlite',
         'edstays': args.raw_root / 'edstays.csv',
@@ -198,28 +377,34 @@ def run(args):
     root.mkdir(parents=True, exist_ok=False, mode=0o700)
     manifest = {
         'schema_version': SCHEMA_VERSION,
+        'logic_contract_version': LOGIC_CONTRACT_VERSION,
+        'visit_membership_contract_version': VISIT_MEMBERSHIP_CONTRACT_VERSION,
+        'visit_membership_file': VISIT_MEMBERSHIP_FILENAME,
+        'icd_mapping_policy': ICD_MAPPING_POLICY,
         'status': 'binding',
         'input_mode': 'decision-point-clinical-graph',
         'inherits_from': str(inherited),
+        'reference_class_order_only': v1_manifest['reference_class_order_only'],
+        'cohort_sha256': v1_manifest['cohort_sha256'],
         'inherited_cohort_sha256': v1_manifest['cohort_sha256'],
         'inherited_event_index_sha256': v1_manifest['event_index_sha256'],
-        'timing_policy': 'strict-storetime-labs; triage bound to encounter intime',
+        'timing_policy': 'storetime-proxy-labs; unverified triage-at-intime and prior-diagnosis-at-completion assumptions',
         'labels': None,
         'target_status': 'absent; visit-level verified target attachment required separately',
         'canonical_benchmark_parity': False,
-        'temporal_clean': True,
-        'early_triage_eligible': True,
+        **temporal_contract(args.with_diagnosis),
         'test_evaluated': False,
         'decision_policy': ('Inherited v1 cutoff, unchanged: first nonempty recorded lab result of the '
-                            'encounter. Triage/arrival evidence is admitted because the producer verifies '
-                            'encounter intime <= cutoff for every cohort visit.'),
+                            'encounter. Triage evidence is admitted under an unverified arrival-time '
+                            'assumption. Checking intime <= cutoff verifies only proxy bounds.'),
         'structural_relations': list(STRUCTURAL_RELATIONS),
         'informative_relations': list(INFORMATIVE_RELATIONS),
         'diagnosis_tier': bool(args.with_diagnosis),
         'diagnosis_policy': ('Completed prior encounters only; the index encounter contributes no '
                              'diagnosis. diagnosis.csv has no timestamp, so eligibility is structural '
                              '(prior encounter finished before the index encounter began), not a '
-                             'recorded diagnosis time. Every emitted node is re-derived and checked '
+                             'recorded diagnosis time. Availability at completion is unverified. '
+                             'Every emitted node is re-derived and checked '
                              'against index-encounter-only codes during verification.')
                             if args.with_diagnosis else 'absent',
         'limits': {'max_nodes_per_graph': args.max_nodes, 'max_edges_per_graph': args.max_edges,
@@ -276,8 +461,8 @@ def run(args):
 
         store = ClinicalStore(sources['inherited_event_index'], triage_index)
 
-        # Hard temporal gate: triage evidence is only admissible if arrival precedes
-        # the decision point for EVERY sample. Fail closed, never per-sample silently.
+        # Necessary proxy bound, NOT proof of triage availability: the source
+        # contains no independent triage timestamp to verify that stronger claim.
         late = 0
         for s in samples:
             index = store.visit(s['stay_id'])
@@ -288,7 +473,9 @@ def run(args):
         if late:
             raise ValueError(f'{late} encounters begin after their cutoff; triage evidence is inadmissible')
         manifest['triage_admissibility'] = {'samples_checked': len(samples),
-                                            'arrival_after_cutoff': 0}
+                                            'arrival_after_cutoff': 0,
+                                            'actual_availability_verified': False,
+                                            'policy': 'unverified_encounter_intime_assumption'}
 
         train_stays = {s['stay_id'] for s in samples if s['split'] == 'train'}
         counts = complaint_counts(triage_index, train_stays)
@@ -327,15 +514,21 @@ def run(args):
         manifest['status'] = 'materializing'
         checkpoint(root / 'manifest.json', manifest)
         graph_path = root / 'graphs.jsonl'
+        membership_path = root / VISIT_MEMBERSHIP_FILENAME
         vocabulary_set = set(vocabulary)
-        with graph_path.open('x') as stream:
+        with graph_path.open('x') as graph_stream, membership_path.open('x') as membership_stream:
             for i, sample in enumerate(samples, 1):
-                graph = build_graph(store, sample, knowledge, vocabulary_set, diagnoses,
-                                    args.max_nodes, args.max_edges)
-                stream.write(json.dumps(graph, sort_keys=True, separators=(',', ':'),
-                                        allow_nan=False) + '\n')
+                graph, membership_record = build_graph_with_visit_membership(
+                    store, sample, knowledge, vocabulary_set, diagnoses,
+                    args.max_nodes, args.max_edges)
+                graph_stream.write(json.dumps(graph, sort_keys=True, separators=(',', ':'),
+                                              allow_nan=False) + '\n')
+                membership_stream.write(json.dumps(
+                    membership_record, sort_keys=True, separators=(',', ':'),
+                    allow_nan=False) + '\n')
                 if i % 2000 == 0:
-                    stream.flush()
+                    graph_stream.flush()
+                    membership_stream.flush()
                     progress(root, 'graphs', written=i, requested=len(samples))
 
         manifest['status'] = 'verifying'
@@ -355,10 +548,15 @@ def run(args):
                         relation_counts=verification['relation_counts'],
                         graphs_sha256=sha256(graph_path),
                         graphs_bytes=graph_path.stat().st_size,
+                        visit_membership_sha256=sha256(membership_path),
+                        visit_membership_rows=verification['visit_membership_rows'],
                         verification_sha256=sha256(root / 'verification.json'))
+        validate_artifact_manifest(manifest)
+        verify_visit_membership_file(root, manifest)
         checkpoint(root / 'manifest.json', manifest)
         progress(root, 'completed', counts=manifest['counts'],
-                 graphs_sha256=manifest['graphs_sha256'])
+                 graphs_sha256=manifest['graphs_sha256'],
+                 visit_membership_sha256=manifest['visit_membership_sha256'])
     except Exception as exc:
         manifest.update(status='failed', error_type=type(exc).__name__, error=str(exc))
         checkpoint(root / 'manifest.json', manifest)
@@ -374,7 +572,7 @@ def sha256_of_list(values):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--inherit-from', type=Path, required=True,
-                        help='Completed v1 event artifact supplying cohort, cutoffs and the lab index')
+                        help='Completed or metadata-repaired index_ready v1 artifact; supplies cohort, cutoffs and lab index')
     parser.add_argument('--raw-root', type=Path, required=True)
     parser.add_argument('--canonical', type=Path, required=True)
     parser.add_argument('--knowledge', type=Path, required=True)

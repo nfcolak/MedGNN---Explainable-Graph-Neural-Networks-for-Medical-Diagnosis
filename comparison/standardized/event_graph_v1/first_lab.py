@@ -37,6 +37,43 @@ def progress(root, stage, **data):
     print(json.dumps(value, sort_keys=True), flush=True)
 
 
+def raw_visit_counts(raw, subjects):
+    """Count distinct raw ED stays per subject, matching `n_ed_visits`."""
+    stays = defaultdict(set)
+    for row in rows(raw / 'edstays.csv', {'subject_id', 'stay_id'}):
+        subject = identifier(row['subject_id'])
+        if subject in subjects:
+            stays[subject].add(identifier(row['stay_id']))
+    return {subject: len(stays.get(subject, ())) for subject in subjects}
+
+
+def apply_visit_cap(raw, canonical, maximum):
+    """Drop whole subjects whose raw ED stay count exceeds `maximum`."""
+    if maximum is None:
+        return canonical, {
+            'max_visits_per_subject': None,
+            'visit_count_basis': 'distinct stay_id values in raw edstays.csv',
+            'subjects_before': len(canonical),
+            'subjects_after': len(canonical),
+            'subjects_dropped': 0,
+            'raw_visits_dropped': 0,
+        }
+    if maximum < 1:
+        raise ValueError('max_visits_per_subject must be positive')
+    counts = raw_visit_counts(raw, set(canonical))
+    kept = {subject: fold for subject, fold in canonical.items()
+            if counts[subject] <= maximum}
+    dropped = set(canonical) - set(kept)
+    return kept, {
+        'max_visits_per_subject': maximum,
+        'visit_count_basis': 'distinct stay_id values in raw edstays.csv',
+        'subjects_before': len(canonical),
+        'subjects_after': len(kept),
+        'subjects_dropped': len(dropped),
+        'raw_visits_dropped': sum(counts[subject] for subject in dropped),
+    }
+
+
 def prepare(root, raw, canonical, chunk_size):
     store = EventStore(root / 'events.sqlite')
     store.db.executescript('''
@@ -254,13 +291,16 @@ def verify_artifact(root, samples, canonical):
             'method': 'Full JSONL readback; per-visit event multiset equality against SQLite; canonical subject-fold and minimum cutoff reconciliation.'}
 
 
-def run(args):
+def _run(args):
     os.umask(0o077)
     root = args.output.resolve()
     prepared = {}
     sources = {'canonical_split': args.canonical.resolve(), 'edstays': (args.raw_root / 'edstays.csv').resolve(),
                'labevents': (args.raw_root / 'labevents.csv').resolve(), 'knowledge': args.knowledge.resolve()}
     code = {str(p.resolve()): p.resolve() for p in Path(__file__).parent.glob('*.py')}
+    from comparison.standardized.clinical_graph_v2 import repair_metadata
+    lock_source = Path(repair_metadata.__file__).resolve()
+    code[str(lock_source)] = lock_source
     from comparison.standardized.enriched_input_v1 import spec
     code[str(Path(spec.__file__).resolve())] = Path(spec.__file__).resolve()
     if args.resume_prepared:
@@ -317,6 +357,11 @@ def run(args):
         canonical = split['fold']
         if any(identifier(k) != k or type(v) is not int or v not in FOLDS for k, v in canonical.items()):
             raise ValueError('Invalid canonical subject fold map')
+        canonical, visit_filter = apply_visit_cap(args.raw_root, canonical,
+                                                   args.max_visits_per_subject)
+        if args.resume_prepared and manifest.get('visit_filter') != visit_filter:
+            raise ValueError('Prepared artifact visit filter differs from requested filter')
+        manifest['visit_filter'] = visit_filter
         manifest['reference_class_order_only'] = split['classes']
         if not args.resume_prepared:
             manifest['status'] = 'indexing'
@@ -324,6 +369,7 @@ def run(args):
             prepare(root, args.raw_root, canonical, args.chunk_size)
             counts = json.loads((root / 'ingest_checkpoint.json').read_text())['counts']
             samples, policy = cohort_from_index(root, canonical)
+            policy['visit_filter'] = visit_filter
             prepared = {'status': 'prepared', 'event_index_sha256': sha256(root / 'events.sqlite'),
                         'cohort_sha256': sha256(root / 'cohort.csv'), 'cohort_policy': policy, 'ingest_counts': counts}
             checkpoint(root / 'prepared_index.json', prepared)
@@ -375,6 +421,16 @@ def run(args):
         raise
 
 
+def run(args):
+    # Resuming is the only path that can write an existing artifact. Coordinate
+    # with metadata repair, and never reuse a pending or metadata-only receipt.
+    if args.resume_prepared:
+        from comparison.standardized.clinical_graph_v2.repair_metadata import artifact_lock
+        with artifact_lock(args.output):
+            return _run(args)
+    return _run(args)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--raw-root', type=Path, required=True)
@@ -385,11 +441,15 @@ def main():
     parser.add_argument('--chunk-size', type=int, default=100000)
     parser.add_argument('--max-events', type=int, default=1000000)
     parser.add_argument('--max-edges', type=int, default=20000000)
+    parser.add_argument('--max-visits-per-subject', type=int, default=None,
+                        help='drop whole subjects with more raw ED stays than this limit')
     parser.add_argument('--resume-prepared', action='store_true')
     parser.add_argument('--execute', action='store_true')
     args = parser.parse_args()
     if min(args.chunk_size, args.max_events, args.max_edges) < 1:
         parser.error('Chunk and budget limits must be positive')
+    if args.max_visits_per_subject is not None and args.max_visits_per_subject < 1:
+        parser.error('--max-visits-per-subject must be positive')
     if args.execute:
         run(args)
     else:
