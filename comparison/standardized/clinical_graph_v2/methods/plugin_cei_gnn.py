@@ -62,7 +62,11 @@ class EvidenceInteractionAdapter(ClinicalMethodAdapter):
         return self.network.continuous_inputs(clinical)
 
     def forward_continuous(self, features, edge_index, metadata, *, return_parts=False):
-        return self.network.forward_continuous(features, edge_index, metadata,
+        clinical = self._read(metadata)
+        if edge_index.shape != clinical.edge_index.shape or not torch.equal(
+                edge_index.to(clinical.edge_index.device), clinical.edge_index):
+            raise ValueError("edge_index differs from the fixed metadata edge list")
+        return self.network.forward_continuous(features, clinical.edge_index, clinical,
                                                return_parts=return_parts)
 
     def forward(self, batch, *, epoch: int) -> MethodOutput:
