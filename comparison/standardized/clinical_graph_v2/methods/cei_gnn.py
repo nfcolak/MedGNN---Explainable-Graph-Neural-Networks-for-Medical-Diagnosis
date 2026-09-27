@@ -19,8 +19,8 @@ class EdgeEvidenceAggregator(MessagePassing):
             edge_index, votes=votes, gates=gates, size=(node_count, node_count))
         return messages[:, :self.num_classes], messages[:, self.num_classes:]
 
-    def message(self, votes_j, gates_j):
-        return torch.cat((gates_j * votes_j, gates_j), dim=-1)
+    def message(self, votes, gates):
+        return torch.cat((gates * votes, gates), dim=-1)
 
 
 class EvidenceInteractionNetwork(nn.Module):
