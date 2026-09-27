@@ -23,8 +23,8 @@ from .base import (
 from .protgnn import _RelationPayloadLayer
 
 
-KNOWN_OPTIONS = ("rwse", "rwse_steps")
-_OPTION_DEFAULTS = {"rwse": True, "rwse_steps": 8}
+KNOWN_OPTIONS = ("heads", "rwse", "rwse_steps")
+_OPTION_DEFAULTS = {"heads": 4, "rwse": True, "rwse_steps": 8}
 
 
 class GPSAdapter(ClinicalMethodAdapter):
@@ -56,9 +56,9 @@ class GPSAdapter(ClinicalMethodAdapter):
         self.token_dim = int(token_dim)
         self.num_triples = int(num_triples)
         self.num_relations = relation_count(args)
-        self.heads = 4
+        self.heads = method_option(args, "heads", 4, int, minimum=1)
         if self.hidden % self.heads:
-            raise ValueError("hidden must be divisible by four attention heads")
+            raise ValueError("hidden must be divisible by configured attention heads")
         self.rwse = method_option(args, "rwse", True, bool)
         self.rwse_steps = method_option(args, "rwse_steps", 8, int, minimum=1)
 
@@ -235,7 +235,8 @@ class GPSAdapter(ClinicalMethodAdapter):
             "method": "gps",
             "adaptation_version": self.adaptation_version,
             "native_defaults": dict(self.runner_defaults, **_OPTION_DEFAULTS),
-            "effective_settings": {"rwse": bool(self.rwse),
+            "effective_settings": {"heads": int(self.heads),
+                                   "rwse": bool(self.rwse),
                                    "rwse_steps": int(self.rwse_steps)},
             "architecture": {"parameter_count": count, "hidden": self.hidden,
                              "layers": self.layers_count, "dropout": self.dropout_rate,
