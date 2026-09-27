@@ -445,6 +445,32 @@ def test_three_arm_validation_uses_each_directory_for_artifacts_and_replay(tmp_p
     assert {entry["stage"] for entry in summary["arms"]} == {name for name, _, _ in arms}
 
 
+def test_execution_source_snapshot_hashes_its_own_worktree_and_runner_package(tmp_path):
+    module = _module()
+    assert hasattr(module, "_capture_executable_sources"), (
+        "executor must snapshot the actual worktree executable source map")
+    package = tmp_path / "comparison/standardized/clinical_graph_v2"
+    plugin = package / "methods/plugin_cei_gnn.py"
+    own_file = package / "cei_pilot.py"
+    plugin.parent.mkdir(parents=True)
+    plugin.write_text("plugin-v1")
+    own_file.write_text("pilot-v1")
+    snapshot_before = module._capture_executable_sources(tmp_path)
+    assert "cei_pilot.py" in snapshot_before["clinical_source_hashes"]
+    assert "methods/plugin_cei_gnn.py" in snapshot_before["clinical_source_hashes"]
+
+    plugin.write_text("plugin-v2")
+    snapshot_after = module._capture_executable_sources(tmp_path)
+    assert snapshot_before["clinical_source_hashes"] != snapshot_after["clinical_source_hashes"]
+    assert snapshot_before["source_state_sha256"] != snapshot_after["source_state_sha256"]
+
+    binding = {"source_code": snapshot_after["clinical_source_hashes"]}
+    assert module._assert_runner_source_binding(snapshot_after, binding)
+    binding["source_code"]["methods/plugin_cei_gnn.py"] = "0" * 64
+    with pytest.raises(ValueError, match="runner source|source binding"):
+        module._assert_runner_source_binding(snapshot_after, binding)
+
+
 
 def test_replay_stage_reconstructs_real_model_and_rejects_tampered_artifacts(tmp_path, monkeypatch):
     module = _module()
