@@ -677,6 +677,12 @@ def seed_delta_summary(point):
 
 PAIR_COUNT_BANDS = (("0", 0, 0), ("1-179", 1, 179),
                     ("180-1044", 180, 1044), (">1044", 1045, None))
+ANALYSIS_NOTES = [
+    "Exploratory dev-only screen: intervals are conditional on the selected dev checkpoints and seeds 1234/2025/7 (spec §6.1).",
+    "A failed rule means benefit not demonstrated, not evidence of no benefit.",
+    "product vs off is directional; off is a structural ablation with fewer active parameters.",
+    "GraphXAI edge masks do not attribute within-visit pairs; pair contributions are model accounting, not causal importance.",
+]
 
 
 def pair_count_band_summary(arms, y, subjects, num_classes, pair_counts):
@@ -763,6 +769,8 @@ def analyze(output_root, output_json, *, pair_counts=None):
               "dev_rows": int(len(y)), "patients": int(len(np.unique(subjects))),
               "test_evaluated": False, "validation_evaluated": False,
               "seed_deltas": seed_delta_summary(point),
+              "notes": list(ANALYSIS_NOTES),
+              "parameter_counts": {},
               "pair_count_bands": pair_count_band_summary(
                   arms, y, subjects, num_classes, pair_counts),
               "pair_count_source": ("injected per-graph dev counts" if pair_counts is not None
@@ -773,6 +781,15 @@ def analyze(output_root, output_json, *, pair_counts=None):
                for name in bindings}
     for name, binding in bindings.items():
         proba = arms[name]
+        architecture = binding.get("method_config", {}).get("architecture", {})
+        inactive_count = binding.get(
+            "inactive_parameter_count",
+            architecture.get("inactive_parameter_count",
+            binding["parameter_count"] - binding["active_parameter_count"]))
+        report["parameter_counts"][name] = {
+            "parameter_count": binding["parameter_count"],
+            "active_parameter_count": binding["active_parameter_count"],
+            "inactive_parameter_count": inactive_count}
         patient_metrics = train.patient_equal_metrics(y, proba, subjects, num_classes)
         per_class = train.per_class_table(y, proba, binding["label_order"], num_classes)
         predictions = proba.argmax(axis=1)
@@ -786,6 +803,7 @@ def analyze(output_root, output_json, *, pair_counts=None):
             "pair_count_summary": binding.get("pair_count_summary"),
             "parameter_count": binding["parameter_count"],
             "active_parameter_count": binding["active_parameter_count"],
+            "inactive_parameter_count": inactive_count,
             "total_seconds": results[name].get("total_seconds"),
         }
     report["secondary_results"] = secondary
