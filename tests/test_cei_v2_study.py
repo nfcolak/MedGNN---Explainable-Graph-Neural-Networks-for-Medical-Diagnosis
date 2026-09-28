@@ -131,7 +131,7 @@ def test_exact_plan_validator_rejects_edited_stage(tmp_path):
                                output_root=tmp_path / "runs")
     module.validate_exact_plan(stages)
     edited = list(stages)
-    edited[4] = dataclasses.replace(edited[4], argv=edited[4].argv[:-1] + ["pair_mode=product"])
+    edited[5] = dataclasses.replace(edited[5], argv=edited[5].argv[:-1] + ["pair_mode=product"])
     with pytest.raises(ValueError, match="argv"):
         module.validate_exact_plan(edited)
     with pytest.raises(ValueError, match="ten-stage"):
