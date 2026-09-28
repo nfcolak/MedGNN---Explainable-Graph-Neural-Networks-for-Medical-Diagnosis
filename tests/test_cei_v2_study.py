@@ -1013,3 +1013,20 @@ def test_a10_r1_analyze_reports_hand_computed_seed_level_deltas(tmp_path, monkey
                                                        25 / 3 + 4.302653 * ((25 / 3) ** .5) / 3 ** .5])
     assert delta["label"] == "seed-level, descriptive, not decisive"
     assert delta["decisive"] is False
+
+
+def test_a10_r2_analyze_reports_injected_pair_count_band_membership(tmp_path, monkeypatch):
+    module = _module()
+    if "pair_counts" in __import__("inspect").signature(module.analyze).parameters:
+        report = _run_synthetic_analysis(module, tmp_path, monkeypatch,
+                                         counts=[0, 1, 180, 1045])
+    else:
+        report = _run_synthetic_analysis(module, tmp_path, monkeypatch)
+    bands = report["pair_count_bands"]
+    assert [(key, bands[key]["graphs"]) for key in ("0", "1-179", "180-1044", ">1044")] == [
+        ("0", 1), ("1-179", 1), ("180-1044", 1), (">1044", 1)]
+    assert [bands[key]["patients"] for key in ("0", "1-179", "180-1044", ">1044")] == [1] * 4
+    assert all(bands[key]["per_arm_seed_mean_macro_f1"] is None
+               and bands[key]["product_minus_additive"] is None
+               and bands[key]["decisive"] is False
+               for key in ("0", "1-179", "180-1044", ">1044"))
