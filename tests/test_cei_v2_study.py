@@ -548,6 +548,25 @@ def test_cli_default_prints_plan_without_launching(tmp_path, monkeypatch, capsys
     assert not (tmp_path / "runs").exists()
 
 
+def test_print_only_reverifies_completed_smoke_and_shows_eta(tmp_path, monkeypatch, capsys):
+    module = _module()
+    artifact, targets, canonical = _inputs(tmp_path)
+    root = tmp_path / "runs"
+    (root / "v2_smoke").mkdir(parents=True)
+    _write_json(root / "journal_smoke.json", {
+        "status": "completed", "eta_minutes_nine_runs_smoke": 12.3,
+        "stages": {"v2_smoke": {"status": "completed", "replay": {"status": "verified"}}}})
+    verified = []
+    monkeypatch.setattr(module, "_verify_smoke", lambda *args: verified.append(args) or {}, raising=False)
+    monkeypatch.setattr(module.subprocess, "run", lambda *a, **k: pytest.fail("training launched"))
+    assert module.main(["--artifact", str(artifact), "--targets", str(targets),
+                        "--canonical", str(canonical), "--output-root", str(root)]) == 0
+    printed = json.loads(capsys.readouterr().out)
+    assert printed["eta_minutes_nine_runs_smoke"] == 12.3
+    assert len(printed["stages"]) == 10 and len(verified) == 1
+    assert not (root / "journal.json").exists()
+
+
 def test_smoke_journal_eta_uses_measured_smoke_seconds(tmp_path, monkeypatch):
     module = _module()
     artifact, targets, canonical = _inputs(tmp_path)
