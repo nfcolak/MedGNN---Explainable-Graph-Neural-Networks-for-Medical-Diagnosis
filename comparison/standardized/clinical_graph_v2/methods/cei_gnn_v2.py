@@ -211,6 +211,8 @@ class PairEvidenceNetwork(nn.Module):
         if self.pair_mode == "off" or pair_count == 0:
             pair_total = h.new_zeros((graph_count, classes))
             pair_parts = h.new_zeros((pair_count, classes))
+            pair_gates = h.new_empty((0,))
+            pair_denominator = h.new_ones((graph_count, classes))
         else:
             z = torch.tanh(self.pair_projection(h))
             left, right = pairs
@@ -218,9 +220,11 @@ class PairEvidenceNetwork(nn.Module):
             q = F.dropout(q, p=self.dropout_rate, training=self.training)
             pair_vote = self.pair_vote(q)
             pair_gate = self.pair_gate[kind_pair_index(metadata.node_type, pairs)].sigmoid()
+            pair_gates = pair_gate
             pair_graph = batch_index[left]
             pair_num = h.new_zeros((graph_count, classes)).index_add(0, pair_graph, pair_gate * pair_vote)
             pair_den = h.new_ones((graph_count, classes)).index_add(0, pair_graph, pair_gate)
+            pair_denominator = pair_den
             pair_total = pair_num / pair_den
             pair_parts = (pair_gate * pair_vote) / pair_den[pair_graph]
 
@@ -228,4 +232,5 @@ class PairEvidenceNetwork(nn.Module):
         if not return_parts:
             return logits
         return {"logits": logits, "node_contributions": node_parts, "edge_contributions": edge_parts,
-                "pair_contributions": pair_parts, "pairs": pairs, "bias": self.bias}
+                "pair_contributions": pair_parts, "pairs": pairs, "bias": self.bias,
+                "pair_gates": pair_gates, "pair_denominator": pair_denominator}
