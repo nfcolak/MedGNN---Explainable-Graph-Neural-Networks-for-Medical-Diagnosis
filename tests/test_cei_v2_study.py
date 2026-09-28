@@ -345,8 +345,10 @@ def test_executor_refuses_source_drift_between_full_stages(tmp_path, monkeypatch
     _write_json(root / "journal_smoke.json", {"status": "completed", "stages": {
         "v2_smoke_product": {"status": "completed", "replay": {"status": "verified"},
                      "postflight": smoke_capture}}})
-    # _verify_smoke is mocked, so the sequence covers full-stage 1 pre/post (a,a),
-    # then full-stage 2 preflight (b): drift is observed before its subprocess launch.
+    # _verify_smoke is mocked: the captures here are full-stage 1 preflight (a),
+    # full-stage 1 postflight (a), then full-stage 2 preflight (b). This reaches
+    # the pre-launch guard; the old four-value a,a,a,b sequence made stage 2's
+    # preflight match and reached drift only at its postflight, after launch.
     identities = iter(["a", "a", "b"])
     monkeypatch.setattr(module, "_capture", lambda stage: {
         "source_state_sha256": next(identities), "input_state_sha256": "i",
