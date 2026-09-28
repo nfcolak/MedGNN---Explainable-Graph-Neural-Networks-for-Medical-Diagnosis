@@ -644,10 +644,15 @@ def analyze(output_root, output_json):
     for name, binding in bindings.items():
         proba = arms[name]
         patient_metrics = train.patient_equal_metrics(y, proba, subjects, num_classes)
+        per_class = train.per_class_table(y, proba, binding["label_order"], num_classes)
+        predictions = proba.argmax(axis=1)
+        for class_index, row in enumerate(per_class):
+            row["false_positives"] = int(np.count_nonzero(
+                (predictions == class_index) & (np.asarray(y) != class_index)))
         secondary[name] = {
             "decisive": False,
             "patient_equal_macro_f1": patient_metrics["macro_f1"],
-            "per_class": train.per_class_table(y, proba, binding["label_order"], num_classes),
+            "per_class": per_class,
             "pair_count_summary": binding.get("pair_count_summary"),
             "parameter_count": binding["parameter_count"],
             "active_parameter_count": binding["active_parameter_count"],
