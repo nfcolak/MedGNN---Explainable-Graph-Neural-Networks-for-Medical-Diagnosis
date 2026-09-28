@@ -100,13 +100,9 @@ def test_rejects_nested_inactive_drift_product_vs_additive():
 
 def test_rejects_nested_inactive_drift_between_product_seeds():
     arms = _arms()
-    for b in arms.values():
-        if b["method_config"]["effective_settings"]["pair_mode"] == "product":
-            architecture = b["method_config"]["architecture"]
-            architecture["active_parameter_count"] -= 11
-            b["active_parameter_count"] -= 11
-            _set_inactive(b, architecture["inactive_parameter_count"] + 11)
-    # Earliest rejection is interaction active-count equality; scenario implied by active/total parity + P4 check; mutant P1 is equivalent (validator report §4).
+    b = arms["product_seed2025"]
+    _set_inactive(b, b["method_config"]["architecture"]["inactive_parameter_count"] + 11)
+    # Guard at cei_v2_study.py:258 raises "arm parity differs: inactive_parameter_count within product arms".
     with pytest.raises(ValueError, match=r"arm parity"):
         _module().assert_arm_parity(arms)
 
