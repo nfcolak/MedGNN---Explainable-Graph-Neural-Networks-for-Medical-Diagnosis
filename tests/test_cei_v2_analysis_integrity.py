@@ -227,10 +227,12 @@ def test_real_replay_keeps_persisted_proof_keys_pre_fix2e(tmp_path, monkeypatch)
     returned = study.replay_v2_stage(captured["output"], captured["binding"],
                                      captured["result"], persist=False)
     persisted = json.loads(captured["output"].joinpath("replay.json").read_text())
+    proof_keys = set(returned) - {"_dev_pair_counts"}
+    assert set(persisted) == proof_keys
+    assert "_dev_pair_counts" in returned
+    assert "_dev_pair_counts" not in persisted
     expected_keys = {"status", "method", "pair_mode", "seed", "checkpoint_sha256",
                      "proba_sha256", "split_sample_ids_sha256", "dev_count",
                      "exact_probabilities", "exact_labels", "exact_sample_identity",
                      "patient_disjoint", "validation_evaluated", "test_evaluated", "dev_metrics"}
-    assert set(persisted) == expected_keys
-    assert "_dev_pair_counts" in returned
-    assert "_dev_pair_counts" not in persisted
+    assert proof_keys == expected_keys
