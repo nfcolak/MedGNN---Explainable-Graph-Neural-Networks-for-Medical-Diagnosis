@@ -161,3 +161,58 @@ def test_decision_is_invariant_to_pair_count_and_curve_reporting(tmp_path, monke
         reports.append(report)
 
     assert reports[0]["decision"] == reports[1]["decision"]
+
+
+def test_replay_counts_fill_analysis_bands_without_expanding_proof(tmp_path, monkeypatch):
+    import numpy as np
+
+    study = _study_tests()._module()
+    from comparison.standardized.clinical_graph_v2 import train
+
+    names = study.FULL_STAGE_NAMES
+    counts = [0, 1, 180, 1045]
+    arms = {name: np.asarray([[0.9, 0.1], [0.1, 0.9],
+                              [0.9, 0.1], [0.1, 0.9]]) for name in names}
+    y, subjects = np.asarray([0, 1, 0, 1]), np.asarray(["p1", "p2", "p3", "p4"])
+    bindings = {name: {"num_classes": 2,
+                       "selected_dev": {"metric_value": 1.0, "epoch": 1},
+                       "label_order": ["A", "B"], "parameter_count": 42,
+                       "active_parameter_count": 40, "epochs": 1}
+                for name in names}
+    root = tmp_path / "study"
+    root.mkdir()
+    for name in names:
+        arm_dir = root / name
+        arm_dir.mkdir()
+        (arm_dir / "history.json").write_text(json.dumps([
+            {"epoch": 1, "train_loss": 1.0, "macro_f1": 1.0, "selection_fold": "dev"}]))
+        (arm_dir / "result.json").write_text(json.dumps({"total_seconds": 1.0}))
+    monkeypatch.setattr(study, "validate_completed_study",
+                        lambda root, *, include_pair_counts=False:
+                        (bindings, counts) if include_pair_counts else bindings)
+    monkeypatch.setattr(study, "load_arm_predictions", lambda root: (arms, y, subjects))
+    monkeypatch.setattr(study, "paired_bootstrap", lambda *args, **kwargs: (
+        {name: 1.0 for name in names},
+        {key: {"point": 0.0, "interval_95": [0.0, 0.0]}
+         for key in study.COMPARISONS}))
+    monkeypatch.setattr(train, "patient_equal_metrics", lambda *args, **kwargs: {"macro_f1": 1.0})
+    monkeypatch.setattr(train, "per_class_table", lambda *args, **kwargs: [{"index": 0}, {"index": 1}])
+
+    report = study.analyze(root, root / "analysis.json")
+    bands = report["pair_count_bands"]
+    assert [bands[key]["graphs"] for key in ("0", "1-179", "180-1044", ">1044")] == [1, 1, 1, 1]
+    assert report["pair_count_source"] == "dev rows reloaded by replay (structural count, no scoring)"
+
+
+def test_real_replay_keeps_persisted_proof_keys_pre_fix2e(tmp_path, monkeypatch):
+    study, captured = _real_replay_fixture(tmp_path, monkeypatch)
+    returned = study.replay_v2_stage(captured["output"], captured["binding"],
+                                     captured["result"], persist=False)
+    persisted = json.loads(captured["output"].joinpath("replay.json").read_text())
+    expected_keys = {"status", "method", "pair_mode", "seed", "checkpoint_sha256",
+                     "proba_sha256", "split_sample_ids_sha256", "dev_count",
+                     "exact_probabilities", "exact_labels", "exact_sample_identity",
+                     "patient_disjoint", "validation_evaluated", "test_evaluated", "dev_metrics"}
+    assert set(persisted) == expected_keys
+    assert "_dev_pair_counts" in returned
+    assert "_dev_pair_counts" not in persisted
