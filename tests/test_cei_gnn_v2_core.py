@@ -1,6 +1,13 @@
 """Synthetic tests for the CEI-GNN v2 core: pair builder and pair-evidence network."""
 import importlib
 import importlib.util
+import json
+import subprocess
+import sys
+import textwrap
+import time
+from itertools import combinations
+from pathlib import Path
 
 import pytest
 import torch
@@ -112,6 +119,66 @@ def test_kind_pair_index_is_symmetric_and_covers_six_unordered_pairs():
     assert sorted(mixed | set(diagonal)) == [0, 1, 2, 3, 4, 5]
     with pytest.raises(ValueError, match="evidence"):
         v2.kind_pair_index(torch.tensor([1, 2]), torch.tensor([[0], [1]]))
+
+
+def _reference_pairs(membership, node_type):
+    from comparison.standardized.clinical_graph_v2.methods.cei_gnn_v2 import EVIDENCE_KIND_IDS
+
+    by_visit = {}
+    for visit, node in membership.t().tolist():
+        if int(node_type[node]) in EVIDENCE_KIND_IDS:
+            by_visit.setdefault(visit, set()).add(node)
+    return sorted({pair for nodes in by_visit.values() for pair in combinations(sorted(nodes), 2)})
+
+
+def test_pair_builder_matches_brute_force_for_random_duplicate_memberships():
+    v2 = _v2()
+    generator = torch.Generator().manual_seed(90210)
+    for _ in range(50):
+        node_count = int(torch.randint(4, 30, (), generator=generator))
+        visit_count = int(torch.randint(2, 8, (), generator=generator))
+        node_type = torch.randint(0, 6, (node_count,), generator=generator)
+        membership = torch.stack((
+            torch.randint(0, visit_count, (node_count * 2,), generator=generator),
+            torch.randint(0, node_count, (node_count * 2,), generator=generator)))
+        membership = torch.cat((membership, membership[:, :5]), dim=1)
+        expected = _reference_pairs(membership, node_type)
+        actual = v2.within_visit_pairs(membership, node_type, node_count).t().tolist()
+        assert actual == [list(pair) for pair in expected]
+
+
+def test_skewed_visit_pair_enumeration_is_bounded_and_exact():
+    script = textwrap.dedent(r"""
+        import json, resource, time
+        import torch
+        from comparison.standardized.clinical_graph_v2.methods.cei_gnn_v2 import within_visit_pairs
+        import itertools
+        wide, singles = 1000, 20000
+        node_count = wide + singles
+        membership = torch.empty((2, wide + singles), dtype=torch.long)
+        membership[0, :wide] = 0
+        membership[1, :wide] = torch.arange(wide)
+        membership[0, wide:] = torch.arange(1, singles + 1)
+        membership[1, wide:] = torch.arange(wide, node_count)
+        node_type = torch.full((node_count,), 2, dtype=torch.long)
+        start = time.perf_counter()
+        pairs = within_visit_pairs(membership, node_type, node_count)
+        elapsed = time.perf_counter() - start
+        expected = torch.tensor(list(itertools.combinations(range(wide), 2)), dtype=torch.long).t()
+        assert pairs.shape == (2, 499500)
+        assert torch.equal(pairs.cpu(), expected)
+        print(json.dumps({"seconds": elapsed, "peak_rss": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss}))
+    """)
+    started = time.perf_counter()
+    try:
+        result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True,
+                                timeout=8, cwd=Path(__file__).resolve().parents[1])
+    except subprocess.TimeoutExpired:
+        assert False, "skewed pair enumeration exceeded the 8-second safety timeout"
+    assert result.returncode == 0, result.stderr or result.stdout
+    measurements = json.loads(result.stdout.strip().splitlines()[-1])
+    assert measurements["seconds"] < 5
+    assert time.perf_counter() - started < 10
 
 
 def _network(mode="product", seed=11):
