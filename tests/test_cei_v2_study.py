@@ -635,6 +635,8 @@ def test_analysis_per_class_rows_include_false_positive_counts(tmp_path, monkeyp
     binding = {"num_classes": 2, "selected_dev": {"metric_value": 0.0},
                "label_order": ["A", "B"], "parameter_count": 42,
                "active_parameter_count": 40}
+    for name in module.FULL_STAGE_NAMES:
+        _write_json(tmp_path / name / "result.json", {"total_seconds": 0.0})
     monkeypatch.setattr(module, "validate_completed_study",
                         lambda root: {name: binding for name in module.FULL_STAGE_NAMES})
     monkeypatch.setattr(module, "load_arm_predictions", lambda root:
@@ -672,6 +674,34 @@ def test_analysis_uses_validated_result_seconds(tmp_path, monkeypatch):
     monkeypatch.setattr(train, "per_class_table", lambda *a, **k: [{"index": 0}, {"index": 1}])
     report = module.analyze(tmp_path, tmp_path / "analysis.json")
     assert report["secondary_results"][module.FULL_STAGE_NAMES[0]]["total_seconds"] == 4.2
+
+
+def test_product_minus_off_comparison_is_explicitly_non_decisive(tmp_path, monkeypatch):
+    module = _module()
+    from comparison.standardized.clinical_graph_v2 import train
+    import numpy as np
+
+    arms = {name: np.asarray([[0.9, 0.1], [0.1, 0.9]]) for name in module.FULL_STAGE_NAMES}
+    binding = {"num_classes": 2, "selected_dev": {"metric_value": 1.0},
+               "label_order": ["A", "B"], "parameter_count": 42,
+               "active_parameter_count": 40}
+    for name in module.FULL_STAGE_NAMES:
+        _write_json(tmp_path / name / "result.json", {})
+    monkeypatch.setattr(module, "validate_completed_study",
+                        lambda root: {name: binding for name in module.FULL_STAGE_NAMES})
+    monkeypatch.setattr(module, "load_arm_predictions", lambda root:
+                        (arms, np.asarray([0, 1]), np.asarray(["p1", "p2"])))
+    comparisons = {key: {"point": 0.0, "interval_95": [0.0, 0.0]}
+                   for key in module.COMPARISONS}
+    monkeypatch.setattr(module, "paired_bootstrap", lambda *a, **k:
+                        ({name: 1.0 for name in arms}, comparisons))
+    monkeypatch.setattr(module, "decide", lambda *a: {"interaction_useful": False})
+    monkeypatch.setattr(train, "patient_equal_metrics", lambda *a, **k: {"macro_f1": 1.0})
+    monkeypatch.setattr(train, "per_class_table", lambda *a, **k: [{"index": 0}, {"index": 1}])
+    report = module.analyze(tmp_path, tmp_path / "analysis.json")
+    assert report["comparisons"]["product_minus_additive"]["decisive"] is True
+    assert report["comparisons"]["product_minus_off"]["decisive"] is False
+    assert report["comparisons"]["additive_minus_off"]["decisive"] is False
 
 
 def test_module_entrypoint_prints_plan_without_execution(tmp_path):
