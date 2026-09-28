@@ -222,6 +222,42 @@ def assert_arm_parity(bindings):
             if (field not in reference or field not in binding or
                     binding[field] != reference[field]):
                 raise ValueError(f"arm parity differs: {field} ({name} vs {reference_name})")
+    selected_keys = {"epoch", "epoch_index", "metric", "metric_value",
+                     "prediction_sha256", "sample_ids_sha256"}
+    for name, binding in items:
+        selected = binding.get("selected_dev")
+        if not isinstance(selected, dict) or set(selected) != selected_keys:
+            raise ValueError(f"selected_dev keys differ from the six-field contract: {name}")
+    for name, binding in items[1:]:
+        first = reference["selected_dev"]
+        other = binding["selected_dev"]
+        for field in ("metric", "sample_ids_sha256"):
+            if first[field] != other[field]:
+                raise ValueError(f"arm parity differs: selected_dev.{field} ({name} vs {reference_name})")
+    groups = {}
+    for name, binding in items:
+        mode = binding["method_config"]["effective_settings"]["pair_mode"]
+        architecture = binding["method_config"]["architecture"]
+        counts = (binding["parameter_count"], binding["active_parameter_count"],
+                  architecture["parameter_count"], architecture["active_parameter_count"])
+        groups.setdefault(mode, []).append((name, counts))
+    all_total = {counts[0] for values in groups.values() for _, counts in values}
+    if len(all_total) != 1:
+        raise ValueError("arm parity differs: total parameter_count")
+    for mode in ("product", "additive", "off"):
+        values = groups.get(mode, [])
+        if values and len({counts[1:] for _, counts in values}) != 1:
+            raise ValueError(f"arm parity differs: active_parameter_count within {mode} arms")
+        for name, counts in values:
+            if counts[0] != counts[2] or counts[1] != counts[3]:
+                raise ValueError(f"arm parity differs: {name} parameter counts disagree with architecture")
+    interactions = [counts[1] for mode in ("product", "additive")
+                    for _, counts in groups.get(mode, [])]
+    if interactions and len(set(interactions)) != 1:
+        raise ValueError("arm parity requires equal active_parameter_count across interaction arms")
+    off_counts = [counts[1] for _, counts in groups.get("off", [])]
+    if interactions and off_counts and max(off_counts) >= min(interactions):
+        raise ValueError("arm parity requires off active_parameter_count < interaction")
     return True
 
 
@@ -236,7 +272,7 @@ def _identity(captured):
     return captured["source_state_sha256"], captured["input_state_sha256"]
 
 
-def replay_v2_stage(output_dir, binding, result):
+def replay_v2_stage(output_dir, binding, result, *, persist=True):
     """Rebuild the bound adapter and replay the saved dev predictions exactly."""
     output = Path(output_dir)
     if result.get("status") != "completed" or result.get("binding") != binding:
@@ -341,6 +377,8 @@ def replay_v2_stage(output_dir, binding, result):
         if {k: existing.get(k) for k in proof} != proof:
             raise ValueError("existing replay proof differs")
         return existing
+    if not persist:
+        raise ValueError("existing replay proof is required for non-persisting replay")
     with proof_path.open("x") as stream:
         json.dump(proof, stream, indent=2, sort_keys=True)
         stream.write("\n")
@@ -356,7 +394,7 @@ def _check_stage_result(stage, binding, result):
         raise RuntimeError(f"{stage.name} evaluated the test fold")
 
 
-def _verify_smoke(smoke_stage, journal_path):
+def _verify_smoke(smoke_stage, journal_path, persist_replay=True):
     """Revalidate completed smoke binding, artifacts, replay, and source/input identity."""
     smoke_dir = Path(smoke_stage.output)
     journal = pilot._load_json(journal_path, "smoke journal")
@@ -375,7 +413,10 @@ def _verify_smoke(smoke_stage, journal_path):
                         seed=smoke_stage.seed, mode=smoke_stage.pair_mode)
     _check_stage_result(smoke_stage, binding, result)
     pilot._validate_artifacts(smoke_dir, binding, result)
-    replay_v2_stage(smoke_dir, binding, result)
+    if persist_replay:
+        replay_v2_stage(smoke_dir, binding, result)
+    else:
+        replay_v2_stage(smoke_dir, binding, result, persist=False)
     return journal
 
 
@@ -716,7 +757,7 @@ def main(argv=None):
                             allow_existing_smoke=smoke_completed)
     smoke_journal = None
     if smoke_completed:
-        smoke_journal = _verify_smoke(stages[0], smoke_path)
+        smoke_journal = _verify_smoke(stages[0], smoke_path, False)
     if not args.execute:
         plan = {"status": "not_executed", "stages": [asdict(s) for s in stages]}
         if (smoke_journal and "eta_minutes_nine_runs_smoke" in smoke_journal):
