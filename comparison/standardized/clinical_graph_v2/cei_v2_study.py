@@ -47,7 +47,7 @@ class Stage:
 
 
 def stage_specs():
-    specs = [("v2_smoke", SMOKE_BUDGET, 1234, "product")]
+    specs = [(f"v2_smoke_{mode}", SMOKE_BUDGET, 1234, mode) for mode in MODES]
     specs.extend((f"{mode}_seed{seed}", FULL_BUDGET, seed, mode)
                  for seed in SEEDS for mode in MODES)
     return tuple(specs)
@@ -83,7 +83,8 @@ def build_plan(*, artifact, targets, canonical, output_root, allow_existing_smok
     stages = []
     for name, budget, seed, mode in stage_specs():
         output = root / name
-        if output.exists() and not (allow_existing_smoke and name == "v2_smoke"):
+        if output.exists() and not (allow_existing_smoke and name in
+                                    {f"v2_smoke_{mode}" for mode in MODES}):
             raise FileExistsError(f"Refusing occupied stage output {output}")
         stages.append(_stage(name, artifact, targets, canonical, output, budget, seed, mode))
     return stages
@@ -93,7 +94,7 @@ def validate_exact_plan(stages):
     """Reject any edit to the approved ten-stage plan."""
     specs = stage_specs()
     if len(stages) != len(specs):
-        raise ValueError("execution requires the exact approved ten-stage plan")
+        raise ValueError("execution requires the exact approved twelve-stage plan")
     shared = None
     for stage, (name, budget, seed, mode) in zip(stages, specs):
         if (stage.name, tuple(stage.budget), stage.seed, stage.pair_mode) != (name, budget, seed, mode):
