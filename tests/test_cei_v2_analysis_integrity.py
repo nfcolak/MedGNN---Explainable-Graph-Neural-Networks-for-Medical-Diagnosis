@@ -77,3 +77,42 @@ def test_analysis_refuses_output_inside_arm_before_validation_or_write(tmp_path,
         study.analyze(tmp_path, destination)
 
     assert not destination.exists()
+
+
+def test_analysis_fails_if_history_disappears_after_validation(tmp_path, monkeypatch):
+    import numpy as np
+
+    study = _study_tests()._module()
+    from comparison.standardized.clinical_graph_v2 import train
+
+    names = study.FULL_STAGE_NAMES
+    bindings = {}
+    arms = {name: np.asarray([[0.9, 0.1], [0.1, 0.9]]) for name in names}
+    y, subjects = np.asarray([0, 1]), np.asarray(["p1", "p2"])
+    for name in names:
+        arm_dir = tmp_path / name
+        arm_dir.mkdir()
+        bindings[name] = {"num_classes": 2, "selected_dev": {"metric_value": 1.0, "epoch": 1},
+                          "label_order": ["A", "B"], "parameter_count": 42,
+                          "active_parameter_count": 40, "epochs": 1}
+        (arm_dir / "history.json").write_text(json.dumps([
+            {"epoch": 1, "train_loss": 1.0, "macro_f1": 1.0, "selection_fold": "dev"}]))
+        (arm_dir / "result.json").write_text(json.dumps({"total_seconds": 1.0}))
+
+    def validate_then_delete(root, *, include_pair_counts=False):
+        first = next(iter(bindings))
+        (Path(root) / first / "history.json").unlink()
+        return (bindings, None) if include_pair_counts else bindings
+
+    monkeypatch.setattr(study, "validate_completed_study", validate_then_delete)
+    monkeypatch.setattr(study, "load_arm_predictions", lambda root: (arms, y, subjects))
+    monkeypatch.setattr(study, "paired_bootstrap", lambda *args, **kwargs: (
+        {name: 1.0 for name in names},
+        {key: {"point": 0.0, "interval_95": [0.0, 0.0]} for key in study.COMPARISONS}))
+    monkeypatch.setattr(train, "patient_equal_metrics", lambda *args, **kwargs: {"macro_f1": 1.0})
+    monkeypatch.setattr(train, "per_class_table", lambda *args, **kwargs: [{"index": 0}, {"index": 1}])
+
+    with pytest.raises(ValueError, match="history.json missing"):
+        study.analyze(tmp_path, tmp_path / "analysis.json")
+
+    assert not (tmp_path / "analysis.json").exists()
