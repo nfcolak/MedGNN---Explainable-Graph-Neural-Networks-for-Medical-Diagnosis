@@ -49,7 +49,7 @@ def test_completed_study_validation_selects_only_nine_full_stages(tmp_path, monk
     assert visited == full_names
 
 
-def test_smoke_executor_launches_all_modes_once_in_order(tmp_path, monkeypatch):
+def test_smoke_executor_launches_all_modes_once_in_order(tmp_path, monkeypatch, capsys):
     module = _module()
     artifact = tmp_path / "artifact"
     artifact.mkdir()
@@ -86,4 +86,12 @@ def test_smoke_executor_launches_all_modes_once_in_order(tmp_path, monkeypatch):
     assert [argv[argv.index("--method-option") + 1] for argv in launches] == [
         "pair_mode=product", "pair_mode=additive", "pair_mode=off"]
     journal = json.loads((root / "journal_smoke.json").read_text())
-    assert list(journal["stages"]) == ["v2_smoke_product", "v2_smoke_additive", "v2_smoke_off"]
+    assert sorted(journal["stages"]) == ["v2_smoke_additive", "v2_smoke_off", "v2_smoke_product"]
+    summary = json.loads(capsys.readouterr().out)
+    assert [item["stage"] for item in summary["smoke_timing_summary"]] == [
+        "v2_smoke_product", "v2_smoke_additive", "v2_smoke_off"]
+    assert all(item["seconds_per_epoch"] == 2 for item in summary["smoke_timing_summary"])
+    assert sorted(str(path.relative_to(root)) for path in root.rglob("*") if path.is_file()) == [
+        "journal_smoke.json", "v2_smoke_additive/binding.json", "v2_smoke_additive/result.json",
+        "v2_smoke_off/binding.json", "v2_smoke_off/result.json",
+        "v2_smoke_product/binding.json", "v2_smoke_product/result.json"]

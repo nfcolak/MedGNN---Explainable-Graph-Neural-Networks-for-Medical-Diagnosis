@@ -127,9 +127,33 @@ def test_smoke_plan_has_three_modes_and_full_argv_is_pinned(tmp_path):
         "--method-option", "pair_mode=product",
     ]
     assert stages[3].argv[1:] == literal_full_argv
+    pinned_full_rows = [
+        ("product_seed1234", "1234", "product"),
+        ("additive_seed1234", "1234", "additive"),
+        ("off_seed1234", "1234", "off"),
+        ("product_seed2025", "2025", "product"),
+        ("additive_seed2025", "2025", "additive"),
+        ("off_seed2025", "2025", "off"),
+        ("product_seed7", "7", "product"),
+        ("additive_seed7", "7", "additive"),
+        ("off_seed7", "7", "off"),
+    ]
+    expected_full_argv = []
+    for name, seed, mode in pinned_full_rows:
+        expected_full_argv.append([
+            sys.executable, "-m", "comparison.standardized.clinical_graph_v2.train",
+            "--artifact", str(artifact), "--targets", str(targets), "--canonical", str(canonical),
+            "--output", str(tmp_path / "runs" / name), "--method", "cei_gnn_v2",
+            "--train-limit", "10000", "--dev-limit", "5000", "--sample-seed", "1234",
+            "--seed", seed, "--top-k-labels", "10", "--edges", "all",
+            "--edge-direction", "forward", "--weights", "sqrt_inverse",
+            "--selection-fold", "dev", "--final-eval", "none", "--epochs", "40",
+            "--patience", "40", "--method-option", f"pair_mode={mode}",
+        ])
+    assert [stage.argv for stage in stages[3:]] == expected_full_argv
 
 
-def test_plan_has_exact_ten_dev_only_stages(tmp_path):
+def test_plan_has_exact_twelve_dev_only_stages(tmp_path):
     module = _module()
     artifact, targets, canonical = _inputs(tmp_path)
     stages = module.build_plan(artifact=artifact, targets=targets, canonical=canonical,
@@ -163,6 +187,11 @@ def test_plan_refuses_occupied_output_and_relative_paths(tmp_path):
     with pytest.raises(FileExistsError):
         module.build_plan(artifact=artifact, targets=targets, canonical=canonical,
                           output_root=tmp_path / "runs")
+    smoke_root = tmp_path / "smoke-runs"
+    (smoke_root / "v2_smoke_additive").mkdir(parents=True)
+    with pytest.raises(FileExistsError, match="occupied stage output"):
+        module.build_plan(artifact=artifact, targets=targets, canonical=canonical,
+                          output_root=smoke_root)
     with pytest.raises(ValueError, match="absolute"):
         module.build_plan(artifact=artifact, targets=targets, canonical=canonical,
                           output_root="relative/runs")
@@ -178,7 +207,7 @@ def test_exact_plan_validator_rejects_edited_stage(tmp_path):
     edited[5] = dataclasses.replace(edited[5], argv=edited[5].argv[:-1] + ["pair_mode=product"])
     with pytest.raises(ValueError, match="argv"):
         module.validate_exact_plan(edited)
-    with pytest.raises(ValueError, match="ten-stage"):
+    with pytest.raises(ValueError, match="twelve-stage"):
         module.validate_exact_plan(stages[:-1])
 
 
@@ -296,7 +325,7 @@ def test_executor_journals_failure_and_launches_nothing_else(tmp_path, monkeypat
         module.execute_plan(stages, journal_path=tmp_path / "journal.json", phase="smoke")
     assert error.value.code == 1
     journal = json.loads((tmp_path / "journal.json").read_text())
-    assert journal["status"] == "failed" and journal["stages"]["v2_smoke"]["status"] == "failed"
+    assert journal["status"] == "failed" and journal["stages"]["v2_smoke_product"]["status"] == "failed"
     assert len(launches) == 1 and launches[0][-1] == "--execute"
 
 
@@ -307,19 +336,20 @@ def test_executor_refuses_source_drift_between_full_stages(tmp_path, monkeypatch
     root = tmp_path / "runs"
     stages = module.build_plan(artifact=artifact, targets=targets, canonical=canonical,
                                output_root=root)
-    _write_json(root / "v2_smoke" / "binding.json", {})
-    _write_json(root / "v2_smoke" / "result.json", {"status": "completed", "binding": {},
+    _write_json(root / "v2_smoke_product" / "binding.json", {})
+    _write_json(root / "v2_smoke_product" / "result.json", {"status": "completed", "binding": {},
                                                        "metrics": None, "dev_metrics": {},
                                                        "test_evaluated": False})
     smoke_capture = {"source_state_sha256": "a", "input_state_sha256": "i",
                      "executable_sources": {}}
     _write_json(root / "journal_smoke.json", {"status": "completed", "stages": {
-        "v2_smoke": {"status": "completed", "replay": {"status": "verified"},
+        "v2_smoke_product": {"status": "completed", "replay": {"status": "verified"},
                      "postflight": smoke_capture}}})
     identities = iter(["a", "a", "a", "b"])
     monkeypatch.setattr(module, "_capture", lambda stage: {
         "source_state_sha256": next(identities), "input_state_sha256": "i",
         "executable_sources": {}})
+    monkeypatch.setattr(module, "_verify_smoke", lambda *a, **k: {})
     launches = []
 
     def fake_run(argv, **kwargs):
@@ -339,11 +369,11 @@ def test_executor_refuses_source_drift_between_full_stages(tmp_path, monkeypatch
     monkeypatch.setattr(module, "replay_v2_stage", lambda *a: {"status": "verified"})
     with pytest.raises(SystemExit) as error:
         module.execute_plan(stages, journal_path=root / "journal.json", phase="full")
-    assert error.value.code == 3
-    assert len(launches) == 1
+    assert error.value.code == 1
+    assert len(launches) == 2
     journal = json.loads((root / "journal.json").read_text())
     assert journal["stages"]["product_seed1234"]["status"] == "bound"
-    assert journal["stages"]["additive_seed1234"]["status"] == "refused"
+    assert journal["stages"]["additive_seed1234"]["status"] == "failed"
 
 
 def test_replay_reconstructs_v2_model_and_rejects_tampering(tmp_path, monkeypatch):
@@ -474,7 +504,7 @@ def test_full_phase_rejects_fabricated_completed_smoke_before_launch(tmp_path, m
     root = tmp_path / "runs"
     stages = module.build_plan(artifact=artifact, targets=targets, canonical=canonical,
                                output_root=root)
-    _write_json(root / "v2_smoke" / "result.json", {"status": "completed"})
+    _write_json(root / "v2_smoke_product" / "result.json", {"status": "completed"})
     _write_json(root / "journal_smoke.json", {"status": "completed"})
     monkeypatch.setattr(module.subprocess, "run", lambda *a, **k: pytest.fail("launched"))
     with pytest.raises(ValueError, match="smoke"):
@@ -599,7 +629,7 @@ def test_cli_default_prints_plan_without_launching(tmp_path, monkeypatch, capsys
                         "--canonical", str(canonical),
                         "--output-root", str(tmp_path / "runs")]) == 0
     printed = json.loads(capsys.readouterr().out)
-    assert printed["status"] == "not_executed" and len(printed["stages"]) == 10
+    assert printed["status"] == "not_executed" and len(printed["stages"]) == 12
     assert not (tmp_path / "runs").exists()
 
 
@@ -607,10 +637,13 @@ def test_print_only_reverifies_completed_smoke_and_shows_eta(tmp_path, monkeypat
     module = _module()
     artifact, targets, canonical = _inputs(tmp_path)
     root = tmp_path / "runs"
-    (root / "v2_smoke").mkdir(parents=True)
+    (root / "v2_smoke_product").mkdir(parents=True)
+    (root / "v2_smoke_additive").mkdir()
+    (root / "v2_smoke_off").mkdir()
     _write_json(root / "journal_smoke.json", {
         "status": "completed", "eta_minutes_nine_runs_smoke": 12.3,
-        "stages": {"v2_smoke": {"status": "completed", "replay": {"status": "verified"}}}})
+        "stages": {name: {"status": "completed", "replay": {"status": "verified"}}
+                   for name in ("v2_smoke_product", "v2_smoke_additive", "v2_smoke_off")}})
     verified = []
     monkeypatch.setattr(module, "_verify_smoke", lambda *args: verified.append(args) or {
         "eta_minutes_nine_runs_smoke": 12.3, "eta_basis": "verified synthetic smoke"}, raising=False)
@@ -619,7 +652,7 @@ def test_print_only_reverifies_completed_smoke_and_shows_eta(tmp_path, monkeypat
                         "--canonical", str(canonical), "--output-root", str(root)]) == 0
     printed = json.loads(capsys.readouterr().out)
     assert printed["eta_minutes_nine_runs_smoke"] == 12.3
-    assert len(printed["stages"]) == 10 and len(verified) == 1
+    assert len(printed["stages"]) == 12 and len(verified) == 1
     assert not (root / "journal.json").exists()
 
 
@@ -649,7 +682,7 @@ def test_smoke_journal_eta_uses_measured_smoke_seconds(tmp_path, monkeypatch):
     assert module.execute_plan(stages, journal_path=root / "journal_smoke.json", phase="smoke") == 0
     journal = json.loads((root / "journal_smoke.json").read_text())
     assert "eta_minutes_nine_runs_smoke" in journal
-    assert journal["eta_basis"] == "rough; smoke fixed costs dominate"
+    assert journal["eta_basis"] == "mean smoke seconds per epoch; fixed costs not separated"
 
 
 def test_analysis_secondary_results_are_explicitly_non_decisive(tmp_path, monkeypatch):
@@ -782,7 +815,7 @@ def test_module_entrypoint_prints_plan_without_execution(tmp_path):
         "--canonical", str(canonical), "--output-root", str(tmp_path / "runs")],
         check=True, capture_output=True, text=True)
     printed = json.loads(result.stdout)
-    assert printed["status"] == "not_executed" and len(printed["stages"]) == 10
+    assert printed["status"] == "not_executed" and len(printed["stages"]) == 12
     assert not (tmp_path / "runs").exists()
 
 
@@ -861,8 +894,8 @@ def test_mutation_full_plan_locks_patience_to_forty(tmp_path):
     artifact, targets, canonical = _inputs(tmp_path)
     stages = module.build_plan(artifact=artifact, targets=targets, canonical=canonical,
                                output_root=tmp_path / "runs")
-    assert len(stages[1:]) == 9
-    for stage in stages[1:]:
+    assert len(stages[3:]) == 9
+    for stage in stages[3:]:
         assert stage.argv[stage.argv.index("--patience") + 1] == "40"
 
 
@@ -910,25 +943,27 @@ def _mutation_executor_fixture(tmp_path, monkeypatch, *, seconds=2.0, batch_size
 def test_mutation_full_executor_replays_smoke_before_any_launch(tmp_path, monkeypatch):
     """M13: a verified journal does not excuse replaying the smoke checkpoint."""
     module, stages, root, captured, launches = _mutation_executor_fixture(tmp_path, monkeypatch)
-    _write_json(root / "v2_smoke" / "binding.json", {})
-    _write_json(root / "v2_smoke" / "result.json", {
-        "status": "completed", "binding": {}, "metrics": None,
-        "dev_metrics": {}, "test_evaluated": False})
-    _write_json(root / "journal_smoke.json", {"status": "completed", "stages": {
-        "v2_smoke": {"status": "completed", "replay": {"status": "verified"},
-                     "postflight": captured}}})
+    entries = {}
+    for smoke_stage in stages[:3]:
+        _write_json(root / smoke_stage.name / "binding.json", {})
+        _write_json(root / smoke_stage.name / "result.json", {
+            "status": "completed", "binding": {}, "metrics": None,
+            "dev_metrics": {}, "test_evaluated": False})
+        entries[smoke_stage.name] = {"status": "completed", "replay": {"status": "verified"},
+                                     "postflight": captured}
+    _write_json(root / "journal_smoke.json", {"status": "completed", "stages": entries})
     replayed = []
 
-    def reject_changed_smoke(output, binding, result):
+    def reject_changed_smoke(output, binding, result, **kwargs):
         replayed.append(Path(output).name)
-        if Path(output).name == "v2_smoke":
+        if Path(output).name == "v2_smoke_product":
             raise ValueError("smoke replay no longer matches checkpoint")
         return {"status": "verified"}
 
     monkeypatch.setattr(module, "replay_v2_stage", reject_changed_smoke)
     with pytest.raises(ValueError, match="smoke replay"):
         module.execute_plan(stages, journal_path=root / "journal_full.json", phase="full")
-    assert replayed == ["v2_smoke"]
+    assert replayed == ["v2_smoke_product"]
     assert launches == []
     assert not (root / "journal_full.json").exists()
 
@@ -947,7 +982,7 @@ def test_mutation_executor_refuses_output_occupied_after_planning(tmp_path, monk
     assert marker.read_text() == "do not overwrite"
     journal = json.loads((root / "journal_smoke.json").read_text())
     assert journal["status"] == "failed"
-    assert journal["stages"]["v2_smoke"]["status"] == "refused"
+    assert journal["stages"]["v2_smoke_product"]["status"] == "refused"
 
 
 @pytest.mark.parametrize("seconds,batch_size", [(2.0, 128), (7.0, 100)])
@@ -959,11 +994,10 @@ def test_mutation_smoke_eta_numeric_step_scaling(tmp_path, monkeypatch, seconds,
         tmp_path, monkeypatch, seconds=seconds, batch_size=batch_size)
     assert module.execute_plan(stages, journal_path=root / "journal_smoke.json", phase="smoke") == 0
     journal = json.loads((root / "journal_smoke.json").read_text())
-    expected = round(9 * seconds * (math.ceil(10000 / batch_size) * 40)
-                     / (math.ceil(256 / batch_size) * 2) / 60, 1)
+    expected = round(9 * (seconds / 2) * 40 / 60, 1)
     assert journal["eta_minutes_nine_runs_smoke"] == expected
-    assert journal["eta_basis"] == "rough; smoke fixed costs dominate"
-    assert len(launches) == 1
+    assert journal["eta_basis"] == "mean smoke seconds per epoch; fixed costs not separated"
+    assert len(launches) == 3
 
 
 @pytest.mark.parametrize("field", ["active_parameter_count", "architecture_active"])
@@ -1017,18 +1051,21 @@ def test_print_only_smoke_verification_does_not_mutate_output_root(tmp_path, mon
     module = _module()
     artifact, targets, canonical = _inputs(tmp_path)
     root = tmp_path / "runs"
-    smoke = root / "v2_smoke"
+    smoke = root / "v2_smoke_product"
     smoke.mkdir(parents=True)
+    (root / "v2_smoke_additive").mkdir()
+    (root / "v2_smoke_off").mkdir()
     stages = module.build_plan(artifact=artifact, targets=targets, canonical=canonical,
                                output_root=root, allow_existing_smoke=True)
     stage = stages[0]
     binding = {"synthetic": "binding"}
     result = {"status": "completed", "binding": binding, "metrics": None,
               "dev_metrics": {}, "test_evaluated": False}
-    for name, value in (("binding.json", binding), ("result.json", result),
-                        ("payload.bin", {"fixed": True})):
-        _write_json(smoke / name, value)
-    (smoke / "payload.bin").write_bytes(b"synthetic prediction payload")
+    for mode in ("product", "additive", "off"):
+        mode_dir = root / f"v2_smoke_{mode}"
+        _write_json(mode_dir / "binding.json", binding)
+        _write_json(mode_dir / "result.json", result)
+        (mode_dir / "payload.bin").write_bytes(b"synthetic prediction payload")
     captured = {"source_state_sha256": "source", "input_state_sha256": "input",
                 "executable_sources": {}}
     monkeypatch.setattr(module, "_capture", lambda _: captured)
@@ -1057,9 +1094,14 @@ def test_print_only_smoke_verification_does_not_mutate_output_root(tmp_path, mon
                 for path in sorted(root.rglob("*")) if path.is_file()}
 
     proof = computed_replay(smoke, binding, result)
+    journal_stages = {}
+    for mode in ("product", "additive", "off"):
+        mode_dir = root / f"v2_smoke_{mode}"
+        mode_proof = proof if mode == "product" else computed_replay(mode_dir, binding, result)
+        journal_stages[f"v2_smoke_{mode}"] = {"status": "completed", "postflight": captured,
+                                                "replay": mode_proof}
     journal = {"status": "completed", "eta_minutes_nine_runs_smoke": 12.3,
-               "stages": {"v2_smoke": {"status": "completed", "postflight": captured,
-                                         "replay": proof}}}
+               "stages": journal_stages}
     _write_json(root / "journal_smoke.json", journal)
     before = snapshot()
     assert module.main(["--artifact", str(artifact), "--targets", str(targets),
