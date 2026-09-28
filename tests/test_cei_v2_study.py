@@ -215,6 +215,16 @@ def _write_json(path, value):
     path.write_text(json.dumps(value))
 
 
+def _write_analysis_history_fixtures(root, names, binding):
+    """RR2-3: mocked analysis validators still need valid dev history rows."""
+    binding["epochs"] = 1
+    binding.setdefault("selected_dev", {})["epoch"] = 1
+    for name in names:
+        _write_json(Path(root) / name / "history.json", [{
+            "epoch": 1, "train_loss": 1.0, "macro_f1": 1.0,
+            "selection_fold": "dev", "seconds": 1.0}])
+
+
 def test_full_phase_requires_completed_smoke(tmp_path):
     module = _module()
     assert hasattr(module, "execute_plan"), "pair study executor is missing"
@@ -613,6 +623,7 @@ def test_analysis_secondary_results_are_explicitly_non_decisive(tmp_path, monkey
                "pair_count_summary": {"graphs": 2}}
     for name in module.FULL_STAGE_NAMES:
         _write_json(tmp_path / name / "result.json", {"total_seconds": 4.2})
+    _write_analysis_history_fixtures(tmp_path, module.FULL_STAGE_NAMES, binding)
     monkeypatch.setattr(module, "validate_completed_study",
                         lambda root: {name: binding for name in module.FULL_STAGE_NAMES})
     monkeypatch.setattr(module, "load_arm_predictions", lambda root:
@@ -643,6 +654,7 @@ def test_analysis_per_class_rows_include_false_positive_counts(tmp_path, monkeyp
                "active_parameter_count": 40}
     for name in module.FULL_STAGE_NAMES:
         _write_json(tmp_path / name / "result.json", {"total_seconds": 0.0})
+    _write_analysis_history_fixtures(tmp_path, module.FULL_STAGE_NAMES, binding)
     monkeypatch.setattr(module, "validate_completed_study",
                         lambda root: {name: binding for name in module.FULL_STAGE_NAMES})
     monkeypatch.setattr(module, "load_arm_predictions", lambda root:
@@ -669,6 +681,7 @@ def test_analysis_uses_validated_result_seconds(tmp_path, monkeypatch):
                "active_parameter_count": 40, "total_seconds": 999.0}
     for name in module.FULL_STAGE_NAMES:
         _write_json(tmp_path / name / "result.json", {"total_seconds": 4.2})
+    _write_analysis_history_fixtures(tmp_path, module.FULL_STAGE_NAMES, binding)
     monkeypatch.setattr(module, "validate_completed_study",
                         lambda root: {name: binding for name in module.FULL_STAGE_NAMES})
     monkeypatch.setattr(module, "load_arm_predictions", lambda root:
@@ -692,7 +705,8 @@ def test_product_minus_off_comparison_is_explicitly_non_decisive(tmp_path, monke
                "label_order": ["A", "B"], "parameter_count": 42,
                "active_parameter_count": 40}
     for name in module.FULL_STAGE_NAMES:
-        _write_json(tmp_path / name / "result.json", {})
+        _write_json(tmp_path / name / "result.json", {"total_seconds": 0.0})
+    _write_analysis_history_fixtures(tmp_path, module.FULL_STAGE_NAMES, binding)
     monkeypatch.setattr(module, "validate_completed_study",
                         lambda root: {name: binding for name in module.FULL_STAGE_NAMES})
     monkeypatch.setattr(module, "load_arm_predictions", lambda root:
