@@ -90,6 +90,23 @@ Primary metric: visit-level dev macro-F1 of the selected checkpoint. The interac
 
 Otherwise the report says the benefit is not established. Secondary, reported but not decisive: `product - off` interval, patient-equal macro-F1, per-class F1/precision/recall, false positives, pair counts, parameters, seconds.
 
+### 6.1 Amendment A10: claim scope and reporting (2026-09-28, before any v2 training)
+
+This amendment follows the independent design review (`rev-v2-design`) and was approved by the user before any v2 run existed. The decision rule in §6 is unchanged. What changes is what a pass or a fail may be taken to mean.
+
+- **Claim scope.** The study is a *dev-only exploratory screen*. Checkpoints are selected on the same dev patients that are used for the decision, and the patient bootstrap does not resample seeds. So a pass reads: "on this dev cohort, for these seeds and these selected checkpoints, the rank-16 product pair head beat the matched additive pair head". It is not a population or generalisation claim. Every interval is labelled "conditional on the selected dev checkpoints and seeds 1234/2025/7".
+- **A fail is not evidence of no effect.** Under a synthetic sensitivity analysis (patient SE 0.23-0.43 points, seed SD 0.3-0.5 points), a true +0.3 point gain passes 12-29% of the time and a true +0.5 point gain passes 23-55% of the time. A fail is reported as "benefit not demonstrated", never as "no benefit".
+- **Confirmation step (separate, later).** If the screen passes, or the product-minus-additive point estimate is positive, a later step may evaluate the nine *frozen* checkpoints once on the validation fold. That step needs its own explicit user approval, uses no training, tuning or re-selection, and may never touch the test fold. Nothing in this study reads validation data.
+- **product vs off is directional.** The §6 clause "seed-mean product > seed-mean off" is kept, but it is reported as a direction only. The product-minus-off interval stays secondary. `off` is a structural ablation: it has 2,278 fewer active parameters at hidden 128, rank 16 and 10 classes. It is not a parameter-matched control.
+- **Additive control scope.** Additive has no cross term at the pair-vote level. It is not the strongest possible additive function. Conclusions are limited to "this product head vs this matched additive head".
+- **Additional non-decisive reporting** (none of it enters `decide()`):
+  1. Per-seed signed deltas for product-minus-additive, product-minus-off and additive-minus-off, with the mean and SD across seeds and a df=2 t interval labelled "seed-level, descriptive".
+  2. Dev pair-count bands, fixed now from the train scan: 0, 1-179, 180-1,044 and more than 1,044 pairs per graph. For each band: the number of graphs and patients, per-arm seed-mean macro-F1, and the product-minus-additive delta.
+  3. Training curves for each arm from `history.json`: per-epoch train loss and dev macro-F1, the selected epoch, a flag for "selected at the last epoch (40)", and seconds.
+  4. Total, active and inactive parameter counts for each arm.
+  5. A plain statement that GraphXAI edge masks do not attribute pairs, and that pair contributions are model accounting, not causal importance.
+- **Testing phase.** For this work, the user opened the repo's testing phase (AGENTS.md rule, adr-005) on 2026-09-28. That covers the TDD suites in §7.
+
 ## 7. Testing (TDD, synthetic only)
 
 Failing tests first, in `tests/test_plugin_cei_gnn_v2.py` and `tests/test_cei_v2_study.py`:
