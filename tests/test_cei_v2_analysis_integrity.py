@@ -116,3 +116,48 @@ def test_analysis_fails_if_history_disappears_after_validation(tmp_path, monkeyp
         study.analyze(tmp_path, tmp_path / "analysis.json")
 
     assert not (tmp_path / "analysis.json").exists()
+
+
+def test_decision_is_invariant_to_pair_count_and_curve_reporting(tmp_path, monkeypatch):
+    import numpy as np
+
+    study = _study_tests()._module()
+    from comparison.standardized.clinical_graph_v2 import train
+
+    names = study.FULL_STAGE_NAMES
+    arms = {name: np.asarray([[0.9, 0.1], [0.1, 0.9]]) for name in names}
+    y, subjects = np.asarray([0, 1]), np.asarray(["p1", "p2"])
+    bindings = {name: {"num_classes": 2,
+                       "selected_dev": {"metric_value": 1.0, "epoch": 1},
+                       "label_order": ["A", "B"], "parameter_count": 42,
+                       "active_parameter_count": 40, "epochs": 2}
+                for name in names}
+    monkeypatch.setattr(study, "load_arm_predictions", lambda root: (arms, y, subjects))
+    monkeypatch.setattr(study, "paired_bootstrap", lambda *args, **kwargs: (
+        {name: 1.0 for name in names},
+        {key: {"point": 0.0, "interval_95": [0.0, 0.0]}
+         for key in study.COMPARISONS}))
+    monkeypatch.setattr(train, "patient_equal_metrics", lambda *args, **kwargs: {"macro_f1": 1.0})
+    monkeypatch.setattr(train, "per_class_table", lambda *args, **kwargs: [{"index": 0}, {"index": 1}])
+
+    reports = []
+    for index, (replay_counts, injected_counts, curve) in enumerate((
+            ([0, 1], [180, 1045], 0.1),
+            (None, None, 9.0))):
+        root = tmp_path / f"case-{index}"
+        root.mkdir()
+        for name in names:
+            arm_dir = root / name
+            arm_dir.mkdir()
+            (arm_dir / "history.json").write_text(json.dumps([
+                {"epoch": 1, "train_loss": curve, "macro_f1": 1.0, "selection_fold": "dev"},
+                {"epoch": 2, "train_loss": curve / 2, "macro_f1": 1.0, "selection_fold": "dev"}]))
+            (arm_dir / "result.json").write_text(json.dumps({"total_seconds": 1.0}))
+        monkeypatch.setattr(study, "validate_completed_study",
+                            lambda root, *, include_pair_counts=False:
+                            (bindings, replay_counts) if include_pair_counts else bindings)
+        report = study.analyze(root, root / "analysis.json", pair_counts=injected_counts)
+        assert study.decide(report["dev_macro_f1"], report["comparisons"]) == report["decision"]
+        reports.append(report)
+
+    assert reports[0]["decision"] == reports[1]["decision"]
