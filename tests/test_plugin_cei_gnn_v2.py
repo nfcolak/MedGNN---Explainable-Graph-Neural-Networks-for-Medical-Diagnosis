@@ -99,6 +99,14 @@ def test_missing_membership_and_float_indices_fail_closed():
     floating.visit_membership_index = floating.visit_membership_index.float()
     with pytest.raises(ValueError, match="integer"):
         adapter(floating, epoch=0)
+    missing_counts = graph.clone()
+    del missing_counts.num_visits
+    with pytest.raises(ValueError, match="num_visits"):
+        adapter(missing_counts, epoch=0)
+    floating_counts = graph.clone()
+    floating_counts.num_visits = floating_counts.num_visits.float()
+    with pytest.raises(ValueError, match="integer"):
+        adapter(floating_counts, epoch=0)
 
 
 def test_gradients_reach_active_parameters_only():

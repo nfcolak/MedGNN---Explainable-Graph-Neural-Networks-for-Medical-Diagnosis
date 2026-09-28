@@ -179,6 +179,7 @@ def test_skewed_visit_pair_enumeration_is_bounded_and_exact():
     measurements = json.loads(result.stdout.strip().splitlines()[-1])
     assert measurements["seconds"] < 5
     assert time.perf_counter() - started < 10
+    print(f"skewed pair enumeration: {measurements['seconds']:.3f}s, peak RSS {measurements['peak_rss']} bytes")
 
 
 def _network(mode="product", seed=11):
@@ -269,6 +270,56 @@ def test_edge_block_has_no_endpoint_cross_term():
     for mode in ("product", "additive"):
         difference = _block_mixed_difference(_network(mode), _graph(), "edge_contributions", 1, 2)
         assert difference.abs().max() < 1e-5, f"edge endpoints interact in {mode} mode"
+
+
+def test_duplicate_membership_rows_do_not_duplicate_pairs():
+    graph = _graph()
+    membership = torch.cat((graph.visit_membership_index,
+                            graph.visit_membership_index[:, [1, 1, 6]]), dim=1)
+    actual = _v2().within_visit_pairs(membership, graph.node_type, graph.num_nodes)
+    assert actual.t().tolist() == [list(pair) for pair in EXPECTED_PAIRS]
+
+
+def test_pair_contributions_are_invariant_to_endpoint_order(monkeypatch):
+    v2 = _v2()
+    graph = _graph()
+    network = _network("product")
+    ordinary = _run(network, graph, return_parts=True)
+    original = v2.within_visit_pairs
+
+    def reversed_endpoints(*args, **kwargs):
+        return original(*args, **kwargs).flip(0)
+
+    monkeypatch.setattr(v2, "within_visit_pairs", reversed_endpoints)
+    swapped = _run(network, graph, return_parts=True)
+    torch.testing.assert_close(swapped["pair_contributions"], ordinary["pair_contributions"])
+
+
+@pytest.mark.parametrize("mode", ["product", "additive"])
+def test_pair_gate_and_denominator_ignore_node_features_while_votes_change(mode):
+    network, graph = _network(mode), _graph()
+    metadata = _metadata(graph)
+    features = network.continuous_inputs(metadata).detach()
+    changed = features.clone()
+    changed[2, :network.node_dim] += 2.0
+    changed[3, :network.node_dim] -= 1.5
+    observed_votes = []
+    hook = network.pair_vote.register_forward_hook(
+        lambda _module, _inputs, output: observed_votes.append(output.detach().clone()))
+    _run(network, graph, features, return_parts=True)
+    _run(network, graph, changed, return_parts=True)
+    hook.remove()
+    assert len(observed_votes) == 2
+    assert not torch.allclose(observed_votes[0], observed_votes[1])
+
+    pairs = _run(network, graph, return_parts=True)["pairs"]
+    kinds = _v2().kind_pair_index(metadata.node_type, pairs)
+    gates_before = network.pair_gate[kinds].sigmoid()
+    denominator_before = 1 + gates_before.sum(0)
+    gates_after = network.pair_gate[kinds].sigmoid()
+    denominator_after = 1 + gates_after.sum(0)
+    torch.testing.assert_close(gates_before, gates_after)
+    torch.testing.assert_close(denominator_before, denominator_after)
 
 
 def test_zero_edge_mask_removes_only_the_edge_block():
