@@ -70,7 +70,7 @@ def _stage(name, artifact, targets, canonical, output, budget, seed, mode):
     return Stage(name, argv, str(output), seed, budget, mode)
 
 
-def build_plan(*, artifact, targets, canonical, output_root):
+def build_plan(*, artifact, targets, canonical, output_root, allow_existing_smoke=False):
     """Build exactly the approved ten stages without opening input contents."""
     artifact = pilot._absolute_existing(artifact, "artifact", directory=True)
     targets = pilot._absolute_existing(targets, "targets")
@@ -82,7 +82,7 @@ def build_plan(*, artifact, targets, canonical, output_root):
     stages = []
     for name, budget, seed, mode in stage_specs():
         output = root / name
-        if output.exists():
+        if output.exists() and not (allow_existing_smoke and name == "v2_smoke"):
             raise FileExistsError(f"Refusing occupied stage output {output}")
         stages.append(_stage(name, artifact, targets, canonical, output, budget, seed, mode))
     return stages
@@ -356,6 +356,29 @@ def _check_stage_result(stage, binding, result):
         raise RuntimeError(f"{stage.name} evaluated the test fold")
 
 
+def _verify_smoke(smoke_stage, journal_path):
+    """Revalidate completed smoke binding, artifacts, replay, and source/input identity."""
+    smoke_dir = Path(smoke_stage.output)
+    journal = pilot._load_json(journal_path, "smoke journal")
+    entry = journal.get("stages", {}).get("v2_smoke", {})
+    if (journal.get("status") != "completed" or entry.get("status") != "completed"
+            or entry.get("replay", {}).get("status") != "verified"):
+        raise ValueError("a completed verified smoke replay is required")
+    binding = pilot._load_json(smoke_dir / "binding.json", "smoke binding.json")
+    result = pilot._load_json(smoke_dir / "result.json", "smoke result.json")
+    current = _capture(smoke_stage)
+    recorded = entry.get("postflight")
+    if not recorded or _identity(current) != _identity(recorded):
+        raise ValueError("smoke source/input identity is stale")
+    pilot._assert_runner_source_binding(current["executable_sources"], binding)
+    validate_v2_binding(binding, budget=smoke_stage.budget,
+                        seed=smoke_stage.seed, mode=smoke_stage.pair_mode)
+    _check_stage_result(smoke_stage, binding, result)
+    pilot._validate_artifacts(smoke_dir, binding, result)
+    replay_v2_stage(smoke_dir, binding, result)
+    return journal
+
+
 def execute_plan(stages, *, journal_path, phase):
     """Run the smoke stage, or the nine full stages, sequentially and fail closed."""
     validate_exact_plan(stages)
@@ -363,29 +386,7 @@ def execute_plan(stages, *, journal_path, phase):
         raise ValueError("phase must be 'smoke' or 'full'")
     selected = list(stages[:1]) if phase == "smoke" else list(stages[1:])
     if phase == "full":
-        smoke_stage = stages[0]
-        smoke_dir = Path(smoke_stage.output)
-        smoke_journal_path = smoke_dir.parent / "journal_smoke.json"
-        if not smoke_journal_path.is_file():
-            raise ValueError("a completed verified smoke journal is required before full stages")
-        smoke_journal = pilot._load_json(smoke_journal_path, "smoke journal")
-        smoke_entry = smoke_journal.get("stages", {}).get("v2_smoke", {})
-        if (smoke_journal.get("status") != "completed" or
-                smoke_entry.get("status") != "completed" or
-                smoke_entry.get("replay", {}).get("status") != "verified"):
-            raise ValueError("a completed verified smoke replay is required before full stages")
-        binding = pilot._load_json(smoke_dir / "binding.json", "smoke binding.json")
-        result = pilot._load_json(smoke_dir / "result.json", "smoke result.json")
-        current = _capture(smoke_stage)
-        recorded = smoke_entry.get("postflight")
-        if not recorded or _identity(current) != _identity(recorded):
-            raise ValueError("smoke source/input identity is stale")
-        pilot._assert_runner_source_binding(current["executable_sources"], binding)
-        validate_v2_binding(binding, budget=smoke_stage.budget,
-                            seed=smoke_stage.seed, mode=smoke_stage.pair_mode)
-        _check_stage_result(smoke_stage, binding, result)
-        pilot._validate_artifacts(smoke_dir, binding, result)
-        replay_v2_stage(smoke_dir, binding, result)
+        _verify_smoke(stages[0], Path(stages[0].output).parent / "journal_smoke.json")
     journal_path = Path(journal_path)
     if journal_path.exists():
         raise FileExistsError(f"Refusing occupied journal {journal_path}")
@@ -690,31 +691,32 @@ def main(argv=None):
         return 0
     if not all((args.artifact, args.targets, args.canonical, args.output_root)):
         parser().error("--artifact, --targets, --canonical and --output-root are required")
+    root = Path(args.output_root).expanduser().resolve()
+    smoke_path = root / "journal_smoke.json"
+    smoke_completed = (args.execute == "full" or
+                       (not args.execute and smoke_path.is_file()
+                        and (root / "v2_smoke").is_dir()))
     if args.execute == "full":
-        # The smoke directory exists by then; plan the remaining stages against it.
-        root = Path(args.output_root).expanduser().resolve()
-        stages = [_stage(name, pilot._absolute_existing(args.artifact, "artifact", directory=True),
-                         pilot._absolute_existing(args.targets, "targets"),
-                         pilot._absolute_existing(args.canonical, "canonical"),
-                         root / name, budget, seed, mode)
+        artifact = pilot._absolute_existing(args.artifact, "artifact", directory=True)
+        targets = pilot._absolute_existing(args.targets, "targets")
+        canonical = pilot._absolute_existing(args.canonical, "canonical")
+        stages = [_stage(name, artifact, targets, canonical, root / name, budget, seed, mode)
                   for name, budget, seed, mode in stage_specs()]
     else:
         stages = build_plan(artifact=args.artifact, targets=args.targets,
-                            canonical=args.canonical, output_root=args.output_root)
+                            canonical=args.canonical, output_root=root,
+                            allow_existing_smoke=smoke_completed)
+    smoke_journal = None
+    if smoke_completed:
+        smoke_journal = _verify_smoke(stages[0], smoke_path)
     if not args.execute:
         plan = {"status": "not_executed", "stages": [asdict(s) for s in stages]}
-        smoke_journal = Path(args.output_root).expanduser().resolve() / "journal_smoke.json"
-        if smoke_journal.is_file():
-            saved = pilot._load_json(smoke_journal, "smoke journal")
-            entry = saved.get("stages", {}).get("v2_smoke", {})
-            if (saved.get("status") == "completed" and entry.get("status") == "completed"
-                    and entry.get("replay", {}).get("status") == "verified"
-                    and "eta_minutes_nine_runs_smoke" in saved):
-                plan["eta_minutes_nine_runs_smoke"] = saved["eta_minutes_nine_runs_smoke"]
-                plan["eta_basis"] = saved.get("eta_basis", "rough; smoke fixed costs dominate")
+        if (smoke_journal and "eta_minutes_nine_runs_smoke" in smoke_journal):
+            plan["eta_minutes_nine_runs_smoke"] = smoke_journal["eta_minutes_nine_runs_smoke"]
+            plan["eta_basis"] = smoke_journal.get("eta_basis", "rough; smoke fixed costs dominate")
         print(json.dumps(plan, indent=2, sort_keys=True))
         return 0
-    journal = args.journal or str(Path(args.output_root).resolve() / f"journal_{args.execute}.json")
+    journal = str(root / f"journal_{args.execute}.json")
     return execute_plan(stages, journal_path=journal, phase=args.execute)
 
 if __name__ == "__main__":
