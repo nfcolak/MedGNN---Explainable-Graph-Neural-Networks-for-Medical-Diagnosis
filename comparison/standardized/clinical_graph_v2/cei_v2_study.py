@@ -1,7 +1,8 @@
 """Bounded CEI-GNN v2 pair-interaction development study.
 
 Default CLI output is a print-only plan. Training needs `--execute smoke` or
-`--execute full`; validation and test folds are never evaluated.
+`--execute full`; validation and test folds are never evaluated. The read-only
+guarantee applies to default planning and analysis; explicit `--preflight` output is allowed.
 """
 from __future__ import annotations
 
@@ -513,7 +514,7 @@ def validate_completed_study(output_root, *, include_pair_counts=False):
         validate_v2_binding(binding, budget=budget, seed=seed, mode=mode)
         _check_stage_result(Stage(name, [], str(directory), seed, budget, mode), binding, result)
         pilot._validate_artifacts(directory, binding, result)
-        replay = replay_v2_stage(directory, binding, result)
+        replay = replay_v2_stage(directory, binding, result, persist=False)
         counts = replay.get("_dev_pair_counts")
         if counts is not None:
             if common_pair_counts is None:
@@ -788,6 +789,15 @@ def training_curve_summary(output_root, bindings, results):
 
 def analyze(output_root, output_json, *, pair_counts=None):
     output = Path(output_json)
+    root = Path(output_root).expanduser().resolve(strict=True)
+    resolved_output = output.expanduser().resolve()
+    for name in FULL_STAGE_NAMES:
+        arm_dir = (root / name).resolve()
+        try:
+            resolved_output.relative_to(arm_dir)
+        except ValueError:
+            continue
+        raise ValueError(f"analysis output must not be inside study arm: {arm_dir}")
     if output.exists():
         raise FileExistsError(f"Refusing occupied analysis output {output}")
     import inspect
