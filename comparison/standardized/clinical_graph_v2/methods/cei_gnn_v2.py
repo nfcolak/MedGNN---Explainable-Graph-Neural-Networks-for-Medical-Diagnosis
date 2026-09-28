@@ -209,6 +209,9 @@ class PairEvidenceNetwork(nn.Module):
                if visit_graph is not None else {}))
         pair_count = pairs.size(1)
         if self.pair_mode == "off" or pair_count == 0:
+            if self.pair_mode == "off" and pair_count:
+                F.dropout(h.new_empty((pair_count, self.pair_rank)),
+                          p=self.dropout_rate, training=self.training)
             pair_total = h.new_zeros((graph_count, classes))
             pair_parts = h.new_zeros((pair_count, classes))
             pair_gates = h.new_empty((0,))
