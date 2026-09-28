@@ -678,7 +678,6 @@ def parser():
     result.add_argument("--canonical")
     result.add_argument("--output-root")
     result.add_argument("--execute", choices=("smoke", "full"))
-    result.add_argument("--journal")
     result.add_argument("--preflight", metavar="OUTPUT_JSON")
     result.add_argument("--analyze", metavar="OUTPUT_ROOT")
     result.add_argument("--analysis-output", metavar="OUTPUT_JSON")
