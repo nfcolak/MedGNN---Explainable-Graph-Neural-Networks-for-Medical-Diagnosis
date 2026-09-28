@@ -76,6 +76,24 @@ def test_pair_builder_rejects_malformed_membership():
         v2.within_visit_pairs(torch.tensor([[0, 0], [0, 5]]), node_type, 2)
 
 
+def test_adapter_rejects_cross_graph_and_out_of_range_visits_even_when_off():
+    from torch_geometric.data import Batch
+    from comparison.standardized.clinical_graph_v2.methods import METHOD_REGISTRY
+    from argparse import Namespace
+
+    adapter = METHOD_REGISTRY["cei_gnn_v2"](
+        num_tokens=8, node_dim=3, edge_dim=2, num_classes=3, hidden=8, layers=1,
+        dropout=0.0, token_dim=4, num_triples=4,
+        args=Namespace(method_options={"pair_mode": "off"})).eval()
+    batch = Batch.from_data_list([_graph(), _graph(seed=8)])
+    batch.visit_membership_index = torch.tensor([[0, 0], [0, 8]])
+    with pytest.raises(ValueError, match="crosses graph"):
+        adapter(batch, epoch=0)
+    batch.visit_membership_index = torch.tensor([[4, 4], [8, 9]])
+    with pytest.raises(ValueError, match="outside"):
+        adapter(batch, epoch=0)
+
+
 def test_kind_pair_index_is_symmetric_and_covers_six_unordered_pairs():
     v2 = _v2()
     assert v2.KIND_PAIR_COUNT == 6
