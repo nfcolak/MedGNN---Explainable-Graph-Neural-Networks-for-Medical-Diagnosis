@@ -17,11 +17,13 @@ def _study_tests():
     return module
 
 
-def _real_replay_fixture(tmp_path, monkeypatch):
+def _real_replay_fixture(tmp_path, monkeypatch, *, dev_pair_counts_override=None):
     """Run the established synthetic real-model replay test and capture its bound arm."""
     existing = _study_tests()
     study = existing._module()
     existing._module = lambda: study
+    if dev_pair_counts_override is not None:
+        monkeypatch.setattr(study, "dev_pair_counts", dev_pair_counts_override)
     captured = {}
     original = study.replay_v2_stage
 
@@ -29,7 +31,9 @@ def _real_replay_fixture(tmp_path, monkeypatch):
         captured.setdefault("output", Path(output))
         captured.setdefault("binding", binding)
         captured.setdefault("result", result)
-        return original(output, binding, result, **kwargs)
+        replay = original(output, binding, result, **kwargs)
+        captured.setdefault("returned", replay)
+        return replay
 
     monkeypatch.setattr(study, "replay_v2_stage", capture)
     existing.test_replay_reconstructs_v2_model_and_rejects_tampering(tmp_path, monkeypatch)
@@ -231,6 +235,20 @@ def test_replay_counts_fill_analysis_bands_without_expanding_proof(tmp_path, mon
             for key in ("0", "1-179", "180-1044", ">1044")} == {
                 "0": (1, 1), "1-179": (1, 1), "180-1044": (1, 1), ">1044": (1, 1)}
     assert report["pair_count_source"] == "dev rows reloaded by replay (structural count, no scoring)"
+
+
+def test_replay_uses_dev_pair_counts_helper_on_real_synthetic_rows(tmp_path, monkeypatch):
+    calls = []
+
+    def mutant_helper(rows):
+        calls.append(len(rows))
+        return [777] * len(rows)
+
+    _, captured = _real_replay_fixture(
+        tmp_path, monkeypatch, dev_pair_counts_override=mutant_helper)
+
+    assert calls
+    assert captured["returned"]["_dev_pair_counts"] == [777] * captured["returned"]["dev_count"]
 
 
 def test_real_replay_keeps_persisted_proof_keys_pre_fix2e(tmp_path, monkeypatch):
