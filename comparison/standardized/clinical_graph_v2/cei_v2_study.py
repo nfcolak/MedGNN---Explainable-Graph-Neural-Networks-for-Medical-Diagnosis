@@ -374,20 +374,18 @@ def replay_v2_stage(output_dir, binding, result, *, persist=True):
              "patient_disjoint": True, "validation_evaluated": False, "test_evaluated": False,
              "dev_metrics": metrics}
     proof_path = output / "replay.json"
-    dev_pair_counts = [int(within_visit_pairs(row.visit_membership_index, row.node_type,
-                                               int(row.num_nodes)).size(1))
-                       for row in splits["dev"]]
+    counts = dev_pair_counts(splits["dev"])
     if proof_path.exists():
         existing = pilot._load_json(proof_path, "replay.json")
         if {k: existing.get(k) for k in proof} != proof:
             raise ValueError("existing replay proof differs")
-        return {**existing, "_dev_pair_counts": dev_pair_counts}
+        return {**existing, "_dev_pair_counts": counts}
     if not persist:
         raise ValueError("existing replay proof is required for non-persisting replay")
     with proof_path.open("x") as stream:
         json.dump(proof, stream, indent=2, sort_keys=True)
         stream.write("\n")
-    return {**proof, "_dev_pair_counts": dev_pair_counts}
+    return {**proof, "_dev_pair_counts": counts}
 
 
 def _check_stage_result(stage, binding, result):
