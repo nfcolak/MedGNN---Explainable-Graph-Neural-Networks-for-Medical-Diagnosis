@@ -71,6 +71,15 @@ def test_validator_rejects_cross_arm_dev_pair_count_mismatch(tmp_path, monkeypat
         study.validate_completed_study(tmp_path, include_pair_counts=True)
 
 
+def test_explicit_pair_counts_keep_injected_source_when_replay_counts_exist(tmp_path, monkeypatch):
+    study = _study_tests()._module()
+    existing = _study_tests()
+    report = existing._run_synthetic_analysis(
+        study, tmp_path, monkeypatch, counts=[5, 5, 5, 5], replay_counts=[0, 0, 0, 1])
+
+    assert report["pair_count_source"] == "injected per-graph dev counts"
+
+
 def test_analysis_rejects_missing_replay_proof_without_recreating_it(tmp_path, monkeypatch):
     study, captured = _real_replay_fixture(tmp_path, monkeypatch)
     arm = _make_single_arm_validator(study, captured, monkeypatch)
