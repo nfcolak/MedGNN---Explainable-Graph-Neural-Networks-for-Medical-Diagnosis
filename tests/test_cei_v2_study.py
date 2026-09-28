@@ -392,7 +392,7 @@ def test_replay_reconstructs_v2_model_and_rejects_tampering(tmp_path, monkeypatc
     with pytest.raises(ValueError, match="subjects"):
         module.replay_v2_stage(subject_tamper, binding, result)
     state = torch.load(output / "best.pt", map_location="cpu", weights_only=True)
-    state["network.bias"] = state["network.bias"] + 0.5
+    state["network.bias"][0] += 0.5
     tampered = tmp_path / "tampered"
     tampered.mkdir()
     for name in ("preprocessing.json", "dev.npz"):
