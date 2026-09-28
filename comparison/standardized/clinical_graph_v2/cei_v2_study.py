@@ -272,7 +272,7 @@ def _identity(captured):
     return captured["source_state_sha256"], captured["input_state_sha256"]
 
 
-def replay_v2_stage(output_dir, binding, result):
+def replay_v2_stage(output_dir, binding, result, *, persist=True):
     """Rebuild the bound adapter and replay the saved dev predictions exactly."""
     output = Path(output_dir)
     if result.get("status") != "completed" or result.get("binding") != binding:
@@ -377,6 +377,8 @@ def replay_v2_stage(output_dir, binding, result):
         if {k: existing.get(k) for k in proof} != proof:
             raise ValueError("existing replay proof differs")
         return existing
+    if not persist:
+        raise ValueError("existing replay proof is required for non-persisting replay")
     with proof_path.open("x") as stream:
         json.dump(proof, stream, indent=2, sort_keys=True)
         stream.write("\n")
@@ -392,7 +394,7 @@ def _check_stage_result(stage, binding, result):
         raise RuntimeError(f"{stage.name} evaluated the test fold")
 
 
-def _verify_smoke(smoke_stage, journal_path):
+def _verify_smoke(smoke_stage, journal_path, persist_replay=True):
     """Revalidate completed smoke binding, artifacts, replay, and source/input identity."""
     smoke_dir = Path(smoke_stage.output)
     journal = pilot._load_json(journal_path, "smoke journal")
@@ -411,7 +413,10 @@ def _verify_smoke(smoke_stage, journal_path):
                         seed=smoke_stage.seed, mode=smoke_stage.pair_mode)
     _check_stage_result(smoke_stage, binding, result)
     pilot._validate_artifacts(smoke_dir, binding, result)
-    replay_v2_stage(smoke_dir, binding, result)
+    if persist_replay:
+        replay_v2_stage(smoke_dir, binding, result)
+    else:
+        replay_v2_stage(smoke_dir, binding, result, persist=False)
     return journal
 
 
@@ -752,7 +757,7 @@ def main(argv=None):
                             allow_existing_smoke=smoke_completed)
     smoke_journal = None
     if smoke_completed:
-        smoke_journal = _verify_smoke(stages[0], smoke_path)
+        smoke_journal = _verify_smoke(stages[0], smoke_path, False)
     if not args.execute:
         plan = {"status": "not_executed", "stages": [asdict(s) for s in stages]}
         if (smoke_journal and "eta_minutes_nine_runs_smoke" in smoke_journal):
