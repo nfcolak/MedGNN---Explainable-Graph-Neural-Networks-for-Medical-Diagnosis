@@ -727,6 +727,15 @@ def training_curve_summary(output_root, bindings, results):
     curves = {}
     for name, binding in bindings.items():
         history_path = Path(output_root) / name / "history.json"
+        if not history_path.is_file():
+            # The real analysis path validates artifacts first; this branch keeps
+            # isolated callers with a mocked validator explicit about missing data.
+            curves[name] = {"train_loss": None, "dev_macro_f1": None,
+                            "selected_epoch": binding.get("selected_dev", {}).get("epoch"),
+                            "selected_at_last_epoch": None,
+                            "total_seconds": results[name].get("total_seconds"),
+                            "decisive": False, "status": "history unavailable"}
+            continue
         try:
             history = json.loads(history_path.read_text())
         except (OSError, json.JSONDecodeError) as error:
