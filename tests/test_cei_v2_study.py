@@ -68,6 +68,8 @@ def _binding(mode="product", seed=2025, budget=(10000, 5000, 40), **updates):
     binding = {
         "method": "cei_gnn_v2", "method_config": config,
         "method_native_defaults": config["native_defaults"],
+        "selected_dev": {"epoch": 3, "epoch_index": 2, "metric": "macro_f1",
+                         "metric_value": 0.5, "prediction_sha256": "pred", "sample_ids_sha256": "ids"},
         "artifact_graphs_sha256": "g", "artifact_visit_membership_sha256": "m",
         "targets_sha256": "t", "target_binding_sha256": "tb", "label_order": ["A", "B"],
         "source_code": {"x.py": "h"}, "preprocessing_sha256": "p",
@@ -200,8 +202,10 @@ def test_arm_parity_rejects_every_unallowlisted_binding_difference(field, value)
 def test_arm_parity_accepts_only_documented_arm_varying_fields():
     module = _module()
     product, off = _binding("product", 1234), _binding("off", 2025)
-    product["selected_dev"] = {"metric_value": 0.7}
-    off["selected_dev"] = {"metric_value": 0.6}
+    product["selected_dev"] = {"epoch": 4, "epoch_index": 3, "metric": "macro_f1",
+                                "metric_value": 0.7, "prediction_sha256": "p", "sample_ids_sha256": "s"}
+    off["selected_dev"] = {"epoch": 3, "epoch_index": 2, "metric": "macro_f1",
+                            "metric_value": 0.6, "prediction_sha256": "o", "sample_ids_sha256": "s"}
     off["active_parameter_count"] = off["method_config"]["architecture"]["active_parameter_count"]
     assert module.assert_arm_parity({"product": product, "off": off})
 
@@ -905,3 +909,118 @@ def test_mutation_smoke_eta_numeric_step_scaling(tmp_path, monkeypatch, seconds,
     assert journal["eta_minutes_nine_runs_smoke"] == expected
     assert journal["eta_basis"] == "rough; smoke fixed costs dominate"
     assert len(launches) == 1
+
+
+@pytest.mark.parametrize("field", ["active_parameter_count", "architecture_active"])
+def test_sf2a_rejects_product_additive_active_parameter_mismatch(field):
+    module = _module()
+    product, additive = _binding("product", 1234), _binding("additive", 1234)
+    if field == "active_parameter_count":
+        additive["active_parameter_count"] += 1
+        additive["method_config"]["architecture"]["active_parameter_count"] += 1
+    else:
+        additive["active_parameter_count"] += 1
+        additive["method_config"]["architecture"]["active_parameter_count"] += 1
+    with pytest.raises(ValueError, match="active_parameter_count"):
+        module.assert_arm_parity({"product": product, "additive": additive})
+
+
+@pytest.mark.parametrize("field,value", [("extra", 1), ("metric", "other"),
+                                           ("sample_ids_sha256", "different")])
+def test_sf2a_selected_dev_is_exact_and_common_except_outcomes(field, value):
+    module = _module()
+    selected = {"epoch": 4, "epoch_index": 3, "metric": "macro_f1",
+                "metric_value": 0.7, "prediction_sha256": "pred",
+                "sample_ids_sha256": "ids"}
+    product, additive = _binding("product", 1234), _binding("additive", 1234)
+    product["selected_dev"] = dict(selected)
+    additive["selected_dev"] = dict(selected)
+    if field == "extra":
+        additive["selected_dev"][field] = value
+    else:
+        additive["selected_dev"][field] = value
+    with pytest.raises(ValueError, match="selected_dev"):
+        module.assert_arm_parity({"product": product, "additive": additive})
+
+
+def test_sf2a_off_active_parameters_must_be_fewer_and_three_arms_remain_valid():
+    module = _module()
+    arms = {f"{mode}_seed{seed}": _binding(mode, seed)
+            for seed in (1234, 2025, 7) for mode in ("product", "additive", "off")}
+    assert module.assert_arm_parity(arms)
+    product, off = _binding("product", 1234), _binding("off", 1234)
+    off["active_parameter_count"] = product["active_parameter_count"]
+    off["method_config"]["architecture"]["active_parameter_count"] = product["active_parameter_count"]
+    with pytest.raises(ValueError, match="active_parameter_count"):
+        module.assert_arm_parity({"product": product, "off": off})
+
+
+def test_print_only_smoke_verification_does_not_mutate_output_root(tmp_path, monkeypatch, capsys):
+    """SF2-B: print-only requires an existing replay proof and never persists one."""
+    import hashlib
+
+    module = _module()
+    artifact, targets, canonical = _inputs(tmp_path)
+    root = tmp_path / "runs"
+    smoke = root / "v2_smoke"
+    smoke.mkdir(parents=True)
+    stages = module.build_plan(artifact=artifact, targets=targets, canonical=canonical,
+                               output_root=root, allow_existing_smoke=True)
+    stage = stages[0]
+    binding = {"synthetic": "binding"}
+    result = {"status": "completed", "binding": binding, "metrics": None,
+              "dev_metrics": {}, "test_evaluated": False}
+    for name, value in (("binding.json", binding), ("result.json", result),
+                        ("payload.bin", {"fixed": True})):
+        _write_json(smoke / name, value)
+    (smoke / "payload.bin").write_bytes(b"synthetic prediction payload")
+    captured = {"source_state_sha256": "source", "input_state_sha256": "input",
+                "executable_sources": {}}
+    monkeypatch.setattr(module, "_capture", lambda _: captured)
+    monkeypatch.setattr(module.pilot, "_assert_runner_source_binding", lambda *a: None)
+    monkeypatch.setattr(module.pilot, "_validate_artifacts", lambda *a: None)
+    monkeypatch.setattr(module, "validate_v2_binding", lambda *a, **k: None)
+
+    def computed_replay(directory, _binding, _result, *, persist=True):
+        proof = {"status": "verified", "payload_sha256": hashlib.sha256(
+            (Path(directory) / "payload.bin").read_bytes()).hexdigest()}
+        proof_path = Path(directory) / "replay.json"
+        if proof_path.exists():
+            if json.loads(proof_path.read_text()) != proof:
+                raise ValueError("existing replay proof differs")
+        elif persist:
+            _write_json(proof_path, proof)
+        else:
+            raise ValueError("existing replay proof is required in non-persisting mode")
+        return proof
+
+    monkeypatch.setattr(module, "replay_v2_stage", computed_replay)
+    monkeypatch.setattr(module.subprocess, "run", lambda *a, **k: pytest.fail("training launched"))
+
+    def snapshot():
+        return {str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
+                for path in sorted(root.rglob("*")) if path.is_file()}
+
+    proof = computed_replay(smoke, binding, result)
+    journal = {"status": "completed", "eta_minutes_nine_runs_smoke": 12.3,
+               "stages": {"v2_smoke": {"status": "completed", "postflight": captured,
+                                         "replay": proof}}}
+    _write_json(root / "journal_smoke.json", journal)
+    before = snapshot()
+    assert module.main(["--artifact", str(artifact), "--targets", str(targets),
+                        "--canonical", str(canonical), "--output-root", str(root)]) == 0
+    assert snapshot() == before
+    assert json.loads(capsys.readouterr().out)["status"] == "not_executed"
+
+    replay_path = smoke / "replay.json"
+    replay_path.unlink()
+    with pytest.raises(ValueError, match="replay"):
+        module.main(["--artifact", str(artifact), "--targets", str(targets),
+                     "--canonical", str(canonical), "--output-root", str(root)])
+    assert not replay_path.exists()
+
+    _write_json(replay_path, proof)
+    (smoke / "payload.bin").write_bytes(b"tampered prediction payload")
+    with pytest.raises(ValueError, match="replay"):
+        module.main(["--artifact", str(artifact), "--targets", str(targets),
+                     "--canonical", str(canonical), "--output-root", str(root)])
