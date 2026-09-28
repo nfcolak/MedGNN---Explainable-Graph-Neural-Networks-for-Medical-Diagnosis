@@ -218,7 +218,9 @@ def test_replay_counts_fill_analysis_bands_without_expanding_proof(tmp_path, mon
 
     report = study.analyze(root, root / "analysis.json")
     bands = report["pair_count_bands"]
-    assert [bands[key]["graphs"] for key in ("0", "1-179", "180-1044", ">1044")] == [1, 1, 1, 1]
+    assert {key: (bands[key]["graphs"], bands[key]["patients"])
+            for key in ("0", "1-179", "180-1044", ">1044")} == {
+                "0": (1, 1), "1-179": (1, 1), "180-1044": (1, 1), ">1044": (1, 1)}
     assert report["pair_count_source"] == "dev rows reloaded by replay (structural count, no scoring)"
 
 
