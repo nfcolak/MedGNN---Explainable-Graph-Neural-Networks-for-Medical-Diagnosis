@@ -94,3 +94,159 @@ def test_kind_pair_index_is_symmetric_and_covers_six_unordered_pairs():
     assert sorted(mixed | set(diagonal)) == [0, 1, 2, 3, 4, 5]
     with pytest.raises(ValueError, match="evidence"):
         v2.kind_pair_index(torch.tensor([1, 2]), torch.tensor([[0], [1]]))
+
+
+def _network(mode="product", seed=11):
+    v2 = _v2()
+    assert hasattr(v2, "PairEvidenceNetwork"), "PairEvidenceNetwork is missing"
+    torch.manual_seed(seed)
+    network = v2.PairEvidenceNetwork(
+        num_tokens=8, node_dim=3, edge_dim=2, num_classes=3, hidden=8, token_dim=4,
+        num_triples=4, num_relations=15, dropout=0.0, pair_rank=4, pair_mode=mode,
+        num_node_types=8).eval()
+    with torch.no_grad():
+        network.pair_gate.normal_()
+        network.edge_context_gate.bias.normal_()
+    return network
+
+
+def _metadata(graph):
+    from comparison.standardized.clinical_graph_v2.methods.base import read_clinical_batch
+
+    return read_clinical_batch(graph, method="test", node_dim=3, edge_dim=2, num_tokens=8,
+                               num_triples=4, num_relations=15)
+
+
+def _run(network, graph, features=None, **kwargs):
+    metadata = _metadata(graph)
+    if features is None:
+        features = network.continuous_inputs(metadata)
+    return network.forward_continuous(features, metadata.edge_index, metadata,
+                                      graph.visit_membership_index, **kwargs)
+
+
+def _block_mixed_difference(network, graph, block, first, second):
+    metadata = _metadata(graph)
+    base = network.continuous_inputs(metadata).detach()
+    generator = torch.Generator().manual_seed(3)
+    delta_first = torch.randn(base.size(1), generator=generator) * 0.5
+    delta_second = torch.randn(base.size(1), generator=generator) * 0.5
+    zero = torch.zeros_like(delta_first)
+
+    def total(shift_first, shift_second):
+        features = base.clone()
+        features[first] += shift_first
+        features[second] += shift_second
+        parts = network.forward_continuous(features, metadata.edge_index, metadata,
+                                           graph.visit_membership_index, return_parts=True)
+        return parts[block].sum(0)
+
+    return (total(delta_first, delta_second) - total(delta_first, zero)
+            - total(zero, delta_second) + total(zero, zero))
+
+
+@pytest.mark.parametrize("mode", ["product", "additive", "off"])
+def test_parts_reconstruct_logits_in_every_mode(mode):
+    parts = _run(_network(mode), _graph(), return_parts=True)
+    rebuilt = (parts["bias"] + parts["node_contributions"].sum(0)
+               + parts["edge_contributions"].sum(0) + parts["pair_contributions"].sum(0))
+    torch.testing.assert_close(parts["logits"][0], rebuilt, rtol=1e-5, atol=1e-5)
+    assert parts["pairs"].t().tolist() == [list(pair) for pair in EXPECTED_PAIRS]
+    assert parts["pair_contributions"].shape == (8, 3)
+    if mode == "off":
+        assert torch.count_nonzero(parts["pair_contributions"]) == 0
+    else:
+        assert parts["pair_contributions"].abs().sum() > 0
+
+
+def test_modes_share_parameter_names_and_shapes_and_change_predictions():
+    networks = {mode: _network(mode) for mode in ("product", "additive", "off")}
+    shapes = {mode: [(name, tuple(p.shape)) for name, p in net.named_parameters()]
+              for mode, net in networks.items()}
+    assert shapes["product"] == shapes["additive"] == shapes["off"]
+    state = networks["product"].state_dict()
+    for net in networks.values():
+        net.load_state_dict(state)
+    logits = {mode: _run(net, _graph()) for mode, net in networks.items()}
+    assert not torch.allclose(logits["product"], logits["additive"])
+    assert not torch.allclose(logits["product"], logits["off"])
+    assert not torch.allclose(logits["additive"], logits["off"])
+
+
+def test_only_product_mode_has_a_pair_cross_term():
+    product = _block_mixed_difference(_network("product"), _graph(), "pair_contributions", 2, 3)
+    additive = _block_mixed_difference(_network("additive"), _graph(), "pair_contributions", 2, 3)
+    assert product.abs().max() > 1e-4, "product pair term collapsed to an additive response"
+    assert additive.abs().max() < 1e-5, "additive control contains a hidden cross term"
+
+
+def test_edge_block_has_no_endpoint_cross_term():
+    for mode in ("product", "additive"):
+        difference = _block_mixed_difference(_network(mode), _graph(), "edge_contributions", 1, 2)
+        assert difference.abs().max() < 1e-5, f"edge endpoints interact in {mode} mode"
+
+
+def test_zero_edge_mask_removes_only_the_edge_block():
+    network = _network("product")
+    graph = _graph()
+    ordinary = _run(network, graph, return_parts=True)
+    network.set_edge_mask(torch.zeros(graph.num_edges))
+    masked = _run(network, graph, return_parts=True)
+    network.set_edge_mask(None)
+    assert torch.count_nonzero(masked["edge_contributions"]) == 0
+    expected = (masked["bias"] + ordinary["node_contributions"].sum(0)
+                + ordinary["pair_contributions"].sum(0))
+    torch.testing.assert_close(masked["logits"][0], expected, rtol=1e-5, atol=1e-5)
+
+
+def test_pyg_mask_matches_direct_probability_mask_and_carries_gradient():
+    from torch_geometric.explain.algorithm.utils import clear_masks, set_masks
+
+    network = _network("product")
+    graph = _graph()
+    metadata = _metadata(graph)
+    raw = torch.nn.Parameter(torch.tensor([-0.9, 0.3, 1.1, -0.2, 0.5, 0.8]))
+    set_masks(network, raw, metadata.edge_index, apply_sigmoid=True)
+    pyg = _run(network, graph)
+    (pyg * torch.tensor([[0.2, -0.7, 1.1]])).sum().backward()
+    assert raw.grad is not None and raw.grad.abs().sum() > 0
+    clear_masks(network)
+    network.set_edge_mask(raw.detach().sigmoid())
+    direct = _run(network, graph)
+    network.set_edge_mask(None)
+    torch.testing.assert_close(pyg.detach(), direct, rtol=1e-6, atol=1e-6)
+
+
+def test_edgeless_pairless_graph_is_finite():
+    from comparison.standardized.clinical_graph_v2.tensorize import ClinicalGraphData
+
+    graph = ClinicalGraphData(x=torch.ones((2, 3)), edge_index=torch.zeros((2, 0), dtype=torch.long),
+                              edge_attr=torch.zeros((0, 2)))
+    graph.node_type = torch.tensor([1, 2])
+    graph.token = torch.tensor([1, 2])
+    graph.edge_relation = torch.zeros(0, dtype=torch.long)
+    graph.edge_triple = torch.zeros(0, dtype=torch.long)
+    graph.visit_membership_index = torch.tensor([[0, 0], [0, 1]])
+    graph.num_visits = torch.tensor([1])
+    for mode in ("product", "additive", "off"):
+        parts = _run(_network(mode), graph, return_parts=True)
+        assert parts["logits"].shape == (1, 3) and torch.isfinite(parts["logits"]).all()
+        assert parts["pairs"].shape == (2, 0)
+
+
+def test_network_fails_closed_on_invalid_inputs():
+    v2 = _v2()
+    network = _network("product")
+    graph = _graph()
+    metadata = _metadata(graph)
+    features = network.continuous_inputs(metadata).detach()
+    features[0, 0] = float("nan")
+    with pytest.raises(ValueError, match="finite"):
+        network.forward_continuous(features, metadata.edge_index, metadata,
+                                   graph.visit_membership_index)
+    with pytest.raises(ValueError, match="edge mask"):
+        network.set_edge_mask(torch.full((graph.num_edges,), 1.5))
+    with pytest.raises(ValueError, match="pair_mode"):
+        v2.PairEvidenceNetwork(num_tokens=8, node_dim=3, edge_dim=2, num_classes=3, hidden=8,
+                               token_dim=4, num_triples=4, num_relations=15, dropout=0.0,
+                               pair_rank=4, pair_mode="both", num_node_types=8)
