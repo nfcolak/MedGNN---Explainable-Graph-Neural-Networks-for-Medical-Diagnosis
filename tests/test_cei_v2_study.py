@@ -181,6 +181,31 @@ def test_arm_parity_allows_seed_and_mode_but_rejects_other_differences():
         module.assert_arm_parity(arms)
 
 
+@pytest.mark.parametrize("field,value", [
+    ("class_weight_values", [1.0, 2.0]),
+    ("edge_payload", False),
+    ("token_min_count", 9),
+    ("future_policy_key", "changed"),
+])
+def test_arm_parity_rejects_every_unallowlisted_binding_difference(field, value):
+    module = _module()
+    product, additive = _binding("product", 1234), _binding("additive", 1234)
+    product[field] = "baseline" if field == "future_policy_key" else (
+        [1.0, 1.0] if field == "class_weight_values" else (True if field == "edge_payload" else 1))
+    additive[field] = value
+    with pytest.raises(ValueError, match=field):
+        module.assert_arm_parity({"product": product, "additive": additive})
+
+
+def test_arm_parity_accepts_only_documented_arm_varying_fields():
+    module = _module()
+    product, off = _binding("product", 1234), _binding("off", 2025)
+    product["selected_dev"] = {"metric_value": 0.7}
+    off["selected_dev"] = {"metric_value": 0.6}
+    off["active_parameter_count"] = off["method_config"]["architecture"]["active_parameter_count"]
+    assert module.assert_arm_parity({"product": product, "off": off})
+
+
 def _write_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value))
