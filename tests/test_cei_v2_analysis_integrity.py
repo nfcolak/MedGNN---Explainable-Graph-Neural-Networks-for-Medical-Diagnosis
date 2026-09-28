@@ -53,6 +53,23 @@ def _make_single_arm_validator(study, captured, monkeypatch):
     return arm
 
 
+def test_validator_rejects_cross_arm_dev_pair_count_mismatch(tmp_path, monkeypatch):
+    study = _study_tests()._module()
+    arm_specs = (("arm-a", (10, 5, 1), 1, "product"),
+                 ("arm-b", (10, 5, 1), 2, "product"))
+    monkeypatch.setattr(study, "stage_specs", lambda: (("smoke", (1, 1, 1), 0, "product"), *arm_specs))
+    monkeypatch.setattr(study.pilot, "_load_json", lambda path, label: {})
+    monkeypatch.setattr(study, "validate_v2_binding", lambda *args, **kwargs: None)
+    monkeypatch.setattr(study, "_check_stage_result", lambda *args, **kwargs: None)
+    monkeypatch.setattr(study.pilot, "_validate_artifacts", lambda *args, **kwargs: None)
+    monkeypatch.setattr(study, "replay_v2_stage",
+                        lambda directory, *args, **kwargs:
+                        {"_dev_pair_counts": [1] if Path(directory).name == "arm-a" else [2]})
+
+    with pytest.raises(ValueError, match="dev pair counts differ across arms"):
+        study.validate_completed_study(tmp_path, include_pair_counts=True)
+
+
 def test_analysis_rejects_missing_replay_proof_without_recreating_it(tmp_path, monkeypatch):
     study, captured = _real_replay_fixture(tmp_path, monkeypatch)
     arm = _make_single_arm_validator(study, captured, monkeypatch)
