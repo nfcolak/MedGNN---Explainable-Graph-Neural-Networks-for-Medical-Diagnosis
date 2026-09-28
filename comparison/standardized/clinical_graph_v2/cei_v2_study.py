@@ -641,6 +641,8 @@ def analyze(output_root, output_json):
               "test_evaluated": False, "validation_evaluated": False}
     from comparison.standardized.clinical_graph_v2 import train
     secondary = {}
+    results = {name: pilot._load_json(Path(output_root) / name / "result.json", "result.json")
+               for name in bindings}
     for name, binding in bindings.items():
         proba = arms[name]
         patient_metrics = train.patient_equal_metrics(y, proba, subjects, num_classes)
@@ -656,7 +658,7 @@ def analyze(output_root, output_json):
             "pair_count_summary": binding.get("pair_count_summary"),
             "parameter_count": binding["parameter_count"],
             "active_parameter_count": binding["active_parameter_count"],
-            "total_seconds": binding.get("total_seconds"),
+            "total_seconds": results[name].get("total_seconds"),
         }
     report["secondary_results"] = secondary
     report["product_minus_off_bootstrap"] = comparisons["product_minus_off"]
