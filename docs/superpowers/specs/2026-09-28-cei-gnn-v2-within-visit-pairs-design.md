@@ -127,3 +127,7 @@ Failing tests first, in `tests/test_plugin_cei_gnn_v2.py` and `tests/test_cei_v2
 ## 9. Out of scope
 
 Test fold; validation-fold scoring; graph rebuilds or new data; tuning; changing v1, ProtGNN or shared runner defaults; ProtGNN re-runs; real GraphXAI acceptance on v2; merging to main.
+
+## 10. 2026-09-28 amendment (user decision): smoke = three modes
+
+The user decided on 2026-09-28 that the smoke run covers `product`, `additive` and `off`, each with seed 1234, 256 train samples, 128 dev samples and 2 epochs. These are separate output stages (`v2_smoke_product`, `v2_smoke_additive`, `v2_smoke_off`) and share one smoke journal. `--execute smoke` runs exactly those three stages in that order and stops at the first failure. The nine full-study stages, their argv and the §6 success rule are unchanged. The smoke summary reports wall seconds and seconds per epoch only; it makes no mode comparison or decision and writes no evidence file beyond the existing journal and per-stage runner outputs.
