@@ -280,10 +280,11 @@ def test_duplicate_membership_rows_do_not_duplicate_pairs():
     assert actual.t().tolist() == [list(pair) for pair in EXPECTED_PAIRS]
 
 
-def test_pair_contributions_are_invariant_to_endpoint_order(monkeypatch):
+@pytest.mark.parametrize("mode", ["product", "additive"])
+def test_pair_contributions_are_invariant_to_endpoint_order(monkeypatch, mode):
     v2 = _v2()
     graph = _graph()
-    network = _network("product")
+    network = _network(mode)
     ordinary = _run(network, graph, return_parts=True)
     original = v2.within_visit_pairs
 
@@ -301,25 +302,20 @@ def test_pair_gate_and_denominator_ignore_node_features_while_votes_change(mode)
     metadata = _metadata(graph)
     features = network.continuous_inputs(metadata).detach()
     changed = features.clone()
-    changed[2, :network.node_dim] += 2.0
-    changed[3, :network.node_dim] -= 1.5
-    observed_votes = []
-    hook = network.pair_vote.register_forward_hook(
-        lambda _module, _inputs, output: observed_votes.append(output.detach().clone()))
-    _run(network, graph, features, return_parts=True)
-    _run(network, graph, changed, return_parts=True)
-    hook.remove()
-    assert len(observed_votes) == 2
-    assert not torch.allclose(observed_votes[0], observed_votes[1])
-
-    pairs = _run(network, graph, return_parts=True)["pairs"]
-    kinds = _v2().kind_pair_index(metadata.node_type, pairs)
-    gates_before = network.pair_gate[kinds].sigmoid()
-    denominator_before = 1 + gates_before.sum(0)
-    gates_after = network.pair_gate[kinds].sigmoid()
-    denominator_after = 1 + gates_after.sum(0)
+    changed[:, :network.node_dim] += torch.randn_like(changed[:, :network.node_dim]) * 1000.0
+    before = network.forward_continuous(features, metadata.edge_index, metadata,
+                                        graph.visit_membership_index, return_parts=True)
+    after = network.forward_continuous(changed, metadata.edge_index, metadata,
+                                       graph.visit_membership_index, return_parts=True)
+    gates_before = before.get("pair_gates")
+    gates_after = after.get("pair_gates")
+    denominator_before = before.get("pair_denominator")
+    denominator_after = after.get("pair_denominator")
+    assert gates_before is not None and gates_after is not None
+    assert denominator_before is not None and denominator_after is not None
     torch.testing.assert_close(gates_before, gates_after)
     torch.testing.assert_close(denominator_before, denominator_after)
+    assert not torch.allclose(before["pair_contributions"], after["pair_contributions"])
 
 
 def test_zero_edge_mask_removes_only_the_edge_block():
