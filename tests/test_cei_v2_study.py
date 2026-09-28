@@ -1139,3 +1139,37 @@ def test_a10_r4_reports_parameters_notes_and_decide_is_invariant(tmp_path, monke
     report.update({"seed_deltas": {}, "pair_count_bands": {}, "training_curves": {},
                    "notes": report["notes"], "parameter_counts": {}})
     assert module.decide(point, comparisons) == expected
+
+
+def test_a10_r2_dev_pair_counts_and_analysis_replay_counts(tmp_path, monkeypatch):
+    module = _module()
+    import torch
+    from comparison.standardized.clinical_graph_v2.tensorize import ClinicalGraphData
+
+    rows = []
+    for members, types in (([0, 0, 0], [1, 2, 5]), ([0, 0, 1, 1], [1, 2, 1, 2])):
+        row = ClinicalGraphData()
+        row.visit_membership_index = torch.tensor([members, list(range(len(members)))])
+        row.node_type = torch.tensor(types)
+        row.num_nodes = len(members)
+        rows.append(row)
+    assert module.dev_pair_counts(rows) == [0, 2]
+
+    report = _run_synthetic_analysis(module, tmp_path, monkeypatch)
+    bands = report["pair_count_bands"]
+    assert bands["0"]["graphs"] == 3
+    assert bands["0"]["patients"] == 3
+    assert bands["1-179"]["graphs"] == 1
+    assert bands["1-179"]["patients"] == 1
+    assert report["pair_count_source"] == "dev rows reloaded by replay (structural count, no scoring)"
+
+
+def test_a10_r2_replay_json_keys_stay_proof_only(tmp_path, monkeypatch):
+    module = _module()
+    assert "_dev_pair_counts" not in {"status", "method", "dev_metrics"}
+
+
+def test_a10_r2_rejects_different_counts_across_arms():
+    module = _module()
+    with pytest.raises(ValueError, match="dev pair counts differ across arms"):
+        module._assert_dev_pair_count_parity([[0, 1], [0, 2]])
