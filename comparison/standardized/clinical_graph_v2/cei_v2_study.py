@@ -706,25 +706,5 @@ def main(argv=None):
     journal = args.journal or str(Path(args.output_root).resolve() / f"journal_{args.execute}.json")
     return execute_plan(stages, journal_path=journal, phase=args.execute)
 
-# Task 6 stub stage; the real implementations above are restored in the green commit.
-def pair_count_summary(rows) -> dict:
-    raise NotImplementedError("stub")
-def step_time_ratio(rows, prep, *, batches=5) -> float:
-    raise NotImplementedError("stub")
-def preflight(*, artifact, targets, output_json) -> dict:
-    raise NotImplementedError("stub")
-def weighted_macro_f1(y, pred, num_classes, weights=None) -> float:
-    raise NotImplementedError("stub")
-def load_arm_predictions(output_root):
-    raise NotImplementedError("stub")
-def paired_bootstrap(arms, y, subjects, *, num_classes, resamples=1000, seed=2026):
-    raise NotImplementedError("stub")
-def decide(point, comparisons) -> dict:
-    raise NotImplementedError("stub")
-def analyze(output_root, output_json) -> dict:
-    raise NotImplementedError("stub")
-def main(argv=None):
-    raise NotImplementedError("stub")
-
 if __name__ == "__main__":
     raise SystemExit(main())

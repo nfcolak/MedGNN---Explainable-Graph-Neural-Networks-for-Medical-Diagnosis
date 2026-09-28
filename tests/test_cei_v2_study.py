@@ -473,9 +473,13 @@ def test_load_arm_predictions_requires_identical_dev_rows(tmp_path):
     arms, y, subjects = module.load_arm_predictions(tmp_path)
     assert sorted(arms) == sorted(module.FULL_STAGE_NAMES) and y.tolist() == [0, 1]
     np.savez_compressed(tmp_path / "off_seed7" / "dev.npz", proba=np.full((2, 2), 0.5),
-                        y=np.asarray([0, 1]), subjects=np.asarray(["p1", "p2"]),
-                        sample_ids=np.asarray(["a", "c"]))
+                        y=np.asarray([0, 1]), subjects=np.asarray(["p1", "other"]),
+                        sample_ids=ids)
     with pytest.raises(ValueError, match="dev rows differ"):
+        module.load_arm_predictions(tmp_path)
+    np.savez_compressed(tmp_path / "off_seed7" / "dev.npz", proba=np.full((2, 2), 0.5),
+                        y=np.asarray([0, 1]), sample_ids=ids)
+    with pytest.raises(ValueError, match="missing arrays"):
         module.load_arm_predictions(tmp_path)
 
 
@@ -515,5 +519,76 @@ def test_cli_default_prints_plan_without_launching(tmp_path, monkeypatch, capsys
                         "--canonical", str(canonical),
                         "--output-root", str(tmp_path / "runs")]) == 0
     printed = json.loads(capsys.readouterr().out)
+    assert printed["status"] == "not_executed" and len(printed["stages"]) == 10
+    assert not (tmp_path / "runs").exists()
+
+
+def test_smoke_journal_eta_uses_measured_smoke_seconds(tmp_path, monkeypatch):
+    module = _module()
+    artifact, targets, canonical = _inputs(tmp_path)
+    root = tmp_path / "runs"
+    stages = module.build_plan(artifact=artifact, targets=targets, canonical=canonical,
+                               output_root=root)
+    monkeypatch.setattr(module, "_capture", lambda stage: {
+        "source_state_sha256": "s", "input_state_sha256": "i", "executable_sources": {}})
+    monkeypatch.setattr(module.pilot, "_assert_runner_source_binding", lambda *a: True)
+    monkeypatch.setattr(module.pilot, "_validate_artifacts", lambda *a: None)
+    monkeypatch.setattr(module, "validate_v2_binding", lambda *a, **k: None)
+    monkeypatch.setattr(module, "replay_v2_stage", lambda *a: {"status": "verified"})
+
+    def fake_run(argv, **kwargs):
+        output = Path(argv[argv.index("--output") + 1])
+        binding = {}
+        _write_json(output / "binding.json", binding)
+        _write_json(output / "result.json", {"status": "completed", "binding": binding,
+                                             "metrics": None, "dev_metrics": {},
+                                             "test_evaluated": False, "total_seconds": 2.0})
+        return module.subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+    assert module.execute_plan(stages, journal_path=root / "journal_smoke.json", phase="smoke") == 0
+    journal = json.loads((root / "journal_smoke.json").read_text())
+    assert "eta_minutes_nine_runs_smoke" in journal
+    assert journal["eta_basis"] == "rough; smoke fixed costs dominate"
+
+
+def test_analysis_secondary_results_are_explicitly_non_decisive(tmp_path, monkeypatch):
+    module = _module()
+    from comparison.standardized.clinical_graph_v2 import train
+    import numpy as np
+
+    arms = {name: np.asarray([[0.9, 0.1], [0.2, 0.8]]) for name in module.FULL_STAGE_NAMES}
+    binding = {"num_classes": 2, "selected_dev": {"metric_value": 1.0},
+               "label_order": ["A", "B"], "parameter_count": 42,
+               "active_parameter_count": 40, "total_seconds": 4.2,
+               "pair_count_summary": {"graphs": 2}}
+    monkeypatch.setattr(module, "validate_completed_study",
+                        lambda root: {name: binding for name in module.FULL_STAGE_NAMES})
+    monkeypatch.setattr(module, "load_arm_predictions", lambda root:
+                        (arms, np.asarray([0, 1]), np.asarray(["p1", "p2"])))
+    monkeypatch.setattr(module, "paired_bootstrap", lambda *a, **k:
+                        ({name: 1.0 for name in arms}, {"product_minus_off": {"interval_95": [0, 0]}}))
+    monkeypatch.setattr(module, "decide", lambda *a: {"interaction_useful": False})
+    monkeypatch.setattr(train, "patient_equal_metrics", lambda *a, **k: {"macro_f1": 1.0})
+    monkeypatch.setattr(train, "per_class_table", lambda *a, **k: [{"f1": 1.0}])
+    report = module.analyze(tmp_path, tmp_path / "analysis.json")
+    secondary = report["secondary_results"][module.FULL_STAGE_NAMES[0]]
+    assert secondary["decisive"] is False
+    assert secondary["patient_equal_macro_f1"] == 1.0
+    assert secondary["per_class"] and secondary["pair_count_summary"]["graphs"] == 2
+    assert secondary["parameter_count"] == 42 and secondary["total_seconds"] == 4.2
+    assert "product_minus_off_bootstrap" in report
+
+
+def test_module_entrypoint_prints_plan_without_execution(tmp_path):
+    import subprocess
+
+    artifact, targets, canonical = _inputs(tmp_path)
+    result = subprocess.run([
+        sys.executable, "-m", "comparison.standardized.clinical_graph_v2.cei_v2_study",
+        "--artifact", str(artifact), "--targets", str(targets),
+        "--canonical", str(canonical), "--output-root", str(tmp_path / "runs")],
+        check=True, capture_output=True, text=True)
+    printed = json.loads(result.stdout)
     assert printed["status"] == "not_executed" and len(printed["stages"]) == 10
     assert not (tmp_path / "runs").exists()
