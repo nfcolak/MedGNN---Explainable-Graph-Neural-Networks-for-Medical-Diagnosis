@@ -905,3 +905,45 @@ def test_mutation_smoke_eta_numeric_step_scaling(tmp_path, monkeypatch, seconds,
     assert journal["eta_minutes_nine_runs_smoke"] == expected
     assert journal["eta_basis"] == "rough; smoke fixed costs dominate"
     assert len(launches) == 1
+
+
+@pytest.mark.parametrize("field", ["active_parameter_count", "architecture_active"])
+def test_sf2a_rejects_product_additive_active_parameter_mismatch(field):
+    module = _module()
+    product, additive = _binding("product", 1234), _binding("additive", 1234)
+    if field == "active_parameter_count":
+        additive["active_parameter_count"] += 1
+    else:
+        additive["method_config"]["architecture"]["active_parameter_count"] += 1
+    with pytest.raises(ValueError, match="active_parameter_count"):
+        module.assert_arm_parity({"product": product, "additive": additive})
+
+
+@pytest.mark.parametrize("field,value", [("extra", 1), ("metric", "other"),
+                                           ("sample_ids_sha256", "different")])
+def test_sf2a_selected_dev_is_exact_and_common_except_outcomes(field, value):
+    module = _module()
+    selected = {"epoch": 4, "epoch_index": 3, "metric": "macro_f1",
+                "metric_value": 0.7, "prediction_sha256": "pred",
+                "sample_ids_sha256": "ids"}
+    product, additive = _binding("product", 1234), _binding("additive", 1234)
+    product["selected_dev"] = dict(selected)
+    additive["selected_dev"] = dict(selected)
+    if field == "extra":
+        additive["selected_dev"][field] = value
+    else:
+        additive["selected_dev"][field] = value
+    with pytest.raises(ValueError, match="selected_dev"):
+        module.assert_arm_parity({"product": product, "additive": additive})
+
+
+def test_sf2a_off_active_parameters_must_be_fewer_and_three_arms_remain_valid():
+    module = _module()
+    arms = {f"{mode}_seed{seed}": _binding(mode, seed)
+            for seed in (1234, 2025, 7) for mode in ("product", "additive", "off")}
+    assert module.assert_arm_parity(arms)
+    product, off = _binding("product", 1234), _binding("off", 1234)
+    off["active_parameter_count"] = product["active_parameter_count"]
+    off["method_config"]["architecture"]["active_parameter_count"] = product["active_parameter_count"]
+    with pytest.raises(ValueError, match="active_parameter_count"):
+        module.assert_arm_parity({"product": product, "off": off})
