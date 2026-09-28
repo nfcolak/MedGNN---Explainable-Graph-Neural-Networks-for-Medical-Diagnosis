@@ -592,3 +592,72 @@ def test_module_entrypoint_prints_plan_without_execution(tmp_path):
     printed = json.loads(result.stdout)
     assert printed["status"] == "not_executed" and len(printed["stages"]) == 10
     assert not (tmp_path / "runs").exists()
+
+
+@pytest.mark.parametrize("case", ["seed_tie", "off_mean_tie", "off_mean_higher"])
+def test_mutation_decision_rejects_ties_and_stronger_off(case):
+    """M1/M2: strict per-seed wins and the off control are independent gates."""
+    module = _module()
+    point = {f"{mode}_seed{seed}": score
+             for seed in (1234, 2025, 7)
+             for mode, score in (("product", 0.7), ("additive", 0.6), ("off", 0.5))}
+    if case == "seed_tie":
+        point["product_seed7"] = 0.6
+    else:
+        for seed in (1234, 2025, 7):
+            point[f"off_seed{seed}"] = 0.7 if case == "off_mean_tie" else 0.8
+    comparison = {"product_minus_additive": {"interval_95": [0.01, 0.2]}}
+    decision = module.decide(point, comparison)
+    assert decision["interaction_useful"] is False
+    failed_gate = ("product_beats_additive_each_seed" if case == "seed_tie"
+                   else "product_mean_above_both_controls")
+    assert decision["checks"][failed_gate] is False
+
+
+def test_mutation_bootstrap_matches_expanded_patient_oracle():
+    """M3/M5/M6: independently expand shared patient draws and score with sklearn."""
+    import numpy as np
+    from sklearn.metrics import f1_score
+
+    module = _module()
+    rng = np.random.default_rng(81)
+    subjects = np.repeat(["a", "b", "c", "d", "e", "f"], [1, 2, 3, 4, 5, 2])
+    y = rng.integers(0, 3, len(subjects))
+    arms = {f"{mode}_seed{seed}": rng.random((len(y), 3))
+            for seed in (1234, 2025, 7) for mode in ("product", "additive", "off")}
+    labels = np.arange(4)
+    predictions = {name: values.argmax(axis=1) for name, values in arms.items()}
+
+    def score(indices):
+        return {name: f1_score(y[indices], pred[indices], labels=labels,
+                              average="macro", zero_division=0)
+                for name, pred in predictions.items()}
+
+    expected_point = score(np.arange(len(y)))
+    rng = np.random.default_rng(2026)
+    patient_rows = [np.flatnonzero(subjects == patient) for patient in np.unique(subjects)]
+    samples = {"product_minus_additive": [], "product_minus_off": [],
+               "additive_minus_off": []}
+    for _ in range(79):
+        drawn = rng.integers(0, len(patient_rows), len(patient_rows))
+        scores = score(np.concatenate([patient_rows[index] for index in drawn]))
+        for key in samples:
+            first, second = key.split("_minus_")
+            samples[key].append(np.mean([scores[f"{first}_seed{seed}"]
+                                        - scores[f"{second}_seed{seed}"]
+                                        for seed in (1234, 2025, 7)]))
+    values = samples["product_minus_additive"]
+    assert not np.isclose(np.quantile(values, 0.025), np.quantile(values, 0.05))
+    point, comparisons = module.paired_bootstrap(
+        arms, y, subjects, num_classes=4, resamples=79, seed=2026)
+    assert point == pytest.approx(expected_point, abs=1e-12)
+    for key, values in samples.items():
+        assert comparisons[key]["interval_95"] == pytest.approx(
+            np.quantile(values, [0.025, 0.975]), abs=1e-12)
+        first, second = key.split("_minus_")
+        expected_delta = np.mean([expected_point[f"{first}_seed{seed}"]
+                                  - expected_point[f"{second}_seed{seed}"]
+                                  for seed in (1234, 2025, 7)])
+        assert comparisons[key]["point"] == pytest.approx(expected_delta, abs=1e-12)
+        assert comparisons[key]["resamples"] == 79
+        assert comparisons[key]["seed"] == 2026
