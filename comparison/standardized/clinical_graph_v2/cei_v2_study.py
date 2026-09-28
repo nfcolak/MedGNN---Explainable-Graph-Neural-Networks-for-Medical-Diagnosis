@@ -239,15 +239,23 @@ def assert_arm_parity(bindings):
         mode = binding["method_config"]["effective_settings"]["pair_mode"]
         architecture = binding["method_config"]["architecture"]
         counts = (binding["parameter_count"], binding["active_parameter_count"],
-                  architecture["parameter_count"], architecture["active_parameter_count"])
+                  architecture["parameter_count"], architecture["active_parameter_count"],
+                  architecture["inactive_parameter_count"])
+        if counts[4] != counts[0] - counts[1]:
+            raise ValueError(f"arm parity requires inactive_parameter_count = total - active: {name}")
+        if ("inactive_parameter_count" in binding and
+                binding["inactive_parameter_count"] != counts[4]):
+            raise ValueError(f"arm parity top-level inactive_parameter_count differs from architecture: {name}")
         groups.setdefault(mode, []).append((name, counts))
     all_total = {counts[0] for values in groups.values() for _, counts in values}
     if len(all_total) != 1:
         raise ValueError("arm parity differs: total parameter_count")
     for mode in ("product", "additive", "off"):
         values = groups.get(mode, [])
-        if values and len({counts[1:] for _, counts in values}) != 1:
+        if values and len({counts[1:3] for _, counts in values}) != 1:
             raise ValueError(f"arm parity differs: active_parameter_count within {mode} arms")
+        if values and len({counts[4] for _, counts in values}) != 1:
+            raise ValueError(f"arm parity differs: inactive_parameter_count within {mode} arms")
         for name, counts in values:
             if counts[0] != counts[2] or counts[1] != counts[3]:
                 raise ValueError(f"arm parity differs: {name} parameter counts disagree with architecture")
@@ -255,9 +263,16 @@ def assert_arm_parity(bindings):
                     for _, counts in groups.get(mode, [])]
     if interactions and len(set(interactions)) != 1:
         raise ValueError("arm parity requires equal active_parameter_count across interaction arms")
+    interaction_inactive = [counts[4] for mode in ("product", "additive")
+                            for _, counts in groups.get(mode, [])]
+    if interaction_inactive and len(set(interaction_inactive)) != 1:
+        raise ValueError("arm parity requires equal inactive_parameter_count across interaction arms")
     off_counts = [counts[1] for _, counts in groups.get("off", [])]
     if interactions and off_counts and max(off_counts) >= min(interactions):
         raise ValueError("arm parity requires off active_parameter_count < interaction")
+    off_inactive = [counts[4] for _, counts in groups.get("off", [])]
+    if interaction_inactive and off_inactive and min(off_inactive) <= max(interaction_inactive):
+        raise ValueError("arm parity requires off inactive_parameter_count > interaction")
     return True
 
 
