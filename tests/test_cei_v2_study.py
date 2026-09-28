@@ -1030,3 +1030,20 @@ def test_a10_r2_analyze_reports_injected_pair_count_band_membership(tmp_path, mo
                and bands[key]["product_minus_additive"] is None
                and bands[key]["decisive"] is False
                for key in ("0", "1-179", "180-1044", ">1044"))
+
+
+def test_a10_r3_analyze_reports_and_validates_training_curves(tmp_path, monkeypatch):
+    module = _module()
+    report = _run_synthetic_analysis(module, tmp_path, monkeypatch)
+    curve = report["training_curves"][module.FULL_STAGE_NAMES[0]]
+    assert curve["train_loss"] == pytest.approx([1.0, .5, 1 / 3])
+    assert curve["dev_macro_f1"] == [1.0, 1.0, 1.0]
+    assert curve["selected_epoch"] == 2 and curve["selected_at_last_epoch"] is False
+    assert curve["total_seconds"] == 4.2 and curve["decisive"] is False
+
+    malformed = {module.FULL_STAGE_NAMES[0]: [
+        {"epoch": 1, "train_loss": 1.0, "macro_f1": .5,
+         "selection_fold": "validation", "seconds": 1.0}]}
+    bad_path = tmp_path / "bad"
+    with pytest.raises(ValueError, match="history"):
+        _run_synthetic_analysis(module, bad_path, monkeypatch, histories=malformed)
