@@ -400,3 +400,120 @@ def test_full_phase_rejects_fabricated_completed_smoke_before_launch(tmp_path, m
     with pytest.raises(ValueError, match="smoke"):
         module.execute_plan(stages, journal_path=root / "journal_full.json", phase="full")
     assert not (root / "journal_full.json").exists()
+
+
+def test_weighted_macro_f1_matches_sklearn_including_empty_classes():
+    module = _module()
+    assert hasattr(module, "weighted_macro_f1"), "pair study analysis is missing"
+    import numpy as np
+    from sklearn.metrics import f1_score
+
+    rng = np.random.default_rng(1)
+    y, pred = rng.integers(0, 4, 200), rng.integers(0, 4, 200)
+    pred[pred == 3] = 2
+    weights = rng.integers(0, 3, 200).astype(float)
+    for w in (None, weights):
+        expected = f1_score(y, pred, labels=np.arange(5), average="macro",
+                            sample_weight=w, zero_division=0)
+        assert abs(module.weighted_macro_f1(y, pred, 5, w) - expected) < 1e-12
+
+
+def test_bootstrap_is_seeded_and_resamples_patients_as_clusters():
+    module = _module()
+    assert hasattr(module, "paired_bootstrap"), "pair study analysis is missing"
+    import numpy as np
+
+    rng = np.random.default_rng(4)
+    y = rng.integers(0, 3, 60)
+    subjects = np.repeat([f"p{i}" for i in range(20)], 3)
+    arms = {}
+    for seed in (1234, 2025, 7):
+        for mode, noise in (("product", 0.2), ("additive", 0.6), ("off", 0.9)):
+            proba = np.eye(3)[y] + rng.random((60, 3)) * noise * 2
+            arms[f"{mode}_seed{seed}"] = proba / proba.sum(1, keepdims=True)
+    point, comparisons = module.paired_bootstrap(arms, y, subjects, num_classes=3, resamples=200)
+    again_point, again = module.paired_bootstrap(arms, y, subjects, num_classes=3, resamples=200)
+    assert comparisons == again and point == again_point
+    delta = comparisons["product_minus_additive"]
+    low, high = delta["interval_95"]
+    assert low <= delta["point"] <= high
+    assert set(comparisons) == {"product_minus_additive", "product_minus_off", "additive_minus_off"}
+
+
+def test_decision_rule_requires_every_seed_means_and_interval():
+    module = _module()
+    assert hasattr(module, "decide"), "pair study decision rule is missing"
+    point = {f"{mode}_seed{seed}": value
+             for seed in (1234, 2025, 7)
+             for mode, value in (("product", 0.66), ("additive", 0.65), ("off", 0.64))}
+    passing = {"product_minus_additive": {"point": 0.01, "interval_95": [0.001, 0.02]},
+               "product_minus_off": {"point": 0.02, "interval_95": [0.005, 0.03]},
+               "additive_minus_off": {"point": 0.01, "interval_95": [-0.001, 0.02]}}
+    assert module.decide(point, passing)["interaction_useful"] is True
+    straddling = json.loads(json.dumps(passing))
+    straddling["product_minus_additive"]["interval_95"] = [-0.001, 0.02]
+    assert module.decide(point, straddling)["interaction_useful"] is False
+    one_loss = dict(point, product_seed7=0.649)
+    decision = module.decide(one_loss, passing)
+    assert decision["interaction_useful"] is False
+    assert decision["checks"]["product_beats_additive_each_seed"] is False
+
+
+def test_load_arm_predictions_requires_identical_dev_rows(tmp_path):
+    module = _module()
+    assert hasattr(module, "load_arm_predictions"), "pair study analysis is missing"
+    import numpy as np
+
+    ids = np.asarray(["a", "b"])
+    for name in module.FULL_STAGE_NAMES:
+        (tmp_path / name).mkdir()
+        np.savez_compressed(tmp_path / name / "dev.npz", proba=np.full((2, 2), 0.5),
+                            y=np.asarray([0, 1]), subjects=np.asarray(["p1", "p2"]),
+                            sample_ids=ids)
+    arms, y, subjects = module.load_arm_predictions(tmp_path)
+    assert sorted(arms) == sorted(module.FULL_STAGE_NAMES) and y.tolist() == [0, 1]
+    np.savez_compressed(tmp_path / "off_seed7" / "dev.npz", proba=np.full((2, 2), 0.5),
+                        y=np.asarray([0, 1]), subjects=np.asarray(["p1", "p2"]),
+                        sample_ids=np.asarray(["a", "c"]))
+    with pytest.raises(ValueError, match="dev rows differ"):
+        module.load_arm_predictions(tmp_path)
+
+
+def test_preflight_reads_train_only_and_refuses_existing_output(tmp_path, monkeypatch):
+    module = _module()
+    assert hasattr(module, "preflight"), "pair study preflight is missing"
+    from comparison.standardized.clinical_graph_v2 import train
+    from tests.test_cei_gnn_v2_core import _graph
+
+    rows = [_graph(seed=seed) for seed in range(6)]
+    prep = {"vocabulary": [str(i) for i in range(8)], "triples": ["a", "b", "c"]}
+    calls = []
+
+    def fake_build(*args, **kwargs):
+        calls.append(kwargs)
+        return {"train": rows, "dev": rows[:2], "validation": rows[:1]}, prep
+
+    monkeypatch.setattr(train, "load_targets", lambda path: {})
+    monkeypatch.setattr(train, "select_top_labels", lambda targets, k: (targets, list(range(10)), {}))
+    monkeypatch.setattr(train, "build_dataset", fake_build)
+    artifact, targets, _ = _inputs(tmp_path)
+    report = module.preflight(artifact=artifact, targets=targets,
+                              output_json=tmp_path / "preflight.json")
+    assert report["pair_counts"]["graphs"] == 6 and report["pair_counts"]["mean"] == 8.0
+    assert report["step_time_ratio"] > 0 and report["test_tensors_loaded"] is False
+    assert calls[0]["dev_limit"] == 5000 and calls[0]["sample_seed"] == 1234
+    with pytest.raises(FileExistsError):
+        module.preflight(artifact=artifact, targets=targets, output_json=tmp_path / "preflight.json")
+
+
+def test_cli_default_prints_plan_without_launching(tmp_path, monkeypatch, capsys):
+    module = _module()
+    assert hasattr(module, "main"), "pair study CLI is missing"
+    artifact, targets, canonical = _inputs(tmp_path)
+    monkeypatch.setattr(module.subprocess, "run", lambda *a, **k: pytest.fail("launched"))
+    assert module.main(["--artifact", str(artifact), "--targets", str(targets),
+                        "--canonical", str(canonical),
+                        "--output-root", str(tmp_path / "runs")]) == 0
+    printed = json.loads(capsys.readouterr().out)
+    assert printed["status"] == "not_executed" and len(printed["stages"]) == 10
+    assert not (tmp_path / "runs").exists()
