@@ -52,18 +52,21 @@ def within_visit_pairs(membership, node_type, node_count, *, node_graph=None, vi
     key = torch.unique(visit * count + node)
     visit, node = key // count, key % count
     _, sizes = torch.unique_consecutive(visit, return_counts=True)
-    width = int(sizes.max())
-    if width < 2:
-        return _empty_pairs(device)
-    group = torch.arange(sizes.numel(), device=device).repeat_interleave(sizes)
     starts = torch.cumsum(sizes, 0) - sizes
-    position = torch.arange(node.numel(), device=device) - starts.repeat_interleave(sizes)
-    dense = node.new_full((sizes.numel(), width), -1)
-    dense[group, position] = node
-    left_slot, right_slot = torch.triu_indices(width, width, offset=1, device=device)
-    left, right = dense[:, left_slot], dense[:, right_slot]
-    valid = (left >= 0) & (right >= 0)
-    pair_key = torch.unique(left[valid] * count + right[valid])
+    pair_chunks = []
+    for width_tensor in torch.unique(sizes, sorted=True):
+        width = int(width_tensor)
+        if width < 2:
+            continue
+        selected_starts = starts[sizes == width]
+        positions = selected_starts[:, None] + torch.arange(width, device=device)
+        nodes = node[positions]
+        left_slot, right_slot = torch.triu_indices(width, width, offset=1, device=device)
+        left, right = nodes[:, left_slot], nodes[:, right_slot]
+        pair_chunks.append((left * count + right).reshape(-1))
+    if not pair_chunks:
+        return _empty_pairs(device)
+    pair_key = torch.unique(torch.cat(pair_chunks))
     return torch.stack((pair_key // count, pair_key % count))
 
 
