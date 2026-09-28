@@ -58,30 +58,41 @@ class PairEvidenceAdapter(ClinicalMethodAdapter):
         membership = getattr(batch, "visit_membership_index", None)
         if membership is None:
             raise ValueError("cei_gnn_v2 requires visit_membership_index")
+        visit_counts = getattr(batch, "num_visits", None)
+        if (not torch.is_tensor(visit_counts)
+                or visit_counts.dtype not in _INTEGER_DTYPES):
+            raise ValueError("num_visits must be an integer tensor")
         clinical = read_clinical_batch(
             batch, method="cei_gnn_v2", node_dim=self.node_dim, edge_dim=self.edge_dim,
             num_tokens=self.num_tokens, num_triples=self.num_triples,
             num_relations=self.num_relations)
-        return clinical, membership.long()
+        visit_counts = visit_counts.to(device=clinical.x.device).view(-1)
+        if visit_counts.numel() != clinical.graph_count or (visit_counts < 1).any():
+            raise ValueError("num_visits must contain one positive count per graph")
+        visit_graph = torch.repeat_interleave(
+            torch.arange(clinical.graph_count, device=clinical.x.device), visit_counts.long())
+        return clinical, membership.long(), visit_graph
 
     def continuous_inputs(self, batch) -> torch.Tensor:
-        clinical, _ = self._read(batch)
+        clinical, _, _ = self._read(batch)
         return self.network.continuous_inputs(clinical)
 
     def forward_continuous(self, features, edge_index, metadata, *, return_parts=False):
-        clinical, membership = self._read(metadata)
+        clinical, membership, visit_graph = self._read(metadata)
         if edge_index.shape != clinical.edge_index.shape or not torch.equal(
                 edge_index.to(clinical.edge_index.device), clinical.edge_index):
             raise ValueError("edge_index differs from the fixed metadata edge list")
         return self.network.forward_continuous(features, clinical.edge_index, clinical,
-                                               membership, return_parts=return_parts)
+                                               membership, return_parts=return_parts,
+                                               visit_graph=visit_graph)
 
     def forward(self, batch, *, epoch: int) -> MethodOutput:
         del epoch
-        clinical, membership = self._read(batch)
+        clinical, membership, visit_graph = self._read(batch)
         features = self.network.continuous_inputs(clinical)
         parts = self.network.forward_continuous(features, clinical.edge_index, clinical,
-                                                membership, return_parts=True)
+                                                membership, return_parts=True,
+                                                visit_graph=visit_graph)
         logits = parts["logits"]
         auxiliary_loss = logits.sum() * 0.0
         pairs_per_graph = parts["pairs"].size(1) / max(int(clinical.graph_count), 1)
