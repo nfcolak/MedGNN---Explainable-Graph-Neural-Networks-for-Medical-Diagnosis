@@ -26,15 +26,13 @@ PAIR_RANK = 16
 SMOKE_BUDGET = (256, 128, 2)
 FULL_BUDGET = (10000, 5000, 40)
 FULL_STAGE_NAMES = tuple(f"{mode}_seed{seed}" for seed in SEEDS for mode in MODES)
-_PARITY_FIELDS = (
-    "artifact_graphs_sha256", "artifact_visit_membership_sha256", "targets_sha256",
-    "target_binding_sha256", "label_order", "source_code", "preprocessing_sha256",
-    "split_sample_ids_sha256", "sample_seed", "train_limit", "dev_limit", "epochs",
-    "patience", "selection_fold", "final_eval", "weights", "edges", "edge_direction",
-    "top_k_labels", "num_classes", "input_contract_version", "parameter_count", "lr",
-    "weight_decay", "batch_size", "min_delta", "hidden", "layers", "dropout",
-    "vocabulary_size", "node_dim", "edge_dim", "num_relations", "num_meta_relations",
-)
+_ARM_VARYING_FIELDS = {
+    "seed": "The approved study compares three independently specified random seeds.",
+    "selected_dev": "Checkpoint and prediction outcomes are trained separately for each arm.",
+    "active_parameter_count": "The off arm intentionally disables active interaction parameters.",
+    "method_config": "Only pair_mode and active/inactive counts may vary; all other config is shared.",
+    "method_overrides": "Only the pair_mode override may vary between study arms.",
+}
 
 
 @dataclass(frozen=True)
@@ -193,24 +191,37 @@ def validate_v2_binding(binding, *, budget, seed, mode):
 
 
 def assert_arm_parity(bindings):
-    """All full arms share inputs, splits, source and capacity; only seed/mode differ."""
+    """Compare every binding key; allow only explicitly documented arm variation."""
     items = sorted(bindings.items())
     if not items:
         raise ValueError("no arms to compare")
     reference_name, reference = items[0]
 
-    def shared_architecture(binding):
-        architecture = dict(binding["method_config"]["architecture"])
-        for key in ("active_parameter_count", "inactive_parameter_count"):
-            architecture.pop(key, None)
-        return architecture
+    def normalized(field, value):
+        if field not in ("method_config", "method_overrides"):
+            return value
+        value = json.loads(json.dumps(value))
+        if field == "method_config":
+            value.get("effective_settings", {}).pop("pair_mode", None)
+            architecture = value.get("architecture", {})
+            architecture.pop("active_parameter_count", None)
+            architecture.pop("inactive_parameter_count", None)
+        elif isinstance(value, dict):
+            value.pop("pair_mode", None)
+        return value
 
     for name, binding in items[1:]:
-        for field in _PARITY_FIELDS:
-            if binding.get(field) != reference.get(field):
+        for field in sorted(set(reference) | set(binding)):
+            if field in _ARM_VARYING_FIELDS:
+                if field in ("method_config", "method_overrides"):
+                    left = normalized(field, reference.get(field))
+                    right = normalized(field, binding.get(field))
+                    if left != right:
+                        raise ValueError(f"arm parity differs: {field} ({name} vs {reference_name})")
+                continue
+            if (field not in reference or field not in binding or
+                    binding[field] != reference[field]):
                 raise ValueError(f"arm parity differs: {field} ({name} vs {reference_name})")
-        if shared_architecture(binding) != shared_architecture(reference):
-            raise ValueError(f"arm parity differs: architecture ({name})")
     return True
 
 
