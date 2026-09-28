@@ -557,7 +557,8 @@ def test_print_only_reverifies_completed_smoke_and_shows_eta(tmp_path, monkeypat
         "status": "completed", "eta_minutes_nine_runs_smoke": 12.3,
         "stages": {"v2_smoke": {"status": "completed", "replay": {"status": "verified"}}}})
     verified = []
-    monkeypatch.setattr(module, "_verify_smoke", lambda *args: verified.append(args) or {}, raising=False)
+    monkeypatch.setattr(module, "_verify_smoke", lambda *args: verified.append(args) or {
+        "eta_minutes_nine_runs_smoke": 12.3, "eta_basis": "verified synthetic smoke"}, raising=False)
     monkeypatch.setattr(module.subprocess, "run", lambda *a, **k: pytest.fail("training launched"))
     assert module.main(["--artifact", str(artifact), "--targets", str(targets),
                         "--canonical", str(canonical), "--output-root", str(root)]) == 0
