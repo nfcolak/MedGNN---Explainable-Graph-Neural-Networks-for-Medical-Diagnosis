@@ -661,3 +661,24 @@ def test_mutation_bootstrap_matches_expanded_patient_oracle():
         assert comparisons[key]["point"] == pytest.approx(expected_delta, abs=1e-12)
         assert comparisons[key]["resamples"] == 79
         assert comparisons[key]["seed"] == 2026
+
+
+def test_mutation_full_plan_locks_patience_to_forty(tmp_path):
+    """M12: validate the externally approved value, not the planner against itself."""
+    module = _module()
+    artifact, targets, canonical = _inputs(tmp_path)
+    stages = module.build_plan(artifact=artifact, targets=targets, canonical=canonical,
+                               output_root=tmp_path / "runs")
+    assert len(stages[1:]) == 9
+    for stage in stages[1:]:
+        assert stage.argv[stage.argv.index("--patience") + 1] == "40"
+
+
+def test_mutation_arm_parity_rejects_learning_rate_drift():
+    """M19: lr equality must be enforced by the cross-arm validator itself."""
+    module = _module()
+    product, additive = _binding("product", 1234), _binding("additive", 1234)
+    assert module.assert_arm_parity({"product": product, "additive": additive})
+    additive["lr"] = product["lr"] * 2
+    with pytest.raises(ValueError, match="lr"):
+        module.assert_arm_parity({"product": product, "additive": additive})
