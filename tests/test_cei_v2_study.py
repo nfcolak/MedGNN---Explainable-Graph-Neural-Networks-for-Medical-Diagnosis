@@ -1041,7 +1041,7 @@ def test_print_only_smoke_verification_does_not_mutate_output_root(tmp_path, mon
 
 
 def _run_synthetic_analysis(module, tmp_path, monkeypatch, *, point=None, counts=None,
-                            histories=None):
+                            histories=None, replay_counts=None):
     import numpy as np
     from comparison.standardized.clinical_graph_v2 import train
 
@@ -1069,7 +1069,11 @@ def _run_synthetic_analysis(module, tmp_path, monkeypatch, *, point=None, counts
                                "selection_fold": "dev", "seconds": 1.0}
                               for i in range(1, 4)])
     point = point or {name: 1.0 for name in module.FULL_STAGE_NAMES}
-    monkeypatch.setattr(module, "validate_completed_study", lambda root: bindings)
+    def validate(root, *, include_pair_counts=False):
+        if include_pair_counts:
+            return bindings, replay_counts
+        return bindings
+    monkeypatch.setattr(module, "validate_completed_study", validate)
     monkeypatch.setattr(module, "load_arm_predictions", lambda root: (arms, y, subjects))
     monkeypatch.setattr(module, "paired_bootstrap", lambda *a, **k: (
         point, {key: {"point": 0.0, "interval_95": [0.0, 0.0]} for key in module.COMPARISONS}))
@@ -1168,7 +1172,19 @@ def test_a10_r2_dev_pair_counts_and_analysis_replay_counts(tmp_path, monkeypatch
         row.node_type = torch.tensor(types)
         row.num_nodes = node_count
         rows.append(row)
+    # within_visit_pairs counts unordered complaint/measurement/vital pairs per visit only
+    # (cei_gnn_v2.py:11-12, 21-22, 46-50): row one has one complaint-vital pair;
+    # row two has just one complaint evidence node in each visit, hence no pair.
     assert module.dev_pair_counts(rows) == [1, 0]
+
+    report = _run_synthetic_analysis(module, tmp_path, monkeypatch,
+                                     replay_counts=[0, 0, 0, 1])
+    bands = report["pair_count_bands"]
+    assert bands["0"]["graphs"] == 3
+    assert bands["0"]["patients"] == 3
+    assert bands["1-179"]["graphs"] == 1
+    assert bands["1-179"]["patients"] == 1
+    assert report["pair_count_source"] == "dev rows reloaded by replay (structural count, no scoring)"
 
 
 def test_a10_r2_replay_json_keys_stay_proof_only():
