@@ -682,3 +682,93 @@ def test_mutation_arm_parity_rejects_learning_rate_drift():
     additive["lr"] = product["lr"] * 2
     with pytest.raises(ValueError, match="lr"):
         module.assert_arm_parity({"product": product, "additive": additive})
+
+
+def _mutation_executor_fixture(tmp_path, monkeypatch, *, seconds=2.0, batch_size=128):
+    """Synthetic executor boundary: every subprocess and data check is replaced."""
+    module = _module()
+    artifact, targets, canonical = _inputs(tmp_path)
+    root = tmp_path / "runs"
+    stages = module.build_plan(artifact=artifact, targets=targets, canonical=canonical,
+                               output_root=root)
+    captured = {"source_state_sha256": "synthetic-source", "input_state_sha256": "synthetic-input",
+                "executable_sources": {}}
+    monkeypatch.setattr(module, "_capture", lambda stage: captured)
+    monkeypatch.setattr(module.pilot, "_assert_runner_source_binding", lambda *a: None)
+    monkeypatch.setattr(module.pilot, "_validate_artifacts", lambda *a: None)
+    monkeypatch.setattr(module, "validate_v2_binding", lambda *a, **k: None)
+    monkeypatch.setattr(module, "assert_arm_parity", lambda *a: True)
+    monkeypatch.setattr(module, "replay_v2_stage", lambda *a: {"status": "verified"})
+    launches = []
+
+    def fake_run(argv, **kwargs):
+        launches.append(argv)
+        output = Path(argv[argv.index("--output") + 1])
+        binding = {"batch_size": batch_size}
+        _write_json(output / "binding.json", binding)
+        _write_json(output / "result.json", {"status": "completed", "binding": binding,
+                                             "metrics": None, "dev_metrics": {},
+                                             "test_evaluated": False, "total_seconds": seconds})
+        return module.subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+    return module, stages, root, captured, launches
+
+
+def test_mutation_full_executor_replays_smoke_before_any_launch(tmp_path, monkeypatch):
+    """M13: a verified journal does not excuse replaying the smoke checkpoint."""
+    module, stages, root, captured, launches = _mutation_executor_fixture(tmp_path, monkeypatch)
+    _write_json(root / "v2_smoke" / "binding.json", {})
+    _write_json(root / "v2_smoke" / "result.json", {
+        "status": "completed", "binding": {}, "metrics": None,
+        "dev_metrics": {}, "test_evaluated": False})
+    _write_json(root / "journal_smoke.json", {"status": "completed", "stages": {
+        "v2_smoke": {"status": "completed", "replay": {"status": "verified"},
+                     "postflight": captured}}})
+    replayed = []
+
+    def reject_changed_smoke(output, binding, result):
+        replayed.append(Path(output).name)
+        if Path(output).name == "v2_smoke":
+            raise ValueError("smoke replay no longer matches checkpoint")
+        return {"status": "verified"}
+
+    monkeypatch.setattr(module, "replay_v2_stage", reject_changed_smoke)
+    with pytest.raises(ValueError, match="smoke replay"):
+        module.execute_plan(stages, journal_path=root / "journal_full.json", phase="full")
+    assert replayed == ["v2_smoke"]
+    assert launches == []
+    assert not (root / "journal_full.json").exists()
+
+
+def test_mutation_executor_refuses_output_occupied_after_planning(tmp_path, monkeypatch):
+    """M15: the executor must recheck occupancy, not trust the earlier plan."""
+    module, stages, root, _, launches = _mutation_executor_fixture(tmp_path, monkeypatch)
+    occupied = Path(stages[0].output)
+    occupied.mkdir(parents=True)
+    marker = occupied / "preserve.txt"
+    marker.write_text("do not overwrite")
+    with pytest.raises(SystemExit) as error:
+        module.execute_plan(stages, journal_path=root / "journal_smoke.json", phase="smoke")
+    assert error.value.code == 2
+    assert launches == []
+    assert marker.read_text() == "do not overwrite"
+    journal = json.loads((root / "journal_smoke.json").read_text())
+    assert journal["status"] == "failed"
+    assert journal["stages"]["v2_smoke"]["status"] == "refused"
+
+
+@pytest.mark.parametrize("seconds,batch_size", [(2.0, 128), (7.0, 100)])
+def test_mutation_smoke_eta_numeric_step_scaling(tmp_path, monkeypatch, seconds, batch_size):
+    """M21: verify the numeric smoke-based ETA, including ceiling partial batches."""
+    import math
+
+    module, stages, root, _, launches = _mutation_executor_fixture(
+        tmp_path, monkeypatch, seconds=seconds, batch_size=batch_size)
+    assert module.execute_plan(stages, journal_path=root / "journal_smoke.json", phase="smoke") == 0
+    journal = json.loads((root / "journal_smoke.json").read_text())
+    expected = round(9 * seconds * (math.ceil(10000 / batch_size) * 40)
+                     / (math.ceil(256 / batch_size) * 2) / 60, 1)
+    assert journal["eta_minutes_nine_runs_smoke"] == expected
+    assert journal["eta_basis"] == "rough; smoke fixed costs dominate"
+    assert len(launches) == 1
