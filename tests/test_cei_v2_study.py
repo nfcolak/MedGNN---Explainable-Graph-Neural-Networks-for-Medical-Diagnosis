@@ -1047,3 +1047,24 @@ def test_a10_r3_analyze_reports_and_validates_training_curves(tmp_path, monkeypa
     bad_path = tmp_path / "bad"
     with pytest.raises(ValueError, match="history"):
         _run_synthetic_analysis(module, bad_path, monkeypatch, histories=malformed)
+
+
+def test_a10_r4_reports_parameters_notes_and_decide_is_invariant(tmp_path, monkeypatch):
+    module = _module()
+    report = _run_synthetic_analysis(module, tmp_path, monkeypatch)
+    assert report["notes"] == [
+        "Exploratory dev-only screen: intervals are conditional on the selected dev checkpoints and seeds 1234/2025/7 (spec §6.1).",
+        "A failed rule means benefit not demonstrated, not evidence of no benefit.",
+        "product vs off is directional; off is a structural ablation with fewer active parameters.",
+        "GraphXAI edge masks do not attribute within-visit pairs; pair contributions are model accounting, not causal importance.",
+    ]
+    arm = report["secondary_results"][module.FULL_STAGE_NAMES[0]]
+    assert (arm["parameter_count"], arm["active_parameter_count"],
+            arm["inactive_parameter_count"]) == (42, 40, 2)
+
+    point = {f"{mode}_seed{seed}": 1.0 for mode in module.MODES for seed in module.SEEDS}
+    comparisons = {key: {"interval_95": [0.0, 1.0]} for key in module.COMPARISONS}
+    expected = module.decide(point, comparisons)
+    report.update({"seed_deltas": {}, "pair_count_bands": {}, "training_curves": {},
+                   "notes": report["notes"], "parameter_counts": {}})
+    assert module.decide(point, comparisons) == expected
