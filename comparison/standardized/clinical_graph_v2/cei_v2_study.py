@@ -809,6 +809,7 @@ def analyze(output_root, output_json, *, pair_counts=None):
     for key, entry in comparisons.items():
         entry["decisive"] = key == "product_minus_additive"
     if pair_counts is None:
+        # This transient replay value is reporting-only; it is never a decision input.
         pair_counts = replay_pair_counts
     # Keep the decision tied only to the declared score and paired-interval inputs;
     # reporting-only counts, seed deltas, curves, and secondary results follow later.
