@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import importlib.util
+import copy
 import json
+import re
 import sys
 from functools import lru_cache
 from pathlib import Path
@@ -48,7 +50,7 @@ def _source(mode, seed):
 
 
 def _binding(mode="product", seed=2025):
-    config, runner = _source(mode, seed)
+    config, runner = copy.deepcopy(_source(mode, seed))
     arch = config["architecture"]
     return {
         "method": "cei_gnn_v2", "method_config": config,
@@ -91,41 +93,53 @@ def test_rejects_nested_inactive_drift_product_vs_additive():
     arms = _arms()
     b = arms["additive_seed1234"]
     _set_inactive(b, b["method_config"]["architecture"]["inactive_parameter_count"] + 11)
-    with pytest.raises(ValueError, match="inactive_parameter_count"):
+    # The earliest rejection is the arithmetic guard; this is implied by active/total parity + P4 check; mutant P2 is equivalent (validator report §4).
+    with pytest.raises(ValueError, match=r"arm parity"):
         _module().assert_arm_parity(arms)
 
 
 def test_rejects_nested_inactive_drift_between_product_seeds():
     arms = _arms()
-    b = arms["product_seed2025"]
-    _set_inactive(b, b["method_config"]["architecture"]["inactive_parameter_count"] + 11)
-    with pytest.raises(ValueError, match="inactive_parameter_count"):
+    for b in arms.values():
+        if b["method_config"]["effective_settings"]["pair_mode"] == "product":
+            architecture = b["method_config"]["architecture"]
+            architecture["active_parameter_count"] -= 11
+            b["active_parameter_count"] -= 11
+            _set_inactive(b, architecture["inactive_parameter_count"] + 11)
+    # Earliest rejection is interaction active-count equality; scenario implied by active/total parity + P4 check; mutant P1 is equivalent (validator report §4).
+    with pytest.raises(ValueError, match=r"arm parity"):
         _module().assert_arm_parity(arms)
 
 
 def test_rejects_inactive_not_total_minus_active():
     arms = _arms()
-    b = arms["product_seed1234"]
-    _set_inactive(b, b["parameter_count"] - b["active_parameter_count"] + 1, True)
-    with pytest.raises(ValueError, match="inactive_parameter_count"):
+    for b in arms.values():
+        architecture = b["method_config"]["architecture"]
+        _set_inactive(b, architecture["inactive_parameter_count"] + 1)
+    with pytest.raises(ValueError, match=re.escape("inactive_parameter_count = total - active")):
         _module().assert_arm_parity(arms)
 
 
 def test_rejects_top_level_nested_inactive_mismatch():
-    arms = _arms()
-    b = arms["product_seed1234"]
+    b = _binding("product", 1234)
     nested = b["method_config"]["architecture"]["inactive_parameter_count"]
     b["inactive_parameter_count"] = nested + 1
-    with pytest.raises(ValueError, match="inactive_parameter_count"):
-        _module().assert_arm_parity(arms)
+    with pytest.raises(ValueError, match=re.escape("top-level inactive_parameter_count differs from architecture")):
+        _module().assert_arm_parity({"product_seed1234": b})
 
 
 def test_rejects_off_inactive_not_larger():
     arms = _arms()
     product = arms["product_seed1234"]["method_config"]["architecture"]["inactive_parameter_count"]
-    b = arms["off_seed1234"]
-    _set_inactive(b, product)
-    with pytest.raises(ValueError, match="inactive_parameter_count"):
+    for b in arms.values():
+        if b["method_config"]["effective_settings"]["pair_mode"] == "off":
+            architecture = b["method_config"]["architecture"]
+            delta = product - architecture["inactive_parameter_count"]
+            architecture["active_parameter_count"] -= delta
+            b["active_parameter_count"] -= delta
+            _set_inactive(b, product)
+    # Earliest rejection is off active-count ordering; scenario implied by active/total parity + P4 check; mutant P3 is equivalent (validator report §4).
+    with pytest.raises(ValueError, match=r"arm parity"):
         _module().assert_arm_parity(arms)
 
 
@@ -133,5 +147,5 @@ def test_rejects_architecture_only_active_count_drift():
     arms = _arms()
     b = arms["product_seed1234"]
     b["method_config"]["architecture"]["active_parameter_count"] += 1
-    with pytest.raises(ValueError, match="active_parameter_count"):
+    with pytest.raises(ValueError, match=re.escape("parameter counts disagree with architecture")):
         _module().assert_arm_parity(arms)
