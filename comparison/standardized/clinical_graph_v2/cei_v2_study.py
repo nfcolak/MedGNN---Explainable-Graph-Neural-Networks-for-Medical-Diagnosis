@@ -659,6 +659,22 @@ def decide(point, comparisons):
             "interaction_useful": all(checks.values())}
 
 
+def seed_delta_summary(point):
+    """Descriptive per-seed deltas in percentage points; never a decision input."""
+    result = {}
+    for key, (first, second) in COMPARISONS.items():
+        per_seed = {str(seed): 100.0 * (point[f"{first}_seed{seed}"]
+                                       - point[f"{second}_seed{seed}"])
+                    for seed in SEEDS}
+        values = np.asarray(list(per_seed.values()), dtype=float)
+        mean, sd = float(values.mean()), float(values.std(ddof=1))
+        half_width = 4.302653 * sd / math.sqrt(3)
+        result[key] = {"per_seed": per_seed, "mean": mean, "sd": sd,
+                       "t_interval_df2": [mean - half_width, mean + half_width],
+                       "label": "seed-level, descriptive, not decisive", "decisive": False}
+    return result
+
+
 def analyze(output_root, output_json):
     output = Path(output_json)
     if output.exists():
@@ -676,7 +692,8 @@ def analyze(output_root, output_json):
     report = {"status": "analyzed", "decision": decide(point, comparisons),
               "comparisons": comparisons, "dev_macro_f1": point,
               "dev_rows": int(len(y)), "patients": int(len(np.unique(subjects))),
-              "test_evaluated": False, "validation_evaluated": False}
+              "test_evaluated": False, "validation_evaluated": False,
+              "seed_deltas": seed_delta_summary(point)}
     from comparison.standardized.clinical_graph_v2 import train
     secondary = {}
     results = {name: pilot._load_json(Path(output_root) / name / "result.json", "result.json")
