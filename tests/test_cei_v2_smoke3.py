@@ -95,3 +95,41 @@ def test_smoke_executor_launches_all_modes_once_in_order(tmp_path, monkeypatch, 
         "journal_smoke.json", "v2_smoke_additive/binding.json", "v2_smoke_additive/result.json",
         "v2_smoke_off/binding.json", "v2_smoke_off/result.json",
         "v2_smoke_product/binding.json", "v2_smoke_product/result.json"]
+
+
+def test_smoke_eta_uses_mean_of_heterogeneous_mode_timings(tmp_path, monkeypatch):
+    module = _module()
+    artifact = tmp_path / "artifact"
+    artifact.mkdir()
+    targets, canonical = tmp_path / "targets.csv", tmp_path / "canonical.json"
+    targets.write_text("synthetic")
+    canonical.write_text("{}")
+    root = tmp_path / "runs"
+    stages = module.build_plan(artifact=artifact, targets=targets, canonical=canonical,
+                               output_root=root)
+    monkeypatch.setattr(module, "_capture", lambda stage: {
+        "source_state_sha256": "s", "input_state_sha256": "i", "executable_sources": {}})
+    monkeypatch.setattr(module.pilot, "_assert_runner_source_binding", lambda *a: True)
+    monkeypatch.setattr(module.pilot, "_validate_artifacts", lambda *a: None)
+    monkeypatch.setattr(module, "validate_v2_binding", lambda *a, **k: None)
+    monkeypatch.setattr(module, "replay_v2_stage", lambda *a: {"status": "verified"})
+    seconds_per_epoch = iter((2.0, 8.0, 14.0))
+
+    def fake_run(argv, **kwargs):
+        output = Path(argv[argv.index("--output") + 1])
+        output.mkdir()
+        binding = {}
+        (output / "binding.json").write_text(json.dumps(binding))
+        (output / "result.json").write_text(json.dumps({
+            "status": "completed", "binding": binding, "metrics": None,
+            "dev_metrics": {}, "test_evaluated": False,
+            "total_seconds": next(seconds_per_epoch) * 2}))
+        return module.subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+    assert module.execute_plan(stages, journal_path=root / "journal_smoke.json", phase="smoke") == 0
+    journal = json.loads((root / "journal_smoke.json").read_text())
+    expected_mean_eta = round(9 * (((2.0 + 8.0 + 14.0) / 3) * 40) / 60, 1)
+    product_only_eta = round(9 * 2.0 * 40 / 60, 1)
+    assert journal["eta_minutes_nine_runs_smoke"] == expected_mean_eta
+    assert journal["eta_minutes_nine_runs_smoke"] != product_only_eta

@@ -345,7 +345,9 @@ def test_executor_refuses_source_drift_between_full_stages(tmp_path, monkeypatch
     _write_json(root / "journal_smoke.json", {"status": "completed", "stages": {
         "v2_smoke_product": {"status": "completed", "replay": {"status": "verified"},
                      "postflight": smoke_capture}}})
-    identities = iter(["a", "a", "a", "b"])
+    # _verify_smoke is mocked, so the sequence covers full-stage 1 pre/post (a,a),
+    # then full-stage 2 preflight (b): drift is observed before its subprocess launch.
+    identities = iter(["a", "a", "b"])
     monkeypatch.setattr(module, "_capture", lambda stage: {
         "source_state_sha256": next(identities), "input_state_sha256": "i",
         "executable_sources": {}})
@@ -369,11 +371,11 @@ def test_executor_refuses_source_drift_between_full_stages(tmp_path, monkeypatch
     monkeypatch.setattr(module, "replay_v2_stage", lambda *a: {"status": "verified"})
     with pytest.raises(SystemExit) as error:
         module.execute_plan(stages, journal_path=root / "journal.json", phase="full")
-    assert error.value.code == 1
-    assert len(launches) == 2
+    assert error.value.code == 3
+    assert len(launches) == 1
     journal = json.loads((root / "journal.json").read_text())
     assert journal["stages"]["product_seed1234"]["status"] == "bound"
-    assert journal["stages"]["additive_seed1234"]["status"] == "failed"
+    assert journal["stages"]["additive_seed1234"]["status"] == "refused"
 
 
 def test_replay_reconstructs_v2_model_and_rejects_tampering(tmp_path, monkeypatch):
