@@ -89,6 +89,35 @@ def _binding(mode="product", seed=2025, budget=(10000, 5000, 40), **updates):
     return binding
 
 
+def test_smoke_plan_has_three_modes_and_full_argv_is_pinned(tmp_path):
+    module = _module()
+    artifact, targets, canonical = _inputs(tmp_path)
+    stages = module.build_plan(artifact=artifact, targets=targets, canonical=canonical,
+                               output_root=tmp_path / "runs")
+    smoke = stages[:3]
+    assert [(s.name, s.budget, s.seed, s.pair_mode) for s in smoke] == [
+        ("v2_smoke_product", (256, 128, 2), 1234, "product"),
+        ("v2_smoke_additive", (256, 128, 2), 1234, "additive"),
+        ("v2_smoke_off", (256, 128, 2), 1234, "off"),
+    ]
+    normalized = [[value if value != f"pair_mode={s.pair_mode}" else "pair_mode=MODE"
+                   for value in s.argv] for s in smoke]
+    assert normalized[0] == normalized[1] == normalized[2]
+    expected_full = [(f"{mode}_seed{seed}", (10000, 5000, 40), seed, mode)
+                     for seed in (1234, 2025, 7) for mode in ("product", "additive", "off")]
+    assert [(s.name, s.budget, s.seed, s.pair_mode) for s in stages[3:]] == expected_full
+    literal_full_argv = [
+        "-m", "comparison.standardized.clinical_graph_v2.train", "--artifact", str(artifact),
+        "--targets", str(targets), "--canonical", str(canonical), "--output", str(tmp_path / "runs" / "product_seed1234"),
+        "--method", "cei_gnn_v2", "--train-limit", "10000", "--dev-limit", "5000",
+        "--sample-seed", "1234", "--seed", "1234", "--top-k-labels", "10", "--edges", "all",
+        "--edge-direction", "forward", "--weights", "sqrt_inverse", "--selection-fold", "dev",
+        "--final-eval", "none", "--epochs", "40", "--patience", "40",
+        "--method-option", "pair_mode=product",
+    ]
+    assert stages[3].argv[1:] == literal_full_argv
+
+
 def test_plan_has_exact_ten_dev_only_stages(tmp_path):
     module = _module()
     artifact, targets, canonical = _inputs(tmp_path)
