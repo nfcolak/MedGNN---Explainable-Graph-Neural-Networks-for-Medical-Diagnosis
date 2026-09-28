@@ -215,6 +215,16 @@ def _write_json(path, value):
     path.write_text(json.dumps(value))
 
 
+def _write_analysis_history_fixtures(root, names, binding):
+    """RR2-3: mocked analysis validators still need valid dev history rows."""
+    binding["epochs"] = 1
+    binding.setdefault("selected_dev", {})["epoch"] = 1
+    for name in names:
+        _write_json(Path(root) / name / "history.json", [{
+            "epoch": 1, "train_loss": 1.0, "macro_f1": 1.0,
+            "selection_fold": "dev", "seconds": 1.0}])
+
+
 def test_full_phase_requires_completed_smoke(tmp_path):
     module = _module()
     assert hasattr(module, "execute_plan"), "pair study executor is missing"
@@ -613,6 +623,7 @@ def test_analysis_secondary_results_are_explicitly_non_decisive(tmp_path, monkey
                "pair_count_summary": {"graphs": 2}}
     for name in module.FULL_STAGE_NAMES:
         _write_json(tmp_path / name / "result.json", {"total_seconds": 4.2})
+    _write_analysis_history_fixtures(tmp_path, module.FULL_STAGE_NAMES, binding)
     monkeypatch.setattr(module, "validate_completed_study",
                         lambda root: {name: binding for name in module.FULL_STAGE_NAMES})
     monkeypatch.setattr(module, "load_arm_predictions", lambda root:
@@ -643,6 +654,7 @@ def test_analysis_per_class_rows_include_false_positive_counts(tmp_path, monkeyp
                "active_parameter_count": 40}
     for name in module.FULL_STAGE_NAMES:
         _write_json(tmp_path / name / "result.json", {"total_seconds": 0.0})
+    _write_analysis_history_fixtures(tmp_path, module.FULL_STAGE_NAMES, binding)
     monkeypatch.setattr(module, "validate_completed_study",
                         lambda root: {name: binding for name in module.FULL_STAGE_NAMES})
     monkeypatch.setattr(module, "load_arm_predictions", lambda root:
@@ -669,6 +681,7 @@ def test_analysis_uses_validated_result_seconds(tmp_path, monkeypatch):
                "active_parameter_count": 40, "total_seconds": 999.0}
     for name in module.FULL_STAGE_NAMES:
         _write_json(tmp_path / name / "result.json", {"total_seconds": 4.2})
+    _write_analysis_history_fixtures(tmp_path, module.FULL_STAGE_NAMES, binding)
     monkeypatch.setattr(module, "validate_completed_study",
                         lambda root: {name: binding for name in module.FULL_STAGE_NAMES})
     monkeypatch.setattr(module, "load_arm_predictions", lambda root:
@@ -692,7 +705,8 @@ def test_product_minus_off_comparison_is_explicitly_non_decisive(tmp_path, monke
                "label_order": ["A", "B"], "parameter_count": 42,
                "active_parameter_count": 40}
     for name in module.FULL_STAGE_NAMES:
-        _write_json(tmp_path / name / "result.json", {})
+        _write_json(tmp_path / name / "result.json", {"total_seconds": 0.0})
+    _write_analysis_history_fixtures(tmp_path, module.FULL_STAGE_NAMES, binding)
     monkeypatch.setattr(module, "validate_completed_study",
                         lambda root: {name: binding for name in module.FULL_STAGE_NAMES})
     monkeypatch.setattr(module, "load_arm_predictions", lambda root:
@@ -1027,7 +1041,7 @@ def test_print_only_smoke_verification_does_not_mutate_output_root(tmp_path, mon
 
 
 def _run_synthetic_analysis(module, tmp_path, monkeypatch, *, point=None, counts=None,
-                            histories=None):
+                            histories=None, replay_counts=None):
     import numpy as np
     from comparison.standardized.clinical_graph_v2 import train
 
@@ -1055,7 +1069,11 @@ def _run_synthetic_analysis(module, tmp_path, monkeypatch, *, point=None, counts
                                "selection_fold": "dev", "seconds": 1.0}
                               for i in range(1, 4)])
     point = point or {name: 1.0 for name in module.FULL_STAGE_NAMES}
-    monkeypatch.setattr(module, "validate_completed_study", lambda root: bindings)
+    def validate(root, *, include_pair_counts=False):
+        if include_pair_counts:
+            return bindings, replay_counts
+        return bindings
+    monkeypatch.setattr(module, "validate_completed_study", validate)
     monkeypatch.setattr(module, "load_arm_predictions", lambda root: (arms, y, subjects))
     monkeypatch.setattr(module, "paired_bootstrap", lambda *a, **k: (
         point, {key: {"point": 0.0, "interval_95": [0.0, 0.0]} for key in module.COMPARISONS}))
@@ -1139,3 +1157,46 @@ def test_a10_r4_reports_parameters_notes_and_decide_is_invariant(tmp_path, monke
     report.update({"seed_deltas": {}, "pair_count_bands": {}, "training_curves": {},
                    "notes": report["notes"], "parameter_counts": {}})
     assert module.decide(point, comparisons) == expected
+
+
+def test_a10_r2_dev_pair_counts_and_analysis_replay_counts(tmp_path, monkeypatch):
+    module = _module()
+    import torch
+    from comparison.standardized.clinical_graph_v2.tensorize import ClinicalGraphData
+
+    rows = []
+    for members, types in (([0, 0, 0], [1, 2, 5]), ([0, 0, 1, 1], [1, 2, 1, 2])):
+        row = ClinicalGraphData()
+        node_count = len(types)
+        row.visit_membership_index = torch.tensor([members, list(range(node_count))])
+        row.node_type = torch.tensor(types)
+        row.num_nodes = node_count
+        rows.append(row)
+    # within_visit_pairs counts unordered complaint/measurement/vital pairs per visit only
+    # (cei_gnn_v2.py:11-12, 21-22, 46-50): row one has one complaint-vital pair;
+    # row two has just one complaint evidence node in each visit, hence no pair.
+    assert module.dev_pair_counts(rows) == [1, 0]
+
+    report = _run_synthetic_analysis(module, tmp_path, monkeypatch,
+                                     replay_counts=[0, 0, 0, 1])
+    bands = report["pair_count_bands"]
+    assert bands["0"]["graphs"] == 3
+    assert bands["0"]["patients"] == 3
+    assert bands["1-179"]["graphs"] == 1
+    assert bands["1-179"]["patients"] == 1
+    assert report["pair_count_source"] == "dev rows reloaded by replay (structural count, no scoring)"
+
+
+def test_a10_r2_replay_json_keys_stay_proof_only():
+    # The transient value is added only to replay's returned mapping, never the proof.
+    proof_keys = {"status", "method", "pair_mode", "seed", "checkpoint_sha256",
+                  "proba_sha256", "split_sample_ids_sha256", "dev_count",
+                  "exact_probabilities", "exact_labels", "exact_sample_identity",
+                  "patient_disjoint", "validation_evaluated", "test_evaluated", "dev_metrics"}
+    assert "_dev_pair_counts" not in proof_keys
+
+
+def test_a10_r2_rejects_different_counts_across_arms():
+    module = _module()
+    with pytest.raises(ValueError, match="dev pair counts differ across arms"):
+        module._assert_dev_pair_count_parity([[0, 1], [0, 2]])
