@@ -292,6 +292,7 @@ def replay_v2_stage(output_dir, binding, result, *, persist=True):
     from comparison.standardized.clinical_graph_v2.methods import build_method
     from comparison.standardized.clinical_graph_v2.schema import sha256
     from comparison.standardized.clinical_graph_v2.tensorize import preprocessing_state
+    from comparison.standardized.clinical_graph_v2.methods.cei_gnn_v2 import within_visit_pairs
 
     source = recursive_source_hashes(Path(train.__file__).parent)
     if source != binding.get("source_code"):
@@ -372,17 +373,20 @@ def replay_v2_stage(output_dir, binding, result, *, persist=True):
              "patient_disjoint": True, "validation_evaluated": False, "test_evaluated": False,
              "dev_metrics": metrics}
     proof_path = output / "replay.json"
+    dev_pair_counts = [int(within_visit_pairs(row.visit_membership_index, row.node_type,
+                                               int(row.num_nodes)).size(1))
+                       for row in splits["dev"]]
     if proof_path.exists():
         existing = pilot._load_json(proof_path, "replay.json")
         if {k: existing.get(k) for k in proof} != proof:
             raise ValueError("existing replay proof differs")
-        return existing
+        return {**existing, "_dev_pair_counts": dev_pair_counts}
     if not persist:
         raise ValueError("existing replay proof is required for non-persisting replay")
     with proof_path.open("x") as stream:
         json.dump(proof, stream, indent=2, sort_keys=True)
         stream.write("\n")
-    return proof
+    return {**proof, "_dev_pair_counts": dev_pair_counts}
 
 
 def _check_stage_result(stage, binding, result):
@@ -497,11 +501,11 @@ def execute_plan(stages, *, journal_path, phase):
     return 0
 
 
-def validate_completed_study(output_root):
+def validate_completed_study(output_root, *, include_pair_counts=False):
     """Re-validate and replay all nine full arms; return their bindings."""
     root = Path(output_root).expanduser().resolve(strict=True)
     specs = {name: (budget, seed, mode) for name, budget, seed, mode in stage_specs()[1:]}
-    bindings = {}
+    bindings, common_pair_counts = {}, None
     for name, (budget, seed, mode) in specs.items():
         directory = root / name
         binding = pilot._load_json(directory / "binding.json", "binding.json")
@@ -509,10 +513,16 @@ def validate_completed_study(output_root):
         validate_v2_binding(binding, budget=budget, seed=seed, mode=mode)
         _check_stage_result(Stage(name, [], str(directory), seed, budget, mode), binding, result)
         pilot._validate_artifacts(directory, binding, result)
-        replay_v2_stage(directory, binding, result)
+        replay = replay_v2_stage(directory, binding, result)
+        counts = replay.get("_dev_pair_counts")
+        if counts is not None:
+            if common_pair_counts is None:
+                common_pair_counts = counts
+            elif counts != common_pair_counts:
+                raise ValueError("dev pair counts differ across arms")
         bindings[name] = binding
     assert_arm_parity(bindings)
-    return bindings
+    return (bindings, common_pair_counts) if include_pair_counts else bindings
 
 
 
@@ -531,6 +541,18 @@ def pair_count_summary(rows):
                         dtype=float)
     return {"graphs": int(counts.size), "mean": float(counts.mean()),
             "quantiles": {str(q): float(np.quantile(counts, q)) for q in QUANTILES}}
+
+
+def dev_pair_counts(rows):
+    from comparison.standardized.clinical_graph_v2.methods.cei_gnn_v2 import within_visit_pairs
+
+    return [int(within_visit_pairs(row.visit_membership_index, row.node_type,
+                                   int(row.num_nodes)).size(1)) for row in rows]
+
+
+def _assert_dev_pair_count_parity(counts_by_arm):
+    if counts_by_arm and any(counts != counts_by_arm[0] for counts in counts_by_arm[1:]):
+        raise ValueError("dev pair counts differ across arms")
 
 
 def step_time_ratio(rows, prep, *, batches=5):
@@ -768,7 +790,12 @@ def analyze(output_root, output_json, *, pair_counts=None):
     output = Path(output_json)
     if output.exists():
         raise FileExistsError(f"Refusing occupied analysis output {output}")
-    bindings = validate_completed_study(output_root)
+    import inspect
+    validator = validate_completed_study
+    if "include_pair_counts" in inspect.signature(validator).parameters:
+        bindings, replay_pair_counts = validator(output_root, include_pair_counts=True)
+    else:
+        bindings, replay_pair_counts = validator(output_root), None
     arms, y, subjects = load_arm_predictions(output_root)
     num_classes = next(iter(bindings.values()))["num_classes"]
     point, comparisons = paired_bootstrap(arms, y, subjects, num_classes=num_classes)
@@ -778,6 +805,8 @@ def analyze(output_root, output_json, *, pair_counts=None):
             raise ValueError(f"recomputed macro-F1 differs from the bound result: {name}")
     for key, entry in comparisons.items():
         entry["decisive"] = key == "product_minus_additive"
+    if pair_counts is None:
+        pair_counts = replay_pair_counts
     report = {"status": "analyzed", "decision": decide(point, comparisons),
               "comparisons": comparisons, "dev_macro_f1": point,
               "dev_rows": int(len(y)), "patients": int(len(np.unique(subjects))),
@@ -788,7 +817,10 @@ def analyze(output_root, output_json, *, pair_counts=None):
               "pair_count_bands": pair_count_band_summary(
                   arms, y, subjects, num_classes, pair_counts),
               "pair_count_source": ("injected per-graph dev counts" if pair_counts is not None
-                                    else "pair counts unavailable in real runs; no dev graph reload")}
+                                    and replay_pair_counts is None else
+                                    "dev rows reloaded by replay (structural count, no scoring)"
+                                    if pair_counts is not None else
+                                    "pair counts unavailable in real runs; no dev graph reload")}
     from comparison.standardized.clinical_graph_v2 import train
     secondary = {}
     results = {name: pilot._load_json(Path(output_root) / name / "result.json", "result.json")
