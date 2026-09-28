@@ -18,9 +18,18 @@ def _empty_pairs(device):
     return torch.zeros((2, 0), dtype=torch.long, device=device)
 
 
-def within_visit_pairs(membership, node_type, node_count):
+def within_visit_pairs(membership, node_type, node_count, *, node_graph=None, visit_graph=None):
     """Unique unordered evidence-node pairs (i < j) that share at least one visit."""
     device = node_type.device
+    if (node_graph is None) != (visit_graph is None):
+        raise ValueError("node_graph and visit_graph must be supplied together")
+    if node_graph is not None:
+        node_graph = node_graph.to(device=device, dtype=torch.long)
+        visit_graph = visit_graph.to(device=device, dtype=torch.long)
+        if node_graph.ndim != 1 or node_graph.numel() != int(node_count):
+            raise ValueError("node_graph must contain one graph id per node")
+        if visit_graph.ndim != 1:
+            raise ValueError("visit_graph must be a vector")
     if membership.ndim != 2 or membership.size(0) != 2:
         raise ValueError("visit_membership_index must have shape [2, pairs]")
     if membership.size(1) == 0:
@@ -28,7 +37,12 @@ def within_visit_pairs(membership, node_type, node_count):
     membership = membership.to(device=device, dtype=torch.long)
     visit, node = membership[0], membership[1]
     if int(node.min()) < 0 or int(node.max()) >= int(node_count) or int(visit.min()) < 0:
-        raise ValueError("visit membership refers to a node outside the batch")
+        raise ValueError("visit membership refers to a node or visit outside the batch")
+    if node_graph is not None:
+        if int(visit.max()) >= visit_graph.numel():
+            raise ValueError("visit membership refers to a visit outside the batch")
+        if not torch.equal(visit_graph[visit], node_graph[node]):
+            raise ValueError("visit membership crosses graph boundaries")
     evidence = torch.tensor(EVIDENCE_KIND_IDS, device=device)
     keep = torch.isin(node_type[node], evidence)
     visit, node = visit[keep], node[keep]
@@ -152,7 +166,8 @@ class PairEvidenceNetwork(nn.Module):
         if not torch.isfinite(metadata.edge_attr).all():
             raise ValueError("edge_attr must be finite")
 
-    def forward_continuous(self, features, edge_index, metadata, membership, *, return_parts=False):
+    def forward_continuous(self, features, edge_index, metadata, membership, *,
+                           return_parts=False, visit_graph=None):
         self._validate(features, edge_index, metadata)
         node_count, graph_count = int(features.size(0)), int(metadata.graph_count)
         batch_index, classes = metadata.batch_index, self.num_classes
@@ -185,7 +200,10 @@ class PairEvidenceNetwork(nn.Module):
             effective_gate_vote = edge_mask[:, None] * edge_gate * edge_vote
         edge_parts = (effective_gate_vote / edge_denominator[batch_index[src]] if edge_count else edge_vote)
 
-        pairs = within_visit_pairs(membership, metadata.node_type, node_count)
+        pairs = within_visit_pairs(
+            membership, metadata.node_type, node_count,
+            **({"node_graph": batch_index, "visit_graph": visit_graph}
+               if visit_graph is not None else {}))
         pair_count = pairs.size(1)
         if self.pair_mode == "off" or pair_count == 0:
             pair_total = h.new_zeros((graph_count, classes))
