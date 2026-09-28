@@ -607,6 +607,8 @@ def test_analysis_secondary_results_are_explicitly_non_decisive(tmp_path, monkey
                "label_order": ["A", "B"], "parameter_count": 42,
                "active_parameter_count": 40, "total_seconds": 4.2,
                "pair_count_summary": {"graphs": 2}}
+    for name in module.FULL_STAGE_NAMES:
+        _write_json(tmp_path / name / "result.json", {"total_seconds": 4.2})
     monkeypatch.setattr(module, "validate_completed_study",
                         lambda root: {name: binding for name in module.FULL_STAGE_NAMES})
     monkeypatch.setattr(module, "load_arm_predictions", lambda root:
@@ -702,6 +704,13 @@ def test_product_minus_off_comparison_is_explicitly_non_decisive(tmp_path, monke
     assert report["comparisons"]["product_minus_additive"]["decisive"] is True
     assert report["comparisons"]["product_minus_off"]["decisive"] is False
     assert report["comparisons"]["additive_minus_off"]["decisive"] is False
+
+
+def test_cli_rejects_custom_journal_argument():
+    module = _module()
+    with pytest.raises(SystemExit) as error:
+        module.parser().parse_args(["--journal", "elsewhere.json"])
+    assert error.value.code == 2
 
 
 def test_module_entrypoint_prints_plan_without_execution(tmp_path):
