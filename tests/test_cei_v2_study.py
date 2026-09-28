@@ -1024,3 +1024,118 @@ def test_print_only_smoke_verification_does_not_mutate_output_root(tmp_path, mon
     with pytest.raises(ValueError, match="replay"):
         module.main(["--artifact", str(artifact), "--targets", str(targets),
                      "--canonical", str(canonical), "--output-root", str(root)])
+
+
+def _run_synthetic_analysis(module, tmp_path, monkeypatch, *, point=None, counts=None,
+                            histories=None):
+    import numpy as np
+    from comparison.standardized.clinical_graph_v2 import train
+
+    arms = {name: np.asarray([[0.8, 0.2], [0.2, 0.8], [0.8, 0.2], [0.2, 0.8]])
+            for name in module.FULL_STAGE_NAMES}
+    y = np.asarray([0, 1, 0, 1])
+    subjects = np.asarray(["p1", "p2", "p3", "p4"])
+    point = point or {name: 1.0 for name in module.FULL_STAGE_NAMES}
+    bindings = {}
+    for name in module.FULL_STAGE_NAMES:
+        mode, seed = name.rsplit("_seed", 1)
+        bindings[name] = {"num_classes": 2, "selected_dev": {"metric_value": 1.0},
+                          "label_order": ["A", "B"], "parameter_count": 42,
+                          "active_parameter_count": 40, "inactive_parameter_count": 2,
+                          "epochs": 3, "seed": int(seed),
+                          "selected_dev": {"metric_value": point[name], "epoch": 2},
+                          "method_config": {"architecture": {"parameter_count": 42,
+                                                                  "active_parameter_count": 40,
+                                                                  "inactive_parameter_count": 2}}}
+        _write_json(tmp_path / name / "result.json", {"total_seconds": 4.2})
+        _write_json(tmp_path / name / "history.json", histories.get(name, [
+            {"epoch": i, "train_loss": 1.0 / i, "macro_f1": 1.0,
+             "selection_fold": "dev", "seconds": 1.0} for i in range(1, 4)
+        ]) if histories else [{"epoch": i, "train_loss": 1.0 / i, "macro_f1": 1.0,
+                               "selection_fold": "dev", "seconds": 1.0}
+                              for i in range(1, 4)])
+    point = point or {name: 1.0 for name in module.FULL_STAGE_NAMES}
+    monkeypatch.setattr(module, "validate_completed_study", lambda root: bindings)
+    monkeypatch.setattr(module, "load_arm_predictions", lambda root: (arms, y, subjects))
+    monkeypatch.setattr(module, "paired_bootstrap", lambda *a, **k: (
+        point, {key: {"point": 0.0, "interval_95": [0.0, 0.0]} for key in module.COMPARISONS}))
+    monkeypatch.setattr(module, "decide", lambda *a: {"interaction_useful": False})
+    monkeypatch.setattr(train, "patient_equal_metrics", lambda *a, **k: {"macro_f1": 1.0})
+    monkeypatch.setattr(train, "per_class_table", lambda *a, **k: [{"index": 0}, {"index": 1}])
+    if counts is not None:
+        return module.analyze(tmp_path, tmp_path / "analysis.json", pair_counts=counts)
+    return module.analyze(tmp_path, tmp_path / "analysis.json")
+
+
+def test_a10_r1_analyze_reports_hand_computed_seed_level_deltas(tmp_path, monkeypatch):
+    module = _module()
+    point = {f"{mode}_seed{seed}": score
+             for seed, product, additive, off in ((1234, .70, .60, .50),
+                                                   (2025, .65, .60, .55),
+                                                   (7, .80, .70, .60))
+             for mode, score in (("product", product), ("additive", additive), ("off", off))}
+    report = _run_synthetic_analysis(module, tmp_path, monkeypatch, point=point)
+    delta = report["seed_deltas"]["product_minus_additive"]
+    assert delta["per_seed"] == {"1234": pytest.approx(10.0),
+                                 "2025": pytest.approx(5.0), "7": pytest.approx(10.0)}
+    assert delta["mean"] == pytest.approx(25 / 3)
+    assert delta["sd"] == pytest.approx((25 / 3) ** 0.5)
+    assert delta["t_interval_df2"] == pytest.approx([25 / 3 - 4.302653 * ((25 / 3) ** .5) / 3 ** .5,
+                                                       25 / 3 + 4.302653 * ((25 / 3) ** .5) / 3 ** .5])
+    assert delta["label"] == "seed-level, descriptive, not decisive"
+    assert delta["decisive"] is False
+
+
+def test_a10_r2_analyze_reports_injected_pair_count_band_membership(tmp_path, monkeypatch):
+    module = _module()
+    if "pair_counts" in __import__("inspect").signature(module.analyze).parameters:
+        report = _run_synthetic_analysis(module, tmp_path, monkeypatch,
+                                         counts=[0, 1, 180, 1045])
+    else:
+        report = _run_synthetic_analysis(module, tmp_path, monkeypatch)
+    bands = report["pair_count_bands"]
+    assert [(key, bands[key]["graphs"]) for key in ("0", "1-179", "180-1044", ">1044")] == [
+        ("0", 1), ("1-179", 1), ("180-1044", 1), (">1044", 1)]
+    assert [bands[key]["patients"] for key in ("0", "1-179", "180-1044", ">1044")] == [1] * 4
+    assert all(bands[key]["per_arm_seed_mean_macro_f1"] is None
+               and bands[key]["product_minus_additive"] is None
+               and bands[key]["decisive"] is False
+               for key in ("0", "1-179", "180-1044", ">1044"))
+
+
+def test_a10_r3_analyze_reports_and_validates_training_curves(tmp_path, monkeypatch):
+    module = _module()
+    report = _run_synthetic_analysis(module, tmp_path, monkeypatch)
+    curve = report["training_curves"][module.FULL_STAGE_NAMES[0]]
+    assert curve["train_loss"] == pytest.approx([1.0, .5, 1 / 3])
+    assert curve["dev_macro_f1"] == [1.0, 1.0, 1.0]
+    assert curve["selected_epoch"] == 2 and curve["selected_at_last_epoch"] is False
+    assert curve["total_seconds"] == 4.2 and curve["decisive"] is False
+
+    malformed = {module.FULL_STAGE_NAMES[0]: [
+        {"epoch": 1, "train_loss": 1.0, "macro_f1": .5,
+         "selection_fold": "validation", "seconds": 1.0}]}
+    bad_path = tmp_path / "bad"
+    with pytest.raises(ValueError, match="history"):
+        _run_synthetic_analysis(module, bad_path, monkeypatch, histories=malformed)
+
+
+def test_a10_r4_reports_parameters_notes_and_decide_is_invariant(tmp_path, monkeypatch):
+    module = _module()
+    report = _run_synthetic_analysis(module, tmp_path, monkeypatch)
+    assert report["notes"] == [
+        "Exploratory dev-only screen: intervals are conditional on the selected dev checkpoints and seeds 1234/2025/7 (spec §6.1).",
+        "A failed rule means benefit not demonstrated, not evidence of no benefit.",
+        "product vs off is directional; off is a structural ablation with fewer active parameters.",
+        "GraphXAI edge masks do not attribute within-visit pairs; pair contributions are model accounting, not causal importance.",
+    ]
+    arm = report["secondary_results"][module.FULL_STAGE_NAMES[0]]
+    assert (arm["parameter_count"], arm["active_parameter_count"],
+            arm["inactive_parameter_count"]) == (42, 40, 2)
+
+    point = {f"{mode}_seed{seed}": 1.0 for mode in module.MODES for seed in module.SEEDS}
+    comparisons = {key: {"interval_95": [0.0, 1.0]} for key in module.COMPARISONS}
+    expected = module.decide(point, comparisons)
+    report.update({"seed_deltas": {}, "pair_count_bands": {}, "training_curves": {},
+                   "notes": report["notes"], "parameter_counts": {}})
+    assert module.decide(point, comparisons) == expected
