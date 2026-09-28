@@ -222,6 +222,42 @@ def assert_arm_parity(bindings):
             if (field not in reference or field not in binding or
                     binding[field] != reference[field]):
                 raise ValueError(f"arm parity differs: {field} ({name} vs {reference_name})")
+    selected_keys = {"epoch", "epoch_index", "metric", "metric_value",
+                     "prediction_sha256", "sample_ids_sha256"}
+    for name, binding in items:
+        selected = binding.get("selected_dev")
+        if not isinstance(selected, dict) or set(selected) != selected_keys:
+            raise ValueError(f"selected_dev keys differ from the six-field contract: {name}")
+    for name, binding in items[1:]:
+        first = reference["selected_dev"]
+        other = binding["selected_dev"]
+        for field in ("metric", "sample_ids_sha256"):
+            if first[field] != other[field]:
+                raise ValueError(f"arm parity differs: selected_dev.{field} ({name} vs {reference_name})")
+    groups = {}
+    for name, binding in items:
+        mode = binding["method_config"]["effective_settings"]["pair_mode"]
+        architecture = binding["method_config"]["architecture"]
+        counts = (binding["parameter_count"], binding["active_parameter_count"],
+                  architecture["parameter_count"], architecture["active_parameter_count"])
+        groups.setdefault(mode, []).append((name, counts))
+    all_total = {counts[0] for values in groups.values() for _, counts in values}
+    if len(all_total) != 1:
+        raise ValueError("arm parity differs: total parameter_count")
+    for mode in ("product", "additive", "off"):
+        values = groups.get(mode, [])
+        if values and len({counts[1:] for _, counts in values}) != 1:
+            raise ValueError(f"arm parity differs: active_parameter_count within {mode} arms")
+        for name, counts in values:
+            if counts[0] != counts[2] or counts[1] != counts[3]:
+                raise ValueError(f"arm parity differs: {name} parameter counts disagree with architecture")
+    interactions = [counts[1] for mode in ("product", "additive")
+                    for _, counts in groups.get(mode, [])]
+    if interactions and len(set(interactions)) != 1:
+        raise ValueError("arm parity requires equal active_parameter_count across interaction arms")
+    off_counts = [counts[1] for _, counts in groups.get("off", [])]
+    if interactions and off_counts and max(off_counts) >= min(interactions):
+        raise ValueError("arm parity requires off active_parameter_count < interaction")
     return True
 
 

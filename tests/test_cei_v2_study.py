@@ -68,6 +68,8 @@ def _binding(mode="product", seed=2025, budget=(10000, 5000, 40), **updates):
     binding = {
         "method": "cei_gnn_v2", "method_config": config,
         "method_native_defaults": config["native_defaults"],
+        "selected_dev": {"epoch": 3, "epoch_index": 2, "metric": "macro_f1",
+                         "metric_value": 0.5, "prediction_sha256": "pred", "sample_ids_sha256": "ids"},
         "artifact_graphs_sha256": "g", "artifact_visit_membership_sha256": "m",
         "targets_sha256": "t", "target_binding_sha256": "tb", "label_order": ["A", "B"],
         "source_code": {"x.py": "h"}, "preprocessing_sha256": "p",
@@ -200,8 +202,10 @@ def test_arm_parity_rejects_every_unallowlisted_binding_difference(field, value)
 def test_arm_parity_accepts_only_documented_arm_varying_fields():
     module = _module()
     product, off = _binding("product", 1234), _binding("off", 2025)
-    product["selected_dev"] = {"metric_value": 0.7}
-    off["selected_dev"] = {"metric_value": 0.6}
+    product["selected_dev"] = {"epoch": 4, "epoch_index": 3, "metric": "macro_f1",
+                                "metric_value": 0.7, "prediction_sha256": "p", "sample_ids_sha256": "s"}
+    off["selected_dev"] = {"epoch": 3, "epoch_index": 2, "metric": "macro_f1",
+                            "metric_value": 0.6, "prediction_sha256": "o", "sample_ids_sha256": "s"}
     off["active_parameter_count"] = off["method_config"]["architecture"]["active_parameter_count"]
     assert module.assert_arm_parity({"product": product, "off": off})
 
@@ -913,7 +917,9 @@ def test_sf2a_rejects_product_additive_active_parameter_mismatch(field):
     product, additive = _binding("product", 1234), _binding("additive", 1234)
     if field == "active_parameter_count":
         additive["active_parameter_count"] += 1
+        additive["method_config"]["architecture"]["active_parameter_count"] += 1
     else:
+        additive["active_parameter_count"] += 1
         additive["method_config"]["architecture"]["active_parameter_count"] += 1
     with pytest.raises(ValueError, match="active_parameter_count"):
         module.assert_arm_parity({"product": product, "additive": additive})
