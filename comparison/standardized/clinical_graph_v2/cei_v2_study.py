@@ -717,6 +717,33 @@ def pair_count_band_summary(arms, y, subjects, num_classes, pair_counts):
     return output
 
 
+def training_curve_summary(output_root, bindings, results):
+    curves = {}
+    for name, binding in bindings.items():
+        history_path = Path(output_root) / name / "history.json"
+        try:
+            history = json.loads(history_path.read_text())
+        except (OSError, json.JSONDecodeError) as error:
+            raise ValueError(f"Cannot read history for {name}: {history_path}") from error
+        epochs = binding["epochs"]
+        if (not isinstance(history, list) or len(history) != epochs
+                or any(not isinstance(row, dict) or row.get("selection_fold") != "dev"
+                       for row in history)):
+            raise ValueError(f"history for {name} must have exactly {epochs} dev-selected epochs")
+        try:
+            train_loss = [float(row["train_loss"]) for row in history]
+            dev_macro_f1 = [float(row["macro_f1"]) for row in history]
+            total_seconds = float(results[name]["total_seconds"])
+            selected_epoch = int(binding["selected_dev"]["epoch"])
+        except (KeyError, TypeError, ValueError) as error:
+            raise ValueError(f"history or binding metrics are incomplete for {name}") from error
+        curves[name] = {"train_loss": train_loss, "dev_macro_f1": dev_macro_f1,
+                        "selected_epoch": selected_epoch,
+                        "selected_at_last_epoch": selected_epoch == epochs,
+                        "total_seconds": total_seconds, "decisive": False}
+    return curves
+
+
 def analyze(output_root, output_json, *, pair_counts=None):
     output = Path(output_json)
     if output.exists():
@@ -762,6 +789,7 @@ def analyze(output_root, output_json, *, pair_counts=None):
             "total_seconds": results[name].get("total_seconds"),
         }
     report["secondary_results"] = secondary
+    report["training_curves"] = training_curve_summary(output_root, bindings, results)
     report["product_minus_off_bootstrap"] = comparisons["product_minus_off"]
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("x") as stream:
