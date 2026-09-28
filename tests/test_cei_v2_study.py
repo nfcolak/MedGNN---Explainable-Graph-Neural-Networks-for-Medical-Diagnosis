@@ -625,6 +625,31 @@ def test_analysis_secondary_results_are_explicitly_non_decisive(tmp_path, monkey
     assert "product_minus_off_bootstrap" in report
 
 
+def test_analysis_per_class_rows_include_false_positive_counts(tmp_path, monkeypatch):
+    module = _module()
+    from comparison.standardized.clinical_graph_v2 import train
+    import numpy as np
+
+    arms = {name: np.asarray([[0.8, 0.2], [0.7, 0.3], [0.1, 0.9]])
+            for name in module.FULL_STAGE_NAMES}
+    binding = {"num_classes": 2, "selected_dev": {"metric_value": 0.0},
+               "label_order": ["A", "B"], "parameter_count": 42,
+               "active_parameter_count": 40}
+    monkeypatch.setattr(module, "validate_completed_study",
+                        lambda root: {name: binding for name in module.FULL_STAGE_NAMES})
+    monkeypatch.setattr(module, "load_arm_predictions", lambda root:
+                        (arms, np.asarray([0, 1, 1]), np.asarray(["p1", "p2", "p3"])))
+    monkeypatch.setattr(module, "paired_bootstrap", lambda *a, **k:
+                        ({name: 0.0 for name in arms}, {"product_minus_off": {"interval_95": [0, 0]}}))
+    monkeypatch.setattr(module, "decide", lambda *a: {"interaction_useful": False})
+    monkeypatch.setattr(train, "patient_equal_metrics", lambda *a, **k: {"macro_f1": 0.0})
+    monkeypatch.setattr(train, "per_class_table", lambda *a, **k: [
+        {"index": 0, "label": "A"}, {"index": 1, "label": "B"}])
+    report = module.analyze(tmp_path, tmp_path / "analysis.json")
+    rows = report["secondary_results"][module.FULL_STAGE_NAMES[0]]["per_class"]
+    assert [row.get("false_positives") for row in rows] == [1, 0]
+
+
 def test_module_entrypoint_prints_plan_without_execution(tmp_path):
     import subprocess
 
