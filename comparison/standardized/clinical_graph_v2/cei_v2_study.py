@@ -535,8 +535,8 @@ def execute_plan(stages, *, journal_path, phase):
 def validate_completed_study(output_root, *, include_pair_counts=False):
     """Re-validate and replay all nine full arms; return their bindings."""
     root = Path(output_root).expanduser().resolve(strict=True)
-    specs = {name: (budget, seed, mode) for name, budget, seed, mode in stage_specs()
-             if name in FULL_STAGE_NAMES}
+    specs = {name: (budget, seed, mode) for name, budget, seed, mode
+             in stage_specs()[len(SMOKE_STAGE_NAMES):]}
     bindings, common_pair_counts = {}, None
     for name, (budget, seed, mode) in specs.items():
         directory = root / name
