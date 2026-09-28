@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import subprocess
 import sys
 from dataclasses import asdict, dataclass
@@ -413,6 +414,15 @@ def execute_plan(stages, *, journal_path, phase):
             journal["stages"][stage.name].update({
                 "status": "bound", "postflight": after, "replay": replay,
                 "stdout": completed.stdout, "stderr": completed.stderr})
+            if phase == "smoke":
+                seconds = result.get("total_seconds", binding.get("total_seconds"))
+                if seconds is not None:
+                    batch_size = int(binding.get("batch_size", 128))
+                    smoke_steps = math.ceil(stage.budget[0] / batch_size) * stage.budget[2]
+                    full_steps = math.ceil(FULL_BUDGET[0] / batch_size) * FULL_BUDGET[2]
+                    journal["eta_minutes_nine_runs_smoke"] = round(
+                        9 * float(seconds) * full_steps / max(smoke_steps, 1) / 60, 1)
+                    journal["eta_basis"] = "rough; smoke fixed costs dominate"
         except Exception as error:
             journal["stages"][stage.name].update({"status": "failed", "error": str(error)})
             journal["status"] = "failed"
@@ -450,3 +460,271 @@ def validate_completed_study(output_root):
         bindings[name] = binding
     assert_arm_parity(bindings)
     return bindings
+
+
+
+V1_MEAN_RUN_SECONDS = (127.7 + 123.9) / 2  # recorded CEI v1 pilot full-run total_seconds
+QUANTILES = (0.0, 0.25, 0.5, 0.75, 0.9, 0.99, 1.0)
+COMPARISONS = {"product_minus_additive": ("product", "additive"),
+               "product_minus_off": ("product", "off"),
+               "additive_minus_off": ("additive", "off")}
+
+
+def pair_count_summary(rows):
+    from comparison.standardized.clinical_graph_v2.methods.cei_gnn_v2 import within_visit_pairs
+
+    counts = np.asarray([within_visit_pairs(row.visit_membership_index, row.node_type,
+                                            int(row.num_nodes)).size(1) for row in rows],
+                        dtype=float)
+    return {"graphs": int(counts.size), "mean": float(counts.mean()),
+            "quantiles": {str(q): float(np.quantile(counts, q)) for q in QUANTILES}}
+
+
+def step_time_ratio(rows, prep, *, batches=5):
+    """Forward+backward seconds of v2 product over v1 on identical batches; no updates."""
+    import time
+    from types import SimpleNamespace
+    import torch
+    from torch_geometric.loader import DataLoader
+    from comparison.standardized.clinical_graph_v2.methods import build_method
+
+    def build(method, options):
+        torch.manual_seed(1234)
+        return build_method(method, num_tokens=len(prep["vocabulary"]),
+                            node_dim=rows[0].x.shape[1], edge_dim=rows[0].edge_attr.shape[1],
+                            num_classes=10, hidden=128, layers=1, dropout=0.3, token_dim=32,
+                            num_triples=len(prep["triples"]) + 1,
+                            args=SimpleNamespace(method_options=options))
+
+    loader = list(DataLoader(rows, batch_size=128, shuffle=False))[:batches]
+    seconds = {}
+    for label, model in (("v1", build("cei_gnn", {"use_interactions": True})),
+                         ("v2", build(STUDY_METHOD, {"pair_mode": "product"}))):
+        model.train()
+        start = time.perf_counter()
+        for batch in loader:
+            model.zero_grad(set_to_none=True)
+            logits = model(batch, epoch=0).logits
+            torch.nn.functional.cross_entropy(logits, batch.y.view(-1) % 10).backward()
+        seconds[label] = time.perf_counter() - start
+    return seconds["v2"] / max(seconds["v1"], 1e-9)
+
+
+def preflight(*, artifact, targets, output_json):
+    """Train-only pair counts and a timing ratio; no training, no dev/validation scores."""
+    output = Path(output_json)
+    if output.exists():
+        raise FileExistsError(f"Refusing occupied preflight output {output}")
+    from comparison.standardized.clinical_graph_v2 import train
+
+    parser = train.parser()
+    args = train.normalize_method_args(parser.parse_args([
+        "--artifact", str(artifact), "--targets", str(targets), "--output", "<unused>",
+        "--method", STUDY_METHOD]), parser)
+    labels, _, _ = train.select_top_labels(train.load_targets(targets), 10)
+    splits, prep = train.build_dataset(Path(artifact), labels, "all", FULL_BUDGET[0],
+                                       args.token_min_count, 1234, edge_direction="forward",
+                                       dev_limit=FULL_BUDGET[1], sample_seed=SAMPLE_SEED)
+    if "test" in splits:
+        raise ValueError("preflight must never build test tensors")
+    rows = splits["train"]
+    ratio = step_time_ratio(rows, prep)
+    report = {"status": "verified",
+              "scope": "train-only pair counts and step timing; no training or dev/validation scores",
+              "pair_counts": pair_count_summary(rows), "step_time_ratio": ratio,
+              "eta_minutes_nine_runs_preflight": round(9 * V1_MEAN_RUN_SECONDS * ratio / 60, 1),
+              "eta_basis": "pre-smoke extrapolation",
+              "test_tensors_loaded": False, "validation_evaluated": False}
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("x") as stream:
+        json.dump(report, stream, indent=2, sort_keys=True)
+        stream.write("\n")
+    return report
+
+
+def weighted_macro_f1(y, pred, num_classes, weights=None):
+    y, pred = np.asarray(y, dtype=int), np.asarray(pred, dtype=int)
+    w = np.ones(len(y)) if weights is None else np.asarray(weights, dtype=float)
+    confusion = np.bincount(y * num_classes + pred, weights=w,
+                            minlength=num_classes * num_classes).reshape(num_classes, num_classes)
+    tp = np.diag(confusion)
+    fp, fn = confusion.sum(0) - tp, confusion.sum(1) - tp
+    denominator = 2 * tp + fp + fn
+    f1 = np.divide(2 * tp, denominator, out=np.zeros(num_classes), where=denominator > 0)
+    return float(f1.mean())
+
+
+def load_arm_predictions(output_root):
+    root = Path(output_root)
+    arms, reference = {}, None
+    for name in FULL_STAGE_NAMES:
+        with np.load(root / name / "dev.npz", allow_pickle=False) as saved:
+            required = {"proba", "y", "subjects", "sample_ids"}
+            if not required.issubset(saved.files):
+                raise ValueError(f"dev rows differ across arms: missing arrays in {name}")
+            rows = (saved["y"].copy(), saved["subjects"].astype(str), saved["sample_ids"].astype(str))
+            arms[name] = saved["proba"].copy()
+        if reference is None:
+            reference = rows
+        elif not all(np.array_equal(a, b) for a, b in zip(rows, reference)):
+            raise ValueError(f"dev rows differ across arms: {name}")
+    return arms, reference[0], reference[1]
+
+
+def paired_bootstrap(arms, y, subjects, *, num_classes, resamples=1000, seed=2026):
+    patients, inverse = np.unique(np.asarray(subjects).astype(str), return_inverse=True)
+    predictions = {name: np.asarray(proba).argmax(1) for name, proba in arms.items()}
+    point = {name: weighted_macro_f1(y, pred, num_classes) for name, pred in predictions.items()}
+    rng = np.random.default_rng(seed)
+    samples = {key: [] for key in COMPARISONS}
+    for _ in range(resamples):
+        drawn = rng.integers(0, len(patients), len(patients))
+        weights = np.bincount(drawn, minlength=len(patients))[inverse].astype(float)
+        scores = {name: weighted_macro_f1(y, pred, num_classes, weights)
+                  for name, pred in predictions.items()}
+        for key, (first, second) in COMPARISONS.items():
+            samples[key].append(float(np.mean([scores[f"{first}_seed{s}"] - scores[f"{second}_seed{s}"]
+                                               for s in SEEDS])))
+    comparisons = {}
+    for key, (first, second) in COMPARISONS.items():
+        values = np.asarray(samples[key])
+        comparisons[key] = {
+            "point": float(np.mean([point[f"{first}_seed{s}"] - point[f"{second}_seed{s}"]
+                                    for s in SEEDS])),
+            "interval_95": [float(np.quantile(values, 0.025)), float(np.quantile(values, 0.975))],
+            "resamples": int(resamples), "seed": int(seed)}
+    return point, comparisons
+
+
+def decide(point, comparisons):
+    per_seed = {str(s): {m: point[f"{m}_seed{s}"] for m in MODES} for s in SEEDS}
+    means = {m: float(np.mean([per_seed[str(s)][m] for s in SEEDS])) for m in MODES}
+    checks = {
+        "product_beats_additive_each_seed": all(
+            per_seed[str(s)]["product"] > per_seed[str(s)]["additive"] for s in SEEDS),
+        "product_mean_above_both_controls": (means["product"] > means["additive"]
+                                             and means["product"] > means["off"]),
+        "product_minus_additive_lower_bound_above_zero":
+            comparisons["product_minus_additive"]["interval_95"][0] > 0,
+    }
+    return {"per_seed": per_seed, "seed_means": means, "checks": checks,
+            "interaction_useful": all(checks.values())}
+
+
+def analyze(output_root, output_json):
+    output = Path(output_json)
+    if output.exists():
+        raise FileExistsError(f"Refusing occupied analysis output {output}")
+    bindings = validate_completed_study(output_root)
+    arms, y, subjects = load_arm_predictions(output_root)
+    num_classes = next(iter(bindings.values()))["num_classes"]
+    point, comparisons = paired_bootstrap(arms, y, subjects, num_classes=num_classes)
+    for name, binding in bindings.items():
+        recorded = binding["selected_dev"]["metric_value"]
+        if abs(point[name] - recorded) > 1e-6:
+            raise ValueError(f"recomputed macro-F1 differs from the bound result: {name}")
+    report = {"status": "analyzed", "decision": decide(point, comparisons),
+              "comparisons": comparisons, "dev_macro_f1": point,
+              "dev_rows": int(len(y)), "patients": int(len(np.unique(subjects))),
+              "test_evaluated": False, "validation_evaluated": False}
+    from comparison.standardized.clinical_graph_v2 import train
+    secondary = {}
+    for name, binding in bindings.items():
+        proba = arms[name]
+        patient_metrics = train.patient_equal_metrics(y, proba, subjects, num_classes)
+        secondary[name] = {
+            "decisive": False,
+            "patient_equal_macro_f1": patient_metrics["macro_f1"],
+            "per_class": train.per_class_table(y, proba, binding["label_order"], num_classes),
+            "pair_count_summary": binding.get("pair_count_summary"),
+            "parameter_count": binding["parameter_count"],
+            "active_parameter_count": binding["active_parameter_count"],
+            "total_seconds": binding.get("total_seconds"),
+        }
+    report["secondary_results"] = secondary
+    report["product_minus_off_bootstrap"] = comparisons["product_minus_off"]
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("x") as stream:
+        json.dump(report, stream, indent=2, sort_keys=True)
+        stream.write("\n")
+    return report
+
+
+def parser():
+    result = argparse.ArgumentParser(description=__doc__)
+    result.add_argument("--artifact")
+    result.add_argument("--targets")
+    result.add_argument("--canonical")
+    result.add_argument("--output-root")
+    result.add_argument("--execute", choices=("smoke", "full"))
+    result.add_argument("--journal")
+    result.add_argument("--preflight", metavar="OUTPUT_JSON")
+    result.add_argument("--analyze", metavar="OUTPUT_ROOT")
+    result.add_argument("--analysis-output", metavar="OUTPUT_JSON")
+    return result
+
+
+def main(argv=None):
+    args = parser().parse_args(argv)
+    if args.analyze:
+        if not args.analysis_output:
+            parser().error("--analyze requires --analysis-output")
+        print(json.dumps(analyze(args.analyze, args.analysis_output), indent=2, sort_keys=True))
+        return 0
+    if args.preflight:
+        if not (args.artifact and args.targets):
+            parser().error("--preflight requires --artifact and --targets")
+        print(json.dumps(preflight(artifact=args.artifact, targets=args.targets,
+                                   output_json=args.preflight), indent=2, sort_keys=True))
+        return 0
+    if not all((args.artifact, args.targets, args.canonical, args.output_root)):
+        parser().error("--artifact, --targets, --canonical and --output-root are required")
+    if args.execute == "full":
+        # The smoke directory exists by then; plan the remaining stages against it.
+        root = Path(args.output_root).expanduser().resolve()
+        stages = [_stage(name, pilot._absolute_existing(args.artifact, "artifact", directory=True),
+                         pilot._absolute_existing(args.targets, "targets"),
+                         pilot._absolute_existing(args.canonical, "canonical"),
+                         root / name, budget, seed, mode)
+                  for name, budget, seed, mode in stage_specs()]
+    else:
+        stages = build_plan(artifact=args.artifact, targets=args.targets,
+                            canonical=args.canonical, output_root=args.output_root)
+    if not args.execute:
+        plan = {"status": "not_executed", "stages": [asdict(s) for s in stages]}
+        smoke_journal = Path(args.output_root).expanduser().resolve() / "journal_smoke.json"
+        if smoke_journal.is_file():
+            saved = pilot._load_json(smoke_journal, "smoke journal")
+            entry = saved.get("stages", {}).get("v2_smoke", {})
+            if (saved.get("status") == "completed" and entry.get("status") == "completed"
+                    and entry.get("replay", {}).get("status") == "verified"
+                    and "eta_minutes_nine_runs_smoke" in saved):
+                plan["eta_minutes_nine_runs_smoke"] = saved["eta_minutes_nine_runs_smoke"]
+                plan["eta_basis"] = saved.get("eta_basis", "rough; smoke fixed costs dominate")
+        print(json.dumps(plan, indent=2, sort_keys=True))
+        return 0
+    journal = args.journal or str(Path(args.output_root).resolve() / f"journal_{args.execute}.json")
+    return execute_plan(stages, journal_path=journal, phase=args.execute)
+
+# Task 6 stub stage; the real implementations above are restored in the green commit.
+def pair_count_summary(rows) -> dict:
+    raise NotImplementedError("stub")
+def step_time_ratio(rows, prep, *, batches=5) -> float:
+    raise NotImplementedError("stub")
+def preflight(*, artifact, targets, output_json) -> dict:
+    raise NotImplementedError("stub")
+def weighted_macro_f1(y, pred, num_classes, weights=None) -> float:
+    raise NotImplementedError("stub")
+def load_arm_predictions(output_root):
+    raise NotImplementedError("stub")
+def paired_bootstrap(arms, y, subjects, *, num_classes, resamples=1000, seed=2026):
+    raise NotImplementedError("stub")
+def decide(point, comparisons) -> dict:
+    raise NotImplementedError("stub")
+def analyze(output_root, output_json) -> dict:
+    raise NotImplementedError("stub")
+def main(argv=None):
+    raise NotImplementedError("stub")
+
+if __name__ == "__main__":
+    raise SystemExit(main())
