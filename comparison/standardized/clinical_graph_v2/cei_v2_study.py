@@ -810,6 +810,8 @@ def analyze(output_root, output_json, *, pair_counts=None):
         entry["decisive"] = key == "product_minus_additive"
     if pair_counts is None:
         pair_counts = replay_pair_counts
+    # Keep the decision tied only to the declared score and paired-interval inputs;
+    # reporting-only counts, seed deltas, curves, and secondary results follow later.
     report = {"status": "analyzed", "decision": decide(point, comparisons),
               "comparisons": comparisons, "dev_macro_f1": point,
               "dev_rows": int(len(y)), "patients": int(len(np.unique(subjects))),
