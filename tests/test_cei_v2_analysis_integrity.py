@@ -63,3 +63,17 @@ def test_analysis_rejects_missing_replay_proof_without_recreating_it(tmp_path, m
 
     assert not captured["output"].joinpath("replay.json").exists()
     assert arm == "product_seed2025"
+
+
+def test_analysis_refuses_output_inside_arm_before_validation_or_write(tmp_path, monkeypatch):
+    study = _study_tests()._module()
+    arm_dir = tmp_path / "product_seed1234"
+    arm_dir.mkdir()
+    monkeypatch.setattr(study, "validate_completed_study",
+                        lambda *args, **kwargs: pytest.fail("validator must not run"))
+    destination = arm_dir / "analysis.json"
+
+    with pytest.raises(ValueError, match="inside.*arm"):
+        study.analyze(tmp_path, destination)
+
+    assert not destination.exists()
