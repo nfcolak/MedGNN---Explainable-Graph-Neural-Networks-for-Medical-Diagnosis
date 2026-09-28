@@ -635,6 +635,8 @@ def analyze(output_root, output_json):
         recorded = binding["selected_dev"]["metric_value"]
         if abs(point[name] - recorded) > 1e-6:
             raise ValueError(f"recomputed macro-F1 differs from the bound result: {name}")
+    for key, entry in comparisons.items():
+        entry["decisive"] = key == "product_minus_additive"
     report = {"status": "analyzed", "decision": decide(point, comparisons),
               "comparisons": comparisons, "dev_macro_f1": point,
               "dev_rows": int(len(y)), "patients": int(len(np.unique(subjects))),
