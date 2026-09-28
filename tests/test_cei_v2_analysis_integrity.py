@@ -62,6 +62,7 @@ def test_validator_rejects_cross_arm_dev_pair_count_mismatch(tmp_path, monkeypat
     monkeypatch.setattr(study, "validate_v2_binding", lambda *args, **kwargs: None)
     monkeypatch.setattr(study, "_check_stage_result", lambda *args, **kwargs: None)
     monkeypatch.setattr(study.pilot, "_validate_artifacts", lambda *args, **kwargs: None)
+    monkeypatch.setattr(study, "assert_arm_parity", lambda *args, **kwargs: True)
     monkeypatch.setattr(study, "replay_v2_stage",
                         lambda directory, *args, **kwargs:
                         {"_dev_pair_counts": [1] if Path(directory).name == "arm-a" else [2]})
