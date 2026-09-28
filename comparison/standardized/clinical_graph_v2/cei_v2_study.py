@@ -675,7 +675,49 @@ def seed_delta_summary(point):
     return result
 
 
-def analyze(output_root, output_json):
+PAIR_COUNT_BANDS = (("0", 0, 0), ("1-179", 1, 179),
+                    ("180-1044", 180, 1044), (">1044", 1045, None))
+
+
+def pair_count_band_summary(arms, y, subjects, num_classes, pair_counts):
+    """Summarize dev rows by injected per-graph counts, without scoring graphs."""
+    if pair_counts is None:
+        return {name: {"graphs": None, "patients": None,
+                       "per_arm_seed_mean_macro_f1": None,
+                       "product_minus_additive": None, "decisive": False,
+                       "status": "pair counts unavailable"}
+                for name, _, _ in PAIR_COUNT_BANDS}
+    counts = np.asarray(pair_counts)
+    if counts.ndim != 1 or len(counts) != len(y) or not np.isfinite(counts).all() \
+            or (counts < 0).any() or not np.equal(counts, np.floor(counts)).all():
+        raise ValueError("pair_counts must be one non-negative integer per dev graph")
+    counts = counts.astype(int)
+    output = {}
+    for name, low, high in PAIR_COUNT_BANDS:
+        mask = counts == 0 if high == 0 else counts >= low
+        if high is not None and high != 0:
+            mask &= counts <= high
+        graph_count = int(mask.sum())
+        band = {"graphs": graph_count,
+                "patients": int(len(np.unique(np.asarray(subjects)[mask]))),
+                "per_arm_seed_mean_macro_f1": None,
+                "product_minus_additive": None, "decisive": False}
+        if graph_count >= 2:
+            arm_scores = {}
+            for mode in MODES:
+                arm_scores[mode] = float(np.mean([
+                    weighted_macro_f1(np.asarray(y)[mask],
+                                      np.asarray(arms[f"{mode}_seed{seed}"])[mask].argmax(axis=1),
+                                      num_classes)
+                    for seed in SEEDS]))
+            band["per_arm_seed_mean_macro_f1"] = arm_scores
+            band["product_minus_additive"] = (
+                arm_scores["product"] - arm_scores["additive"])
+        output[name] = band
+    return output
+
+
+def analyze(output_root, output_json, *, pair_counts=None):
     output = Path(output_json)
     if output.exists():
         raise FileExistsError(f"Refusing occupied analysis output {output}")
@@ -693,7 +735,11 @@ def analyze(output_root, output_json):
               "comparisons": comparisons, "dev_macro_f1": point,
               "dev_rows": int(len(y)), "patients": int(len(np.unique(subjects))),
               "test_evaluated": False, "validation_evaluated": False,
-              "seed_deltas": seed_delta_summary(point)}
+              "seed_deltas": seed_delta_summary(point),
+              "pair_count_bands": pair_count_band_summary(
+                  arms, y, subjects, num_classes, pair_counts),
+              "pair_count_source": ("injected per-graph dev counts" if pair_counts is not None
+                                    else "pair counts unavailable in real runs; no dev graph reload")}
     from comparison.standardized.clinical_graph_v2 import train
     secondary = {}
     results = {name: pilot._load_json(Path(output_root) / name / "result.json", "result.json")
