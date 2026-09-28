@@ -986,7 +986,8 @@ def test_print_only_smoke_verification_does_not_mutate_output_root(tmp_path, mon
             (Path(directory) / "payload.bin").read_bytes()).hexdigest()}
         proof_path = Path(directory) / "replay.json"
         if proof_path.exists():
-            assert json.loads(proof_path.read_text()) == proof
+            if json.loads(proof_path.read_text()) != proof:
+                raise ValueError("existing replay proof differs")
         elif persist:
             _write_json(proof_path, proof)
         else:
