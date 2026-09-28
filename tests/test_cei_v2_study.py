@@ -100,9 +100,20 @@ def test_smoke_plan_has_three_modes_and_full_argv_is_pinned(tmp_path):
         ("v2_smoke_additive", (256, 128, 2), 1234, "additive"),
         ("v2_smoke_off", (256, 128, 2), 1234, "off"),
     ]
-    normalized = [[value if value != f"pair_mode={s.pair_mode}" else "pair_mode=MODE"
-                   for value in s.argv] for s in smoke]
+    normalized = []
+    outputs = []
+    for s in smoke:
+        argv = list(s.argv)
+        mode_index = argv.index("--method-option") + 1
+        output_index = argv.index("--output") + 1
+        outputs.append(Path(argv[output_index]))
+        argv[mode_index] = "pair_mode=MODE"
+        argv[output_index] = "<mode-output>"
+        normalized.append(argv)
     assert normalized[0] == normalized[1] == normalized[2]
+    assert len(set(outputs)) == 3
+    assert outputs == [tmp_path / "runs" / f"v2_smoke_{mode}"
+                       for mode in ("product", "additive", "off")]
     expected_full = [(f"{mode}_seed{seed}", (10000, 5000, 40), seed, mode)
                      for seed in (1234, 2025, 7) for mode in ("product", "additive", "off")]
     assert [(s.name, s.budget, s.seed, s.pair_mode) for s in stages[3:]] == expected_full
@@ -123,7 +134,8 @@ def test_plan_has_exact_ten_dev_only_stages(tmp_path):
     artifact, targets, canonical = _inputs(tmp_path)
     stages = module.build_plan(artifact=artifact, targets=targets, canonical=canonical,
                                output_root=tmp_path / "runs")
-    expected = [("v2_smoke", (256, 128, 2), 1234, "product")] + [
+    expected = [(f"v2_smoke_{mode}", (256, 128, 2), 1234, mode)
+                for mode in ("product", "additive", "off")] + [
         (f"{mode}_seed{seed}", (10000, 5000, 40), seed, mode)
         for seed in (1234, 2025, 7) for mode in ("product", "additive", "off")]
     assert [(s.name, s.budget, s.seed, s.pair_mode) for s in stages] == expected
