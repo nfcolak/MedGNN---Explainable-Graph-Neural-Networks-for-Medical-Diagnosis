@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Normative amendments.** Where they conflict with the task text below, these override it. Amendments A1-A9 come from the pre-implementation plan review; they are listed at the end of this file under "Plan amendments A1-A9". Amendment A10 (claim scope and extra non-decisive reporting) is in spec §6.1. In particular, the ETA reported before smoke is only a preflight extrapolation; the ETA that matters is the one based on the verified smoke (A5/A6).
+
 **Goal:** Add a `cei_gnn_v2` clinical plugin whose only multiplicative interaction is a within-visit evidence-pair term. Add a bounded study runner that trains three modes (`product`, `additive`, `off`) on three seeds and applies a pre-registered decision rule.
 
 **Architecture:** A new core module (`cei_gnn_v2.py`) holds three pieces: the deterministic pair builder, the kind-pair gate index and `PairEvidenceNetwork`. A thin plugin adapter (`plugin_cei_gnn_v2.py`) registers it with the existing runner. A new study module (`cei_v2_study.py`) plans, executes, replays, validates and analyzes runs, reusing generic helpers from `cei_pilot.py`. No v1, ProtGNN or shared runner file changes.
@@ -2258,3 +2260,61 @@ git push origin feature/cei-v2-pairs
 
 - Known deviation from spec section 7, "Study plan ... never passes test options": the argv test asserts that no token after the module name contains `test`. The plan does not pass `--final-eval test`.
 - `validate_v2_method_config` rebuilds with `--top-k-labels 10` and the fixed edge policy. Budget/seed come from the binding and are policy-checked in `validate_v2_binding`.
+
+## Plan amendments A1-A9 (normative, from pre-implementation plan review)
+
+# Plan amendments for Tasks 4-6 (supervisor rulings; these override the briefs where they conflict)
+
+Source: read-only review rev-v2-plan (gpt-6-sol), report `.worktrees/_runs/rev-v2-plan/report.md`. The supervisor confirmed every item against the code.
+
+## A1 (B1): argv "test" check must not match paths (Task 4)
+Brief test `test_plan_has_exact_ten_dev_only_stages` asserts `not any("test" in token for token in argv[3:])`. pytest's `tmp_path` contains "test", so the brief's own green code fails.
+Change: forbid test evaluation by flag, not by substring:
+- `--final-eval` value == `"none"`, `--selection-fold` value == `"dev"`;
+- no flag token (starting with `--`) contains `test`;
+- no flag value equals `"test"`.
+
+## A2 (B2): replay and analysis must verify `subjects` (Tasks 5, 6)
+`train.py` saves `subjects` in `dev.npz`. `pilot._validate_artifacts` and the brief's replay check only `sample_ids`, `y` and `proba`. The bootstrap (Task 6) takes its patient clusters from `subjects`.
+Change:
+- `replay_v2_stage` rebuilds the dev rows and compares the saved `subjects` exactly (same order) with the rebuilt rows' subjects. Reject a missing or misaligned `subjects` array.
+- `load_arm_predictions` requires `subjects` to be identical across all nine arms. The TDD tests include a tampered-subjects case for each check.
+
+## A3 (B3): module entry point (Task 6)
+Add `if __name__ == "__main__": raise SystemExit(main())`. Add a test that runs `python3 -m comparison.standardized.clinical_graph_v2.cei_v2_study` with fake paths in a subprocess, in print-only mode (no `--execute`). The test fails on a behaviour assertion, not a crash. It may instead assert the JSON output with `"status": "not_executed"` when valid synthetic inputs are passed. It must never launch training.
+
+## A4 (B4): secondary results (Task 6, spec section 6)
+`analyze()` writes, per arm (mode x seed), clearly marked `"decisive": false`:
+- patient-equal macro-F1 (reuse `train`'s patient-equal helper);
+- a per-class F1/precision/recall/false-positive table (reuse `train`'s per-class helper);
+- pair-count summary if recorded, total and active parameter counts, and `total_seconds` from binding/result.
+
+It also writes the `product - off` bootstrap interval. The TDD tests assert that these keys exist and that `decisive` is false.
+
+## A5 (B5): ETA must come from the smoke (Tasks 6, 5)
+Keep the preflight estimate, but name it `eta_minutes_nine_runs_preflight` with basis `"pre-smoke extrapolation"`.
+After a completed, verified smoke, `execute_plan(..., phase="smoke")` writes `eta_minutes_nine_runs_smoke` to the smoke journal. It is computed from the smoke's actual `total_seconds`, scaled by the ratio of optimizer steps between the full and smoke budgets, and labelled `"rough; smoke fixed costs dominate"`. The print-only plan shows the smoke ETA when a verified smoke journal exists.
+
+## A6 (B6): full phase needs a verified smoke (Task 5)
+Before launching any full stage, `execute_plan(..., phase="full")` requires the smoke journal `journal_smoke.json` to have status `completed`, with a verified replay entry for `v2_smoke`. It then re-runs, on the smoke directory:
+- `validate_v2_binding`;
+- the dev-only result checks;
+- `pilot._validate_artifacts`;
+- `replay_v2_stage`;
+- the current source/input-state identity check.
+
+Tests: a stale, fabricated (`{"status": "completed"}` only) or mismatched smoke is rejected before any subprocess starts.
+
+## A7 (M1): replay checks the result-level test guard (Task 5)
+`replay_v2_stage` itself rejects `result.get("test_evaluated", False) is not False`.
+
+## A8 (M2): parameter counts per arm (Task 4)
+`validate_v2_binding` checks that the binding's top-level total and active parameter counts equal that arm's own `method_config.architecture` counts. There is no cross-arm equality check for active counts, because `off` is intentionally smaller.
+
+## A9: TDD mechanics (all tasks)
+A red step must fail on behaviour, not on a missing module or attribute. Per task, commit in this order:
+1. `red:` the tests;
+2. `red: stub`: exact signatures with trivially wrong bodies, and all of the task's new tests fail on assertions;
+3. `green:` the real code.
+
+Agents do not create git worktrees; the supervisor replays red steps.
