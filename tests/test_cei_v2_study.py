@@ -4,6 +4,7 @@ from __future__ import annotations
 import dataclasses
 import importlib.util
 import json
+import shutil
 import sys
 from functools import lru_cache
 from pathlib import Path
@@ -226,8 +227,16 @@ def test_executor_refuses_source_drift_between_full_stages(tmp_path, monkeypatch
     root = tmp_path / "runs"
     stages = module.build_plan(artifact=artifact, targets=targets, canonical=canonical,
                                output_root=root)
-    _write_json(root / "v2_smoke" / "result.json", {"status": "completed"})
-    identities = iter(["a", "a", "b"])
+    _write_json(root / "v2_smoke" / "binding.json", {})
+    _write_json(root / "v2_smoke" / "result.json", {"status": "completed", "binding": {},
+                                                       "metrics": None, "dev_metrics": {},
+                                                       "test_evaluated": False})
+    smoke_capture = {"source_state_sha256": "a", "input_state_sha256": "i",
+                     "executable_sources": {}}
+    _write_json(root / "journal_smoke.json", {"status": "completed", "stages": {
+        "v2_smoke": {"status": "completed", "replay": {"status": "verified"},
+                     "postflight": smoke_capture}}})
+    identities = iter(["a", "a", "a", "b"])
     monkeypatch.setattr(module, "_capture", lambda stage: {
         "source_state_sha256": next(identities), "input_state_sha256": "i",
         "executable_sources": {}})
@@ -348,8 +357,17 @@ def test_replay_reconstructs_v2_model_and_rejects_tampering(tmp_path, monkeypatc
     proof = module.replay_v2_stage(output, binding, result)
     assert proof["exact_probabilities"] and proof["test_evaluated"] is False
     assert proof["validation_evaluated"] is False
+    subject_tamper = tmp_path / "subject_tamper"
+    subject_tamper.mkdir()
+    (subject_tamper / "preprocessing.json").write_bytes((output / "preprocessing.json").read_bytes())
+    with np.load(output / "dev.npz", allow_pickle=False) as saved:
+        np.savez_compressed(subject_tamper / "dev.npz", proba=saved["proba"], y=saved["y"],
+                            sample_ids=saved["sample_ids"], subjects=np.asarray(["wrong", "p3"]))
+    shutil.copy2(output / "best.pt", subject_tamper / "best.pt")
+    with pytest.raises(ValueError, match="subjects"):
+        module.replay_v2_stage(subject_tamper, binding, result)
     state = torch.load(output / "best.pt", map_location="cpu", weights_only=True)
-    state["network.pair_vote.bias"] = state["network.pair_vote.bias"] + 0.5
+    state["network.bias"] = state["network.bias"] + 0.5
     tampered = tmp_path / "tampered"
     tampered.mkdir()
     for name in ("preprocessing.json", "dev.npz"):
