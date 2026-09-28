@@ -808,6 +808,7 @@ def analyze(output_root, output_json, *, pair_counts=None):
             raise ValueError(f"recomputed macro-F1 differs from the bound result: {name}")
     for key, entry in comparisons.items():
         entry["decisive"] = key == "product_minus_additive"
+    pair_counts_injected = pair_counts is not None
     if pair_counts is None:
         # This transient replay value is reporting-only; it is never a decision input.
         pair_counts = replay_pair_counts
@@ -822,8 +823,7 @@ def analyze(output_root, output_json, *, pair_counts=None):
               "parameter_counts": {},
               "pair_count_bands": pair_count_band_summary(
                   arms, y, subjects, num_classes, pair_counts),
-              "pair_count_source": ("injected per-graph dev counts" if pair_counts is not None
-                                    and replay_pair_counts is None else
+              "pair_count_source": ("injected per-graph dev counts" if pair_counts_injected else
                                     "dev rows reloaded by replay (structural count, no scoring)"
                                     if pair_counts is not None else
                                     "pair counts unavailable in real runs; no dev graph reload")}
