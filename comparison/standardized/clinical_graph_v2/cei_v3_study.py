@@ -701,7 +701,7 @@ def decide_v3(deltas, scores, *, treatment='C', control='A', seeds=SEEDS) -> dic
     return {}
 
 
-def absence_share(contributions, graph_count) -> np.ndarray:
+def absence_share(parts, *, batch_index, edge_index, graph_count) -> np.ndarray:
     return np.zeros(int(graph_count))
 
 
