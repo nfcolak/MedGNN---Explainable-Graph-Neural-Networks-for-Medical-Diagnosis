@@ -228,3 +228,68 @@ def test_absence_label_wording_follows_f8():
     assert ABSENCE_LABEL.format(item='vital:heartrate') == (
         'vital:heartrate: no recorded result at this visit')
     assert 'not measured' not in ABSENCE_LABEL
+
+
+# ---------------------------------------------------------- membership contract
+
+def _single(graph):
+    return _batch([graph])
+
+
+def test_item_node_with_two_memberships_raises():
+    # Measurement node 2 is assigned to visits 0 and 1 (2 visits): ambiguous.
+    graph = _graph([PATIENT, VISIT, (MEASUREMENT, 1)], [(1, 1), (0, 2), (1, 2)], 2)
+    with pytest.raises(ValueError, match='membership'):
+        index_visit_absence(*_single(graph), SLOTS, MEASUREMENT_KINDS)
+    # The same node with one membership is fine.
+    graph = _graph([PATIENT, VISIT, (MEASUREMENT, 1)], [(1, 1), (1, 2)], 2)
+    assert index_visit_absence(*_single(graph), SLOTS, MEASUREMENT_KINDS).tolist() == [
+        [False, True, True]]
+
+
+def test_item_node_without_membership_raises():
+    # Vital node 3 has no membership pair at all: the derivation must not infer.
+    graph = _graph([PATIENT, VISIT, (MEASUREMENT, 1), (VITAL, 3)], [(0, 1), (0, 2)], 1)
+    with pytest.raises(ValueError, match='membership'):
+        index_visit_absence(*_single(graph), SLOTS, MEASUREMENT_KINDS)
+
+
+def test_item_node_outside_universe_still_needs_membership():
+    # The contract holds for every measurement/vital node, not only universe items.
+    graph = _graph([PATIENT, VISIT, (MEASUREMENT, 6)], [(0, 1)], 1)
+    with pytest.raises(ValueError, match='membership'):
+        index_visit_absence(*_single(graph), SLOTS, MEASUREMENT_KINDS)
+
+
+def test_non_item_nodes_are_not_checked_for_membership():
+    # Patient (global) and complaint nodes are outside the item contract: a
+    # complaint without membership does not raise here.
+    graph = _graph([PATIENT, VISIT, (COMPLAINT, 5), (VITAL, 3)], [(0, 1), (0, 3)], 1)
+    assert index_visit_absence(*_single(graph), SLOTS, MEASUREMENT_KINDS).tolist() == [
+        [True, False, True]]
+
+
+def test_membership_contract_is_checked_across_the_batch():
+    g0 = _graph([PATIENT, VISIT, (VITAL, 3)], [(0, 1), (0, 2)], 1)
+    g1 = _graph([PATIENT, VISIT, (VITAL, 3)], [(1, 1), (0, 2), (1, 2)], 2)
+    with pytest.raises(ValueError, match='membership'):
+        index_visit_absence(*_batch([g0, g1]), SLOTS, MEASUREMENT_KINDS)
+    g2 = _graph([PATIENT, VISIT, (VITAL, 4)], [(0, 1)], 1)
+    with pytest.raises(ValueError, match='membership'):
+        index_visit_absence(*_batch([g0, g2]), SLOTS, MEASUREMENT_KINDS)
+
+
+def test_membership_outside_batch_or_crossing_graphs_raises():
+    g0 = _graph([PATIENT, VISIT, (VITAL, 3)], [(0, 1), (0, 2)], 1)
+    membership, num_visits, node_type, token = _batch([g0])
+    bad_visit = membership.clone()
+    bad_visit[0, 1] = 1  # visit 1 does not exist (num_visits = 1)
+    with pytest.raises(ValueError):
+        index_visit_absence(bad_visit, num_visits, node_type, token, SLOTS, MEASUREMENT_KINDS)
+    bad_node = membership.clone()
+    bad_node[1, 1] = 7
+    with pytest.raises(ValueError):
+        index_visit_absence(bad_node, num_visits, node_type, token, SLOTS, MEASUREMENT_KINDS)
+    with pytest.raises(ValueError):
+        index_visit_absence(membership, torch.tensor([0]), node_type, token, SLOTS,
+                            MEASUREMENT_KINDS)
