@@ -65,6 +65,21 @@ class _EncoderWithPreActivationTerm(nn.Linear):
         return output + term
 
 
+class _ResidualBlock(nn.Module):
+    """Node-local residual block ``h + Dropout(GELU(LayerNorm(Linear(h))))`` (§2.2). STUB."""
+
+    def __init__(self, width):
+        super().__init__()
+        self.linear = nn.utils.skip_init(nn.Linear, in_features=width, out_features=width)
+        self.norm = nn.utils.skip_init(nn.LayerNorm, normalized_shape=width)
+        with torch.no_grad():
+            for parameter in self.parameters():
+                parameter.zero_()
+
+    def forward(self, h):
+        return h
+
+
 class EvidenceNetworkV3(PairEvidenceNetwork):
     """v3 superset network: v2 additive + PLE projection + absence votes/gates."""
 
@@ -74,8 +89,8 @@ class EvidenceNetworkV3(PairEvidenceNetwork):
                  encoder_depth=1, extra_blocks=(), knot_row_of_token=None):
         if arm not in ARMS:
             raise ValueError(f'arm must be one of {list(ARMS)}, got {arm!r}')
-        if isinstance(encoder_depth, bool) or int(encoder_depth) != encoder_depth or encoder_depth != 1:
-            raise ValueError('encoder_depth != 1 is added by U3x; U3 supports encoder_depth=1 only')
+        if isinstance(encoder_depth, bool) or int(encoder_depth) != encoder_depth or encoder_depth < 1:
+            raise ValueError(f'encoder_depth must be an integer >= 1, got {encoder_depth!r}')
         if tuple(extra_blocks):
             raise ValueError('extra_blocks are added by U3x; U3 accepts an empty tuple only')
         super().__init__(num_tokens=num_tokens, node_dim=node_dim, edge_dim=edge_dim,
@@ -83,7 +98,10 @@ class EvidenceNetworkV3(PairEvidenceNetwork):
                          num_triples=num_triples, num_relations=num_relations, dropout=dropout,
                          pair_rank=pair_rank, pair_mode='additive',
                          num_node_types=num_node_types)
-        self.arm, self.seed, self.encoder_depth = str(arm), int(seed), 1
+        self.arm, self.seed, self.encoder_depth = str(arm), int(seed), int(encoder_depth)
+        if self.encoder_depth > 1:
+            self.encoder_blocks = nn.ModuleList(
+                [_ResidualBlock(self.hidden) for _ in range(self.encoder_depth - 1)])
         self.ple_active, self.absence_active = arm != 'A', arm == 'C'
         layout = [str(name) for name in feature_layout]
         if len(layout) != self.node_dim:
