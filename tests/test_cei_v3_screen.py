@@ -4,6 +4,7 @@ Synthetic targets dicts and tiny tmp_path artifacts only. No real data, no
 training, no test fold: `split == 'test'` rows exist in fixtures solely to prove
 they are dropped before tensorisation.
 """
+import json
 import random
 import sys
 
@@ -11,6 +12,8 @@ import pytest
 
 from comparison.standardized.clinical_graph_v2 import cei_v3_screen as screen
 from comparison.standardized.clinical_graph_v2 import train
+from comparison.standardized.clinical_graph_v2.contracts import sample_ids_sha256
+from comparison.standardized.clinical_graph_v2.schema import sha256
 
 # ------------------------------------------------------------------ fixtures
 
@@ -142,3 +145,123 @@ def test_selector_environment_binds_sys_version():
     assert env.get('python_version') == sys.version
     assert env.get('selector_version') == screen.SELECTOR_VERSION
     assert env.get('seed_string_format') == 'screen-{screen_seed}'
+
+
+# ------------------------------------------------- step 2: record replay
+
+
+def write_targets_csv(path, n_train=1500, subjects=1400, n_validation=30, n_test=10):
+    rows = ['sample_id,target,split,subject_id']
+    for i in range(n_train):
+        rows.append(f'tr-{i:05d},{i % train.NUM_CLASSES},train,p-{i % subjects:05d}')
+    for i in range(n_validation):
+        rows.append(f'va-{i:05d},{i % train.NUM_CLASSES},validation,pv-{i:05d}')
+    for i in range(n_test):
+        rows.append(f'te-{i:05d},{i % train.NUM_CLASSES},test,pt-{i:05d}')
+    path.write_text('\n'.join(rows) + '\n')
+    return path
+
+
+def record_fixture(tmp_path, screen_limit=200):
+    targets_path = write_targets_csv(tmp_path / 'targets.csv')
+    targets, kept = screen.load_screen_targets(targets_path, top_k_labels=10)
+    train_ids, dev_ids = parent_ids(targets, n_train=100, n_dev=50)
+    screen_ids = screen.select_screen_ids(targets, train_ids, dev_ids, screen_limit=screen_limit)
+    record = screen.screen_record(targets_path, screen_ids, train_ids, dev_ids,
+                                  artifact_sha256='a' * 64, preprocessing_sha256='b' * 64,
+                                  serialization_version='json_compact_utf8_v1',
+                                  screen_limit=screen_limit)
+    return targets_path, targets, train_ids, dev_ids, screen_ids, record
+
+
+def test_screen_record_binds_hashes_counts_and_parents(tmp_path):
+    targets_path, targets, train_ids, dev_ids, screen_ids, record = record_fixture(tmp_path)
+    assert record.get('fold') == 'screen'
+    assert record.get('selector_version') == screen.SELECTOR_VERSION
+    assert record.get('screen_seed') == 20260929
+    assert record.get('screen_limit') == 200
+    assert record.get('seed_string') == 'screen-20260929'
+    assert record.get('eligibility_rule') == screen.ELIGIBILITY_RULE
+    assert record.get('python_version') == sys.version
+    assert record.get('serialization_version') == 'json_compact_utf8_v1'
+    assert record.get('targets_sha256') == sha256(targets_path)
+    assert record.get('screen_sample_ids_sha256') == sample_ids_sha256(screen_ids)
+    excluded = sorted({targets[sid][2] for sid in set(train_ids) | set(dev_ids)})
+    assert record.get('excluded_subjects_sha256') == sample_ids_sha256(excluded)
+    assert record.get('excluded_subject_count') == len(excluded)
+    assert record.get('row_count') == 200
+    assert record.get('distinct_subject_count') == len({targets[s][2] for s in screen_ids})
+    assert record.get('class_order') == list(range(10))
+    assert record.get('top_k_labels') == 10
+    assert record.get('artifact_sha256') == 'a' * 64
+    assert record.get('preprocessing_sha256') == 'b' * 64
+    assert record.get('parent_train_sample_ids_sha256') == sample_ids_sha256(sorted(train_ids))
+    assert record.get('parent_dev_sample_ids_sha256') == sample_ids_sha256(sorted(dev_ids))
+    assert record.get('parent_train_count') == len(train_ids)
+    assert record.get('parent_dev_count') == len(dev_ids)
+    # v3 §12.6: candidate aggregates are bound; the record never lists patient ids.
+    candidates = screen.screen_candidates(targets, train_ids, dev_ids)
+    assert record.get('candidate_row_count') == len(candidates)
+    assert record.get('candidate_subject_count') == len({targets[s][2] for s in candidates})
+    flat = json.dumps(record)
+    assert 'tr-' not in flat and 'p-0' not in flat
+
+
+def test_screen_record_replay_passes_and_is_pure(tmp_path):
+    targets_path, _targets, train_ids, dev_ids, screen_ids, record = record_fixture(tmp_path)
+    assert record.get('screen_sample_ids_sha256') == sample_ids_sha256(screen_ids)
+    before = json.dumps(record, sort_keys=True)
+    assert screen.assert_screen_replay(record, targets_path, train_ids, dev_ids) is None
+    assert json.dumps(record, sort_keys=True) == before
+
+
+@pytest.mark.parametrize('key, value', [
+    ('screen_sample_ids_sha256', 'f' * 64),
+    ('excluded_subjects_sha256', 'f' * 64),
+    ('targets_sha256', 'f' * 64),
+    ('row_count', 199),
+    ('screen_seed', 20260930),
+    ('screen_limit', 199),
+    ('parent_train_sample_ids_sha256', 'f' * 64),
+    ('parent_dev_sample_ids_sha256', 'f' * 64),
+    ('selector_version', 'other'),
+    ('serialization_version', 'other'),
+    ('class_order', list(range(9))),
+])
+def test_screen_record_replay_detects_tampering(tmp_path, key, value):
+    targets_path, _t, train_ids, dev_ids, _s, record = record_fixture(tmp_path)
+    tampered = dict(record)
+    tampered[key] = value
+    with pytest.raises(ValueError):
+        screen.assert_screen_replay(tampered, targets_path, train_ids, dev_ids)
+
+
+def test_screen_record_replay_detects_changed_targets_file_and_parents(tmp_path):
+    targets_path, targets, train_ids, dev_ids, _s, record = record_fixture(tmp_path)
+    # different parent ids -> excluded subjects and draw differ
+    other_train = set(sorted(train_ids)[:-1]) | {sorted(
+        sid for sid in targets if targets[sid][1] == 'train' and sid not in train_ids
+        and sid not in dev_ids)[0]}
+    with pytest.raises(ValueError):
+        screen.assert_screen_replay(record, targets_path, other_train, dev_ids)
+    # the immutable target file changed by one byte
+    text = targets_path.read_text()
+    targets_path.write_text(text.replace('te-00000', 'te-00099', 1))
+    with pytest.raises(ValueError):
+        screen.assert_screen_replay(record, targets_path, train_ids, dev_ids)
+
+
+def test_screen_record_rejects_ids_that_the_selector_would_not_draw(tmp_path):
+    targets_path = write_targets_csv(tmp_path / 'targets.csv')
+    targets, _ = screen.load_screen_targets(targets_path, top_k_labels=10)
+    train_ids, dev_ids = parent_ids(targets, n_train=100, n_dev=50)
+    screen_ids = screen.select_screen_ids(targets, train_ids, dev_ids, screen_limit=200)
+    wrong = list(screen_ids[1:]) + [screen_ids[0]]  # same set, different order
+    with pytest.raises(ValueError):
+        screen.screen_record(targets_path, wrong, train_ids, dev_ids, artifact_sha256='a' * 64,
+                             preprocessing_sha256='b' * 64,
+                             serialization_version='json_compact_utf8_v1', screen_limit=200)
+    with pytest.raises(ValueError):
+        screen.screen_record(targets_path, screen_ids + [screen_ids[0]], train_ids, dev_ids,
+                             artifact_sha256='a' * 64, preprocessing_sha256='b' * 64,
+                             serialization_version='json_compact_utf8_v1', screen_limit=201)

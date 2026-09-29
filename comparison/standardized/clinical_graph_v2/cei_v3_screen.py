@@ -95,11 +95,13 @@ def select_screen_ids(targets, train_ids, dev_ids, *, screen_limit=DEFAULT_SCREE
 
 
 def screen_record(targets_path, screen_ids, train_ids, dev_ids, *, artifact_sha256,
-                  preprocessing_sha256, serialization_version) -> dict:
+                  preprocessing_sha256, serialization_version,
+                  screen_limit=DEFAULT_SCREEN_LIMIT, screen_seed=DEFAULT_SCREEN_SEED,
+                  top_k_labels=10, eligible=None) -> dict:
     return {}
 
 
-def assert_screen_replay(record, targets_path, train_ids, dev_ids) -> None:
+def assert_screen_replay(record, targets_path, train_ids, dev_ids, *, eligible=None) -> None:
     return None
 
 
