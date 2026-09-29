@@ -176,10 +176,12 @@ def test_invalid_value_index_node_counts_as_present_and_duplicates_count_once():
     assert absent.tolist() == [[False, False, True]]
 
 
-def test_node_in_both_prior_and_index_visit_is_present():
+def test_node_in_both_prior_and_index_visit_is_ambiguous_and_raises():
+    # V3 §4.3: membership that is ambiguous for an item node fails, it is never
+    # inferred; EXT §9 U2 step 3: node with two memberships -> raises.
     graph = _graph([PATIENT, VISIT, (VITAL, 3)], [(1, 1), (0, 2), (1, 2)], 2)
-    absent = index_visit_absence(*_batch([graph]), SLOTS, MEASUREMENT_KINDS)
-    assert absent.tolist() == [[True, False, True]]
+    with pytest.raises(ValueError, match='membership'):
+        index_visit_absence(*_batch([graph]), SLOTS, MEASUREMENT_KINDS)
 
 
 def test_non_measurement_kinds_and_non_universe_tokens_are_ignored():
