@@ -13,6 +13,7 @@ import torch.nn as nn
 
 from comparison.standardized.clinical_graph_v2 import NODE_KINDS
 from comparison.standardized.clinical_graph_v2.methods import cei_gnn_v3 as v3
+from comparison.standardized.clinical_graph_v2.methods.base import read_clinical_batch
 from tests.test_cei_gnn_v3_core import (CLASSES, EDGE_DIM, HIDDEN, K, LAYOUT, NODE_DIM,
                                         NUM_TOKENS, PAIR_RANK, RELATIONS, TOKEN_DIM, TRIPLES,
                                         VOCAB, _graph, _knot_table, _metadata, _randomise_gates,
@@ -23,7 +24,8 @@ BLOCK_DELTA_AT_128 = 128 * 128 + 128 + 2 * 128   # +16,768 per block (spec §2.3
 
 
 def _network(arm='C', *, seed=11, dropout=0.0, init_seed=1234, hidden=HIDDEN,
-             num_relations=RELATIONS, **extra):
+             num_relations=RELATIONS, num_triples=TRIPLES, edge_dim=EDGE_DIM,
+             pair_rank=PAIR_RANK, **extra):
     """`EvidenceNetworkV3` on the U3 fixtures with overridable width / relation count."""
     table, universe = _knot_table(), _universe()
     knots, active, _ = table.tensor()
@@ -32,9 +34,9 @@ def _network(arm='C', *, seed=11, dropout=0.0, init_seed=1234, hidden=HIDDEN,
         knot_row_of_token[VOCAB[item]] = row
     torch.manual_seed(seed)
     return v3.EvidenceNetworkV3(
-        num_tokens=NUM_TOKENS, node_dim=NODE_DIM, edge_dim=EDGE_DIM, num_classes=CLASSES,
-        hidden=hidden, token_dim=TOKEN_DIM, num_triples=TRIPLES, num_relations=num_relations,
-        dropout=dropout, pair_rank=PAIR_RANK, num_node_types=len(NODE_KINDS), arm=arm,
+        num_tokens=NUM_TOKENS, node_dim=NODE_DIM, edge_dim=edge_dim, num_classes=CLASSES,
+        hidden=hidden, token_dim=TOKEN_DIM, num_triples=num_triples, num_relations=num_relations,
+        dropout=dropout, pair_rank=pair_rank, num_node_types=len(NODE_KINDS), arm=arm,
         knots=knots, knot_active=active, slot_of_token=universe.slot_of_token(NUM_TOKENS),
         universe_size=len(universe), feature_layout=list(LAYOUT), seed=init_seed,
         knot_row_of_token=knot_row_of_token, **extra)
@@ -362,3 +364,238 @@ def test_extra_block_protocol_is_exported_with_the_x5_contract():
     assert v3.RESERVED_BLOCK_NAMES == frozenset(('node', 'edge', 'pair', 'absence'))
     stub = _StubBlock(HIDDEN, CLASSES, seed=1234)
     assert isinstance(stub, v3.ExtraBlock)
+
+
+# ---------------------------------------------------------- step 3: extension parity
+
+import sys  # noqa: E402
+import types  # noqa: E402
+from argparse import Namespace  # noqa: E402
+
+from comparison.standardized.clinical_graph_v2.tensorize import (ALL_RELATIONS, PAYLOAD_WIDTH,  # noqa: E402
+                                                                 REVERSE_RELATIONS)
+from tests.test_cei_gnn_v3_core import _adapter, _write_state  # noqa: E402
+
+BIDIRECTIONAL_RELATIONS = len(ALL_RELATIONS) + len(REVERSE_RELATIONS)   # 15 + 9
+E6A_SHAPES = dict(num_relations=BIDIRECTIONAL_RELATIONS, num_triples=2 * (TRIPLES - 1) + 1,
+                  edge_dim=EDGE_DIM + len(REVERSE_RELATIONS))            # tensorize.py lines 76–93
+E6A_CONTROL = {'num_relations': RELATIONS, 'num_triples': TRIPLES, 'edge_dim': EDGE_DIM}
+E6A_WIDENED = ('relation_embedding.weight', 'triple_embedding.weight',
+               'edge_feature_projection.weight')
+X5_MODULE = 'comparison.standardized.clinical_graph_v2.cei_v3_ext.comorbid_block'
+
+
+def _c_and_variants(seed=123, dropout=0.3):
+    """Arm C and the parity arms, each built under the same global seed."""
+    torch.manual_seed(seed)
+    control = _network(seed=seed, dropout=dropout)
+    state = torch.get_rng_state().clone()
+    variants, construction = {}, {}
+    for label, extra in (('E2d', dict(encoder_depth=2)),
+                         ('E6a', dict(control_shapes=E6A_CONTROL, **E6A_SHAPES)),
+                         ('C+stub', dict(extra_blocks=(_StubBlock(HIDDEN, CLASSES, seed=1234),)))):
+        torch.manual_seed(seed)
+        variants[label] = _network(seed=seed, dropout=dropout, **extra)
+        construction[label] = torch.get_rng_state().clone()
+    return control, state, variants, construction
+
+
+def test_rng_state_equals_c_after_construction_and_three_training_forwards():
+    graph = _graph()
+    control, control_state, variants, construction = _c_and_variants()
+    control_states, _ = _three_training_forwards(control.train(), graph)
+    for label, network in variants.items():
+        assert torch.equal(construction[label], control_state), \
+            f'{label} construction consumed the global RNG differently from C'
+        if label == 'E6a':   # the fixture graph carries forward-view ids; widen the metadata
+            continue
+        states, _ = _three_training_forwards(network.train(), graph)
+        for index, (state, expected) in enumerate(zip(states, control_states)):
+            assert torch.equal(state, expected), f'{label}: RNG state differs after forward {index + 1}'
+    e6a_graph = _graph()
+    e6a_graph.edge_attr = torch.cat(
+        (e6a_graph.edge_attr, torch.zeros(e6a_graph.num_edges, len(REVERSE_RELATIONS))), dim=1)
+    e6a = variants['E6a'].train()
+    metadata = read_clinical_batch(e6a_graph, method='test', node_dim=NODE_DIM,
+                                   edge_dim=E6A_SHAPES['edge_dim'], num_tokens=NUM_TOKENS,
+                                   num_triples=E6A_SHAPES['num_triples'],
+                                   num_relations=BIDIRECTIONAL_RELATIONS)
+    features = e6a.continuous_inputs(metadata)
+    torch.manual_seed(947)
+    for index, expected in enumerate(control_states):
+        e6a.forward_continuous(features, metadata.edge_index, metadata,
+                               e6a_graph.visit_membership_index, return_parts=True,
+                               visit_graph=_visit_graph(e6a_graph))
+        assert torch.equal(torch.get_rng_state(), expected), f'E6a: RNG state differs after forward {index + 1}'
+
+
+def test_e2d_and_stub_keep_every_common_tensor_equal_to_c():
+    control, _, variants, _ = _c_and_variants()
+    common = dict(control.named_parameters())
+    for label in ('E2d', 'C+stub'):
+        variant = dict(variants[label].named_parameters())
+        assert set(common) < set(variant), label
+        for name, parameter in common.items():
+            assert torch.equal(variant[name], parameter), f'{label}: {name} differs from C'
+        assert variants[label].widened_tensors == ()
+    assert set(dict(variants['E2d'].named_parameters())) - set(common) == set(BLOCK_NAMES)
+    assert set(dict(variants['C+stub'].named_parameters())) - set(common) == {
+        'extra_blocks.stub.vote.weight', 'extra_blocks.stub.gate'}
+
+
+def test_e6a_shaped_widening_renews_only_the_widened_tensors_from_their_generators():
+    control, _, variants, _ = _c_and_variants()
+    widened = variants['E6a']
+    assert (widened.num_relations, widened.num_triples, widened.edge_dim) == (
+        BIDIRECTIONAL_RELATIONS, E6A_SHAPES['num_triples'], E6A_SHAPES['edge_dim'])
+    assert widened.widened_tensors == E6A_WIDENED
+    common = dict(control.named_parameters())
+    for name, parameter in widened.named_parameters():
+        if name not in E6A_WIDENED:
+            assert torch.equal(parameter, common[name]), f'E6a: {name} differs from C'
+    relation = widened.relation_embedding.weight
+    assert tuple(relation.shape) == (BIDIRECTIONAL_RELATIONS, HIDDEN)
+    assert torch.equal(relation, torch.empty(BIDIRECTIONAL_RELATIONS, HIDDEN).normal_(
+        generator=v3.tensor_generator(123, 'relation_embedding.weight')))
+    assert torch.equal(widened.triple_embedding.weight, torch.empty(
+        E6A_SHAPES['num_triples'], HIDDEN).normal_(
+        generator=v3.tensor_generator(123, 'triple_embedding.weight')))
+    projection = widened.edge_feature_projection.weight
+    assert tuple(projection.shape) == (HIDDEN, E6A_SHAPES['edge_dim'])
+    bound = 1.0 / E6A_SHAPES['edge_dim'] ** 0.5   # nn.Linear default bound at the new fan-in
+    assert torch.equal(projection, torch.empty(HIDDEN, E6A_SHAPES['edge_dim']).uniform_(
+        -bound, bound, generator=v3.tensor_generator(123, 'edge_feature_projection.weight')))
+    assert widened.edge_feature_projection.bias is None
+    # Without control shapes the later common tensors shift along the global stream.
+    torch.manual_seed(123)
+    naive = _network(seed=123, dropout=0.3, **E6A_SHAPES)
+    assert naive.widened_tensors == ()
+    assert not torch.equal(naive.node_head.weight, control.node_head.weight)
+    # Partial widening: only the named tensor is renewed.
+    torch.manual_seed(123)
+    partial = _network(seed=123, dropout=0.3, num_relations=BIDIRECTIONAL_RELATIONS,
+                       control_shapes={'num_relations': RELATIONS})
+    assert partial.widened_tensors == ('relation_embedding.weight',)
+    assert torch.equal(partial.relation_embedding.weight, relation)
+    assert torch.equal(partial.triple_embedding.weight, control.triple_embedding.weight)
+    # Control shapes equal to the actual ones are a no-op; narrowing or unknown keys refused.
+    torch.manual_seed(123)
+    same = _network(seed=123, dropout=0.3, control_shapes=dict(E6A_CONTROL))
+    assert same.widened_tensors == ()
+    assert all(torch.equal(p, common[n]) for n, p in same.named_parameters())
+    with pytest.raises(ValueError, match='control_shapes'):
+        _network(num_relations=RELATIONS - 1, control_shapes={'num_relations': RELATIONS})
+    with pytest.raises(ValueError, match='control_shapes'):
+        _network(control_shapes={'hidden': HIDDEN})
+
+
+def _bidirectional_adapter(tmp_path, *, hidden, num_triples=E6A_SHAPES['num_triples'],
+                           edge_dim=BIDIRECTIONAL_RELATIONS + PAYLOAD_WIDTH, seed=1234, **options):
+    from comparison.standardized.clinical_graph_v2.methods import METHOD_REGISTRY
+
+    state_path = _write_state(tmp_path)
+    args = Namespace(method_options={'arm': 'C', 'v3_state': str(state_path), 'k': K, **options},
+                     seed=seed, edge_direction='bidirectional')
+    torch.manual_seed(seed)
+    return METHOD_REGISTRY['cei_gnn_v3'](
+        num_tokens=NUM_TOKENS, node_dim=NODE_DIM, edge_dim=edge_dim, num_classes=CLASSES,
+        hidden=hidden, layers=1, dropout=0.0, token_dim=TOKEN_DIM, num_triples=num_triples,
+        args=args)
+
+
+def test_adapter_common_init_identical_to_c_covers_width_and_the_bidirectional_view(tmp_path):
+    control = _adapter(tmp_path, 'C', hidden=CONTROL_HIDDEN)
+    config = control.run_config()
+    assert config['common_init_identical_to_c'] is True
+    assert config['control_shapes'] is None and config['widened_tensors'] == []
+    assert _adapter(tmp_path, 'C', hidden=256).run_config()['common_init_identical_to_c'] is False
+    # E6a through the runner's edge view: the tensorizer's bidirectional shapes map back to C's.
+    e6a = _bidirectional_adapter(tmp_path, hidden=CONTROL_HIDDEN)
+    config = e6a.run_config()
+    assert e6a.num_relations == BIDIRECTIONAL_RELATIONS
+    assert config['common_init_identical_to_c'] is True
+    assert config['control_shapes'] == {'num_relations': RELATIONS, 'num_triples': TRIPLES,
+                                        'edge_dim': RELATIONS + PAYLOAD_WIDTH}
+    assert config['widened_tensors'] == list(E6A_WIDENED)
+    assert config['edge_direction'] == 'bidirectional'
+    torch.manual_seed(1234)
+    reference = _network(seed=1234, hidden=CONTROL_HIDDEN, pair_rank=16,
+                         edge_dim=RELATIONS + PAYLOAD_WIDTH)
+    common = dict(reference.named_parameters())
+    for name, parameter in e6a.network.named_parameters():
+        if name not in E6A_WIDENED:
+            assert torch.equal(parameter, common[name]), f'E6a adapter: {name} differs from C'
+    # Shapes that are not the tensorizer's bidirectional widening cannot be mapped to C's:
+    # the flag is False (never silently True) and no control shapes are recorded.
+    odd = _bidirectional_adapter(tmp_path, hidden=CONTROL_HIDDEN, num_triples=TRIPLES, edge_dim=EDGE_DIM)
+    config = odd.run_config()
+    assert config['common_init_identical_to_c'] is False
+    assert config['control_shapes'] is None and config['widened_tensors'] == []
+    assert _bidirectional_adapter(tmp_path, hidden=256).run_config()['common_init_identical_to_c'] is False
+
+
+def test_adapter_comorbid_block_without_the_x5_module_names_x5_and_the_module_path(tmp_path):
+    import importlib.util
+
+    assert importlib.util.find_spec(X5_MODULE.rsplit('.', 1)[0]) is None, \
+        'the cei_v3_ext package must not exist before X5'
+    assert X5_MODULE not in sys.modules
+    with pytest.raises(ValueError, match='X5') as info:
+        _adapter(tmp_path, comorbid_block=1)
+    assert X5_MODULE in str(info.value) and 'build_block' in str(info.value)
+    assert isinstance(info.value.__cause__, ImportError)
+
+
+def test_adapter_comorbid_block_calls_build_block_with_the_x5_contract(tmp_path, monkeypatch):
+    """A synthetic `cei_v3_ext.comorbid_block` (never X5's) exercises the adapter path."""
+    calls = []
+
+    def build_block(hidden, num_classes, *, relation_layout, seed):
+        calls.append((hidden, num_classes, dict(relation_layout), seed))
+        return _StubBlock(hidden, num_classes, seed=seed, name='comorbid')
+
+    package = types.ModuleType(X5_MODULE.rsplit('.', 1)[0])
+    package.__path__ = []
+    module = types.ModuleType(X5_MODULE)
+    module.build_block = build_block
+    monkeypatch.setitem(sys.modules, package.__name__, package)
+    monkeypatch.setitem(sys.modules, X5_MODULE, module)
+    try:
+        adapter = _adapter(tmp_path, comorbid_block=1)
+    except ValueError as error:
+        pytest.fail(f'adapter refused comorbid_block=1 with the X5 module present: {error}')
+    assert calls == [(HIDDEN, CLASSES, {name: i for i, name in enumerate(ALL_RELATIONS)}, 1234)]
+    assert adapter.comorbid_block == 1
+    assert adapter.network.extra_block_names == ('comorbid',)
+    config = adapter.run_config()
+    assert config['comorbid_block'] == 1 and config['extra_blocks'] == ['comorbid']
+    assert 'network.extra_blocks.comorbid.gate' in dict(adapter.named_parameters())
+    assert config['parameter_inventory']['extra_blocks.comorbid.gate'] == {'shape': [CLASSES], 'active': True}
+    assert config['parameter_count'] == _adapter(tmp_path, 'C').run_config()['parameter_count'] + HIDDEN * CLASSES + CLASSES
+    # The relation layout follows the arm's edge view; forward ids are never renumbered.
+    _bidirectional_adapter(tmp_path, hidden=HIDDEN, comorbid_block=1)
+    layout = calls[-1][2]
+    assert len(layout) == BIDIRECTIONAL_RELATIONS
+    assert layout['comorbid_with'] == ALL_RELATIONS.index('comorbid_with')
+    assert layout['rev:measured_in'] == len(ALL_RELATIONS) + REVERSE_RELATIONS.index('rev:measured_in')
+    # comorbid_block=0 never imports the module.
+    monkeypatch.delitem(sys.modules, X5_MODULE)
+    monkeypatch.delitem(sys.modules, package.__name__)
+    _adapter(tmp_path, comorbid_block=0)
+    assert X5_MODULE not in sys.modules
+
+
+@pytest.mark.xfail(strict=True, raises=ValueError,
+                   reason='blocked by tests/test_cei_gnn_v3_core.py::test_u3x_options_are_accepted_'
+                          'only_at_their_u3_values (line 550): it requires the adapter to refuse '
+                          'encoder_depth=2 and layers=2 with a ValueError naming U3x; U3x may not '
+                          'edit that test (report.md Blocker 1). Remove this marker once it is lifted.')
+def test_adapter_maps_layers_to_encoder_depth_and_records_e2d(tmp_path):
+    adapter = _adapter(tmp_path, 'C', hidden=CONTROL_HIDDEN, layers=2)
+    assert adapter.encoder_depth == 2 and adapter.network.encoder_depth == 2
+    config = adapter.run_config()
+    assert config['encoder_depth'] == 2 and config['architecture']['layers'] == 2
+    assert config['common_init_identical_to_c'] is True
+    base = _adapter(tmp_path, 'C', hidden=CONTROL_HIDDEN).run_config()['parameter_count']
+    assert config['parameter_count'] - base == BLOCK_DELTA_AT_128
+    assert _adapter(tmp_path, 'C', hidden=CONTROL_HIDDEN, layers=1, encoder_depth=2).encoder_depth == 2

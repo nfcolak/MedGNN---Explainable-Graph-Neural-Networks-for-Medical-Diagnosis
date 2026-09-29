@@ -128,7 +128,7 @@ class EvidenceNetworkV3(PairEvidenceNetwork):
     def __init__(self, *, num_tokens, node_dim, edge_dim, num_classes, hidden, token_dim,
                  num_triples, num_relations, dropout, pair_rank, num_node_types, arm, knots,
                  knot_active, slot_of_token, universe_size, feature_layout, seed,
-                 encoder_depth=1, extra_blocks=(), knot_row_of_token=None):
+                 encoder_depth=1, extra_blocks=(), knot_row_of_token=None, control_shapes=None):
         if arm not in ARMS:
             raise ValueError(f'arm must be one of {list(ARMS)}, got {arm!r}')
         if isinstance(encoder_depth, bool) or int(encoder_depth) != encoder_depth or encoder_depth < 1:
@@ -140,6 +140,9 @@ class EvidenceNetworkV3(PairEvidenceNetwork):
                          pair_rank=pair_rank, pair_mode='additive',
                          num_node_types=num_node_types)
         self.arm, self.seed, self.encoder_depth = str(arm), int(seed), int(encoder_depth)
+        # STUB (U3x red): control shapes are stored but never applied.
+        self.control_shapes = dict(control_shapes) if control_shapes else None
+        self.widened_tensors = ()
         # E2d residual blocks (§2.2): registered only for depth >= 2, so depth 1 keeps the
         # exact U3 module set; parameters live under `encoder_blocks.<i>.*`.
         if self.encoder_depth > 1:
