@@ -24,11 +24,13 @@ TRAIN_PY = 'comparison.standardized.clinical_graph_v2.train'
 
 def _inputs(tmp_path):
     artifact = tmp_path / 'artifact'
-    artifact.mkdir()
+    artifact.mkdir(exist_ok=True)
     targets = tmp_path / 'targets.csv'
-    targets.write_text('sample_id,target,split,subject_id\n')
+    if not targets.exists():
+        targets.write_text('sample_id,target,split,subject_id\n')
     canonical = tmp_path / 'canonical.json'
-    canonical.write_text('{}')
+    if not canonical.exists():
+        canonical.write_text('{}')
     root = tmp_path / 'study_root'
     return artifact, targets, canonical, root
 
