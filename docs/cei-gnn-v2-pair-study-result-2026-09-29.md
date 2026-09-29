@@ -90,9 +90,9 @@ Selected epochs below are zero-based indices as stored in the bindings and norma
 
 | Arm | Seed 1234 | Seed 2025 | Seed 7 |
 |---|---|---|---|
-| product | 27 (epoch 28 of 40) | 19 (epoch 20 of 40) | 24 (epoch 25 of 40) |
-| additive | 17 (epoch 18 of 40) | 24 (epoch 25 of 40) | 30 (epoch 31 of 40) |
-| off | 30 (epoch 31 of 40) | 29 (epoch 30 of 40) | 26 (epoch 27 of 40) |
+| product | 26 (epoch 27 of 40) | 18 (epoch 19 of 40) | 23 (epoch 24 of 40) |
+| additive | 16 (epoch 17 of 40) | 23 (epoch 24 of 40) | 29 (epoch 30 of 40) |
+| off | 29 (epoch 30 of 40) | 28 (epoch 29 of 40) | 25 (epoch 26 of 40) |
 
 Recorded stage wall seconds:
 
