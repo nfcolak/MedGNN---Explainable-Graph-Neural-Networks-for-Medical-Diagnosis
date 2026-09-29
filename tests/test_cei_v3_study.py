@@ -627,3 +627,398 @@ def test_k_selection_replay_passes_and_detects_every_drift(tmp_path):
     (stage_dirs['C_K8_seed7'] / 'binding.json').write_text(text.replace('0.43', '0.44'))
     with pytest.raises(ValueError, match='binding_sha256'):
         study.assert_k_selection_replay(record, stage_dirs)
+
+
+# ------------------------------------------- step 3: bootstrap and screen result
+
+import torch  # noqa: E402
+from torch_geometric.data import Data  # noqa: E402
+
+from comparison.standardized.clinical_graph_v2 import cei_v2_study as v2  # noqa: E402
+
+
+def _synthetic_rows(n=60, subjects=20, seed=0):
+    rng = np.random.default_rng(seed)
+    y = rng.integers(0, 10, n)
+    subj = np.asarray([f'p{i % subjects}' for i in range(n)])
+    return y, subj, rng
+
+
+def test_weighted_macro_f1_equals_the_v2_implementation_on_a_synthetic_case():
+    y, _, rng = _synthetic_rows()
+    pred = rng.integers(0, 10, len(y))
+    pred[:5] = y[:5]
+    weights = rng.integers(0, 4, len(y)).astype(float)
+    assert study.weighted_macro_f1(y, pred) == v2.weighted_macro_f1(y, pred, 10)
+    assert study.weighted_macro_f1(y, pred, weights) == v2.weighted_macro_f1(y, pred, 10, weights)
+    assert study.weighted_macro_f1(y, y) == 1.0
+    assert study.weighted_macro_f1(y, pred) != 0.0
+    # zero_division=0 with the fixed ten-label universe (v3 §6.2, F20)
+    small_y, small_pred = np.array([0, 0, 1]), np.array([0, 0, 0])
+    assert study.weighted_macro_f1(small_y, small_pred) == pytest.approx(0.8 / 10)
+    from sklearn.metrics import f1_score
+    assert study.weighted_macro_f1(y, pred) == pytest.approx(f1_score(
+        y, pred, labels=np.arange(10), average='macro', zero_division=0))
+
+
+def _three_arm_fixture():
+    y, subj, rng = _synthetic_rows(n=80, subjects=25, seed=3)
+    probas = {(mode, seed): rng.random((len(y), 10)) for mode in v2.MODES for seed in v2.SEEDS}
+    v2_arms = {f'{mode}_seed{seed}': proba for (mode, seed), proba in probas.items()}
+    v3_arms = {mode: {seed: (y, probas[(mode, seed)].argmax(1), subj) for seed in v2.SEEDS}
+               for mode in v2.MODES}
+    return y, subj, v2_arms, v3_arms
+
+
+def test_paired_bootstrap_reproduces_the_v2_bootstrap_numerically():
+    y, subj, v2_arms, v3_arms = _three_arm_fixture()
+    point, comparisons = v2.paired_bootstrap(v2_arms, y, subj, num_classes=10)
+    contrasts = [('product', 'additive'), ('product', 'off'), ('additive', 'off')]
+    deltas = study.paired_bootstrap(v3_arms, contrasts)
+    assert set(deltas) == set(contrasts)
+    for (first, second), key in zip(contrasts, v2.COMPARISONS):
+        values = deltas[(first, second)]
+        assert isinstance(values, np.ndarray) and values.shape == (1000,)
+        assert values.dtype == np.float64
+        assert [float(np.quantile(values, 0.025, method='linear')),
+                float(np.quantile(values, 0.975, method='linear'))] == comparisons[key]['interval_95']
+        assert np.std(values) > 0
+    scores = {mode: {seed: study.weighted_macro_f1(y, pred) for seed, (_, pred, _) in arm.items()}
+              for mode, arm in v3_arms.items()}
+    for mode, seed in point.keys() and [(m, s) for m in v2.MODES for s in v2.SEEDS]:
+        assert scores[mode][seed] == point[f'{mode}_seed{seed}']
+    again = study.paired_bootstrap(v3_arms, contrasts)
+    assert all(np.array_equal(again[c], deltas[c]) for c in contrasts)
+    other = study.paired_bootstrap(v3_arms, contrasts, seed=2027)
+    assert not np.array_equal(other[contrasts[0]], deltas[contrasts[0]])
+    short = study.paired_bootstrap(v3_arms, contrasts[:1], resamples=10)
+    assert short[contrasts[0]].shape == (10,)
+    assert np.array_equal(short[contrasts[0]], deltas[contrasts[0]][:10])
+
+
+def test_paired_bootstrap_refuses_unpaired_rows_and_unknown_contrasts():
+    _, _, _, v3_arms = _three_arm_fixture()
+    with pytest.raises(ValueError, match='contrast'):
+        study.paired_bootstrap(v3_arms, [('product', 'missing')])
+    y, pred, subj = v3_arms['product'][1234]
+    broken = json.loads(json.dumps({k: {} for k in v3_arms}))
+    broken = {mode: dict(arm) for mode, arm in v3_arms.items()}
+    broken['off'][7] = (np.roll(y, 1), pred, subj)
+    with pytest.raises(ValueError, match='paired'):
+        study.paired_bootstrap(broken, [('product', 'off')])
+    broken = {mode: dict(arm) for mode, arm in v3_arms.items()}
+    broken['off'][7] = (y, pred, np.roll(subj, 1))
+    with pytest.raises(ValueError, match='paired'):
+        study.paired_bootstrap(broken, [('product', 'off')])
+    broken = {mode: dict(arm) for mode, arm in v3_arms.items()}
+    del broken['off'][7]
+    with pytest.raises(ValueError, match='seed'):
+        study.paired_bootstrap(broken, [('product', 'off')])
+
+
+def _decision_inputs(c=(0.42, 0.43, 0.44), a=(0.40, 0.41, 0.42), lower=0.005):
+    rng = np.random.default_rng(1)
+    deltas = rng.normal(0.02, 0.005, 1000)
+    deltas = deltas - np.quantile(deltas, 0.025, method='linear') + lower
+    scores = {'C': dict(zip((1234, 2025, 7), c)), 'A': dict(zip((1234, 2025, 7), a))}
+    return {('C', 'A'): deltas}, scores
+
+
+def test_decide_v3_applies_the_three_condition_rule_with_the_linear_quantile():
+    deltas, scores = _decision_inputs()
+    decision = study.decide_v3(deltas, scores)
+    values = deltas[('C', 'A')]
+    assert {'contrast', 'checks', 'per_seed', 'interval_95'} <= set(decision)
+    assert decision['contrast'] == ['C', 'A']
+    assert decision['per_seed'] == {'1234': {'C': 0.42, 'A': 0.40}, '2025': {'C': 0.43, 'A': 0.41},
+                                    '7': {'C': 0.44, 'A': 0.42}}
+    assert decision['seed_means'] == {'C': pytest.approx(0.43), 'A': pytest.approx(0.41)}
+    assert decision['point_delta'] == pytest.approx(0.02)
+    assert decision['interval_95'] == [float(np.quantile(values, 0.025, method='linear')),
+                                       float(np.quantile(values, 0.975, method='linear'))]
+    assert decision['interval_95'][0] == pytest.approx(0.005)
+    assert decision['quantile_method'] == 'linear'
+    assert decision['metric'] == 'weighted_macro_f1'
+    assert decision['resamples'] == 1000 and decision['bootstrap_seed'] == 2026
+    assert decision['checks'] == {'c_beats_a_each_seed': True, 'c_mean_above_a': True,
+                                  'c_minus_a_lower_bound_above_zero': True}
+    assert decision['v3_beats_control'] is True
+    assert decision['statement'] == 'v3 beats the v2 additive control on this screen'
+    assert decision['test_evaluated'] is False and decision['validation_evaluated'] is False
+
+
+@pytest.mark.parametrize('kwargs, failing', [
+    (dict(c=(0.42, 0.41, 0.44)), 'c_beats_a_each_seed'),          # tie on seed 2025 fails
+    (dict(c=(0.42, 0.43, 0.44), a=(0.40, 0.41, 0.50)), 'c_beats_a_each_seed'),
+    (dict(lower=0.0), 'c_minus_a_lower_bound_above_zero'),        # bound exactly zero fails
+    (dict(lower=-0.001), 'c_minus_a_lower_bound_above_zero'),
+])
+def test_decide_v3_fails_closed_on_ties_and_zero_bounds(kwargs, failing):
+    deltas, scores = _decision_inputs(**kwargs)
+    decision = study.decide_v3(deltas, scores)
+    assert 'checks' in decision
+    assert decision['checks'][failing] is False
+    assert decision['v3_beats_control'] is False
+    assert decision['statement'] == 'benefit not demonstrated on this screen'
+
+
+def test_decide_v3_mean_condition_can_fail_independently():
+    deltas, scores = _decision_inputs(c=(0.42, 0.43, 0.44), a=(0.40, 0.41, 0.42))
+    scores['A'][7] = 0.42
+    decision = study.decide_v3(deltas, scores)
+    assert 'checks' in decision
+    assert decision['checks']['c_beats_a_each_seed'] is True
+    # Force the mean check off via a control whose mean equals the treatment mean.
+    deltas, scores = _decision_inputs(c=(0.42, 0.43, 0.44), a=(0.44, 0.43, 0.42))
+    decision = study.decide_v3(deltas, scores)
+    assert decision['checks']['c_mean_above_a'] is False
+    assert decision['v3_beats_control'] is False
+
+
+def test_decide_v3_refuses_wrong_resample_count_or_missing_seed():
+    deltas, scores = _decision_inputs()
+    with pytest.raises(ValueError, match='1000'):
+        study.decide_v3({('C', 'A'): deltas[('C', 'A')][:999]}, scores)
+    del scores['A'][7]
+    with pytest.raises(ValueError, match='seed'):
+        study.decide_v3(deltas, scores)
+
+
+def test_absence_share_is_the_patient_mean_class_share_with_zero_denominator_rule():
+    parts = {
+        'node_contributions': torch.tensor([[1.0, -1.0], [0.0, 0.0], [2.0, 0.0]]),
+        'edge_contributions': torch.tensor([[0.5, 0.5]]),
+        'pair_contributions': torch.tensor([[0.0, 1.0]]),
+        'pairs': torch.tensor([[0], [1]]),
+        'absence_contributions': torch.tensor([[1.0, 0.5], [3.0, 0.0]]),
+        'absence_items': torch.tensor([[0, 2], [0, 1]]),
+    }
+    batch_index = torch.tensor([0, 0, 1])
+    edge_index = torch.tensor([[0], [1]])
+    share = study.absence_share(parts, batch_index=batch_index, edge_index=edge_index,
+                                graph_count=3)
+    # graph 0: |abs| per class = (1.0, 0.5); totals (1+0.5+0+1.0, 1+0.5+1+0.5) = (2.5, 3.0)
+    # graph 1: node 2 only -> absence (3.0, 0.0), totals (5.0, 0.0) -> classes (0.6, 0)
+    # graph 2: nothing -> 0
+    assert share.shape == (3,)
+    assert share.tolist() == pytest.approx([(1.0 / 2.5 + 0.5 / 3.0) / 2, 0.3, 0.0])
+
+
+# ---- score_screen with a synthetic adapter stub (no checkpoint, no data file) ----
+
+
+class _StubAdapter:
+    """Adapter protocol used by score_screen: continuous_inputs + forward_continuous."""
+
+    def __init__(self, num_classes=10):
+        self.num_classes = num_classes
+        self.calls = 0
+        self.training = True
+
+    def eval(self):
+        self.training = False
+        return self
+
+    def continuous_inputs(self, batch):
+        return batch.x
+
+    def forward_continuous(self, features, edge_index, metadata, *, return_parts=False):
+        self.calls += 1
+        graphs = int(metadata.num_graphs)
+        batch_index = metadata.batch
+        logits = torch.zeros((graphs, self.num_classes), dtype=torch.float32)
+        logits.index_add_(0, batch_index, features[:, :self.num_classes])
+        logits = logits * 40.0   # large magnitudes: float32 softmax underflows (E7)
+        node = features[:, :self.num_classes]
+        absence = torch.ones((graphs, self.num_classes)) * 0.25
+        parts = {'logits': logits, 'node_contributions': node,
+                 'edge_contributions': torch.zeros((edge_index.size(1), self.num_classes)),
+                 'pair_contributions': torch.zeros((0, self.num_classes)),
+                 'pairs': torch.zeros((2, 0), dtype=torch.long),
+                 'absence_contributions': absence,
+                 'absence_items': torch.stack([torch.arange(graphs), torch.zeros(graphs, dtype=torch.long)])}
+        return parts if return_parts else logits
+
+
+def _screen_rows(n=12, seed=5):
+    rng = np.random.default_rng(seed)
+    rows = []
+    for i in range(n):
+        x = torch.tensor(rng.normal(size=(3, 10)), dtype=torch.float32)
+        data = Data(x=x, edge_index=torch.tensor([[0, 1], [1, 2]]))
+        data.y = torch.tensor([int(rng.integers(0, 10))])
+        data.subject = f'ps-{i // 2}'
+        data.sample_id = f'sc-{i:05d}'
+        rows.append(data)
+    return rows
+
+
+def _screen_record(row_count=12, screen_hash='s' * 64):
+    return {'fold': 'screen', 'selector_version': 'cei_v3_screen_selector_v1',
+            'screen_seed': 20260929, 'screen_limit': row_count, 'row_count': row_count,
+            'screen_sample_ids_sha256': screen_hash, 'targets_sha256': 't' * 64,
+            'artifact_sha256': 'a' * 64, 'preprocessing_sha256': 'b' * 64,
+            'parent_train_sample_ids_sha256': 'e' * 64, 'parent_dev_sample_ids_sha256': 'f' * 64,
+            'serialization_version': 'json_compact_utf8_v1'}
+
+
+def _frozen_study(tmp_path, metrics=METRICS_CLEAR):
+    """Nine C stages on disk + k_selection.json + A_seed1234 stage with study binding."""
+    plan_, bindings, stage_dirs = _completed_grid(tmp_path, metrics)
+    selection = study.select_k(bindings)
+    record = study.write_k_selection(selection, stage_dirs, Path(plan_.k_selection_path))
+    for stage in plan_.stages[:9]:
+        if stage.k == record['k_selected']:
+            (stage_dirs[stage.name] / 'result.json').write_text(json.dumps(
+                _result(bindings[stage.name]), indent=2, sort_keys=True) + '\n')
+            study.write_study_binding(stage_dirs[stage.name], stage, record)
+    frozen = study.plan(_config(tmp_path, k_selection=record))
+    a_stage = _stage(frozen, 'A_seed1234')
+    a_dir = Path(a_stage.output)
+    a_dir.mkdir(parents=True)
+    a_binding = _binding(a_stage, root=frozen.output_root)
+    (a_dir / 'binding.json').write_text(json.dumps(a_binding, indent=2, sort_keys=True) + '\n')
+    (a_dir / 'result.json').write_text(json.dumps(_result(a_binding), indent=2, sort_keys=True) + '\n')
+    (a_dir / 'best.pt').write_bytes(b'checkpoint A_seed1234')
+    study.write_study_binding(a_dir, a_stage, record)
+    return frozen, record, stage_dirs, a_dir
+
+
+def test_score_screen_writes_hashed_raw_logits_and_proba_and_a_bound_result(tmp_path):
+    frozen, record, stage_dirs, a_dir = _frozen_study(tmp_path)
+    c_dir = stage_dirs['C_K8_seed7']
+    rows = _screen_rows()
+    stub = _StubAdapter()
+    encoder = study.ScreenEncoder(ids=tuple(r.sample_id for r in rows), fold='screen',
+                                  rows=lambda: iter(rows))
+    checkpoint = study.Checkpoint(stage_dir=str(c_dir), k_selection_path=frozen.k_selection_path)
+    result = study.score_screen(checkpoint, _screen_record(), encoder,
+                                model_factory=lambda binding, path: stub, batch_size=5)
+    assert isinstance(result, study.ScreenResult)
+    assert stub.calls == 3 and stub.training is False
+    assert (result.arm, result.seed, result.k) == ('C', 7, 8)
+    assert result.row_count == 12
+    out = c_dir / 'screen'
+    assert Path(result.logits_path) == out / 'logits.npz'
+    assert Path(result.proba_path) == out / 'proba.npz'
+    with np.load(out / 'logits.npz', allow_pickle=False) as saved:
+        assert set(saved.files) == {'logits', 'y', 'subjects', 'sample_ids'}
+        logits = saved['logits']
+        assert logits.dtype == np.float32 and logits.shape == (12, 10)
+        assert np.array_equal(saved['y'], np.asarray([int(r.y) for r in rows]))
+        assert list(saved['subjects'].astype(str)) == [r.subject for r in rows]
+        assert list(saved['sample_ids'].astype(str)) == [r.sample_id for r in rows]
+    with np.load(out / 'proba.npz', allow_pickle=False) as saved:
+        assert set(saved.files) == {'proba', 'y', 'subjects', 'sample_ids'}
+        proba = saved['proba']
+        assert proba.dtype == np.float32 and proba.shape == (12, 10)
+    expected_logits = np.concatenate([
+        stub.forward_continuous(r.x, r.edge_index, Data(batch=torch.zeros(3, dtype=torch.long),
+                                                         num_graphs=1)).numpy() for r in rows])
+    assert np.array_equal(logits, expected_logits.astype(np.float32))
+    assert np.array_equal(proba, torch.softmax(torch.from_numpy(logits), dim=1).numpy())
+    assert (proba == 0.0).any()   # raw logits are needed because proba underflows (E7)
+    assert result.logits_sha256 == hashlib.sha256(np.ascontiguousarray(logits).tobytes()).hexdigest()
+    assert result.proba_sha256 == hashlib.sha256(np.ascontiguousarray(proba).tobytes()).hexdigest()
+    assert result.logits_sha256 != result.proba_sha256
+    assert result.macro_f1 == study.weighted_macro_f1([int(r.y) for r in rows], logits.argmax(1))
+    assert result.checkpoint_sha256 == hashlib.sha256((c_dir / 'best.pt').read_bytes()).hexdigest()
+    assert result.binding_sha256 == hashlib.sha256((c_dir / 'binding.json').read_bytes()).hexdigest()
+    assert result.k_selection_sha256 == study.k_selection_sha256(record)
+    assert result.screen_record_sha256 == study.screen_record_sha256(_screen_record())
+    assert result.absence_share_mean == pytest.approx(
+        float(np.mean(study.absence_share(
+            stub.forward_continuous(rows[0].x, rows[0].edge_index,
+                                    Data(batch=torch.zeros(3, dtype=torch.long), num_graphs=1),
+                                    return_parts=True),
+            batch_index=torch.zeros(3, dtype=torch.long), edge_index=rows[0].edge_index,
+            graph_count=1))))
+    assert result.validation_evaluated is False and result.test_evaluated is False
+    written = json.loads((out / 'screen_result.json').read_text())
+    assert written == json.loads(json.dumps(result.__dict__))
+    assert not (c_dir / 'validation.npz').exists() and not (out / 'validation.npz').exists()
+    with pytest.raises(FileExistsError):
+        study.score_screen(checkpoint, _screen_record(), encoder,
+                           model_factory=lambda binding, path: stub)
+
+
+def test_score_screen_scores_a_and_refuses_freeze_and_k_violations(tmp_path):
+    frozen, record, stage_dirs, a_dir = _frozen_study(tmp_path)
+    rows = _screen_rows()
+    encoder = study.ScreenEncoder(ids=tuple(r.sample_id for r in rows), fold='screen',
+                                  rows=lambda: iter(rows))
+    factory = lambda binding, path: _StubAdapter()  # noqa: E731
+    a_result = study.score_screen(study.Checkpoint(str(a_dir), frozen.k_selection_path),
+                                  _screen_record(), encoder, model_factory=factory)
+    assert (a_result.arm, a_result.k, a_result.k_selection_sha256) == (
+        'A', 8, study.k_selection_sha256(record))
+
+    # Losing-K C checkpoints (K != K*) are never scored on the screen (v3 §11.2 item 5).
+    losing = stage_dirs['C_K4_seed1234']
+    (losing / 'result.json').write_text(json.dumps(
+        _result(json.loads((losing / 'binding.json').read_text())), indent=2, sort_keys=True) + '\n')
+    with pytest.raises(ValueError, match='K'):
+        study.score_screen(study.Checkpoint(str(losing), frozen.k_selection_path),
+                           _screen_record(), encoder, model_factory=factory)
+    # A checkpoint whose binding lacks the K-freeze hash is refused.
+    winner = stage_dirs['C_K8_seed1234']
+    (winner / 'study_binding.json').unlink()
+    with pytest.raises(ValueError, match='k_selection_sha256'):
+        study.score_screen(study.Checkpoint(str(winner), frozen.k_selection_path),
+                           _screen_record(), encoder, model_factory=factory)
+    # No freeze record -> no screen tensor is read (v3 §11.2 item 8).
+    reads = []
+    guarded = study.ScreenEncoder(ids=encoder.ids, fold='screen',
+                                  rows=lambda: reads.append(1) or iter(rows))
+    with pytest.raises(ValueError, match='freeze'):
+        study.score_screen(study.Checkpoint(str(a_dir), str(tmp_path / 'absent.json')),
+                           _screen_record(), guarded, model_factory=factory)
+    assert reads == []
+    # A freeze record whose hash differs from the checkpoint's binding is refused.
+    other = json.loads(json.dumps(record))
+    other['screen_record_sha256'] = 'x' * 64
+    other_path = tmp_path / 'other_k_selection.json'
+    other_path.write_text(json.dumps(other, indent=2, sort_keys=True) + '\n')
+    with pytest.raises(ValueError, match='k_selection_sha256'):
+        study.score_screen(study.Checkpoint(str(a_dir), str(other_path)), _screen_record(),
+                           guarded, model_factory=factory)
+    assert reads == []
+
+
+@pytest.mark.parametrize('kind', ['fold', 'row_count', 'ids', 'preprocessing', 'screen_reuse',
+                                  'validation_npz', 'record_fold'])
+def test_score_screen_refuses_fold_and_binding_violations(tmp_path, kind):
+    frozen, record, stage_dirs, a_dir = _frozen_study(tmp_path)
+    rows = _screen_rows()
+    reads = []
+    ids = tuple(r.sample_id for r in rows)
+    fold, screen_record = 'screen', _screen_record()
+    if kind == 'fold':
+        fold = 'dev'
+    elif kind == 'row_count':
+        screen_record['row_count'] = 11
+    elif kind == 'ids':
+        ids = ids[:-1] + ('sc-99999',)
+    elif kind == 'preprocessing':
+        screen_record['preprocessing_sha256'] = '0' * 64
+    elif kind == 'screen_reuse':
+        screen_record['screen_sample_ids_sha256'] = 'f' * 64   # equals the bindings' dev hash
+    elif kind == 'validation_npz':
+        (a_dir / 'validation.npz').write_bytes(b'x')
+    elif kind == 'record_fold':
+        screen_record['fold'] = 'validation'
+    encoder = study.ScreenEncoder(ids=ids, fold=fold, rows=lambda: reads.append(1) or iter(rows))
+    with pytest.raises(ValueError):
+        study.score_screen(study.Checkpoint(str(a_dir), frozen.k_selection_path), screen_record,
+                           encoder, model_factory=lambda binding, path: _StubAdapter())
+    if kind != 'ids':
+        assert reads == []
+    assert not (a_dir / 'screen').exists()
+
+
+def test_screen_record_sha256_is_canonical_and_tamper_sensitive():
+    record = _screen_record()
+    digest = study.screen_record_sha256(record)
+    assert len(digest) == 64 and digest == study.screen_record_sha256(dict(reversed(list(record.items()))))
+    tampered = dict(record, row_count=4999)
+    assert study.screen_record_sha256(tampered) != digest
