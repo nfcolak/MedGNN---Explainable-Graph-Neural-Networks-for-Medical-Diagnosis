@@ -235,26 +235,37 @@ def test_ple_columns_are_resolved_by_layout_name():
     _share_weights(reference, swapped)
     assert swapped.scaled_value_column == permuted.index('scaled_value')
     assert swapped.has_value_column == permuted.index('has_value')
+    order = [LAYOUT.index(name) for name in permuted]
+    with torch.no_grad():  # the v2 encoder reads x by position: permute its columns too
+        swapped.node_encoder.weight[:, :NODE_DIM] = reference.node_encoder.weight[:, order]
     expected = _run(reference, graph)['logits']
     swapped_graph = _graph()
-    swapped_graph.x = graph.x[:, [LAYOUT.index(name) for name in permuted]]
+    swapped_graph.x = graph.x[:, order]
     actual = _run(swapped, swapped_graph)['logits']
-    assert torch.equal(actual, expected)
+    # Column permutation changes the matmul summation order: equal up to float32 rounding.
+    torch.testing.assert_close(actual, expected, rtol=1e-6, atol=1e-6)
     with pytest.raises(ValueError, match='scaled_value'):
         _v3('B', layout=['a', 'has_value', 'b', 'c'])
 
 
 def test_arm_b_ple_changes_logits_only_through_active_knot_rows():
     graph = _graph()
+    graph.x[6, 2] = 1.0  # lab2 now carries a valid value, but its knot row is inactive
     torch.manual_seed(4)
     arm_a = _v3('A').eval()
     torch.manual_seed(4)
     arm_b = _v3('B').eval()
     _share_weights(arm_a, arm_b)
-    with torch.no_grad():
-        arm_b.ple_projection.weight.fill_(0.5)
-    assert not torch.equal(_run(arm_b, graph)['logits'], _run(arm_a, graph)['logits'])
-    # lab2 has an inactive knot row and an invalid value: moving its value changes nothing.
-    moved = _graph()
-    moved.x[6, 1] = 3.0
-    assert torch.equal(_run(arm_b, moved)['logits'], _run(arm_b, graph)['logits'])
+    with torch.no_grad():  # a non-uniform projection: a constant vector would be removed by LayerNorm
+        arm_b.ple_projection.weight.copy_(torch.randn(
+            arm_b.ple_projection.weight.shape, generator=torch.Generator().manual_seed(77)))
+    assert not torch.allclose(_run(arm_b, graph)['logits'], _run(arm_a, graph)['logits'])
+    # Detaching the inactive lab2 row from the table (row -1 = zero basis) changes nothing;
+    # detaching the active lab1 row does.
+    torch.manual_seed(4)
+    detached = _v3('B').eval()
+    _share_weights(arm_b, detached)
+    detached.knot_row_of_token[VOCAB['measurement:lab2']] = -1
+    assert torch.equal(_run(detached, graph)['logits'], _run(arm_b, graph)['logits'])
+    detached.knot_row_of_token[VOCAB['measurement:lab1']] = -1
+    assert not torch.equal(_run(detached, graph)['logits'], _run(arm_b, graph)['logits'])
