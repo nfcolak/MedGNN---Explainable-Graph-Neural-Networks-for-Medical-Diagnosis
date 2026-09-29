@@ -206,6 +206,7 @@ class EvidenceAdapterV3(ClinicalMethodAdapter):
                              "U3 supports encoder_depth=1 only")
         self.comorbid_block = method_option(args, "comorbid_block", 0, int, minimum=0, maximum=1)
         if self.comorbid_block != 0:
+            # STUB (U3x red): the lazy import of the X5 module is added by the green step.
             raise ValueError("comorbid_block=1 is added by U3x; U3 supports comorbid_block=0 only")
 
         if self.state.num_tokens != self.num_tokens:
@@ -325,6 +326,10 @@ class EvidenceAdapterV3(ClinicalMethodAdapter):
             # Extensions spec §2.2: every arm at the control width shares C's initial
             # values for the common tensors (per-tensor generators); E2w does not.
             "common_init_identical_to_c": self.hidden == CONTROL_HIDDEN,
+            # STUB (U3x red): filled by the green step.
+            "control_shapes": {},
+            "widened_tensors": None,
+            "extra_blocks": None,
             "parameter_inventory": inventory,
             "architecture": {
                 "node_dim": self.node_dim, "edge_dim": self.edge_dim,
