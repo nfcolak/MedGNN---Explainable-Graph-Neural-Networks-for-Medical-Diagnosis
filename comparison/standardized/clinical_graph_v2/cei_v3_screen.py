@@ -13,6 +13,7 @@ from typing import Optional
 
 from .contracts import sample_ids_sha256
 from .schema import sha256
+from .tensorize import encode_graph  # noqa: F401  (monkeypatch target for tests)
 from .train import load_targets, select_top_labels
 
 SCREEN_FOLD_NAME = 'screen'
@@ -229,7 +230,13 @@ def assert_screen_replay(record, targets_path, train_ids, dev_ids, *, eligible=N
     return None
 
 
+def fold_split(fold: str) -> str:
+    """Target-sidecar split that a fold's rows must carry (v3 §12.7); no test value."""
+    return ''
+
+
 def encode_rows(artifact, prep_state, ids, *, fold: str, edge_direction: str,
                 allow_validation: bool = False,
-                approval_record: Optional[dict] = None) -> Iterator:
+                approval_record: Optional[dict] = None,
+                targets=None, preprocessing_sha256: Optional[str] = None) -> Iterator:
     return iter(())
