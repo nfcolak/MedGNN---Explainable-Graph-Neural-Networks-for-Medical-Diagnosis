@@ -1,0 +1,159 @@
+# CEI-GNN v3: train-fitted value encoding and not-measured evidence
+
+Date: 2026-09-29
+Status: design only; no implementation, testing, preprocessing, or training is authorized by this document.
+Base checkout: `feature/cei-v2-pairs` at `712b25531735ec38d89c9908e485dce62304441f`.
+
+## 1. Goal and claim scope
+
+Change exactly one CEI mechanism: how measurement and vital values become evidence. v3 adds (i) a train-fitted per-item piecewise-linear (quantile) value basis and (ii) a distinct evidence block for measurement/vital items not observed at the index visit. The base pair mode is v2 `additive`; the existing raw scaled scalar and `has_value` remain available, and each measurement/vital node remains one signed class-evidence contributor.
+
+The primary claim is a dev-screen claim only: whether v3 arm C beats the retrained v2 additive control A on the new, patient-disjoint, TRAIN-derived 5,000-row screen fold under §6. A positive result is not a validation, test, population-generalization, clinical-utility, or deployment claim. A failure means the pre-registered benefit was not demonstrated on this screen; it does not prove no effect.
+
+The user decisions, quoted verbatim (2026-09-29):
+- **D1.** “Item 4 (a CEI large-graph / size-normalization fix) is DROPPED. The evidence: it is not CEI-specific, ProtGNN drops more, and case mix is the leading explanation.”
+- **D2.** “'Not measured' evidence goes INTO the main v3 model, and explanations show it as a separate item ('X was not measured').”
+- **D3.** “A fresh patient-disjoint TRAIN-derived screen fold of 5,000 rows is used for the decision. Its patients share no subject with the 10k train sample or the 5k dev sample. The old dev fold stays in use only for checkpoint selection, so selection and decision use different folds.”
+
+## 2. Non-goals
+
+- **D1: no CEI large-graph/size-normalization change.** Keep v2 node, edge and pair aggregation rules; the only treatment is value encoding plus the not-measured block. The size diagnosis reports CEI v2 node-quintile mean macro-F1 Q1 0.626 versus Q5 0.639, while ProtGNN drops more across pair-count bands (0.642 to 0.311 versus CEI's roughly 0.644 to 0.524); the CEI-minus-ProtGNN node-size contrast is -0.009 with 95% CI [-0.031, 0.014]. It identifies case mix as the leading explanation and the high-pair endpoint has only 32 patients. These are observational dev findings, not proof size has no conditional effect. Sources: `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.worktrees/_runs/diag-cei3-size-2/report.md` and independent validation `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.worktrees/_runs/val-cei3-size/report.md`.
+- No change to graph construction, event sources, class set, cohort, train sample, optimizer, epochs, selection fold, v1/v2 behavior, edge/pair mechanism, GraphXAI edge-mask semantics, or shared runner defaults.
+- No reference-range or abnormality feature: the reviewed input payloads do not provide clinical reference bounds; ingestion plausibility filters are not reference ranges.
+- No tuning K, thresholds, screen seed, class set, or decision rule after screen outcomes are seen. No arm may be added after results are seen.
+- No test-fold access, validation scoring, or claims based on the screen as a substitute for held-out evaluation.
+
+## 3. Evidence summary and limitations
+
+All numeric findings below are TRAIN-sample plug-in associations, not out-of-sample performance or evidence that an encoding improves CEI. Sources are the numeric diagnostic report and its independent validation:
+
+- The diagnostic admitted 10,000 of the 10,000 selected TRAIN graphs and skipped 90,418 nonselected graph rows before decode. It covered 6 vitals and the 30 most frequent measurements. Source: `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.worktrees/diag-cei3-numeric-5/report.md` (lines 15–25, 476–482).
+- Largest reported decile-versus-median-split mutual-information gap: 0.1209 bits, measurement `lab:51516` / `#/hpf` versus UTI or pyelonephritis. Source: same report (lines 427–445). Independent validation reproduces 0.1208802118 bits and confirms this is a plug-in TRAIN-sample estimate: `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.worktrees/_runs/val-cei3-numeric/report.md` (lines 98–108).
+- The diagnostic reports 16/360 (4.44%) item-label pairs meeting its non-monotonic criterion. **NUM-01:** the report calls this a median-of-deciles criterion, but its middle rate is pooled prevalence, not the literal median of middle-decile rates; independent validation found a different qualifying membership although the total remained 16/360. Do not use the specific curve list as validated evidence for item-specific nonlinear behavior. Sources: diagnostic report lines 427–437; validation report lines 79–96 and 152–156.
+- Largest reported absent-versus-present positive-rate difference: -0.4693 for measurement `lab:51492` / `mg/dL` versus UTI or pyelonephritis (absent 0.0962, present 0.5655). Source: diagnostic report lines 456–470. Independent validation reproduces -0.4693077586 and explicitly says it is an observational TRAIN-sample association: validation report lines 110–132.
+- For the selected items, the diagnostic reports maximum clipping share 0.2649% and fallback share 0; independent validation confirms maximum clipping 0.264900662% and fallback 0 for all 36 selected identities. Source: diagnostic report lines 27–35 and validation report lines 29–38. The existing transform is monotone per exact item identity except for tail clipping; this makes fitting on the existing scaled value a practical approximation to fitting on the raw value, not an assertion that the transforms are identical.
+- Exact value-bearing identity is `[kind, token, unit]`; rare/unseen values use signed-log fallback in the current scaler, and invalid/nonfinite values become `(scaled_value=0, has_value=0)`. Source: `comparison/standardized/clinical_graph_v2/tensorize.py` lines 96–124, 176–208, 299–323; feasibility report `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.worktrees/_runs/rev-cei3-feasibility/report.md` lines 17–21 and 35–38.
+- PLE is motivated by Gorishniy et al. 2022 tabular results, which are nonclinical and mixed rather than uniform; they do not establish a gain on this MIMIC-IV-ED task. The prior-art report recommends a train-only, per-measurement-type quantile PLE and specifically cautions about rare items, tails, and extrapolation: `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.worktrees/_runs/res-cei3-priorart/report.md` lines 35–50.
+- Historical PLQ losing is not evidence against PLE: its comparison was confounded by source-hash mismatch. Source: `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.worktrees/_runs/diag-cei3-numeric/report.md` lines 43–49.
+- **NUM-02:** the numeric claimant's patient-level value-selection and tie-breaking definition is undocumented. Independent validation found that equal-value rank ties can change the reported non-monotonic count and MI top-five membership; therefore v3 defines value-knot tie behavior directly and does not treat rank-bin statistics as decisive. Source: `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.worktrees/_runs/val-cei3-numeric/report.md` lines 15–18 and 152–157.
+
+## 4. Model design
+
+### 4.1 Base arm
+
+Build on v2 `pair_mode=additive`. In the completed v2 study it had the best seed-mean among the three pair modes; the v2 result labels the product arm not useful under its pre-registered rule and does not support retaining a product interaction. Source: `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/docs/cei-gnn-v2-pair-study-result-2026-09-29.md` (study decision and §6 summaries). The design does not alter v2's additive pair path.
+
+### 4.2 Value encoding: fixed train-fitted PLE
+
+1. **Identity and source scalar.** The item key is the exact serialized `[kind, token, unit]` identity used by `tensorize.node_token`; no cross-unit pooling or conversion. PLE is evaluated on the existing per-item `scaled_value` already present in the encoded node features. Keep `scaled_value` and `has_value` as input features in both arms. Never replace them with the basis.
+2. **Fit population and state.** Fit knots only from finite values in the frozen 10,000-row TRAIN sample, after its existing Top-10/cohort eligibility and train-only preprocessing contract. For each qualifying item, take distinct sorted scaled values; estimate quantile knot locations at probabilities `j/8`, `j=0..8`, using the deterministic linear interpolation rule in the implementation contract. Training rows, never dev/screen/validation/test, supply the values. Freeze the resulting item-key-to-knot table before model training. Bind the canonical serialized table's SHA-256, fit sample-ID hash, sample seed, identity format, transform version, K, and tie policy in preprocessing state and every arm binding. The same exact table/state is bound for A, B (if included), and C, even when an arm leaves its use inactive.
+3. **Fixed basis size.** Set K=8 intervals (at most 9 strictly increasing knot values / basis channels) for the entire confirmatory study; no post-hoc K search. This is a fixed compact compromise within the prior-art report's proposed small-grid candidates, not a literature optimum. The model forms a piecewise-linear interpolation/hat basis over the retained knots (linear interpolation between adjacent knots, endpoint basis outside the fitted range), then sends it through one shared learned linear projection into the existing hidden representation. It is not one node or one independent vote per knot.
+4. **Duplicate/tied knots (NUM-02).** Quantile values that are equal in floating-point representation are collapsed into one knot, keeping the lowest quantile index as canonical. Do not split equal values by row order or rank. A knot table must be strictly increasing after collapse. If fewer than 3 distinct finite knot values exist, mark that item's PLE inactive and supply an all-zero basis; retain its scalar and `has_value`. Record the effective knot count per item in preprocessing state. A non-finite knot is a hard error.
+5. **Rare and unseen items.** Fit a per-item table only if that identity has at least 20 finite TRAIN-sample values, matching the current scaler's minimum-count threshold. Below that threshold, or for an unseen identity / `UNK` token at inference, use an all-zero PLE basis and the existing signed-log/scaled scalar plus `has_value`; do not borrow another item's knots or invent a unit mapping. The shared PLE projection remains registered in every arm. The exact item identity is resolved by the preprocessing vocabulary/table, not by treating all `UNK` identities as the same item.
+6. **Out-of-range values and invalid values.** The basis clamps to the first/last endpoint basis outside the fitted knot range; it never extrapolates an unbounded slope. The original existing scalar remains present, so its range information is not discarded. Missing, unparsable, or nonfinite values have zero basis, `scaled_value=0`, and `has_value=0`; valid zero remains distinguishable by `has_value=1`.
+7. **No raw-value rebuild.** Choose existing scaled values over raw values: the feasibility review classifies scaled-value PLE as in-model feasible, while raw-value knots require tensor preprocessing changes/rebuild. Independent verification found selected-item clipping no greater than 0.264900662% and fallback 0, so in this measured sample the transforms are near-equivalent in rank apart from rare clipping ties. The raw transform remains an alternative only if later approved as a new preprocessing contract and fresh output; it is not in this study.
+8. **One signed item contribution.** PLE affects the hidden representation of its measurement/vital node; that node still emits exactly one gated signed class vote in the existing node block. No per-knot node votes, separate value-evidence denominator, or basis-level explanation items are introduced. The raw scalar, `has_value`, item token and node kind continue to condition the node encoder.
+
+### 4.3 “Not measured” evidence (D2)
+
+- **Scope and item universe.** For each graph, make one binary absence indicator for each exact measurement/vital identity whose presence is supported in at least 20 distinct graphs of the frozen TRAIN sample. The universe is fixed from train only and stored in preprocessing state. An item is absent if no node of that exact identity is assigned by `visit_membership_index` to the graph's index visit. The index visit is the last ordered visit ordinal under the existing contract. A prior-visit-only item is therefore “not measured” at index visit. No indicator is made for complaints, diagnoses, knowledge, patient/visit nodes, or items outside this fixed supported universe.
+- **Derivation without graph rebuild.** Derive presence from existing measurement/vital nodes and `visit_membership_index`; no synthetic missing-event node, graph JSON change, or input-artifact rebuild. This is the feasibility review's B4 in-model path: existing-token-derived presence is feasible, whereas explicit missing-event nodes need an input rebuild. If required membership is missing or ambiguous for an item node, fail binding/preflight rather than silently infer from unrelated graph edges.
+- **Class-vote parameterization.** Register for each supported identity a signed vote vector `m_ic` and a gate logit `r_ic`, each class width; `g_ic = sigmoid(r_ic)`. For each graph, absent identities contribute `g_ic * m_ic`, normalized by a dedicated denominator `1 + sum_i g_ic` over absent items, per graph and class. The absent set is empty-safe: its block is exactly zero and denominator one. These are model parameters, not one-hot class counts.
+- **Logits and exact parts.** For graph `G`, class `c`:
+
+      logits_Gc = bias_c
+                + sum_i node_contribution_Gic
+                + sum_e edge_contribution_Gec
+                + sum_q pair_contribution_Gqc
+                + sum_i absence_contribution_Gic
+
+  Each block contribution is already divided by the same block denominator used to form its graph-level total. `return_parts` keeps all current keys unchanged (`logits`, `node_contributions`, `edge_contributions`, `pair_contributions`, `pairs`, `bias`, `pair_gates`, `pair_denominator`) and adds `absence_contributions`, `absence_items`, `absence_gates`, and `absence_denominator`. Reconstruction must match logits within absolute tolerance `1e-5` in float32. If an identity is absent, its explanation item is rendered as “{item} was not measured” with its separately allocated signed class contribution. Do not render it as a measured result or a negative clinical finding.
+- **Interpretation.** This block reflects care-process, ordering, and documentation patterns (including decisions not to order a test), not physiology. It can encode workflow and utilization; neither the signed logit allocation nor its magnitude is a causal or clinical-necessity explanation.
+
+### 4.4 Parameter accounting, RNG, and initialization
+
+Arms share one v3 superset parameter schema. The shared PLE projection and the absence vote/gate tables are registered with identical names and shapes in A, B, and C; A disables both new paths, B enables PLE only, and C enables both. Existing v2 parameters and additive pair mode are unchanged. Report total, active, and inactive trainable parameter counts and a named parameter inventory in each binding. The PLE knot table and item universe are preprocessing state, not trainable parameters. The absence table size is derived from the frozen supported-item universe and is bound before any arm runs. Do not claim equal active capacity between an inactive and active arm; report it explicitly.
+
+All arms use seeds 1234, 2025, and 7 and identical sample order, batches, dropout policy, and named initialization for common parameters. Initialize every common v2 tensor identically across arms; any widened/added tensor slices use the same seed-derived initialization rule, and inactive modules remain registered. Use dedicated, deterministic RNG streams (or demonstrably equivalent random-draw accounting) so activating PLE/absence cannot shift later dropout, sampler, or optimizer randomness in a way that breaks parity. Record initialization hashes for common parameter tensors and verify them before training. The v2 study found mode-dependent inactive-path RNG consumption could otherwise drift later randomness; source: `docs/superpowers/specs/2026-09-28-cei-gnn-v2-within-visit-pairs-design.md` §10 / RNG parity note and `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.worktrees/_runs/rev-cei3-feasibility/report.md` lines 47–49.
+
+### 4.5 Memory, empty cases, and GraphXAI
+
+- **Maximum-graph memory (risk R1).** v2 source materializes pair indices and pair-rank/class activations. The feasibility review cites v2's train-fold scan maximum of 5,741 unique pairs per graph, worst-128 batch Q=268,502, analytic pair-only estimate 0.27–0.58 GiB, and measured full-run peak RSS about 2.63 GiB. These are prior-run estimates/measurements, not a v3 memory guarantee. Sources: `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.worktrees/_runs/rev-cei3-feasibility/report.md` lines 61–64 and `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.worktrees/_runs/run-v2-full-3/report.md` lines 8, 15–24. PLE adds at most 9 basis values per numeric node plus a projection; absence adds sparse graph-by-supported-item evaluation and class evidence. Before any approved real run, its plan/preflight must calculate a worst-batch bound including basis and absence intermediates at the existing batch size 128 and refuse execution if the approved memory ceiling is exceeded. No v3 training or memory probe is authorized here.
+- **Zero/empty handling (risk R2).** Keep the existing v2 nonempty-graph invariant unless separately approved; empty edge, pair, PLE-active-item, and absence sets must produce finite exact-zero block contributions and denominator one. No division by zero, NaN, fake epsilon evidence, or pseudo-item. PLE missing values are zero-basis with `has_value=0`; valid numeric zero remains present.
+- **GraphXAI (risk R3).** Preserve original graph edge order, edge list and mask shape exactly. The absence block is not an edge and must not be inserted into edge masks or interpreted as an edge. A zero edge mask removes the edge block exactly; PLE/node and absence contributions remain outside edge masks. GraphXAI edge-mask alignment is unchanged; item-level absence is reported only by the model's own `return_parts` accounting.
+
+## 5. Data and screen fold
+
+Use the same artifact and targets sidecar as the v2 binding, same max6 / Top-10 contract, same 10,000 TRAIN sample, and same old 5,000-row dev split. The new screen is a third split of eligible TRAIN-fold target rows, not an alias for validation or old dev.
+
+- **Deterministic selector.** Add a new `select_screen_ids(targets, train_ids, dev_ids, screen_limit=5000, screen_seed=20260929, eligible=None)`. The selector forms the union of subjects represented by `train_ids` and `dev_ids`, then considers sorted TRAIN-fold row IDs that pass the exact same Top-10 and `min_prior_visits` eligibility as dev, are not train/dev IDs, and have no subject in that union. Select exactly 5,000 rows using `random.Random("screen-20260929").sample(candidates, 5000)`; fail if fewer remain. Freeze the seed and algorithm; do not adapt the seed or eligibility based on outcomes. Current v2 binding has `min_prior_visits=0`, so its dev eligibility filter admits every otherwise eligible row; a later approved run must bind the exact shared eligibility value and rule.
+- **Available-count result (aggregate only).** The permitted count script read only the TRAIN-fold rows in the target CSV, verified target SHA-256 `7b58e245c9ce21608bc307404c5a55bed46bf288ed2b92a26d2f3f7408a8fb4a`, applied the binding's retained Top-10 label indices and v2 sample/dev subject-exclusion logic, and read no graph rows. It found **15,332 eligible remaining TRAIN rows from 13,932 distinct subjects** after excluding train ∪ dev subjects. Thus 5,000 screen rows are available. Script: `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.worktrees/_runs/spec-cei3/count_screen.py`; the script prints counts only.
+- **Hash binding and replay.** Persist screen fold name, selector version, seed, limit, eligibility rule, target file SHA-256, ordered selected screen sample-ID SHA-256, canonical sorted excluded-subject-set SHA-256, row count, distinct-subject count, class order, artifact hash, preprocessing hash, and the parent train/dev ordered sample hashes. Hash sample IDs as UTF-8 compact JSON arrays with deterministic ordering; bind the exact serialization version. Replay recomputes the selector from the immutable target file and bound parent IDs, asserts exact ordered IDs/hash, 5,000 rows, no duplicate IDs, and no subject intersection with either train or dev before evaluating stored checkpoints.
+- Screen rows/patients are never used to fit scaler/vocabulary/knots/item universe, train weights, gradients, early stop, checkpoint selection, hyperparameter selection, or any model choice. Checkpoint selection uses old dev only. Screen is evaluated once per frozen checkpoint, arm, and seed. No validation is scored and no test fold is loaded.
+
+## 6. Pre-registered study
+
+### 6.1 Arms and common budget
+
+- **A — control / v2 additive:** v2 `pair_mode=additive`, current scalar + `has_value`, no active PLE, no active absence block. Run through the v3 superset schema with both new blocks registered but inactive so names/shapes and initialization parity are auditable. Its active forward path must reproduce the v2 additive computation on identical common weights and inputs.
+- **B — PLE-only attribution ablation (optional, non-decisive):** same as A with PLE active and absence block inactive. It is not part of the primary decision rule. Recommendation/open decision in §10.
+- **C — v3 treatment:** same v2 additive pair mode, PLE active, not-measured block active.
+
+For A/B/C: seeds exactly `1234, 2025, 7`; the same 10,000-row train sample and screen-independent preprocessing fit; 40 epochs; same v2 Adam optimizer and settings (batch 128, learning rate 1.79e-3, weight decay 4.3e-5, dropout 0.3, patience 40, selection on macro-F1). The v2 study settings source is `docs/superpowers/specs/2026-09-28-cei-gnn-v2-within-visit-pairs-design.md` §4; optimizer and stage timings are also bound in `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.worktrees/run-v2-full-3/report.md` lines 15–24.
+
+Checkpoint selection is on the OLD dev fold only. The SCREEN fold is scored once per frozen arm-seed checkpoint, with no re-selection or tuning. Validation metrics are not computed; test is not loaded.
+
+### 6.2 Primary metric and exact decision rule
+
+Primary metric: screen-row visit-level macro-F1 over the fixed ten-class label order, `zero_division=0`. For each seed, compare C with A on the same screen rows. C beats A only if its macro-F1 is strictly greater; ties and lower scores are failures. Declare “v3 beats the v2 additive control on this screen” only if all conditions hold:
+
+1. C macro-F1 > A macro-F1 for each of seeds 1234, 2025, and 7 (strict; ties fail).
+2. The unweighted arithmetic mean of C's three seed macro-F1 values is strictly above the corresponding mean for A.
+3. The lower endpoint of the paired patient-cluster bootstrap percentile 95% CI for C−A macro-F1 is strictly above zero. Use exactly 1,000 resamples and bootstrap RNG seed 2026. In each resample, sample the distinct screen patients with replacement, carrying all their screen rows with the sampled multiplicity; use that identical patient draw for A/C and all three seeds. Recompute fixed-label macro-F1 for each arm-seed on each resample, subtract C−A within each seed, then average the three seed deltas. The CI is the 2.5th and 97.5th percentiles of the 1,000 averaged deltas. No alternate CI, statistic, resample count, seed, or tie policy may replace this rule after results are seen.
+
+Otherwise report “benefit not demonstrated on this screen.” Non-decisive secondary reports only: per-class precision/recall/F1/support by arm and seed; the patient-mean absolute-evidence share of the absence block, defined per patient as mean over ten classes of `sum(abs(absence_contributions)) / sum(abs(all node, edge, pair, and absence contributions))`, with zero when the denominator is zero; and B-versus-A/C attribution if B is included. No secondary report changes the decision.
+
+### 6.3 Runtime and memory estimate
+
+The v2 full-run report lists nine 40-epoch stage times: 135.9, 138.4, 107.4, 132.1, 132.9, 106.1, 132.3, 138.2, and 105.1 seconds. Arithmetic: sum = 1,128.4 s; mean = 1,128.4 / 9 = 125.38 s/stage; observed range = 105.1–138.4 s. Thus the six primary A/C stages have a v2-baseline estimate of 6 × 125.38 = 752.27 s (12.54 min), range 6 × 105.1 = 630.6 s to 6 × 138.4 = 830.4 s (10.51–13.84 min), excluding orchestration. If optional B is added, three more v2-baseline stages give 9 × 125.38 = 1,128.4 s (18.81 min), before orchestration. These are v2 baselines only: v3 adds PLE and absence work, whose time cost is unmeasured and must be reported rather than guessed. The v2 measured peak RSS is 2,823,782,400 bytes = 2.63 GiB; this is not a v3 upper bound. Sources: `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.worktrees/_runs/run-v2-full-3/report.md` lines 8, 15–24; calculation was performed from those nine recorded values.
+
+## 7. Source-hash note (R4)
+
+The runner recursively hashes package Python source; adding v3 Python files changes that source hash and would make historical v2 replay from the new checkout fail the exact source check. Keep the v2 replay environment at its old checkout. Implement v3 under a new method id (`cei_gnn_v3`) and a separate study module (`cei_v3_study.py`); do not modify v1/v2 code, configs, tests, or `cei_v2_study.py`. v1 and v2 files must remain byte-identical. v3 bindings identify their own complete source manifest/hash; v2 historical bindings and results remain unchanged. Feasibility source: `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.worktrees/_runs/rev-cei3-feasibility/report.md` lines 41–49; v2 source binding implementation is `comparison/standardized/clinical_graph_v2/contracts.py` and `cei_v2_study.py`.
+
+## 8. Gates
+
+No work in this spec opens a testing or real-run phase. These repo and Jev-Mem rules are binding:
+
+- Never load or evaluate the test fold; validation is not scored in this study.
+- No tests unless a testing phase is explicitly opened; it is CLOSED now.
+- No training, preprocessing, cache builds, or real runs without explicit approval. Spec approval alone does not approve execution.
+- Never overwrite outputs; every approved run uses a new, empty output root.
+- Compared arms share the artifact, class set, sample hashes, preprocessing contract, and seeds; treatment-specific active/inactive blocks are explicitly bound.
+- TDD is mandatory when later code is written: add red tests first, each failing on an assertion rather than import, then implement minimal green behavior. Do not run them before G2.
+- Jev-Mem `real-runs-need-approval`, `test-fold-closed`, `no-overwrite-outputs`, and `cei-v2-scale-confound` apply. No arm may be added after results are seen.
+
+G1 — user approves this design and any §10 choices. G2 — user explicitly opens a testing phase before tests are authored/run. G3 — user explicitly approves preprocessing/model training and the screen study, with a fresh output path and memory preflight. G1/G2/G3 are independent approvals; passing one does not imply another. The held-out test fold remains closed at every gate.
+
+## 9. Later TDD test obligations
+
+When and only when G2 is opened, write assertion-failing red tests first for these behaviors, then minimal implementations:
+
+1. Knot fitting consumes TRAIN sample values only; bindings reject dev/screen/validation/test IDs in fit inputs, and knot table hash/replay is stable.
+2. Exact `[kind, token, unit]` separation; minimum support 20; rare/unseen/UNK fallback; duplicate/tied-knot collapse, strict monotonicity, effective-knot count, and insufficient-distinct-value behavior.
+3. PLE interpolation at every knot, between knots, below/above range, invalid/nonfinite value, valid zero, and all-zero inactive basis; scalar and `has_value` remain intact.
+4. Index-visit absence derivation from existing membership, supported-item universe, prior-only versus index presence, item identity/unit separation, no false absence for index-observed items, and failure on ambiguous membership.
+5. Absence votes/gates and zero-absence behavior; exact logits reconstruction including the new block; existing `return_parts` keys and shapes unchanged; explanation label “X was not measured.”
+6. Zero/empty edges, pairs, PLE sets and absence sets remain finite, with exact-zero blocks and denominator one; existing nonempty graph contract remains enforced.
+7. Total/active/inactive parameter accounting and identical named tensor shapes across arms; A new paths inactive, B absence inactive, C both active.
+8. RNG/initialization parity for all common parameters and deterministic independent dropout/sampler streams across arms/seeds.
+9. Screen selector deterministic seed/order, exact 5,000-row limit, Top-10 and dev-eligibility parity, train/dev/screen subject disjointness, target/sample/subject hash binding, and exact replay.
+10. A's active path reproduces v2 additive behavior on common weights/inputs; v1/v2 implementation files and existing v2 study decisions remain byte-identical.
+11. GraphXAI edge-mask order/alignment unchanged and edge-mask zero still removes only edge evidence; PLE and absence remain outside edge-mask accounting.
+12. Study plan/binding/decision refuses arm drift, screen reuse, post-outcome arm addition, output overwrite, validation scoring, and any test-fold access; bootstrap uses paired patient clusters, fixed ten labels, exactly 1,000 resamples and seed 2026.
+
+## 10. Open decisions for the user
+
+1. **Include B, the non-decisive PLE-only arm?** Recommendation: yes. It distinguishes the PLE contribution from the absence block without changing the primary C-versus-A decision; it costs three additional 40-epoch stages. It must be fixed before any result is seen.
+2. **Include a non-decisive ProtGNN reference on the screen (three seeds)?** Recommendation: no for this study. It answers a separate “does CEI v3 beat ProtGNN?” question, adds three more trained/checkpointed arms and interpretation scope, and is not needed to decide the registered within-CEI claim. If desired, authorize it before any outcome and bind identical artifact, train/dev/screen IDs, class set, seeds, and checkpoint-selection policy.
+3. **Knot count K?** Recommendation: K=8 intervals (up to 9 basis channels), fixed as specified in §4.2 for all arms. Do not search K after the screen; changing K requires a new approved preregistration.
