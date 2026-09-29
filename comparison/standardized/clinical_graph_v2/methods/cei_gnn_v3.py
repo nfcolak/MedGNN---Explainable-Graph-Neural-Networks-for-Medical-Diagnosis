@@ -3,10 +3,11 @@
 Spec: v3 design §4.2–§4.5 as amended by §12 (F3, F8, F9, F11, F12, F13) and extensions
 spec §9 U3. The network subclasses ``PairEvidenceNetwork`` with ``pair_mode='additive'``
 fixed and keeps every v2 parameter name and shape, so a v2 additive state_dict loads with
-``strict=False`` (F12). The v2 forward body is reused unchanged: the PLE term enters as an
-additive pre-activation term ``node_encoder(cat(x, token, type)) + ple_projection(basis)``
-through a thin ``nn.Linear`` subclass that adds a pending term (F12), and the absence block
-is added to the returned logits afterwards.
+``strict=False`` (F12). The forward reproduces the v2 body operation by operation: the PLE
+term enters as an additive pre-activation term ``node_encoder(cat(x, token, type)) +
+ple_projection(basis)`` (F12), the U3x hooks act on ``h`` before it is read (encoder depth,
+extensions spec §2.2) and after the v2 sum (``extra_blocks``, §9 U3x), and the absence block
+is added to the logits.
 
 Arms (§4.4 / F3): ``A`` = both new paths inactive, ``B`` = PLE only, ``C`` = PLE and
 absence. An inactive path is skipped entirely: no tensor derived from its parameters
@@ -47,23 +48,6 @@ def tensor_seed(seed, name):
 
 def tensor_generator(seed, name):
     return torch.Generator().manual_seed(tensor_seed(seed, name))
-
-
-class _EncoderWithPreActivationTerm(nn.Linear):
-    """``nn.Linear`` that adds a pending additive term to its pre-activation output.
-
-    Registered under the v2 name ``node_encoder`` so the parameter names and shapes are
-    unchanged; when no term is pending it is exactly ``nn.Linear`` (arm A parity).
-    """
-
-    _pending_term = None
-
-    def forward(self, input):
-        output = super().forward(input)
-        term = self._pending_term
-        if term is None:
-            return output
-        return output + term
 
 
 class _ResidualBlock(nn.Module):
@@ -134,13 +118,6 @@ class EvidenceNetworkV3(PairEvidenceNetwork):
         self.feature_layout = tuple(layout)
         self.scaled_value_column = layout.index('scaled_value')   # F13: by name, never 8
         self.has_value_column = layout.index('has_value')          # F13: by name, never 9
-
-        # Re-wrap the v2 encoder without touching the RNG: same Parameter objects, same name.
-        encoder = nn.utils.skip_init(_EncoderWithPreActivationTerm,
-                                     in_features=self.node_encoder.in_features,
-                                     out_features=self.node_encoder.out_features)
-        encoder.weight, encoder.bias = self.node_encoder.weight, self.node_encoder.bias
-        self.node_encoder = encoder
 
         knots = torch.as_tensor(knots, dtype=torch.float32)
         knot_active = torch.as_tensor(knot_active, dtype=torch.bool)
