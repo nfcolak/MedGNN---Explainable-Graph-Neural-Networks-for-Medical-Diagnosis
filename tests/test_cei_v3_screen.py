@@ -11,8 +11,10 @@ import sys
 import pytest
 
 from comparison.standardized.clinical_graph_v2 import cei_v3_screen as screen
+from comparison.standardized.clinical_graph_v2 import tensorize as tz
 from comparison.standardized.clinical_graph_v2 import train
-from comparison.standardized.clinical_graph_v2.contracts import sample_ids_sha256
+from comparison.standardized.clinical_graph_v2.contracts import (
+    VISIT_MEMBERSHIP_CONTRACT_VERSION, VISIT_MEMBERSHIP_FILENAME, sample_ids_sha256)
 from comparison.standardized.clinical_graph_v2.schema import sha256
 
 # ------------------------------------------------------------------ fixtures
@@ -265,3 +267,180 @@ def test_screen_record_rejects_ids_that_the_selector_would_not_draw(tmp_path):
         screen.screen_record(targets_path, screen_ids + [screen_ids[0]], train_ids, dev_ids,
                              artifact_sha256='a' * 64, preprocessing_sha256='b' * 64,
                              serialization_version='json_compact_utf8_v1', screen_limit=201)
+
+
+# ---------------------------------------------- step 3: fold encoder refusals
+
+
+def clinical_graph(sample_id, value=70.0):
+    """One contract-valid graph: patient, index visit, complaint, vital."""
+    nodes = [
+        {'id': 'p', 'kind': 'patient', 'token': 'patient', 'age': 40,
+         'gender': 'F', 'race': 'A', 'arrival_transport': 'WALK IN'},
+        {'id': 'v', 'kind': 'visit', 'token': 'visit:index', 'acuity': 2},
+        {'id': 'c', 'kind': 'complaint', 'token': 'cc:chest pain'},
+        {'id': 'hr', 'kind': 'vital', 'token': 'vital:heartrate', 'unit': 'bpm',
+         'value': value, 'time_hours': -1.0, 'available_hours': -1.0},
+    ]
+    edges = [
+        {'source': 'p', 'target': 'v', 'relation': 'has_visit', 'informative': False},
+        {'source': 'v', 'target': 'p', 'relation': 'index_visit_of', 'informative': False},
+        {'source': 'v', 'target': 'c', 'relation': 'reports_complaint', 'informative': False},
+        {'source': 'v', 'target': 'hr', 'relation': 'observed_vital', 'informative': False},
+    ]
+    return {'sample_id': sample_id, 'nodes': nodes, 'edges': edges,
+            'coverage': {'complaints': 1, 'index_measurements': 0,
+                         'prior_visits': 0, 'informative_edges': 0}}
+
+
+def membership(graph):
+    kinds = [node['kind'] for node in graph['nodes']]
+    return {'contract_version': VISIT_MEMBERSHIP_CONTRACT_VERSION,
+            'sample_id': graph['sample_id'], 'visit_ordinals': [0],
+            'membership_pairs': [[0, i] for i, kind in enumerate(kinds) if kind != 'patient'],
+            'global_node_mask': [kind == 'patient' for kind in kinds]}
+
+
+def encoder_fixture(tmp_path):
+    """Tiny artifact: 6 train rows (2 sampled train, 2 dev, 2 screen), 2 validation, 2 test."""
+    root = tmp_path / 'artifact'
+    root.mkdir()
+    ids = [f'g-{i:02d}' for i in range(10)]
+    splits = ['train'] * 6 + ['validation'] * 2 + ['test'] * 2
+    graphs = [clinical_graph(sid, 55.0 + 3 * i) for i, sid in enumerate(ids)]
+    (root / 'graphs.jsonl').write_text(''.join(json.dumps(g) + '\n' for g in graphs))
+    (root / VISIT_MEMBERSHIP_FILENAME).write_text(
+        ''.join(json.dumps(membership(g)) + '\n' for g in graphs))
+    targets = {sid: (i % 2, split, f'subj-{i:02d}')
+               for i, (sid, split) in enumerate(zip(ids, splits))}
+    train_ids, dev_ids, screen_ids = ids[0:2], ids[2:4], ids[4:6]
+    prep = tz.fit_preprocessing(root / 'graphs.jsonl', set(train_ids), 1,
+                                membership_path=root / VISIT_MEMBERSHIP_FILENAME)
+    state = tz.preprocessing_state(prep)
+    prep_path = tmp_path / 'preprocessing.json'
+    prep_path.write_text(json.dumps(state, indent=2, sort_keys=True) + '\n')
+    return dict(root=root, targets=targets, train_ids=train_ids, dev_ids=dev_ids,
+                screen_ids=screen_ids, validation_ids=ids[6:8], test_ids=ids[8:10],
+                state=state, prep_path=prep_path, prep_sha=sha256(prep_path))
+
+
+def counting_encode_graph(monkeypatch):
+    calls = []
+    real = screen.encode_graph
+
+    def counted(graph, *args, **kwargs):
+        calls.append(graph['sample_id'])
+        return real(graph, *args, **kwargs)
+    monkeypatch.setattr(screen, 'encode_graph', counted)
+    return calls
+
+
+def test_encoder_yields_exactly_the_requested_rows_with_labels(tmp_path, monkeypatch):
+    fx = encoder_fixture(tmp_path)
+    calls = counting_encode_graph(monkeypatch)
+    rows = list(screen.encode_rows(fx['root'], fx['state'], fx['screen_ids'], fold='screen',
+                                   edge_direction='bidirectional', targets=fx['targets'],
+                                   preprocessing_sha256=fx['prep_sha']))
+    assert [d.sample_id for d in rows] == fx['screen_ids']
+    assert calls == fx['screen_ids']
+    assert [int(d.y) for d in rows] == [fx['targets'][s][0] for s in fx['screen_ids']]
+    assert [d.subject for d in rows] == [fx['targets'][s][2] for s in fx['screen_ids']]
+    assert all(d.edge_index.shape[1] > 4 for d in rows), 'bidirectional view expected'
+    dev = list(screen.encode_rows(fx['prep_path'].parent / 'artifact', fx['prep_path'],
+                                  fx['dev_ids'], fold='dev', edge_direction='forward',
+                                  targets=fx['targets']))
+    assert [d.sample_id for d in dev] == fx['dev_ids']
+
+
+def test_encoder_refuses_non_member_ids_before_encoding(tmp_path, monkeypatch):
+    fx = encoder_fixture(tmp_path)
+    calls = counting_encode_graph(monkeypatch)
+    # id absent from the targets entirely
+    with pytest.raises(ValueError):
+        list(screen.encode_rows(fx['root'], fx['state'], fx['screen_ids'] + ['g-99'],
+                                fold='screen', edge_direction='forward', targets=fx['targets']))
+    # id from another split than the fold demands (validation row under fold='screen')
+    with pytest.raises(ValueError):
+        list(screen.encode_rows(fx['root'], fx['state'],
+                                fx['screen_ids'] + fx['validation_ids'][:1],
+                                fold='screen', edge_direction='forward', targets=fx['targets']))
+    # id in the targets but missing from the artifact
+    targets = dict(fx['targets'])
+    targets['g-77'] = (0, 'train', 'subj-77')
+    with pytest.raises(ValueError, match='absent from the artifact'):
+        list(screen.encode_rows(fx['root'], fx['state'], fx['screen_ids'] + ['g-77'],
+                                fold='screen', edge_direction='forward', targets=targets))
+    assert 'g-99' not in calls and 'g-77' not in calls
+    assert not (set(calls) & set(fx['validation_ids']))
+    with pytest.raises(ValueError):
+        list(screen.encode_rows(fx['root'], fx['state'], fx['screen_ids'], fold='holdout',
+                                edge_direction='forward', targets=fx['targets']))
+
+
+def test_encoder_refuses_preprocessing_hash_mismatch(tmp_path, monkeypatch):
+    fx = encoder_fixture(tmp_path)
+    calls = counting_encode_graph(monkeypatch)
+    with pytest.raises(ValueError, match='preprocessing'):
+        list(screen.encode_rows(fx['root'], fx['state'], fx['screen_ids'], fold='screen',
+                                edge_direction='forward', targets=fx['targets'],
+                                preprocessing_sha256='0' * 64))
+    with pytest.raises(ValueError, match='preprocessing'):
+        list(screen.encode_rows(fx['root'], fx['prep_path'], fx['screen_ids'], fold='screen',
+                                edge_direction='forward', targets=fx['targets'],
+                                preprocessing_sha256='0' * 64))
+    assert calls == []
+    stale = dict(fx['state'])
+    stale['preprocessing_version'] = 'other'
+    with pytest.raises(ValueError):
+        list(screen.encode_rows(fx['root'], stale, fx['screen_ids'], fold='screen',
+                                edge_direction='forward', targets=fx['targets']))
+    assert calls == []
+
+
+def test_encoder_refuses_validation_without_approval_record(tmp_path, monkeypatch):
+    fx = encoder_fixture(tmp_path)
+    calls = counting_encode_graph(monkeypatch)
+    denied = [dict(allow_validation=False), dict(allow_validation=True, approval_record=None),
+              dict(allow_validation=True, approval_record={'allow_validation': False}),
+              dict(allow_validation=True, approval_record={'allow_validation': 'true'}),
+              dict(allow_validation=False, approval_record={'allow_validation': True})]
+    for kwargs in denied:
+        with pytest.raises(ValueError, match='validation'):
+            list(screen.encode_rows(fx['root'], fx['state'], fx['validation_ids'],
+                                    fold='validation', edge_direction='forward',
+                                    targets=fx['targets'], **kwargs))
+    assert calls == []
+    rows = list(screen.encode_rows(fx['root'], fx['state'], fx['validation_ids'],
+                                   fold='validation', edge_direction='forward',
+                                   targets=fx['targets'], allow_validation=True,
+                                   approval_record={'allow_validation': True,
+                                                    'approval_reference': 'synthetic'}))
+    assert [d.sample_id for d in rows] == fx['validation_ids']
+    assert calls == fx['validation_ids']
+
+
+def test_encoder_never_encodes_test_rows(tmp_path, monkeypatch):
+    fx = encoder_fixture(tmp_path)
+    calls = counting_encode_graph(monkeypatch)
+    for fold, ids, extra in (('screen', fx['screen_ids'], {}), ('dev', fx['dev_ids'], {}),
+                             ('validation', fx['validation_ids'],
+                              dict(allow_validation=True,
+                                   approval_record={'allow_validation': True}))):
+        rows = list(screen.encode_rows(fx['root'], fx['state'], ids, fold=fold,
+                                       edge_direction='forward', targets=fx['targets'], **extra))
+        assert [d.sample_id for d in rows] == ids
+    assert not (set(calls) & set(fx['test_ids']))
+    assert calls == fx['screen_ids'] + fx['dev_ids'] + fx['validation_ids']
+    # a test id requested explicitly is refused, and still never encoded
+    for fold in ('screen', 'validation'):
+        with pytest.raises(ValueError):
+            list(screen.encode_rows(fx['root'], fx['state'], fx['test_ids'], fold=fold,
+                                    edge_direction='forward', targets=fx['targets'],
+                                    allow_validation=True,
+                                    approval_record={'allow_validation': True}))
+    assert not (set(calls) & set(fx['test_ids']))
+    assert screen.fold_split('screen') == 'train'
+    assert screen.fold_split('dev') == 'train'
+    assert screen.fold_split('validation') == 'validation'
+    with pytest.raises(ValueError):
+        screen.fold_split('test')
