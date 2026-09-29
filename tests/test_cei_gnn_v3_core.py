@@ -49,9 +49,11 @@ def _universe():
     return fit_universe(counts, dict(VOCAB), min_graphs=20, token_min_count=20)
 
 
-def _graph(seed=7, *, hr_at_index=False, lab1_value=0.7):
-    """Two visits (index visit = 1). Node 3 (lab1) in both visits, node 4 (hr) in
-    visit 0 only unless ``hr_at_index``, node 6 (lab2) at the index visit."""
+def _graph(seed=7, *, hr_at_index=False, lab1_value=0.7, lab1_prior=False):
+    """Two visits (index visit = 1). Node 3 (lab1) at the index visit (also visit 0 when
+    ``lab1_prior``), node 4 (hr) in visit 0 only unless ``hr_at_index``, node 6 (lab2) at
+    the index visit with an invalid value. Measurement/vital nodes have exactly one
+    membership unless stated (the U2 membership contract)."""
     generator = torch.Generator().manual_seed(seed)
     x = torch.randn(8, NODE_DIM, generator=generator)
     x[:, 1] = 0.0
@@ -71,7 +73,9 @@ def _graph(seed=7, *, hr_at_index=False, lab1_value=0.7):
                                 VOCAB['complaint:a']])
     graph.edge_relation = torch.tensor([0, 2, 3, 5, 4, 4])
     graph.edge_triple = torch.tensor([0, 1, 2, 3, 1, 1])
-    membership = [(0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (1, 2), (1, 6), (1, 7), (1, 3)]
+    membership = [(0, 1), (0, 2), (0, 4), (0, 5), (1, 2), (1, 3), (1, 6), (1, 7)]
+    if lab1_prior:
+        membership.append((0, 3))
     if hr_at_index:
         membership.append((1, 4))
     graph.visit_membership_index = torch.tensor(sorted(membership)).t().contiguous()
@@ -269,3 +273,134 @@ def test_arm_b_ple_changes_logits_only_through_active_knot_rows():
     assert torch.equal(_run(detached, graph)['logits'], _run(arm_b, graph)['logits'])
     detached.knot_row_of_token[VOCAB['measurement:lab1']] = -1
     assert not torch.equal(_run(detached, graph)['logits'], _run(arm_b, graph)['logits'])
+
+
+# ---------------------------------------------------- step 2: arm C reconstruction
+
+ABSENCE_KEYS = ('absence_contributions', 'absence_items', 'absence_gates',
+                'absence_denominator')
+SLOT = {item: slot for slot, item in enumerate(_universe().items)}
+
+
+def _arm_c(seed=11, dropout=0.0):
+    network = _v3('C', seed=seed, dropout=dropout).eval()
+    _randomise_gates(network)
+    with torch.no_grad():
+        network.absence_vote.normal_()
+        network.absence_gate.normal_()
+    return network
+
+
+def _rebuild(parts):
+    return (parts['bias'] + parts['node_contributions'].sum(0) + parts['edge_contributions'].sum(0)
+            + parts['pair_contributions'].sum(0) + parts['absence_contributions'].sum(0))
+
+
+def test_arm_c_logits_reconstruct_from_parts_with_new_keys_and_unchanged_old_keys():
+    arm_c = _arm_c()
+    graph = _graph()
+    parts = _run(arm_c, graph)
+    assert set(V2_KEYS) | set(ABSENCE_KEYS) <= set(parts), sorted(set(parts))
+    torch.manual_seed(11)
+    reference = _v3('A').eval()
+    _share_weights(arm_c, reference)
+    old = _run(reference, graph)
+    for key in V2_KEYS:
+        assert tuple(parts[key].shape) == tuple(old[key].shape), key
+    assert parts['absence_contributions'].abs().sum() > 0
+    torch.testing.assert_close(parts['logits'][0], _rebuild(parts), rtol=1e-5, atol=1e-5)
+    assert not torch.allclose(parts['logits'], old['logits'])
+
+
+def test_absence_block_follows_index_visit_presence_and_gate_normalisation():
+    arm_c = _arm_c()
+    # hr only at the prior visit -> absent; lab1 at index -> present;
+    # lab2 at index with an invalid value -> present (F9).
+    parts = _run(arm_c, _graph())
+    items = parts['absence_items']
+    assert items.dtype == torch.long and tuple(items.shape) == (2, 1)
+    assert items.tolist() == [[0], [SLOT['vital:hr']]]
+    gate = arm_c.absence_gate[SLOT['vital:hr']].sigmoid()
+    vote = arm_c.absence_vote[SLOT['vital:hr']]
+    torch.testing.assert_close(parts['absence_gates'], gate[None, :])
+    torch.testing.assert_close(parts['absence_denominator'], (1.0 + gate)[None, :])
+    torch.testing.assert_close(parts['absence_contributions'], (gate * vote / (1.0 + gate))[None, :])
+    # hr measured at the index visit as well -> nothing absent.
+    present = _run(arm_c, _graph(hr_at_index=True))
+    assert tuple(present['absence_items'].shape) == (2, 0)
+
+
+def test_empty_absence_set_gives_exact_zero_block_and_denominator_one():
+    arm_c = _arm_c()
+    graph = _graph(hr_at_index=True)
+    parts = _run(arm_c, graph)
+    assert tuple(parts['absence_contributions'].shape) == (0, CLASSES)
+    assert torch.equal(parts['absence_denominator'], torch.ones((1, CLASSES)))
+    torch.testing.assert_close(parts['logits'][0], _rebuild(parts), rtol=1e-5, atol=1e-5)
+    torch.manual_seed(11)
+    arm_b = _v3('B').eval()
+    _share_weights(arm_c, arm_b)
+    assert torch.equal(parts['logits'], _run(arm_b, graph)['logits'])
+
+
+def test_absence_items_follow_batch_offsets():
+    from torch_geometric.data import Batch
+
+    arm_c = _arm_c()
+    batch = Batch.from_data_list([_graph(hr_at_index=True), _graph(seed=8), _graph(seed=9)])
+    parts = _run(arm_c, batch)
+    assert parts['absence_items'].tolist() == [[1, 2], [SLOT['vital:hr'], SLOT['vital:hr']]]
+    assert tuple(parts['absence_denominator'].shape) == (3, CLASSES)
+    assert torch.equal(parts['absence_denominator'][0], torch.ones(CLASSES))
+    single = _run(arm_c, _graph(seed=8))
+    torch.testing.assert_close(parts['logits'][1], single['logits'][0])
+    torch.testing.assert_close(parts['absence_contributions'][0], single['absence_contributions'][0])
+
+
+def test_zero_edge_mask_removes_only_the_edge_block_in_arm_c():
+    arm_c = _arm_c()
+    graph = _graph()
+    ordinary = _run(arm_c, graph)
+    arm_c.set_edge_mask(torch.zeros(graph.num_edges))
+    masked = _run(arm_c, graph)
+    arm_c.set_edge_mask(None)
+    assert torch.count_nonzero(masked['edge_contributions']) == 0
+    for key in ('node_contributions', 'pair_contributions', 'absence_contributions'):
+        torch.testing.assert_close(masked[key], ordinary[key])
+    expected = (masked['bias'] + ordinary['node_contributions'].sum(0)
+                + ordinary['pair_contributions'].sum(0) + ordinary['absence_contributions'].sum(0))
+    torch.testing.assert_close(masked['logits'][0], expected, rtol=1e-5, atol=1e-5)
+
+
+@pytest.mark.parametrize('arm, ple_grad, absence_grad', [('A', False, False), ('B', True, False),
+                                                          ('C', True, True)])
+def test_inactive_paths_produce_no_autograd_tensors(arm, ple_grad, absence_grad):
+    network = _v3(arm, dropout=0.3).train()
+    _randomise_gates(network)
+    graph = _graph()
+    parts = _run(network, graph)
+    parts['logits'].sum().backward()
+    assert (network.ple_projection.weight.grad is not None) == ple_grad
+    assert (network.absence_vote.grad is not None) == absence_grad
+    assert (network.absence_gate.grad is not None) == absence_grad
+    assert network.node_encoder.weight.grad is not None
+    if not absence_grad:
+        assert tuple(parts['absence_contributions'].shape) == (0, CLASSES)
+        assert not parts['absence_denominator'].requires_grad
+    if absence_grad:
+        assert parts['absence_contributions'].requires_grad
+
+
+def test_absence_label_uses_the_amended_wording():
+    from comparison.standardized.clinical_graph_v2.cei_v3_absence import ABSENCE_LABEL
+
+    label = v3.absence_label('vital:hr')
+    assert label == ABSENCE_LABEL.format(item='vital:hr')
+    assert label == 'vital:hr: no recorded result at this visit'
+    assert 'not measured' not in label
+
+
+def test_arm_c_requires_visit_graph_for_the_absence_block():
+    arm_c = _arm_c()
+    with pytest.raises(ValueError, match='visit_graph'):
+        _run(arm_c, _graph(), visit_graph=False)
