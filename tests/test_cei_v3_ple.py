@@ -214,3 +214,113 @@ def test_basis_is_finite_for_non_finite_value_with_has_value_zero():
     out = _basis([float('nan'), float('inf')], [0, 0], [0, 2])
     assert torch.isfinite(out).all()
     assert out.abs().sum().item() == 0.0
+
+
+# --- step 3: knot state replay ----------------------------------------------------
+
+def _fitted_table():
+    rng = np.random.default_rng(7)
+    return ple.fit_knots({
+        'lab:b': rng.normal(size=200).astype(np.float32),
+        'lab:a': _f32(*([0.0] * 25 + [1.0] * 5)),          # inactive
+        'vital:c': np.log1p(np.arange(1, 61, dtype=np.float64)).astype(np.float32),
+        'rare': np.arange(5, dtype=np.float32),
+    }, K=4, min_values=20, transform_by_item={'vital:c': 'signed_log'}, token_min_count=20)
+
+
+def test_state_binds_method_thresholds_and_k():
+    state = _fitted_table().state()
+    assert {'method', 'K', 'min_values', 'token_min_count', 'state_version', 'items', 'below_threshold'} <= set(state)
+    assert state['method'] == 'linear'
+    assert state['K'] == 4
+    assert state['min_values'] == 20
+    assert state['token_min_count'] == 20
+    assert state['state_version'] == 1
+    assert state['below_threshold'] == {'rare': 5}
+    assert set(state['items']) == {'lab:a', 'lab:b', 'vital:c'}
+    assert state['items']['vital:c']['transform'] == 'signed_log'
+    assert state['items']['lab:a']['active'] is False
+    assert state['items']['lab:a']['effective_knots'] == 2
+    import json
+    json.dumps(state, allow_nan=False)  # canonical-serialisable, no NaN/inf
+
+
+def test_sha256_is_stable_and_order_independent():
+    table = _fitted_table()
+    digest = table.sha256()
+    assert isinstance(digest, str) and len(digest) == 64
+    assert digest == _fitted_table().sha256()
+    reordered = ple.fit_knots({
+        'rare': np.arange(5, dtype=np.float32),
+        'vital:c': np.log1p(np.arange(1, 61, dtype=np.float64)).astype(np.float32),
+        'lab:a': _f32(*([0.0] * 25 + [1.0] * 5)),
+        'lab:b': np.random.default_rng(7).normal(size=200).astype(np.float32),
+    }, K=4, min_values=20, transform_by_item={'vital:c': 'signed_log'}, token_min_count=20)
+    assert reordered.sha256() == digest
+    other_k = ple.fit_knots({'lab:b': np.random.default_rng(7).normal(size=200).astype(np.float32)},
+                            K=5, min_values=20)
+    assert other_k.sha256() != digest
+
+
+def test_load_round_trip_is_exact():
+    import json
+    table = _fitted_table()
+    state = json.loads(json.dumps(table.state(), sort_keys=True))
+    loaded = ple.KnotTable.load(state)
+    assert loaded.K == 4
+    assert loaded.method == 'linear'
+    assert loaded.min_values == 20 and loaded.token_min_count == 20
+    assert loaded.items == table.items
+    assert loaded.below_threshold == table.below_threshold
+    assert loaded.state() == table.state()
+    assert loaded.sha256() == table.sha256()
+    k1, a1, t1 = table.tensor()
+    k2, a2, t2 = loaded.tensor()
+    assert torch.equal(k1, k2) and torch.equal(a1, a2) and t1 == t2
+
+
+def test_load_rejects_unbound_method_version_or_corrupt_rows():
+    import copy
+    state = _fitted_table().state()
+    assert {'method', 'K', 'min_values', 'token_min_count', 'state_version', 'items'} <= set(state)
+    for key in ('method', 'K', 'min_values', 'token_min_count', 'state_version'):
+        broken = copy.deepcopy(state)
+        del broken[key]
+        with pytest.raises(ValueError):
+            ple.KnotTable.load(broken)
+    wrong_method = copy.deepcopy(state)
+    wrong_method['method'] = 'nearest'
+    with pytest.raises(ValueError):
+        ple.KnotTable.load(wrong_method)
+    wrong_version = copy.deepcopy(state)
+    wrong_version['state_version'] = 99
+    with pytest.raises(ValueError):
+        ple.KnotTable.load(wrong_version)
+    not_increasing = copy.deepcopy(state)
+    not_increasing['items']['lab:b']['knots'][1] = not_increasing['items']['lab:b']['knots'][0]
+    with pytest.raises(ValueError):
+        ple.KnotTable.load(not_increasing)
+    too_many = copy.deepcopy(state)
+    too_many['items']['lab:b']['knots'].append(1e9)
+    with pytest.raises(ValueError):
+        ple.KnotTable.load(too_many)
+    wrong_count = copy.deepcopy(state)
+    wrong_count['items']['lab:b']['effective_knots'] = 2
+    with pytest.raises(ValueError):
+        ple.KnotTable.load(wrong_count)
+    wrong_active = copy.deepcopy(state)
+    wrong_active['items']['lab:a']['active'] = True
+    with pytest.raises(ValueError):
+        ple.KnotTable.load(wrong_active)
+    non_finite = copy.deepcopy(state)
+    non_finite['items']['lab:b']['knots'][0] = float('nan')
+    with pytest.raises(ValueError):
+        ple.KnotTable.load(non_finite)
+
+
+def test_loaded_knots_are_float32_exact():
+    state = _fitted_table().state()
+    assert 'items' in state and len(state['items']) == 3
+    for row in state['items'].values():
+        for value in row['knots']:
+            assert np.float32(value) == value  # stored as float32-representable floats
