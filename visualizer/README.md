@@ -20,7 +20,8 @@ visualizer/
 ├── package.json
 ├── public/
 │   └── graphs/
-│       ├── manifest.json
+│       ├── manifest.json          (tracked: 3 explained examples only)
+│       ├── dataset/               (local-only export, gitignored)
 │       ├── graph_17.json
 │       ├── graph_286.json
 │       └── graph_1258.json
@@ -29,13 +30,17 @@ visualizer/
 │   ├── main.tsx
 │   ├── styles.css
 │   ├── components/
+│   │   ├── EvidencePanel.tsx
 │   │   ├── GraphCanvas.tsx
 │   │   ├── Legend.tsx
 │   │   └── NodeDetailsPanel.tsx
 │   ├── data/
+│   │   ├── *Descriptions.ts
 │   │   └── graphLoader.ts
 │   └── types/
 │       └── graph.ts
+├── scripts/
+│   └── export_protgnn_graphs.py
 ├── tsconfig.json
 ├── tsconfig.node.json
 └── vite.config.ts
@@ -72,3 +77,7 @@ PYTHONPATH=. python3 visualizer/scripts/export_protgnn_graphs.py
 
 This exports the `mimic_intra_patient_disease` PyG dataset into sharded browser-readable JSON under `public/graphs/dataset/` and rewrites `public/graphs/manifest.json`.
 The frontend loads the manifest once and fetches only the selected graph shard.
+
+### Local-only exports (do not commit)
+
+`public/graphs/dataset/` and the full manifest are local-only exports and are gitignored, because they contain MIMIC subject identifiers. The tracked `manifest.json` lists only the 3 explained examples (`graph_17`, `graph_286`, `graph_1258`). Running the exporter rewrites `manifest.json` with subject_ids, so do not commit the manifest after an export (restore it with `git checkout visualizer/public/graphs/manifest.json`).
