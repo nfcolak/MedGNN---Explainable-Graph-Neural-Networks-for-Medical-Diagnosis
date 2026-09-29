@@ -10,6 +10,8 @@ K+1 quantiles at ``j/K`` are taken over ALL values with multiplicity via
 """
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
@@ -41,14 +43,73 @@ class KnotTable:
         return {key: i for i, key in enumerate(sorted(self.items))}
 
     def state(self) -> dict:
-        return {}
+        """Canonical JSON-serialisable state (no NaN/inf; knots are float32-exact floats)."""
+        items = {}
+        for key in sorted(self.items):
+            row = self.items[key]
+            items[key] = {
+                'knots': [float(np.float32(k)) for k in row['knots']],
+                'effective_knots': int(row['effective_knots']),
+                'active': bool(row['active']),
+                'count': int(row['count']),
+                'transform': str(row['transform']),
+            }
+        return {
+            'state_version': STATE_VERSION,
+            'method': self.method,
+            'K': int(self.K),
+            'min_values': int(self.min_values),
+            'token_min_count': int(self.token_min_count),
+            'items': items,
+            'below_threshold': {k: int(v) for k, v in sorted(self.below_threshold.items())},
+        }
 
     def sha256(self) -> str:
-        return ''
+        payload = json.dumps(self.state(), sort_keys=True, separators=(',', ':'), allow_nan=False)
+        return hashlib.sha256(payload.encode('utf-8')).hexdigest()
 
     @classmethod
     def load(cls, state: dict) -> 'KnotTable':
-        return cls(K=0)
+        """Rebuild from ``state()`` output; every bound field and row invariant is asserted."""
+        required = ('state_version', 'method', 'K', 'min_values', 'token_min_count', 'items')
+        missing = [k for k in required if k not in state]
+        if missing:
+            raise ValueError(f'knot state missing fields: {missing}')
+        if state['state_version'] != STATE_VERSION:
+            raise ValueError(f'unsupported knot state_version {state["state_version"]!r}')
+        if state['method'] != QUANTILE_METHOD:
+            raise ValueError(f'unsupported quantile method {state["method"]!r}')
+        K = state['K']
+        if not isinstance(K, int) or isinstance(K, bool) or K < 1:
+            raise ValueError(f'invalid K {K!r}')
+        items: Dict[str, dict] = {}
+        for key, row in state['items'].items():
+            knots = np.asarray(row['knots'], dtype=np.float64)
+            if knots.ndim != 1 or knots.size < 1 or knots.size > K + 1:
+                raise ValueError(f'{key}: knot count {knots.size} not in 1..{K + 1}')
+            if not np.all(np.isfinite(knots)):
+                raise ValueError(f'{key}: non-finite knot')
+            knots32 = knots.astype(np.float32)
+            if not np.array_equal(knots32.astype(np.float64), knots):
+                raise ValueError(f'{key}: knots are not float32-exact')
+            if knots32.size > 1 and not np.all(np.diff(knots32) > 0):
+                raise ValueError(f'{key}: knots not strictly increasing in float32')
+            if int(row['effective_knots']) != knots32.size:
+                raise ValueError(f'{key}: effective_knots does not match knot list')
+            if bool(row['active']) != (knots32.size >= MIN_ACTIVE_KNOTS):
+                raise ValueError(f'{key}: active flag inconsistent with knot count')
+            if row['transform'] not in TRANSFORMS:
+                raise ValueError(f'{key}: unknown transform {row["transform"]!r}')
+            items[key] = {
+                'knots': [float(k) for k in knots32],
+                'effective_knots': int(knots32.size),
+                'active': bool(row['active']),
+                'count': int(row['count']),
+                'transform': str(row['transform']),
+            }
+        return cls(K=K, items=items, method=state['method'], min_values=int(state['min_values']),
+                   token_min_count=int(state['token_min_count']),
+                   below_threshold={k: int(v) for k, v in state.get('below_threshold', {}).items()})
 
     def tensor(self) -> Tuple[torch.Tensor, torch.Tensor, List[str]]:
         """(knots float32[items, K+1] padded with +inf, active bool[items], transform list)."""
