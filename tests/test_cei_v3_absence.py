@@ -10,8 +10,13 @@ import json
 import pytest
 import torch
 
+from comparison.standardized.clinical_graph_v2 import NODE_KINDS
 from comparison.standardized.clinical_graph_v2.cei_v3_absence import (
-    Universe, fit_universe)
+    ABSENCE_LABEL, Universe, fit_universe, index_visit_absence)
+
+MEASUREMENT, VITAL, COMPLAINT = (NODE_KINDS.index('measurement'), NODE_KINDS.index('vital'),
+                                 NODE_KINDS.index('complaint'))
+MEASUREMENT_KINDS = (MEASUREMENT, VITAL)
 
 VOCAB = {'measurement:lab:50912|mg/dL': 1, 'measurement:lab:51476|#/hpf': 2,
          'vital:heartrate': 3, 'vital:temperature': 4, 'complaint:chest pain': 5,
@@ -112,3 +117,112 @@ def test_universe_load_refuses_tampered_state():
         Universe.load({**state, 'token_index': [1, 3]})
     with pytest.raises(ValueError):
         Universe.load({**state, 'graph_counts': {**state['graph_counts'], 'vital:heartrate': 5}})
+
+
+# ---------------------------------------------------------- absence derivation
+# Universe slots: 0 = lab:50912 (token 1), 1 = heartrate (token 3), 2 = temperature (token 4).
+SLOTS = torch.tensor([-1, 0, -1, 1, 2, -1, -1])
+
+
+def _graph(nodes, memberships, num_visits):
+    """One graph in local coordinates: nodes = [(kind, token)], memberships = [(visit, node)].
+
+    Mirrors contracts.validate_visit_membership_record: node 0 is the global patient
+    node without membership; every other node has at least one visit ordinal.
+    """
+    node_type = torch.tensor([kind for kind, _ in nodes], dtype=torch.long)
+    token = torch.tensor([tok for _, tok in nodes], dtype=torch.long)
+    membership = (torch.tensor(sorted(memberships), dtype=torch.long).t().contiguous()
+                  if memberships else torch.zeros((2, 0), dtype=torch.long))
+    return node_type, token, membership, num_visits
+
+
+def _batch(graphs):
+    """Collate as ClinicalGraphData.__inc__ does: visits offset by num_visits, nodes by N."""
+    types, tokens, memberships, counts = [], [], [], []
+    visit_offset = node_offset = 0
+    for node_type, token, membership, num_visits in graphs:
+        types.append(node_type)
+        tokens.append(token)
+        memberships.append(membership + torch.tensor([[visit_offset], [node_offset]]))
+        counts.append(num_visits)
+        visit_offset += num_visits
+        node_offset += node_type.numel()
+    return (torch.cat(memberships, dim=1), torch.tensor(counts, dtype=torch.long),
+            torch.cat(types), torch.cat(tokens))
+
+
+PATIENT = (NODE_KINDS.index('patient'), 0)
+VISIT = (NODE_KINDS.index('visit'), 0)
+
+
+def test_prior_visit_only_item_is_absent_and_index_visit_item_is_present():
+    # Two visits (ordinals 0, 1); index visit = 1. Heartrate only at visit 0 -> absent.
+    # lab:50912 at visit 1 -> present. Temperature nowhere -> absent.
+    graph = _graph([PATIENT, VISIT, (VITAL, 3), (MEASUREMENT, 1)],
+                   [(1, 1), (0, 2), (1, 3)], 2)
+    absent = index_visit_absence(*_batch([graph]), SLOTS, MEASUREMENT_KINDS)
+    assert absent.dtype == torch.bool and absent.shape == (1, 3)
+    assert absent.tolist() == [[False, True, True]]
+
+
+def test_invalid_value_index_node_counts_as_present_and_duplicates_count_once():
+    # F9: presence is derived from membership only; the derivation receives no
+    # has_value column, so a node with has_value=0 at the index visit is present.
+    # Two heartrate nodes at the index visit count once (no error, still present).
+    graph = _graph([PATIENT, VISIT, (VITAL, 3), (VITAL, 3), (MEASUREMENT, 1)],
+                   [(0, 1), (0, 2), (0, 3), (0, 4)], 1)
+    absent = index_visit_absence(*_batch([graph]), SLOTS, MEASUREMENT_KINDS)
+    assert absent.tolist() == [[False, False, True]]
+
+
+def test_node_in_both_prior_and_index_visit_is_present():
+    graph = _graph([PATIENT, VISIT, (VITAL, 3)], [(1, 1), (0, 2), (1, 2)], 2)
+    absent = index_visit_absence(*_batch([graph]), SLOTS, MEASUREMENT_KINDS)
+    assert absent.tolist() == [[True, False, True]]
+
+
+def test_non_measurement_kinds_and_non_universe_tokens_are_ignored():
+    # A complaint node carrying universe token 3 at the index visit must not count
+    # (kind filter); a measurement with token 6 (not in universe) changes nothing.
+    graph = _graph([PATIENT, VISIT, (COMPLAINT, 3), (MEASUREMENT, 6)],
+                   [(0, 1), (0, 2), (0, 3)], 1)
+    absent = index_visit_absence(*_batch([graph]), SLOTS, MEASUREMENT_KINDS)
+    assert absent.tolist() == [[True, True, True]]
+    # Passing only the vital kind makes measurement presence invisible.
+    graph = _graph([PATIENT, VISIT, (MEASUREMENT, 1), (VITAL, 3)], [(0, 1), (0, 2), (0, 3)], 1)
+    absent = index_visit_absence(*_batch([graph]), SLOTS, (VITAL,))
+    assert absent.tolist() == [[True, False, True]]
+
+
+def test_batch_offsets_use_cumsum_of_num_visits_minus_one():
+    # Graph 0: 3 visits, heartrate at its index visit (ordinal 2) -> batch visit 2.
+    # Graph 1: 1 visit, lab at ordinal 0 -> batch visit 3; heartrate absent.
+    # Graph 2: 2 visits, temperature at its prior visit only (batch visit 4), the
+    #          index visit is batch visit 5 -> everything absent.
+    g0 = _graph([PATIENT, VISIT, (VITAL, 3)], [(2, 1), (2, 2)], 3)
+    g1 = _graph([PATIENT, VISIT, (MEASUREMENT, 1)], [(0, 1), (0, 2)], 1)
+    g2 = _graph([PATIENT, VISIT, (VITAL, 4)], [(1, 1), (0, 2)], 2)
+    membership, num_visits, node_type, token = _batch([g0, g1, g2])
+    assert membership[0].tolist() == [2, 2, 3, 3, 5, 4]
+    absent = index_visit_absence(membership, num_visits, node_type, token, SLOTS,
+                                 MEASUREMENT_KINDS)
+    assert absent.shape == (3, 3)
+    assert absent.tolist() == [[True, False, True],
+                               [False, True, True],
+                               [True, True, True]]
+
+
+def test_empty_batch_and_empty_membership_are_all_absent():
+    # No membership pairs at all is a contract violation only for visit-specific
+    # nodes; a graph with just the global patient node and an index visit node with
+    # membership yields every universe item absent.
+    graph = _graph([PATIENT, VISIT], [(0, 1)], 1)
+    absent = index_visit_absence(*_batch([graph]), SLOTS, MEASUREMENT_KINDS)
+    assert absent.tolist() == [[True, True, True]]
+
+
+def test_absence_label_wording_follows_f8():
+    assert ABSENCE_LABEL.format(item='vital:heartrate') == (
+        'vital:heartrate: no recorded result at this visit')
+    assert 'not measured' not in ABSENCE_LABEL

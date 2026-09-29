@@ -127,3 +127,10 @@ def fit_universe(identity_graph_counts, vocabulary, *, min_graphs=20, token_min_
     return Universe(items, token_index, min_graphs=int(min_graphs), num_tokens=num_tokens,
                     graph_counts={item: counts[item] for item in items},
                     token_min_count=token_min_count)
+
+
+def index_visit_absence(membership, num_visits, node_type, token, slot_of_token,
+                        measurement_kinds):
+    """bool[G, U]: True where a universe item has no node at the graph's index visit."""
+    universe_size = int((slot_of_token >= 0).sum())
+    return torch.zeros((int(num_visits.numel()), universe_size), dtype=torch.bool)
