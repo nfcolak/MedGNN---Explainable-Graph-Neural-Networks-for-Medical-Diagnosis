@@ -131,6 +131,45 @@ def fit_universe(identity_graph_counts, vocabulary, *, min_graphs=20, token_min_
 
 def index_visit_absence(membership, num_visits, node_type, token, slot_of_token,
                         measurement_kinds):
-    """bool[G, U]: True where a universe item has no node at the graph's index visit."""
+    """bool[G, U]: True where a universe item has no node at the graph's index visit.
+
+    ``membership`` is ``visit_membership_index`` in batch coordinates (visits offset
+    by ``num_visits``, nodes by node count, ``tensorize.ClinicalGraphData.__inc__``).
+    The index visit of graph g is ``cumsum(num_visits)[g] - 1`` (§12 F9). Presence is
+    membership-derived only: an index-visit node with an invalid value counts as
+    present, and several nodes of one identity count once. Only nodes whose kind is
+    in ``measurement_kinds`` and whose token maps to a universe slot are considered.
+    """
+    device = node_type.device
+    slot_of_token = slot_of_token.to(device=device, dtype=torch.long)
     universe_size = int((slot_of_token >= 0).sum())
-    return torch.zeros((int(num_visits.numel()), universe_size), dtype=torch.bool)
+    num_visits = num_visits.to(device=device, dtype=torch.long).view(-1)
+    graph_count = int(num_visits.numel())
+    if graph_count and bool((num_visits < 1).any()):
+        raise ValueError('num_visits must contain one positive count per graph')
+    absent = torch.ones((graph_count, universe_size), dtype=torch.bool, device=device)
+    if graph_count == 0:
+        return absent
+    if membership.ndim != 2 or membership.size(0) != 2:
+        raise ValueError('visit_membership_index must have shape [2, pairs]')
+    if membership.size(1) == 0:
+        return absent
+    membership = membership.to(device=device, dtype=torch.long)
+    visit, node = membership[0], membership[1]
+    node_count = int(node_type.numel())
+    if int(node.min()) < 0 or int(node.max()) >= node_count or int(visit.min()) < 0:
+        raise ValueError('visit membership refers to a node or visit outside the batch')
+    index_visit = torch.cumsum(num_visits, 0) - 1
+    if int(visit.max()) > int(index_visit[-1]):
+        raise ValueError('visit membership refers to a visit outside the batch')
+    # Visit -> graph, then keep only pairs on their graph's index visit.
+    visit_graph = torch.repeat_interleave(torch.arange(graph_count, device=device), num_visits)
+    graph_of_pair = visit_graph[visit]
+    at_index = visit == index_visit[graph_of_pair]
+    kinds = torch.tensor(tuple(measurement_kinds), dtype=torch.long, device=device)
+    is_kind = torch.isin(node_type[node], kinds)
+    slot = slot_of_token[token.to(device=device, dtype=torch.long)[node]]
+    keep = at_index & is_kind & (slot >= 0)
+    if bool(keep.any()):
+        absent[graph_of_pair[keep], slot[keep]] = False
+    return absent
