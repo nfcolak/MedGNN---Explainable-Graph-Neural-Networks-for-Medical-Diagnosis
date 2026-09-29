@@ -147,8 +147,21 @@ class EvidenceNetworkV3(PairEvidenceNetwork):
     # ------------------------------------------------------------------ new paths
 
     def parameter_inventory(self):
-        """name -> (shape, active) for every registered parameter (stub)."""
-        return {}
+        """name -> (shape, active) for every registered parameter (§4.4 inventory).
+
+        v2 tensors are always active; the PLE projection is active in arms B and C, the
+        absence tables in arm C only (F3).
+        """
+        active_by_name = {'ple_projection.weight': self.ple_active,
+                          'absence_vote': self.absence_active,
+                          'absence_gate': self.absence_active}
+        return {name: (tuple(parameter.shape), bool(active_by_name.get(name, True)))
+                for name, parameter in self.named_parameters()}
+
+    def inactive_parameter_count(self):
+        inventory = self.parameter_inventory()
+        return int(sum(parameter.numel() for name, parameter in self.named_parameters()
+                       if not inventory[name][1]))
 
     def _ple_term(self, features, metadata):
         """PLE pre-activation term float32[N, hidden]; only called when PLE is active."""
