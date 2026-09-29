@@ -1,5 +1,7 @@
 # GraphCare analysis (Method B)
 
+Legacy single-visit / 30-class path; the current adapter is `comparison/standardized/clinical_graph_v2/methods/graphcare.py`.
+
 Comparison method for the thesis: **GraphCare** (Jiang et al., ICLR 2024) — a
 knowledge-graph-augmented, bi-attention GNN (BAT-GNN) for EHR prediction. It
 sits in the same competitive set as ProtGNN/ProtoEHR (graph + KG + attention

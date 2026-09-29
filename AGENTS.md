@@ -15,7 +15,7 @@ Self-explainable GNN diagnosis benchmark on MIMIC-IV ED patient graphs: ProtGNN,
 
 | Rule | Why / source |
 |---|---|
-| NEVER load or evaluate the held-out test fold; select checkpoints on validation (or ADR-008 dev split) macro-F1 only. | `.claude/context/adr-002.md` |
+| NEVER load or evaluate the held-out test fold; select checkpoints on validation macro-F1 only (or on the ADR-008 dev split only when the user explicitly selects that proposed protocol). | `.claude/context/adr-002.md` |
 | NEVER write/run tests unless the user explicitly opens a "testing phase". Parse-only checks are fine. | `.claude/context/adr-005.md` |
 | NEVER start real preprocessing, cache builds or training without explicit user approval. Use `--dry-run` / plan modes. | `STRUCTURE.md` |
 | NEVER overwrite a filled output/artifact directory; write to a new path. Runners refuse by design. | `comparison/standardized/clinical_graph_v2/README.md` |
@@ -46,6 +46,7 @@ Self-explainable GNN diagnosis benchmark on MIMIC-IV ED patient graphs: ProtGNN,
 | Native identical-input benchmark (30-class) | `comparison/standardized/train_identical.py` | `native-benchmark.md`, `adr-001.md` |
 | Interaction PNA (opt-in) | `pna_analysis/` | `pna.md` |
 | Shared contracts, split, data prep | `shared/lib/`, `shared/data_prep/`, `comparison/canonical_split.json` | `shared.md` |
+| Legacy 30-class trainers (frozen) | `protgnn_analysis/train.py`, `gsat_analysis/train.py`, `graphcare_analysis/run.py`, `comparison/standardized/run_all.py`, `run_benchmark.py`, `summarize.py` | Frozen legacy code: evaluates the test fold and may write into existing dirs; do not run for new work. |
 | Tests | `tests/` | `tests.md` |
 | Vendored third-party code | `external/` (keep upstream layout) | `external.md` |
 
@@ -81,6 +82,7 @@ Training commands (`clinical_graph_v2.train`, `tabular_control`, `--execute` mod
 
 ## Context tooling
 
+- The `.claude/` tree (context docs, scripts, MCP) is local-only (gitignored symlinks into ProjectOS) and absent in clones and agent worktrees.
 - **Before relying on a context doc,** run `python3 .claude/scripts/context-drift-check.py`.
   - `HIGH`: update the doc, or tell the user, before relying on it.
   - `MEDIUM`: mention it to the user.

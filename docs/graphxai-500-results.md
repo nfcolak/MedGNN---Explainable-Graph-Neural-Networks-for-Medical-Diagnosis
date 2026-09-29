@@ -47,12 +47,12 @@ Tablo ortalamalarıdır; standart sapmalar `results.csv` içindedir. Fidelity±,
 
 ## Artifaktlar
 
-- Çalışma kökü: `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/standardized/graphxai_500_20260914T144701`
-- Karşılaştırmalı CSV: `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/standardized/graphxai_500_20260914T144701/results.csv`
-- Makine doğrulaması: `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/standardized/graphxai_500_20260914T144701/verification.json`
-- Üç-yöntem kayıt doğrulaması: `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/standardized/graphxai_500_20260914T144701/full_outputs/star/seed_1234/validation.json`
-- Kişi kayıtları: `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/standardized/graphxai_500_20260914T144701/full_outputs/star/seed_1234`
-- Kohort: `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/standardized/graphxai_500_20260914T144701/cohort500.json`
-- Kaynak anlık görüntüleri: `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/comparison/standardized/graphxai_500_20260914T144701/source_snapshot`
+- Çalışma kökü: `comparison/standardized/graphxai_500_20260914T144701` (local artifact, not in git)
+- Karşılaştırmalı CSV: `comparison/standardized/graphxai_500_20260914T144701/results.csv` (local artifact, not in git)
+- Makine doğrulaması: `comparison/standardized/graphxai_500_20260914T144701/verification.json` (local artifact, not in git)
+- Üç-yöntem kayıt doğrulaması: `comparison/standardized/graphxai_500_20260914T144701/full_outputs/star/seed_1234/validation.json` (local artifact, not in git)
+- Kişi kayıtları: `comparison/standardized/graphxai_500_20260914T144701/full_outputs/star/seed_1234` (local artifact, not in git)
+- Kohort: `comparison/standardized/graphxai_500_20260914T144701/cohort500.json` (local artifact, not in git)
+- Kaynak anlık görüntüleri: `comparison/standardized/graphxai_500_20260914T144701/source_snapshot` (local artifact, not in git)
 
 Kişi tanımlayıcıları yalnızca yerel kanıt artifaktlarında; bu raporda hasta kimliği veya ham klinik veri yok. Commit/push yapılmadı.
