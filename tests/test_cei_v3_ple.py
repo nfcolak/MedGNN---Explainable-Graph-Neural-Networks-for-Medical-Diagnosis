@@ -115,3 +115,102 @@ def test_fit_rejects_bad_k_and_non_float32():
         ple.fit_knots({'a': np.arange(40, dtype=np.float32)}, K=0)
     with pytest.raises(ValueError):
         ple.fit_knots({'a': np.arange(40, dtype=np.float64)}, K=4)
+
+
+# --- step 2: ple basis ------------------------------------------------------------
+
+def _table_tensors():
+    # row 0: active, knots [0, 1, 3] (K=4 -> 5 columns, 2 padded)
+    # row 1: inactive (2 knots)
+    # row 2: active, full 5 knots
+    knots = torch.tensor([
+        [0.0, 1.0, 3.0, float('inf'), float('inf')],
+        [0.0, 1.0, float('inf'), float('inf'), float('inf')],
+        [-2.0, -1.0, 0.0, 1.0, 2.0],
+    ], dtype=torch.float32)
+    active = torch.tensor([True, False, True])
+    return knots, active
+
+
+def _basis(values, has_value, rows):
+    knots, active = _table_tensors()
+    return ple.ple_basis(torch.tensor(values, dtype=torch.float32),
+                         torch.tensor(has_value, dtype=torch.float32),
+                         torch.tensor(rows, dtype=torch.long), knots, active)
+
+
+def test_basis_at_knots_is_one_hot():
+    out = _basis([0.0, 1.0, 3.0, -2.0, 2.0], [1, 1, 1, 1, 1], [0, 0, 0, 2, 2])
+    assert out.dtype == torch.float32 and out.shape == (5, 5)
+    assert out.tolist() == [
+        [1, 0, 0, 0, 0],
+        [0, 1, 0, 0, 0],
+        [0, 0, 1, 0, 0],
+        [1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1],
+    ]
+
+
+def test_basis_between_knots_interpolates_linearly():
+    out = _basis([0.25, 2.0, -0.5], [1, 1, 1], [0, 0, 2])
+    assert torch.allclose(out[0], torch.tensor([0.75, 0.25, 0.0, 0.0, 0.0]))
+    assert torch.allclose(out[1], torch.tensor([0.0, 0.5, 0.5, 0.0, 0.0]))
+    assert torch.allclose(out[2], torch.tensor([0.0, 0.5, 0.5, 0.0, 0.0]))
+    assert torch.allclose(out.sum(dim=1), torch.ones(3))
+
+
+def test_basis_outside_range_clamps_to_endpoint_basis():
+    out = _basis([-100.0, 100.0, -7.0, 9.0], [1, 1, 1, 1], [0, 0, 2, 2])
+    assert out.tolist() == [
+        [1, 0, 0, 0, 0],
+        [0, 0, 1, 0, 0],
+        [1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1],
+    ]
+
+
+def test_basis_invalid_value_inactive_row_and_no_table_are_zero():
+    # has_value = 0 -> zeros even for an in-range scaled value (scaled_value is 0 by contract)
+    out = _basis([0.0, 0.5, 0.5, 0.5], [0, 1, 1, 1], [0, 1, -1, 2])
+    assert out[0].tolist() == [0, 0, 0, 0, 0]  # invalid value
+    assert out[1].tolist() == [0, 0, 0, 0, 0]  # inactive row
+    assert out[2].tolist() == [0, 0, 0, 0, 0]  # row -1: no table
+    assert out[3].sum().item() == pytest.approx(1.0)  # valid row still populated
+    # valid zero with has_value = 1 is distinguishable from an invalid value
+    valid_zero = _basis([0.0], [1], [0])
+    assert valid_zero.tolist() == [[1, 0, 0, 0, 0]]
+
+
+def test_basis_empty_input_and_dtype_contract():
+    knots, active = _table_tensors()
+    out = ple.ple_basis(torch.zeros(0), torch.zeros(0), torch.zeros(0, dtype=torch.long), knots, active)
+    assert out.shape == (0, 5) and out.dtype == torch.float32
+    assert torch.isfinite(out).all()
+
+
+def test_basis_rejects_zero_width_interval_and_non_increasing_knots():
+    bad = torch.tensor([[0.0, 1.0, 1.0, float('inf'), float('inf')]], dtype=torch.float32)
+    active = torch.tensor([True])
+    with pytest.raises(ValueError):
+        ple.ple_basis(torch.tensor([0.5]), torch.tensor([1.0]), torch.tensor([0]), bad, active)
+    decreasing = torch.tensor([[0.0, 2.0, 1.0, float('inf'), float('inf')]], dtype=torch.float32)
+    with pytest.raises(ValueError):
+        ple.ple_basis(torch.tensor([0.5]), torch.tensor([1.0]), torch.tensor([0]), decreasing, active)
+
+
+def test_basis_rejects_non_finite_knot_in_active_row_and_bad_row_index():
+    knots, active = _table_tensors()
+    nan_knots = knots.clone()
+    nan_knots[0, 1] = float('nan')
+    with pytest.raises(ValueError):
+        ple.ple_basis(torch.tensor([0.5]), torch.tensor([1.0]), torch.tensor([0]), nan_knots, active)
+    with pytest.raises(ValueError):
+        ple.ple_basis(torch.tensor([0.5]), torch.tensor([1.0]), torch.tensor([3]), knots, active)
+    with pytest.raises(ValueError):
+        ple.ple_basis(torch.tensor([0.5]), torch.tensor([1.0]), torch.tensor([-2]), knots, active)
+
+
+def test_basis_is_finite_for_non_finite_value_with_has_value_zero():
+    out = _basis([float('nan'), float('inf')], [0, 0], [0, 2])
+    assert torch.isfinite(out).all()
+    assert out.abs().sum().item() == 0.0
