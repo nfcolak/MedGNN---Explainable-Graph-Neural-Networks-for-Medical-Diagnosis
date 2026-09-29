@@ -17,9 +17,9 @@ not the current clinical entrypoint. Shared scientific packages stay in place.
 | `comparison/standardized/` | Also contains retained historical star/cooccur tooling and experimental protocols; not one interchangeable pipeline. |
 | `comparison/canonical_split.json` | Fixed class ordering and subject folds. Do not regenerate for a resumed benchmark. |
 | `protgnn_analysis/` | ProtGNN model, patient graph loader, training and explanation code. `scripts/` also contains legacy exploratory tools. |
-| `gsat_analysis/` | GSAT on the shared PyG patient graphs, trainer and explainers. |
+| `gsat_analysis/` | GSAT on the shared PyG patient graphs, trainer and explainers. Legacy 30-class train entrypoints are frozen (they evaluate the test fold). |
 | `pna_analysis/` | Opt-in interaction-PNA and plain/wider controls; bounded common-input train/eval/replay. Separate from the three-method matrix; [commands and architecture](docs/pna-interaction.md). |
-| `graphcare_analysis/` | Split-aware KG builder, patient adapter, training wrapper and explanations around upstream BAT-GNN. |
+| `graphcare_analysis/` | Split-aware KG builder, patient adapter, training wrapper and explanations around upstream BAT-GNN. Legacy 30-class train entrypoints are frozen (they evaluate the test fold). |
 | `shared/lib/` | Benchmark/explanation contracts, canonical graph identities, provenance, metrics, split and configuration helpers. |
 | `shared/data_prep/` | Raw CSV merging, medication/chief-complaint normalization, optional lab extraction. Legacy batch scripts; see cautions below. |
 | `baselines/` | Exploratory tabular baseline; its default split is not the standardized benchmark. |
