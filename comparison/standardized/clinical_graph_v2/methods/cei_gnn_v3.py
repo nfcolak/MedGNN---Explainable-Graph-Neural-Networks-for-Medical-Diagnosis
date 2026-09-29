@@ -159,7 +159,21 @@ class EvidenceNetworkV3(PairEvidenceNetwork):
         if features.ndim == 2 and features.size(1) == self.continuous_width and self.ple_active:
             self.node_encoder._pending_term = self._ple_term(features, metadata)
         try:
-            return super().forward_continuous(features, edge_index, metadata, membership,
-                                              return_parts=return_parts, visit_graph=visit_graph)
+            result = super().forward_continuous(features, edge_index, metadata, membership,
+                                                return_parts=return_parts, visit_graph=visit_graph)
         finally:
             self.node_encoder._pending_term = None
+        if not return_parts:
+            return result
+        graph_count, classes = int(metadata.graph_count), self.num_classes
+        result.update({  # stub: absence block always empty
+            'absence_contributions': features.new_zeros((0, classes)),
+            'absence_items': torch.zeros((2, 0), dtype=torch.long, device=features.device),
+            'absence_gates': features.new_zeros((0, classes)),
+            'absence_denominator': features.new_ones((graph_count, classes))})
+        return result
+
+
+def absence_label(item):
+    """Explanation label of an absent universe item (stub)."""
+    return str(item)
