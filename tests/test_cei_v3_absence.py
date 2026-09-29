@@ -204,7 +204,7 @@ def test_batch_offsets_use_cumsum_of_num_visits_minus_one():
     g1 = _graph([PATIENT, VISIT, (MEASUREMENT, 1)], [(0, 1), (0, 2)], 1)
     g2 = _graph([PATIENT, VISIT, (VITAL, 4)], [(1, 1), (0, 2)], 2)
     membership, num_visits, node_type, token = _batch([g0, g1, g2])
-    assert membership[0].tolist() == [2, 2, 3, 3, 5, 4]
+    assert membership[0].tolist() == [2, 2, 3, 3, 4, 5]
     absent = index_visit_absence(membership, num_visits, node_type, token, SLOTS,
                                  MEASUREMENT_KINDS)
     assert absent.shape == (3, 3)
