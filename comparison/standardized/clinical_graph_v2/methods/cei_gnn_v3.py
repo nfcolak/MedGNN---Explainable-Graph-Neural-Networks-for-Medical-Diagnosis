@@ -146,6 +146,10 @@ class EvidenceNetworkV3(PairEvidenceNetwork):
 
     # ------------------------------------------------------------------ new paths
 
+    def parameter_inventory(self):
+        """name -> (shape, active) for every registered parameter (stub)."""
+        return {}
+
     def _ple_term(self, features, metadata):
         """PLE pre-activation term float32[N, hidden]; only called when PLE is active."""
         values = features[:, self.scaled_value_column]

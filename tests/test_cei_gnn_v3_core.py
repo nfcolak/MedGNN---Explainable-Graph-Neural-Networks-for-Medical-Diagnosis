@@ -403,3 +403,243 @@ def test_arm_c_requires_visit_graph_for_the_absence_block():
     arm_c = _arm_c()
     with pytest.raises(ValueError, match='visit_graph'):
         _run(arm_c, _graph(), visit_graph=False)
+
+
+# ------------------------------------------------------- step 3: adapter options
+
+from argparse import Namespace  # noqa: E402
+
+from comparison.standardized.clinical_graph_v2.methods import plugin_cei_gnn_v3 as plugin  # noqa: E402
+
+CLOSED_OPTIONS = frozenset(('arm', 'v3_state', 'k', 'encoder_depth', 'comorbid_block'))
+PREP_SHA = hashlib.sha256(b'synthetic preprocessing state').hexdigest()
+
+
+def _state_document(K=K, layout=LAYOUT, tokens=TOKENS):
+    """The v3_state file schema U5 must produce (v3 §12 F18); pinned here by hand."""
+    table, universe = _knot_table(), _universe()
+    return {
+        'version': 'cei_v3_state_v1',
+        'K': K,
+        'knot_table': table.state(),
+        'knot_table_sha256': table.sha256(),
+        'universe': universe.state(),
+        'universe_sha256': universe.sha256(),
+        'vocabulary': {'tokens': list(tokens), 'min_count': 20},
+        'preprocessing_sha256': PREP_SHA,
+        'node_feature_layout': list(layout),
+    }
+
+
+def _write_state(tmp_path, document=None, name='K4.json'):
+    path = tmp_path / name
+    path.write_text(json.dumps(document if document is not None else _state_document(),
+                               indent=2, sort_keys=True) + '\n')
+    return path
+
+
+def _adapter(tmp_path, arm='C', *, hidden=HIDDEN, layers=1, seed=1234, dropout=0.0,
+             state_path=None, edge_direction=None, **options):
+    from comparison.standardized.clinical_graph_v2.methods import METHOD_REGISTRY
+
+    assert 'cei_gnn_v3' in METHOD_REGISTRY, 'cei_gnn_v3 plugin is not registered'
+    state_path = state_path or _write_state(tmp_path)
+    method_options = {'arm': arm, 'v3_state': str(state_path), 'k': K, **options}
+    args = Namespace(method_options=method_options, seed=seed)
+    if edge_direction is not None:
+        args.edge_direction = edge_direction
+    torch.manual_seed(seed)
+    return METHOD_REGISTRY['cei_gnn_v3'](
+        num_tokens=NUM_TOKENS, node_dim=NODE_DIM, edge_dim=EDGE_DIM, num_classes=CLASSES,
+        hidden=hidden, layers=layers, dropout=dropout, token_dim=TOKEN_DIM, num_triples=TRIPLES,
+        args=args)
+
+
+def _v2_total():
+    """v2 additive parameter count at the adapter's fixed pair_rank (16, the v2 default)."""
+    torch.manual_seed(0)
+    network = PairEvidenceNetwork(
+        num_tokens=NUM_TOKENS, node_dim=NODE_DIM, edge_dim=EDGE_DIM, num_classes=CLASSES,
+        hidden=HIDDEN, token_dim=TOKEN_DIM, num_triples=TRIPLES, num_relations=RELATIONS,
+        dropout=0.0, pair_rank=16, pair_mode='additive', num_node_types=len(NODE_KINDS))
+    return sum(p.numel() for p in network.parameters())
+
+
+def test_known_options_are_the_closed_set_and_unknown_options_are_refused(tmp_path):
+    assert plugin.KNOWN_OPTIONS == CLOSED_OPTIONS
+    with pytest.raises(ValueError, match='unknown method option'):
+        _adapter(tmp_path, pair_mode='additive')
+    with pytest.raises(ValueError, match='unknown method option'):
+        _adapter(tmp_path, margin_table='x')
+
+
+def test_k_option_must_equal_the_state_file_k(tmp_path):
+    with pytest.raises(ValueError, match='[Kk]'):
+        _adapter(tmp_path, k=K + 4)
+    document = _state_document(K=K + 4)  # top-level K disagrees with the knot table
+    with pytest.raises(ValueError, match='[Kk]'):
+        _adapter(tmp_path, state_path=_write_state(tmp_path, document, 'bad.json'))
+
+
+def test_state_loader_validates_schema_hashes_vocabulary_and_layout(tmp_path):
+    good = _write_state(tmp_path)
+    state = plugin.load_v3_state(good)
+    assert state.K == K and state.num_tokens == NUM_TOKENS
+    assert state.sha256 == hashlib.sha256(good.read_bytes()).hexdigest()
+    assert state.preprocessing_sha256 == PREP_SHA
+    assert state.node_feature_layout == tuple(LAYOUT)
+    assert state.knot_table.items.keys() == {'measurement:lab1', 'vital:hr', 'measurement:lab2'}
+    assert state.universe.items == ('measurement:lab1', 'measurement:lab2', 'vital:hr')
+    rows = state.knot_row_of_token()
+    assert rows.tolist() == [-1, -1, 0, 2, -1, 1, -1, -1]
+    for key in ('version', 'K', 'knot_table', 'universe', 'vocabulary', 'preprocessing_sha256',
+                'node_feature_layout', 'knot_table_sha256', 'universe_sha256'):
+        document = _state_document()
+        del document[key]
+        with pytest.raises(ValueError, match=key):
+            plugin.load_v3_state(_write_state(tmp_path, document, f'missing-{key}.json'))
+    tampered = _state_document()
+    tampered['universe']['graph_counts']['vital:hr'] = 31
+    with pytest.raises(ValueError, match='universe_sha256'):
+        plugin.load_v3_state(_write_state(tmp_path, tampered, 'tampered.json'))
+    tampered = _state_document()
+    tampered['knot_table']['items']['vital:hr']['count'] = 41
+    with pytest.raises(ValueError, match='knot_table_sha256'):
+        plugin.load_v3_state(_write_state(tmp_path, tampered, 'tampered2.json'))
+    with pytest.raises(ValueError, match='vocabulary'):
+        renamed = [token if token != 'vital:hr' else 'other' for token in TOKENS]
+        plugin.load_v3_state(_write_state(tmp_path, _state_document(tokens=renamed), 'vocab.json'))
+    with pytest.raises(ValueError, match='has_value'):
+        plugin.load_v3_state(_write_state(tmp_path, _state_document(layout=['a', 'scaled_value']),
+                                          'layout.json'))
+    with pytest.raises(ValueError, match='preprocessing_sha256'):
+        document = _state_document()
+        document['preprocessing_sha256'] = 'abc'
+        plugin.load_v3_state(_write_state(tmp_path, document, 'sha.json'))
+    assert plugin.build_v3_state(
+        K=K, knot_table=_knot_table(), universe=_universe(), vocabulary_tokens=TOKENS,
+        vocabulary_min_count=20, preprocessing_sha256=PREP_SHA,
+        node_feature_layout=LAYOUT) == _state_document()
+
+
+def test_adapter_refuses_dimension_mismatch_and_missing_arm_or_seed(tmp_path):
+    from comparison.standardized.clinical_graph_v2.methods import METHOD_REGISTRY
+
+    cls = METHOD_REGISTRY['cei_gnn_v3']
+    path = _write_state(tmp_path)
+    common = dict(node_dim=NODE_DIM, edge_dim=EDGE_DIM, num_classes=CLASSES, hidden=HIDDEN,
+                  layers=1, dropout=0.0, token_dim=TOKEN_DIM, num_triples=TRIPLES)
+    options = {'arm': 'C', 'v3_state': str(path), 'k': K}
+    with pytest.raises(ValueError, match='num_tokens'):
+        cls(num_tokens=NUM_TOKENS + 1, **common, args=Namespace(method_options=options, seed=1))
+    with pytest.raises(ValueError, match='node_feature_layout'):
+        cls(num_tokens=NUM_TOKENS, **{**common, 'node_dim': NODE_DIM + 1},
+            args=Namespace(method_options=options, seed=1))
+    with pytest.raises(ValueError, match='arm'):
+        cls(num_tokens=NUM_TOKENS, **common,
+            args=Namespace(method_options={'v3_state': str(path), 'k': K}, seed=1))
+    with pytest.raises(ValueError, match='arm'):
+        cls(num_tokens=NUM_TOKENS, **common,
+            args=Namespace(method_options={**options, 'arm': 'D'}, seed=1))
+    with pytest.raises(ValueError, match='v3_state'):
+        cls(num_tokens=NUM_TOKENS, **common, args=Namespace(method_options={'arm': 'C', 'k': K}, seed=1))
+    with pytest.raises(ValueError, match='seed'):
+        cls(num_tokens=NUM_TOKENS, **common, args=Namespace(method_options=options))
+
+
+def test_u3x_options_are_accepted_only_at_their_u3_values(tmp_path):
+    adapter = _adapter(tmp_path, encoder_depth=1, comorbid_block=0)
+    assert adapter.encoder_depth == 1 and adapter.comorbid_block == 0
+    for options in ({'encoder_depth': 2}, {'comorbid_block': 1}):
+        with pytest.raises(ValueError, match='U3x'):
+            _adapter(tmp_path, **options)
+    with pytest.raises(ValueError, match='U3x'):
+        _adapter(tmp_path, layers=2)
+    with pytest.raises(ValueError, match='encoder_depth'):
+        _adapter(tmp_path, layers=1, encoder_depth=0)
+
+
+@pytest.mark.parametrize('arm, ple_active, absence_active', [('A', False, False), ('B', True, False),
+                                                              ('C', True, True)])
+def test_parameter_inventory_and_counts_per_arm(tmp_path, arm, ple_active, absence_active):
+    adapter = _adapter(tmp_path, arm)
+    inventory = adapter.network.parameter_inventory()
+    v2_names = {name for name, _ in _v2().named_parameters()}
+    assert set(inventory) == v2_names | NEW_PARAMETERS
+    assert all(inventory[name][1] for name in v2_names)
+    assert inventory['ple_projection.weight'] == ((HIDDEN, K + 1), ple_active)
+    assert inventory['absence_vote'] == ((3, CLASSES), absence_active)
+    assert inventory['absence_gate'] == ((3, CLASSES), absence_active)
+    ple, absence = (K + 1) * HIDDEN, 2 * 3 * CLASSES
+    total = _v2_total() + ple + absence
+    inactive = (0 if ple_active else ple) + (0 if absence_active else absence)
+    assert adapter.inactive_parameter_count() == inactive
+    config = adapter.run_config()
+    assert config['parameter_count'] == total
+    assert config['active_parameter_count'] == total - inactive
+    assert config['inactive_parameter_count'] == inactive
+    assert config['architecture']['parameter_count'] == total
+    assert config['architecture']['active_parameter_count'] == total - inactive
+    assert config['architecture']['inactive_parameter_count'] == inactive
+    assert config['parameter_inventory'] == {
+        name: {'shape': list(shape), 'active': active} for name, (shape, active) in inventory.items()}
+
+
+def test_run_config_binds_arm_k_state_hash_and_extension_fields(tmp_path):
+    path = _write_state(tmp_path)
+    adapter = _adapter(tmp_path, 'B', state_path=path)
+    config = adapter.run_config()
+    assert config['method'] == 'cei_gnn_v3'
+    assert config['arm'] == 'B' and config['k'] == K
+    assert config['v3_state_sha256'] == hashlib.sha256(path.read_bytes()).hexdigest()
+    assert config['v3_state_path'] == str(path)
+    assert config['preprocessing_sha256'] == PREP_SHA
+    assert config['knot_table_sha256'] == _knot_table().sha256()
+    assert config['universe_sha256'] == _universe().sha256()
+    assert config['universe_size'] == 3
+    assert config['encoder_depth'] == 1 and config['comorbid_block'] == 0
+    assert config['edge_direction'] == 'forward'
+    assert config['hidden'] == HIDDEN
+    assert config['seed'] == 1234
+    assert config['pair_mode'] == 'additive'
+    assert config['common_init_identical_to_c'] is False   # hidden 8 != the control's 128
+    assert config['effective_settings']['arm'] == 'B'
+    assert config['architecture']['layers'] == 1
+    assert config['adaptation_version'] == plugin.EvidenceAdapterV3.adaptation_version
+    assert config['native_defaults'] == plugin.EvidenceAdapterV3.runner_defaults
+    wide = _adapter(tmp_path, 'C', hidden=plugin.CONTROL_HIDDEN, state_path=path)
+    assert wide.run_config()['common_init_identical_to_c'] is True
+    bidirectional = _adapter(tmp_path, 'C', state_path=path, edge_direction='bidirectional')
+    assert bidirectional.run_config()['edge_direction'] == 'bidirectional'
+    assert bidirectional.num_relations > adapter.num_relations
+
+
+def test_adapter_arm_a_loads_a_v2_adapter_state_dict_and_reproduces_its_output(tmp_path):
+    from torch_geometric.data import Batch
+    from comparison.standardized.clinical_graph_v2.methods import METHOD_REGISTRY
+
+    torch.manual_seed(2)
+    v2_adapter = METHOD_REGISTRY['cei_gnn_v2'](
+        num_tokens=NUM_TOKENS, node_dim=NODE_DIM, edge_dim=EDGE_DIM, num_classes=CLASSES,
+        hidden=HIDDEN, layers=1, dropout=0.0, token_dim=TOKEN_DIM, num_triples=TRIPLES,
+        args=Namespace(method_options={'pair_mode': 'additive'})).eval()  # pair_rank 16 = v3's
+    _randomise_gates(v2_adapter.network)
+    arm_a = _adapter(tmp_path, 'A').eval()
+    missing, unexpected = arm_a.load_state_dict(v2_adapter.state_dict(), strict=False)
+    assert set(unexpected) == set()
+    assert set(missing) == {f'network.{name}' for name in NEW_PARAMETERS}
+    batch = Batch.from_data_list([_graph(), _graph(seed=8)])
+    expected = v2_adapter(batch, epoch=0)
+    actual = arm_a(batch, epoch=0)
+    assert torch.equal(actual.logits, expected.logits)
+    assert actual.diagnostics['pairs_per_graph'] == expected.diagnostics['pairs_per_graph']
+    assert actual.diagnostics['absent_items_per_graph'] == 0.0
+    arm_c = _adapter(tmp_path, 'C').eval()
+    arm_c.load_state_dict(v2_adapter.state_dict(), strict=False)
+    with torch.no_grad():
+        arm_c.network.absence_vote.normal_()
+    output_c = arm_c(batch, epoch=0)
+    assert output_c.diagnostics['absent_items_per_graph'] == 1.0
+    assert not torch.allclose(output_c.logits, expected.logits)
+    assert torch.equal(arm_c.forward_continuous(arm_c.continuous_inputs(batch), batch.edge_index,
+                                                batch), output_c.logits)
