@@ -391,11 +391,88 @@ class V3FitInputs:
 def read_v3_fit_inputs(artifact, targets_path, *, train_limit=FULL_BUDGET[0],
                        sample_seed=SAMPLE_SEED, token_min_count=20,
                        top_k_labels=TOP_K_LABELS) -> V3FitInputs:
-    raise RuntimeError('not implemented in the stub')
+    """Default reader (NOT exercised by tests; opens the artifact, G3 only).
+
+    Re-runs `load_targets -> select_top_labels -> sample_train_ids -> fit_preprocessing`
+    exactly as `train.py` lines 593–618 do (F18), then streams the TRAIN-sample graphs once
+    more to collect, per measurement/vital identity, (i) the per-node values exactly as
+    `Scaler.fit` sees them and `Scaler.transform` emits them (float32 z-score or signed-log
+    fallback, F14/F15) and (ii) the number of distinct graphs containing the identity (F10).
+    Dev, screen, validation and test rows are never read as graphs.
+    """
+    from comparison.standardized.clinical_graph_v2 import train as train_module
+    from comparison.standardized.clinical_graph_v2.contracts import (
+        VISIT_MEMBERSHIP_FILENAME, iter_graphs_with_membership)
+    from comparison.standardized.clinical_graph_v2.tensorize import (
+        fit_preprocessing, node_token, preprocessing_state)
+
+    artifact = Path(artifact)
+    graphs_path = artifact / 'graphs.jsonl'
+    membership_path = artifact / VISIT_MEMBERSHIP_FILENAME
+    targets = train_module.load_targets(targets_path)
+    targets, _kept, _dropped = train_module.select_top_labels(targets, top_k_labels)
+    train_ids = train_module.sample_train_ids(targets, train_limit, sample_seed)
+    prep = fit_preprocessing(graphs_path, train_ids, token_min_count,
+                             membership_path=membership_path)
+    state = preprocessing_state(prep)
+    preprocessing_sha256 = hashlib.sha256(_canonical_file_bytes(state)).hexdigest()
+    scaler, vocabulary = prep['scaler'], prep['vocabulary']
+    values: Dict[str, List[float]] = {}
+    graphs_per_item: Dict[str, int] = {}
+    for graph, _membership in iter_graphs_with_membership(graphs_path, membership_path):
+        if graph['sample_id'] not in train_ids:
+            continue
+        seen = set()
+        for node in graph['nodes']:
+            if node['kind'] not in ('measurement', 'vital'):
+                continue
+            token = node_token(node)
+            seen.add(token)
+            value, has_value = scaler.transform(token, node.get('value'))
+            if has_value:
+                values.setdefault(token, []).append(value)
+        for token in seen:
+            graphs_per_item[token] = graphs_per_item.get(token, 0) + 1
+    transform = {token: ('zscore' if token in scaler.stats else 'signed_log')
+                 for token in values}
+    return V3FitInputs(
+        values_by_item={token: np.asarray(v, dtype=np.float32) for token, v in values.items()},
+        transform_by_item=transform, identity_graph_counts=graphs_per_item,
+        vocabulary=dict(vocabulary.index), vocabulary_tokens=tuple(vocabulary.tokens),
+        token_min_count=int(prep['token_min_count']), preprocessing_sha256=preprocessing_sha256,
+        node_feature_layout=tuple(state['node_feature_layout']), train_count=len(train_ids))
 
 
 def fit_v3_state(output_root, k, *, reader, min_values=20, min_graphs=20) -> Path:
-    return Path(output_root)
+    """Fit and write `<output_root>/v3_state/K<k>.json` (F18) from `reader()`'s inputs.
+
+    The document is exactly `plugin_cei_gnn_v3.build_v3_state(...)`; the file is written once
+    (never overwritten) with the canonical study layout so `load_v3_state` hashes it stably.
+    """
+    from comparison.standardized.clinical_graph_v2.cei_v3_absence import fit_universe
+    from comparison.standardized.clinical_graph_v2.cei_v3_ple import fit_knots
+    from comparison.standardized.clinical_graph_v2.methods.plugin_cei_gnn_v3 import (
+        build_v3_state, load_v3_state)
+
+    if isinstance(k, bool) or k not in K_GRID:
+        raise ValueError(f'K {k!r} is outside the frozen grid {list(K_GRID)} (v3 §11.2 item 1)')
+    path = v3_state_path(output_root, k)
+    if path.exists():
+        raise FileExistsError(f'Refusing occupied v3 state file {path}')
+    inputs = reader()
+    table = fit_knots(inputs.values_by_item, int(k), min_values=min_values,
+                      transform_by_item=inputs.transform_by_item,
+                      token_min_count=int(inputs.token_min_count))
+    universe = fit_universe(inputs.identity_graph_counts, inputs.vocabulary,
+                            min_graphs=min_graphs, token_min_count=int(inputs.token_min_count))
+    document = build_v3_state(K=int(k), knot_table=table, universe=universe,
+                              vocabulary_tokens=inputs.vocabulary_tokens,
+                              vocabulary_min_count=inputs.token_min_count,
+                              preprocessing_sha256=inputs.preprocessing_sha256,
+                              node_feature_layout=inputs.node_feature_layout)
+    _write_new_json(path, document)
+    load_v3_state(path)   # the adapter must accept exactly what was written
+    return path
 
 
 # --------------------------------------------------------------- K selection
@@ -416,10 +493,79 @@ class KSelection:
     rule: str = K_SELECTION_RULE
 
 
+def _grid_stage_names() -> List[str]:
+    return [f'C_K{k}_seed{seed}' for k in K_GRID for seed in SEEDS]
+
+
+def _seed_mean(values) -> float:
+    return float(np.mean([float(v) for v in values]))
+
+
+def _argmax_with_tie_rule(seed_means) -> Tuple[int, bool]:
+    """Winner over the grid; equality of the runner's 6-decimal metric -> smaller K."""
+    rounded = {k: round(seed_means[k], 6) for k in K_GRID}
+    best = max(rounded.values())
+    winners = [k for k in K_GRID if rounded[k] == best]   # K_GRID is ascending
+    return winners[0], len(winners) > 1
+
+
 def select_k(bindings) -> KSelection:
-    return KSelection(k_grid=(), seeds=(), arm='', statistic={}, seed_means={}, k_selected=0,
-                      tie_rule_applied=False, knot_table_sha256_by_k={}, v3_state_sha256_by_k={},
-                      dev_sample_ids_sha256='')
+    """K selection statistic and winner from the nine C `binding.json` dicts (v3 §11.2).
+
+    `bindings` maps stage name (`C_K<k>_seed<seed>`) -> binding. Exactly the nine grid
+    stages are required; each must be a conforming arm-C stage at its K, share the dev
+    sample-id hash, and agree on the knot-table / v3-state hash of its K.
+    """
+    if not isinstance(bindings, dict):
+        raise ValueError('bindings must map stage name -> binding dict')
+    expected = _grid_stage_names()
+    missing = [name for name in expected if name not in bindings]
+    if missing:
+        raise ValueError(f'K selection needs all nine C grid stages; missing: {missing}')
+    extra = sorted(set(bindings) - set(expected))
+    if extra:
+        raise ValueError(f'K selection accepts the nine C grid stages only; extra: {extra}')
+    statistic: Dict[Tuple[int, int], float] = {}
+    knot_hashes: Dict[int, str] = {}
+    state_hashes: Dict[int, str] = {}
+    dev_hash = None
+    for k in K_GRID:
+        for seed in SEEDS:
+            name = f'C_K{k}_seed{seed}'
+            binding = bindings[name]
+            stage = Stage(name=name, phase='c_grid', arm='C', k=k, seed=seed, output='',
+                          argv=(), v3_state=binding.get('method_config', {})
+                          .get('effective_settings', {}).get('v3_state', ''))
+            try:
+                validate_v3_binding(binding, stage)
+            except ValueError as error:
+                raise ValueError(f'{name}: {error}') from error
+            if not stage.v3_state.endswith(f'/K{k}.json'):
+                raise ValueError(f'{name}: v3_state path {stage.v3_state!r} is not the K{k} state')
+            config = binding['method_config']
+            for key, store in (('knot_table_sha256', knot_hashes), ('v3_state_sha256', state_hashes)):
+                value = config.get(key)
+                if not isinstance(value, str) or len(value) != 64:
+                    raise ValueError(f'{name}: method_config lacks a hex {key}')
+                if store.setdefault(k, value) != value:
+                    raise ValueError(f'{name}: {key} differs between the seeds of K{k}; the '
+                                     'three stages did not bind the same state file')
+            binding_dev = binding['split_sample_ids_sha256']['dev']
+            if dev_hash is None:
+                dev_hash = binding_dev
+            elif binding_dev != dev_hash:
+                raise ValueError(f'{name}: dev sample-id hash differs across grid stages; K '
+                                 'selection needs one shared OLD-dev split')
+            value = binding['selected_dev']['metric_value']
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not np.isfinite(value):
+                raise ValueError(f'{name}: selected_dev.metric_value is not a finite number')
+            statistic[(k, seed)] = float(value)
+    seed_means = {k: _seed_mean(statistic[(k, seed)] for seed in SEEDS) for k in K_GRID}
+    k_selected, tie = _argmax_with_tie_rule(seed_means)
+    return KSelection(k_grid=K_GRID, seeds=SEEDS, arm='C', statistic=statistic,
+                      seed_means=seed_means, k_selected=k_selected, tie_rule_applied=tie,
+                      knot_table_sha256_by_k=knot_hashes, v3_state_sha256_by_k=state_hashes,
+                      dev_sample_ids_sha256=str(dev_hash))
 
 
 def k_selection_sha256(record) -> str:
@@ -427,11 +573,116 @@ def k_selection_sha256(record) -> str:
     return hashlib.sha256(_canonical_file_bytes(record)).hexdigest()
 
 
+def _file_sha256(path) -> str:
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def _stage_entries(selection, stage_dirs) -> List[dict]:
+    entries = []
+    for k in K_GRID:
+        for seed in SEEDS:
+            name = f'C_K{k}_seed{seed}'
+            if name not in stage_dirs:
+                raise ValueError(f'stage directory missing for {name}')
+            stage_dir = Path(stage_dirs[name])
+            binding_path, checkpoint = stage_dir / 'binding.json', stage_dir / 'best.pt'
+            if not binding_path.is_file() or not checkpoint.is_file():
+                raise ValueError(f'{name}: binding.json or best.pt missing in {stage_dir}')
+            entries.append({
+                'stage': name, 'k': int(k), 'seed': int(seed), 'output': str(stage_dir),
+                'checkpoint_sha256': _file_sha256(checkpoint),
+                'binding_sha256': _file_sha256(binding_path),
+                'metric': 'macro_f1', 'metric_value': float(selection.statistic[(k, seed)])})
+    return entries
+
+
+def _k_selection_document(selection, entries) -> dict:
+    return {
+        'version': K_SELECTION_VERSION,
+        'k_grid': [int(k) for k in K_GRID], 'seeds': [int(s) for s in SEEDS], 'arm': 'C',
+        'rule': K_SELECTION_RULE,
+        'statistic': 'unweighted mean over seeds of selected_dev.metric_value',
+        'tie_rule': 'equal 6-decimal seed-mean -> smaller K',
+        'stages': entries,
+        'seed_means': {str(k): float(selection.seed_means[k]) for k in K_GRID},
+        'seed_means_rounded': {str(k): round(float(selection.seed_means[k]), 6) for k in K_GRID},
+        'k_selected': int(selection.k_selected),
+        'tie_rule_applied': bool(selection.tie_rule_applied),
+        'knot_table_sha256': {str(k): selection.knot_table_sha256_by_k[k] for k in K_GRID},
+        'v3_state_sha256': {str(k): selection.v3_state_sha256_by_k[k] for k in K_GRID},
+        'selected_knot_table_sha256': selection.knot_table_sha256_by_k[selection.k_selected],
+        'selected_v3_state_sha256': selection.v3_state_sha256_by_k[selection.k_selected],
+        'dev_sample_ids_sha256': selection.dev_sample_ids_sha256,
+        'control_binding_sha256': [entry['binding_sha256'] for entry in entries
+                                   if entry['k'] == selection.k_selected],
+        'k_selection_completed_before_screen': True,
+        'screen_record_sha256': None,   # successor record fills this (F17)
+    }
+
+
 def write_k_selection(selection, stage_dirs, path) -> dict:
-    return {}
+    """Write the K-freeze record once (v3 §11.2 item 7, §12.17, §12.21).
+
+    Every stage directory's `binding.json` must reproduce the selection (its metric value
+    and arm/K), so the record can never disagree with the bindings it was computed from.
+    """
+    path = Path(path)
+    if path.exists():
+        raise FileExistsError(f'Refusing occupied K-freeze record {path}')
+    entries = _stage_entries(selection, stage_dirs)
+    bindings = {entry['stage']: _load_json(Path(entry['output']) / 'binding.json', 'binding.json')
+                for entry in entries}
+    try:
+        recomputed = select_k(bindings)
+    except ValueError as error:
+        raise ValueError(f'binding.json files on disk do not reproduce the K selection: '
+                         f'{error}') from error
+    if recomputed != selection:
+        raise ValueError('binding.json files on disk do not reproduce the given K selection')
+    document = _k_selection_document(selection, entries)
+    _write_new_json(path, document)
+    return document
 
 
 def assert_k_selection_replay(record, stage_dirs) -> None:
+    """Recompute the K selection from the stage bindings on disk; raise on any drift."""
+    if not isinstance(record, dict):
+        raise ValueError('k_selection record must be a dict')
+    _validate_k_selection_record(record)
+    stages = record.get('stages')
+    if not isinstance(stages, list) or [s.get('stage') for s in stages] != _grid_stage_names():
+        raise ValueError('k_selection stages differ from the nine C grid stages')
+    bindings = {}
+    for entry in stages:
+        name = entry['stage']
+        stage_dir = Path(stage_dirs[name]) if name in stage_dirs else Path(entry['output'])
+        binding_path, checkpoint = stage_dir / 'binding.json', stage_dir / 'best.pt'
+        if not binding_path.is_file() or not checkpoint.is_file():
+            raise ValueError(f'{name}: binding.json or best.pt missing in {stage_dir}')
+        if entry.get('checkpoint_sha256') != _file_sha256(checkpoint):
+            raise ValueError(f'{name}: checkpoint_sha256 differs from best.pt on disk')
+        if entry.get('binding_sha256') != _file_sha256(binding_path):
+            raise ValueError(f'{name}: binding_sha256 differs from binding.json on disk')
+        bindings[name] = _load_json(binding_path, 'binding.json')
+    selection = select_k(bindings)
+    for entry in stages:
+        expected = selection.statistic[(entry['k'], entry['seed'])]
+        if entry.get('metric') != 'macro_f1' or entry.get('metric_value') != expected:
+            raise ValueError(f"{entry['stage']}: metric_value differs from the binding on disk")
+    if record.get('k_selected') != selection.k_selected:
+        raise ValueError(f'k_selection winner {record.get("k_selected")!r} differs from the '
+                         f'recomputed argmax {selection.k_selected}')
+    if record.get('tie_rule_applied') is not selection.tie_rule_applied:
+        raise ValueError('k_selection tie_rule_applied differs from the recomputed selection')
+    expected_document = _k_selection_document(selection, _stage_entries(selection, {
+        name: (Path(stage_dirs[name]) if name in stage_dirs else Path(entry['output']))
+        for name, entry in ((s['stage'], s) for s in stages)}))
+    for key in ('seeds', 'arm', 'statistic', 'tie_rule', 'seed_means', 'seed_means_rounded',
+                'knot_table_sha256', 'v3_state_sha256', 'selected_knot_table_sha256',
+                'selected_v3_state_sha256', 'dev_sample_ids_sha256', 'control_binding_sha256',
+                'k_selection_completed_before_screen'):
+        if record.get(key) != expected_document[key]:
+            raise ValueError(f'k_selection {key} differs from the recomputed selection')
     return None
 
 
