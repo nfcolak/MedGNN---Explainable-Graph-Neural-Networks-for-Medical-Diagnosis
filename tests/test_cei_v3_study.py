@@ -370,3 +370,260 @@ def test_post_freeze_stage_k_must_match_the_frozen_k(tmp_path):
     binding['method_config']['architecture']['k'] = 16
     with pytest.raises(ValueError, match='k'):
         study.validate_v3_binding(binding, stage, k_selection=record)
+
+
+# -------------------------------------------------------- step 2: k selection
+
+from comparison.standardized.clinical_graph_v2.cei_v3_absence import fit_universe  # noqa: E402
+from comparison.standardized.clinical_graph_v2.cei_v3_ple import fit_knots  # noqa: E402
+from comparison.standardized.clinical_graph_v2.methods import plugin_cei_gnn_v3 as plugin  # noqa: E402
+
+TOKENS = ['complaint:a', 'measurement:lab1', 'vital:hr', 'analyte:x', 'measurement:lab2']
+VOCAB = {token: i + 1 for i, token in enumerate(TOKENS)}
+LAYOUT = ['kind:complaint', 'scaled_value', 'has_value', 'time_signed_log']
+PREP_SHA = hashlib.sha256(b'synthetic preprocessing state').hexdigest()
+
+
+def _fit_inputs():
+    values = {'measurement:lab1': np.linspace(-2.0, 2.0, 100, dtype=np.float32),
+              'vital:hr': np.linspace(0.0, 1.0, 40, dtype=np.float32),
+              'measurement:lab2': np.full((25,), 0.5, dtype=np.float32),
+              'analyte:x': np.zeros((5,), dtype=np.float32)}
+    return study.V3FitInputs(
+        values_by_item=values, transform_by_item={'vital:hr': 'signed_log'},
+        identity_graph_counts={'measurement:lab1': 100, 'vital:hr': 30, 'measurement:lab2': 25,
+                               'analyte:x': 5},
+        vocabulary=dict(VOCAB), vocabulary_tokens=tuple(TOKENS), token_min_count=20,
+        preprocessing_sha256=PREP_SHA, node_feature_layout=tuple(LAYOUT), train_count=10000)
+
+
+def test_fit_v3_state_writes_the_exact_v3_state_document_once(tmp_path):
+    calls = []
+
+    def reader():
+        calls.append(1)
+        return _fit_inputs()
+
+    root = tmp_path / 'root'
+    path = study.fit_v3_state(root, 8, reader=reader)
+    assert path == root / 'v3_state' / 'K8.json'
+    assert calls == [1]
+    inputs = _fit_inputs()
+    table = fit_knots(inputs.values_by_item, 8, min_values=20,
+                      transform_by_item=inputs.transform_by_item, token_min_count=20)
+    universe = fit_universe(inputs.identity_graph_counts, inputs.vocabulary, min_graphs=20,
+                            token_min_count=20)
+    expected = plugin.build_v3_state(K=8, knot_table=table, universe=universe,
+                                     vocabulary_tokens=TOKENS, vocabulary_min_count=20,
+                                     preprocessing_sha256=PREP_SHA, node_feature_layout=LAYOUT)
+    assert json.loads(path.read_text()) == expected
+    assert path.read_bytes() == (json.dumps(expected, indent=2, sort_keys=True) + '\n').encode()
+    state = plugin.load_v3_state(path)
+    assert state.K == 8 and state.knot_table.items['vital:hr']['transform'] == 'signed_log'
+    assert state.knot_table.items['measurement:lab2']['active'] is False
+    assert 'analyte:x' not in state.knot_table.items
+    with pytest.raises(FileExistsError):
+        study.fit_v3_state(root, 8, reader=reader)
+    with pytest.raises(ValueError, match='grid'):
+        study.fit_v3_state(root, 32, reader=reader)
+    assert calls == [1]
+
+
+def _grid_bindings(plan_, metric_values, **per_stage_overrides):
+    """Nine C bindings; `metric_values[(k, seed)]` is selected_dev.metric_value."""
+    bindings = {}
+    for stage in plan_.stages[:9]:
+        binding = _binding(stage, root=plan_.output_root)
+        binding['selected_dev']['metric_value'] = metric_values[(stage.k, stage.seed)]
+        binding['method_config']['knot_table_sha256'] = hashlib.sha256(
+            f'knots-K{stage.k}'.encode()).hexdigest()
+        binding['method_config']['v3_state_sha256'] = hashlib.sha256(
+            f'state-K{stage.k}'.encode()).hexdigest()
+        binding.update(per_stage_overrides.get(stage.name, {}))
+        bindings[stage.name] = binding
+    return bindings
+
+
+METRICS_CLEAR = {(4, 1234): 0.401, (4, 2025): 0.398, (4, 7): 0.405,
+                 (8, 1234): 0.411, (8, 2025): 0.409, (8, 7): 0.415,
+                 (16, 1234): 0.410, (16, 2025): 0.412, (16, 7): 0.408}
+METRICS_TIE = {(4, 1234): 0.401, (4, 2025): 0.398, (4, 7): 0.405,
+               (8, 1234): 0.41, (8, 2025): 0.42, (8, 7): 0.43,
+               (16, 1234): 0.40, (16, 2025): 0.42, (16, 7): 0.44}
+
+
+def test_select_k_statistic_is_the_unweighted_seed_mean_and_winner_the_argmax(tmp_path):
+    plan_ = study.plan(_config(tmp_path))
+    selection = study.select_k(_grid_bindings(plan_, METRICS_CLEAR))
+    assert selection.k_grid == (4, 8, 16) and selection.seeds == (1234, 2025, 7)
+    assert selection.arm == 'C' and selection.rule == study.K_SELECTION_RULE
+    assert selection.statistic == METRICS_CLEAR
+    assert selection.seed_means == {4: pytest.approx(0.4013333333), 8: pytest.approx(0.4116666667),
+                                    16: pytest.approx(0.41)}
+    assert selection.k_selected == 8
+    assert selection.tie_rule_applied is False
+    assert selection.knot_table_sha256_by_k == {
+        k: hashlib.sha256(f'knots-K{k}'.encode()).hexdigest() for k in (4, 8, 16)}
+    assert selection.v3_state_sha256_by_k == {
+        k: hashlib.sha256(f'state-K{k}'.encode()).hexdigest() for k in (4, 8, 16)}
+    assert selection.dev_sample_ids_sha256 == 'f' * 64
+
+
+def test_select_k_tie_at_six_decimals_goes_to_the_smaller_k(tmp_path):
+    plan_ = study.plan(_config(tmp_path))
+    selection = study.select_k(_grid_bindings(plan_, METRICS_TIE))
+    assert set(selection.seed_means) == {4, 8, 16}
+    assert round(selection.seed_means[8], 6) == round(selection.seed_means[16], 6) == 0.42
+    assert selection.k_selected == 8
+    assert selection.tie_rule_applied is True
+    # A 7th-decimal difference is still a tie for the runner's 6-decimal metric.
+    metrics = dict(METRICS_TIE)
+    metrics[(16, 7)] = 0.4400004
+    selection = study.select_k(_grid_bindings(plan_, metrics))
+    assert (selection.k_selected, selection.tie_rule_applied) == (8, True)
+    metrics[(16, 7)] = 0.440003
+    selection = study.select_k(_grid_bindings(plan_, metrics))
+    assert (selection.k_selected, selection.tie_rule_applied) == (16, False)
+
+
+def test_select_k_refuses_an_incomplete_grid_arm_drift_and_inconsistent_state_hashes(tmp_path):
+    plan_ = study.plan(_config(tmp_path))
+    bindings = _grid_bindings(plan_, METRICS_CLEAR)
+    del bindings['C_K8_seed7']
+    with pytest.raises(ValueError, match='C_K8_seed7'):
+        study.select_k(bindings)
+    bindings = _grid_bindings(plan_, METRICS_CLEAR)
+    bindings['C_K4_seed1234']['method_config']['arm'] = 'A'
+    bindings['C_K4_seed1234']['method_config']['effective_settings']['arm'] = 'A'
+    with pytest.raises(ValueError, match='arm'):
+        study.select_k(bindings)
+    bindings = _grid_bindings(plan_, METRICS_CLEAR)
+    bindings['C_K4_seed1234']['method_config']['knot_table_sha256'] = '0' * 64
+    with pytest.raises(ValueError, match='knot_table_sha256'):
+        study.select_k(bindings)
+    bindings = _grid_bindings(plan_, METRICS_CLEAR)
+    bindings['C_K16_seed7']['split_sample_ids_sha256']['dev'] = '0' * 64
+    bindings['C_K16_seed7']['selected_dev']['sample_ids_sha256'] = '0' * 64
+    with pytest.raises(ValueError, match='dev'):
+        study.select_k(bindings)
+    bindings = _grid_bindings(plan_, METRICS_CLEAR)
+    bindings['C_K16_seed7']['final_eval'] = 'validation'
+    with pytest.raises(ValueError, match='final_eval'):
+        study.select_k(bindings)
+    bindings = _grid_bindings(plan_, METRICS_CLEAR)
+    bindings['extra_seed'] = dict(bindings['C_K8_seed7'])
+    with pytest.raises(ValueError, match='extra_seed'):
+        study.select_k(bindings)
+
+
+def _completed_grid(tmp_path, metrics=METRICS_CLEAR):
+    plan_ = study.plan(_config(tmp_path))
+    bindings = _grid_bindings(plan_, metrics)
+    stage_dirs = {}
+    for stage in plan_.stages[:9]:
+        stage_dir = Path(stage.output)
+        stage_dir.mkdir(parents=True)
+        (stage_dir / 'binding.json').write_text(
+            json.dumps(bindings[stage.name], indent=2, sort_keys=True) + '\n')
+        (stage_dir / 'best.pt').write_bytes(f'checkpoint {stage.name}'.encode())
+        stage_dirs[stage.name] = stage_dir
+    return plan_, bindings, stage_dirs
+
+
+def test_write_k_selection_binds_checkpoint_and_binding_hashes_and_the_rule(tmp_path):
+    plan_, bindings, stage_dirs = _completed_grid(tmp_path)
+    selection = study.select_k(bindings)
+    path = Path(plan_.k_selection_path)
+    record = study.write_k_selection(selection, stage_dirs, path)
+    assert path.is_file()
+    assert json.loads(path.read_text()) == record
+    assert study.k_selection_sha256(record) == hashlib.sha256(path.read_bytes()).hexdigest()
+    assert record['version'] == study.K_SELECTION_VERSION
+    assert record['k_grid'] == [4, 8, 16] and record['seeds'] == [1234, 2025, 7]
+    assert record['arm'] == 'C' and record['rule'] == study.K_SELECTION_RULE
+    assert record['statistic'] == 'unweighted mean over seeds of selected_dev.metric_value'
+    assert record['tie_rule'] == 'equal 6-decimal seed-mean -> smaller K'
+    assert record['k_selected'] == 8 and record['tie_rule_applied'] is False
+    assert record['seed_means'] == {'4': pytest.approx(0.4013333333),
+                                    '8': pytest.approx(0.4116666667), '16': pytest.approx(0.41)}
+    assert record['seed_means_rounded'] == {'4': 0.401333, '8': 0.411667, '16': 0.41}
+    assert record['dev_sample_ids_sha256'] == 'f' * 64
+    assert record['knot_table_sha256'] == {
+        str(k): hashlib.sha256(f'knots-K{k}'.encode()).hexdigest() for k in (4, 8, 16)}
+    assert record['v3_state_sha256'] == {
+        str(k): hashlib.sha256(f'state-K{k}'.encode()).hexdigest() for k in (4, 8, 16)}
+    assert record['selected_knot_table_sha256'] == record['knot_table_sha256']['8']
+    assert record['selected_v3_state_sha256'] == record['v3_state_sha256']['8']
+    stages = record['stages']
+    assert [s['stage'] for s in stages] == [stage.name for stage in plan_.stages[:9]]
+    for entry, stage in zip(stages, plan_.stages[:9]):
+        stage_dir = stage_dirs[stage.name]
+        assert entry == {
+            'stage': stage.name, 'k': stage.k, 'seed': stage.seed, 'output': str(stage_dir),
+            'checkpoint_sha256': hashlib.sha256((stage_dir / 'best.pt').read_bytes()).hexdigest(),
+            'binding_sha256': hashlib.sha256((stage_dir / 'binding.json').read_bytes()).hexdigest(),
+            'metric': 'macro_f1', 'metric_value': METRICS_CLEAR[(stage.k, stage.seed)]}
+    assert record['control_binding_sha256'] == [
+        s['binding_sha256'] for s in stages if s['k'] == 8]
+    assert record['k_selection_completed_before_screen'] is True
+    assert record['screen_record_sha256'] is None
+    assert 'k_selection_sha256' not in record
+    with pytest.raises(FileExistsError):
+        study.write_k_selection(selection, stage_dirs, path)
+
+
+def test_write_k_selection_refuses_stage_dirs_that_do_not_match_the_selection(tmp_path):
+    plan_, bindings, stage_dirs = _completed_grid(tmp_path)
+    selection = study.select_k(bindings)
+    missing = dict(stage_dirs)
+    del missing['C_K4_seed7']
+    with pytest.raises(ValueError, match='C_K4_seed7'):
+        study.write_k_selection(selection, missing, Path(plan_.k_selection_path))
+    drifted = dict(stage_dirs)
+    (drifted['C_K8_seed1234'] / 'binding.json').write_text(json.dumps(
+        dict(bindings['C_K8_seed1234'], seed=1234, patience=41), indent=2, sort_keys=True) + '\n')
+    with pytest.raises(ValueError, match='binding'):
+        study.write_k_selection(selection, drifted, Path(plan_.k_selection_path))
+    assert not Path(plan_.k_selection_path).exists()
+
+
+def test_k_selection_replay_passes_and_detects_every_drift(tmp_path):
+    plan_, bindings, stage_dirs = _completed_grid(tmp_path, METRICS_TIE)
+    selection = study.select_k(bindings)
+    path = Path(plan_.k_selection_path)
+    record = study.write_k_selection(selection, stage_dirs, path)
+    assert {'k_selected', 'tie_rule_applied', 'stages', 'rule', 'k_grid'} <= set(record)
+    assert record['k_selected'] == 8 and record['tie_rule_applied'] is True
+    assert study.assert_k_selection_replay(record, stage_dirs) is None
+    assert json.loads(path.read_text()) == record  # replay is pure
+
+    tampered = json.loads(json.dumps(record))
+    tampered['k_selected'] = 16
+    with pytest.raises(ValueError, match='winner'):
+        study.assert_k_selection_replay(tampered, stage_dirs)
+    tampered = json.loads(json.dumps(record))
+    tampered['stages'][4]['metric_value'] = 0.99
+    with pytest.raises(ValueError, match='metric_value'):
+        study.assert_k_selection_replay(tampered, stage_dirs)
+    tampered = json.loads(json.dumps(record))
+    tampered['tie_rule_applied'] = False
+    with pytest.raises(ValueError, match='tie'):
+        study.assert_k_selection_replay(tampered, stage_dirs)
+    tampered = json.loads(json.dumps(record))
+    tampered['rule'] = 'argmax of screen macro-F1'
+    with pytest.raises(ValueError, match='rule'):
+        study.assert_k_selection_replay(tampered, stage_dirs)
+    tampered = json.loads(json.dumps(record))
+    tampered['k_grid'] = [4, 8, 16, 32]
+    with pytest.raises(ValueError, match='grid'):
+        study.assert_k_selection_replay(tampered, stage_dirs)
+
+    (stage_dirs['C_K16_seed7'] / 'best.pt').write_bytes(b'another checkpoint')
+    with pytest.raises(ValueError, match='checkpoint_sha256'):
+        study.assert_k_selection_replay(record, stage_dirs)
+    (stage_dirs['C_K16_seed7'] / 'best.pt').write_bytes(b'checkpoint C_K16_seed7')
+    assert study.assert_k_selection_replay(record, stage_dirs) is None
+    text = (stage_dirs['C_K8_seed7'] / 'binding.json').read_text()
+    (stage_dirs['C_K8_seed7'] / 'binding.json').write_text(text.replace('0.43', '0.44'))
+    with pytest.raises(ValueError, match='binding_sha256'):
+        study.assert_k_selection_replay(record, stage_dirs)
