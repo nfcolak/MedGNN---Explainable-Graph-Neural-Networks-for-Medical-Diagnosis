@@ -22,11 +22,12 @@ import hashlib
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from .. import NODE_KINDS
 from ..cei_v3_absence import ABSENCE_LABEL, index_visit_absence
 from ..cei_v3_ple import ple_basis
-from .cei_gnn_v2 import PairEvidenceNetwork
+from .cei_gnn_v2 import PairEvidenceNetwork, kind_pair_index, within_visit_pairs
 
 ARMS = ('A', 'B', 'C')
 MEASUREMENT_KINDS = tuple(NODE_KINDS.index(kind) for kind in ('measurement', 'vital'))
@@ -66,18 +67,35 @@ class _EncoderWithPreActivationTerm(nn.Linear):
 
 
 class _ResidualBlock(nn.Module):
-    """Node-local residual block ``h + Dropout(GELU(LayerNorm(Linear(h))))`` (§2.2). STUB."""
+    """Node-local residual block ``h + Dropout(GELU(LayerNorm(Linear(h))))`` (§2.2).
 
-    def __init__(self, width):
+    The Linear weight and bias are initialised from per-tensor generators (E6); LayerNorm
+    starts at the deterministic ``nn.LayerNorm`` values. The dropout mask is drawn from the
+    block's own generator seeded by ``(seed, '<qualified name>.dropout')``, so the global
+    RNG stream is consumed exactly as in arm C.
+    """
+
+    def __init__(self, width, *, dropout, seed, name):
         super().__init__()
         self.linear = nn.utils.skip_init(nn.Linear, in_features=width, out_features=width)
         self.norm = nn.utils.skip_init(nn.LayerNorm, normalized_shape=width)
+        self.dropout_rate = float(dropout)
+        bound = 1.0 / float(width) ** 0.5   # nn.Linear's default uniform bound (fan_in = width)
         with torch.no_grad():
-            for parameter in self.parameters():
-                parameter.zero_()
+            self.linear.weight.uniform_(-bound, bound,
+                                        generator=tensor_generator(seed, f'{name}.linear.weight'))
+            self.linear.bias.uniform_(-bound, bound,
+                                      generator=tensor_generator(seed, f'{name}.linear.bias'))
+            self.norm.weight.fill_(1.0)
+            self.norm.bias.zero_()
+        self._dropout_generator = tensor_generator(seed, f'{name}.dropout')
 
     def forward(self, h):
-        return h
+        update = F.gelu(self.norm(self.linear(h)))
+        if self.training and self.dropout_rate > 0.0:
+            keep = torch.rand(update.shape, generator=self._dropout_generator) >= self.dropout_rate
+            update = update * keep.to(device=update.device, dtype=update.dtype) / (1.0 - self.dropout_rate)
+        return h + update
 
 
 class EvidenceNetworkV3(PairEvidenceNetwork):
@@ -99,9 +117,13 @@ class EvidenceNetworkV3(PairEvidenceNetwork):
                          pair_rank=pair_rank, pair_mode='additive',
                          num_node_types=num_node_types)
         self.arm, self.seed, self.encoder_depth = str(arm), int(seed), int(encoder_depth)
+        # E2d residual blocks (§2.2): registered only for depth >= 2, so depth 1 keeps the
+        # exact U3 module set; parameters live under `encoder_blocks.<i>.*`.
         if self.encoder_depth > 1:
             self.encoder_blocks = nn.ModuleList(
-                [_ResidualBlock(self.hidden) for _ in range(self.encoder_depth - 1)])
+                [_ResidualBlock(self.hidden, dropout=self.dropout_rate, seed=self.seed,
+                                name=f'encoder_blocks.{index}')
+                 for index in range(self.encoder_depth - 1)])
         self.ple_active, self.absence_active = arm != 'A', arm == 'C'
         layout = [str(name) for name in feature_layout]
         if len(layout) != self.node_dim:
@@ -225,16 +247,88 @@ class EvidenceNetworkV3(PairEvidenceNetwork):
                  'absence_gates': gate, 'absence_denominator': denominator}
         return total, parts
 
+    def _evidence_blocks(self, h, features, edge_index, metadata, membership, visit_graph):
+        """v2 additive evidence on a node representation ``h`` (``cei_gnn_v2.py`` lines
+        180–239 verbatim: same operations and the same global-RNG consumption order).
+
+        Split out of the v2 forward so that U3x can transform ``h`` before every read of
+        it (node head, edge votes, pair votes), which the v2 body does not allow.
+        """
+        node_count, graph_count = int(features.size(0)), int(metadata.graph_count)
+        batch_index, classes = metadata.batch_index, self.num_classes
+        node_vote, node_gate = self.node_head(h).chunk(2, dim=-1)
+        node_gate = node_gate.sigmoid()
+        node_num = h.new_zeros((graph_count, classes)).index_add(0, batch_index, node_gate * node_vote)
+        node_den = h.new_ones((graph_count, classes)).index_add(0, batch_index, node_gate)
+        node_parts = (node_gate * node_vote) / node_den[batch_index]
+
+        edge_count = edge_index.size(1)
+        context = (self.relation_embedding(metadata.edge_relation) + self.triple_embedding(metadata.edge_triple)
+                   + self.edge_feature_projection(metadata.edge_attr))
+        src, dst = edge_index
+        edge_vote = self.edge_source(h[src]) + self.edge_target(h[dst]) + self.edge_context_vote(context)
+        edge_gate = self.edge_context_gate(context).sigmoid()
+        vote_sum, gate_sum = self.edge_aggregator(edge_index, edge_vote, edge_gate, node_count)
+        edge_vote_graph = h.new_zeros((graph_count, classes)).index_add(0, batch_index, vote_sum)
+        edge_gate_graph = h.new_zeros((graph_count, classes)).index_add(0, batch_index, gate_sum)
+        edge_denominator = 1.0 + edge_gate_graph
+        edge_mask = self.edge_aggregator._edge_mask
+        if edge_mask is None:
+            effective_gate_vote = edge_gate * edge_vote
+        else:
+            edge_mask = edge_mask.to(device=edge_gate.device, dtype=edge_gate.dtype)
+            if getattr(self.edge_aggregator, "_apply_sigmoid", False):
+                edge_mask = edge_mask.sigmoid()
+            effective_gate_vote = edge_mask[:, None] * edge_gate * edge_vote
+        edge_parts = (effective_gate_vote / edge_denominator[batch_index[src]] if edge_count else edge_vote)
+
+        pairs = within_visit_pairs(
+            membership, metadata.node_type, node_count,
+            **({"node_graph": batch_index, "visit_graph": visit_graph}
+               if visit_graph is not None else {}))
+        pair_count = pairs.size(1)
+        if pair_count == 0:   # pair_mode is fixed to 'additive' (never 'off')
+            pair_total = h.new_zeros((graph_count, classes))
+            pair_parts = h.new_zeros((pair_count, classes))
+            pair_gates = h.new_empty((0,))
+            pair_denominator = h.new_ones((graph_count, classes))
+        else:
+            z = torch.tanh(self.pair_projection(h))
+            left, right = pairs
+            q = z[left] + z[right]
+            q = F.dropout(q, p=self.dropout_rate, training=self.training)
+            pair_vote = self.pair_vote(q)
+            pair_gate = self.pair_gate[kind_pair_index(metadata.node_type, pairs)].sigmoid()
+            pair_gates = pair_gate
+            pair_graph = batch_index[left]
+            pair_num = h.new_zeros((graph_count, classes)).index_add(0, pair_graph, pair_gate * pair_vote)
+            pair_den = h.new_ones((graph_count, classes)).index_add(0, pair_graph, pair_gate)
+            pair_denominator = pair_den
+            pair_total = pair_num / pair_den
+            pair_parts = (pair_gate * pair_vote) / pair_den[pair_graph]
+
+        logits = self.bias + node_num / node_den + edge_vote_graph / edge_denominator + pair_total
+        return {"logits": logits, "node_contributions": node_parts, "edge_contributions": edge_parts,
+                "pair_contributions": pair_parts, "pairs": pairs, "bias": self.bias,
+                "pair_gates": pair_gates, "pair_denominator": pair_denominator}
+
     def forward_continuous(self, features, edge_index, metadata, membership, *,
                            return_parts=False, visit_graph=None):
-        if features.ndim == 2 and features.size(1) == self.continuous_width and self.ple_active:
-            self.node_encoder._pending_term = self._ple_term(features, metadata)
-        try:
-            result = super().forward_continuous(features, edge_index, metadata, membership,
-                                                return_parts=return_parts, visit_graph=visit_graph)
-        finally:
-            self.node_encoder._pending_term = None
+        self._validate(features, edge_index, metadata)
         graph_count, classes = int(metadata.graph_count), self.num_classes
+        # v2 encoder (`cei_gnn_v2.py` lines 177–179) with the PLE pre-activation term (F12).
+        numeric, token_vectors, type_vectors = torch.split(
+            features, (self.node_dim, self.token_dim, self.hidden), dim=-1)
+        pre_activation = self.node_encoder(torch.cat((numeric, token_vectors, type_vectors), dim=-1))
+        if self.ple_active:
+            pre_activation = pre_activation + self._ple_term(features, metadata)
+        h = F.gelu(self.node_norm(pre_activation))
+        h = F.dropout(h, p=self.dropout_rate, training=self.training)
+        # E2d hook: node-local residual blocks before every read of h (§2.2).
+        if self.encoder_depth > 1:
+            for block in self.encoder_blocks:
+                h = block(h)
+        result = self._evidence_blocks(h, features, edge_index, metadata, membership, visit_graph)
         if self.absence_active:
             total, absence_parts = self._absence_block(features, metadata, membership, visit_graph)
         else:  # skipped entirely (F3): no tensor derived from the absence parameters
@@ -244,10 +338,10 @@ class EvidenceNetworkV3(PairEvidenceNetwork):
                 'absence_items': torch.zeros((2, 0), dtype=torch.long, device=features.device),
                 'absence_gates': features.new_zeros((0, classes)),
                 'absence_denominator': features.new_ones((graph_count, classes))}
-        if not return_parts:
-            return result if total is None else result + total
         if total is not None:
             result['logits'] = result['logits'] + total
+        if not return_parts:
+            return result['logits']
         result.update(absence_parts)
         return result
 
