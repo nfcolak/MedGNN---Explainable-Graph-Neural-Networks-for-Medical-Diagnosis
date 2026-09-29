@@ -154,6 +154,42 @@ class EvidenceNetworkV3(PairEvidenceNetwork):
         basis = ple_basis(values, has_value, knot_row, self.knots, self.knot_active)
         return self.ple_projection(basis)
 
+    def _absence_block(self, features, metadata, membership, visit_graph):
+        """Absence block of the batch; only called when the absence path is active.
+
+        Returns ``(total float32[G, C], parts dict)`` with the four absence keys. An empty
+        absent set yields an exact-zero total, ``[0, C]`` parts and denominator one (§4.5).
+        """
+        graph_count, classes = int(metadata.graph_count), self.num_classes
+        device = features.device
+        if visit_graph is None:
+            raise ValueError('visit_graph is required for the absence block (index visit = '
+                             'cumsum(num_visits) - 1 per graph, F9)')
+        visit_graph = visit_graph.to(device=device, dtype=torch.long).view(-1)
+        if visit_graph.numel() and bool((visit_graph[1:] < visit_graph[:-1]).any()):
+            raise ValueError('visit_graph must list visits in graph order')
+        num_visits = torch.bincount(visit_graph, minlength=graph_count)
+        if num_visits.numel() != graph_count:
+            raise ValueError('visit_graph refers to a graph outside the batch')
+        absent = index_visit_absence(membership, num_visits, metadata.node_type, metadata.token,
+                                     self.slot_of_token, MEASUREMENT_KINDS)
+        items = absent.nonzero(as_tuple=False).t().contiguous()   # [2, n]: (graph, slot)
+        graph, slot = items[0], items[1]
+        denominator = features.new_ones((graph_count, classes))
+        if items.size(1) == 0:
+            parts = {'absence_contributions': features.new_zeros((0, classes)),
+                     'absence_items': items, 'absence_gates': features.new_zeros((0, classes)),
+                     'absence_denominator': denominator}
+            return features.new_zeros((graph_count, classes)), parts
+        gate = self.absence_gate[slot].sigmoid()                   # [n, C]
+        vote = self.absence_vote[slot]                             # [n, C]
+        gated = gate * vote
+        denominator = denominator.index_add(0, graph, gate)        # 1 + Σ_absent g
+        total = features.new_zeros((graph_count, classes)).index_add(0, graph, gated) / denominator
+        parts = {'absence_contributions': gated / denominator[graph], 'absence_items': items,
+                 'absence_gates': gate, 'absence_denominator': denominator}
+        return total, parts
+
     def forward_continuous(self, features, edge_index, metadata, membership, *,
                            return_parts=False, visit_graph=None):
         if features.ndim == 2 and features.size(1) == self.continuous_width and self.ple_active:
@@ -163,17 +199,24 @@ class EvidenceNetworkV3(PairEvidenceNetwork):
                                                 return_parts=return_parts, visit_graph=visit_graph)
         finally:
             self.node_encoder._pending_term = None
-        if not return_parts:
-            return result
         graph_count, classes = int(metadata.graph_count), self.num_classes
-        result.update({  # stub: absence block always empty
-            'absence_contributions': features.new_zeros((0, classes)),
-            'absence_items': torch.zeros((2, 0), dtype=torch.long, device=features.device),
-            'absence_gates': features.new_zeros((0, classes)),
-            'absence_denominator': features.new_ones((graph_count, classes))})
+        if self.absence_active:
+            total, absence_parts = self._absence_block(features, metadata, membership, visit_graph)
+        else:  # skipped entirely (F3): no tensor derived from the absence parameters
+            total = None
+            absence_parts = {
+                'absence_contributions': features.new_zeros((0, classes)),
+                'absence_items': torch.zeros((2, 0), dtype=torch.long, device=features.device),
+                'absence_gates': features.new_zeros((0, classes)),
+                'absence_denominator': features.new_ones((graph_count, classes))}
+        if not return_parts:
+            return result if total is None else result + total
+        if total is not None:
+            result['logits'] = result['logits'] + total
+        result.update(absence_parts)
         return result
 
 
 def absence_label(item):
-    """Explanation label of an absent universe item (stub)."""
-    return str(item)
+    """Explanation label of an absent universe item (v3 §12 F8 wording)."""
+    return ABSENCE_LABEL.format(item=item)
