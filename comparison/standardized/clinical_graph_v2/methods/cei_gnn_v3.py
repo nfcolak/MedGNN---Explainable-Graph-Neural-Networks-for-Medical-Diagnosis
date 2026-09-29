@@ -20,6 +20,7 @@ new tensor is initialised from its own ``torch.Generator`` seeded from
 from __future__ import annotations
 
 import hashlib
+from typing import Protocol, Tuple, runtime_checkable
 
 import torch
 import torch.nn as nn
@@ -35,9 +36,24 @@ MEASUREMENT_KINDS = tuple(NODE_KINDS.index(kind) for kind in ('measurement', 'vi
 NEW_PARAMETER_NAMES = ('ple_projection.weight', 'absence_vote', 'absence_gate')
 ABSENCE_KEYS = ('absence_contributions', 'absence_items', 'absence_gates',
                 'absence_denominator')
+EXTRA_BLOCK_PREFIX = 'blocks'                 # STUB (U3x red): wrong value
+RESERVED_BLOCK_NAMES = frozenset()            # STUB (U3x red): wrong value
 
 __all__ = ['ARMS', 'MEASUREMENT_KINDS', 'NEW_PARAMETER_NAMES', 'ABSENCE_KEYS', 'ABSENCE_LABEL',
-           'EvidenceNetworkV3', 'tensor_generator', 'tensor_seed']
+           'EXTRA_BLOCK_PREFIX', 'RESERVED_BLOCK_NAMES', 'EvidenceNetworkV3',
+           'tensor_generator', 'tensor_seed']
+
+
+@runtime_checkable
+class ExtraBlock(Protocol):
+    """STUB (U3x red): the `extra_blocks` protocol is filled in by the green step."""
+
+    name: str
+    uses_rng: bool
+
+    def parameter_names(self) -> Tuple[str, ...]: ...
+
+    def __call__(self, h, edge_index, edge_relation, batch_index, graph_count): ...
 
 
 def tensor_seed(seed, name):
@@ -93,8 +109,7 @@ class EvidenceNetworkV3(PairEvidenceNetwork):
             raise ValueError(f'arm must be one of {list(ARMS)}, got {arm!r}')
         if isinstance(encoder_depth, bool) or int(encoder_depth) != encoder_depth or encoder_depth < 1:
             raise ValueError(f'encoder_depth must be an integer >= 1, got {encoder_depth!r}')
-        if tuple(extra_blocks):
-            raise ValueError('extra_blocks are added by U3x; U3 accepts an empty tuple only')
+        extra_blocks = tuple(extra_blocks)
         super().__init__(num_tokens=num_tokens, node_dim=node_dim, edge_dim=edge_dim,
                          num_classes=num_classes, hidden=hidden, token_dim=token_dim,
                          num_triples=num_triples, num_relations=num_relations, dropout=dropout,
@@ -108,6 +123,10 @@ class EvidenceNetworkV3(PairEvidenceNetwork):
                 [_ResidualBlock(self.hidden, dropout=self.dropout_rate, seed=self.seed,
                                 name=f'encoder_blocks.{index}')
                  for index in range(self.encoder_depth - 1)])
+        # STUB (U3x red): blocks are stored but not validated, registered or called.
+        self.extra_block_names = tuple(block.name for block in extra_blocks)
+        if extra_blocks:
+            self.extra_blocks = nn.ModuleDict({block.name: block for block in extra_blocks})
         self.ple_active, self.absence_active = arm != 'A', arm == 'C'
         layout = [str(name) for name in feature_layout]
         if len(layout) != self.node_dim:
