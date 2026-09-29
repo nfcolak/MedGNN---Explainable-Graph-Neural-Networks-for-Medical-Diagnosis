@@ -73,11 +73,10 @@ def _graph(seed=7, *, hr_at_index=False, lab1_value=0.7, lab1_prior=False):
                                 VOCAB['complaint:a']])
     graph.edge_relation = torch.tensor([0, 2, 3, 5, 4, 4])
     graph.edge_triple = torch.tensor([0, 1, 2, 3, 1, 1])
-    membership = [(0, 1), (0, 2), (0, 4), (0, 5), (1, 2), (1, 3), (1, 6), (1, 7)]
+    membership = [(0, 1), (0, 2), (1 if hr_at_index else 0, 4), (0, 5), (1, 2), (1, 3),
+                  (1, 6), (1, 7)]
     if lab1_prior:
         membership.append((0, 3))
-    if hr_at_index:
-        membership.append((1, 4))
     graph.visit_membership_index = torch.tensor(sorted(membership)).t().contiguous()
     graph.num_visits = torch.tensor([2])
     graph.y = torch.tensor([1])
