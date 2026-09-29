@@ -1,6 +1,19 @@
 # Self-Explainable Graph Neural Networks for Medical Diagnosis
 
-The current four-method comparison uses **one exact native ProtGNN/GSAT input**:
+The current task is the **max6 / train-derived Top-10 clinical task**: patients
+with at most 6 total visits, the 10 most frequent diagnoses by TRAIN-fold
+frequency, multi-visit clinical graphs, and validation-only model selection.
+Start with the [clinical_graph_v2 runbook](comparison/standardized/clinical_graph_v2/README.md).
+The 30-class native reproduction below is a preserved, separate reference; its
+scores are not comparable with this task. ADR-007 and ADR-008 are proposed, not accepted.
+
+## Start here
+
+- [Current runbook: clinical_graph_v2](comparison/standardized/clinical_graph_v2/README.md)
+
+## Preserved 30-class native reference (not comparable)
+
+The preserved native comparison uses **one exact native ProtGNN/GSAT input**:
 ProtGNN, GSAT, GraphCare, and PNA (plain or medication–complaint interaction).
 All consume the same 74,511 ordered patient stars, 30 ordered labels, canonical
 split, and **331 native feature slots**, including the original **132 hub fields**.
@@ -11,7 +24,7 @@ benchmark. Native history, visit counts, stay-wide vitals/labs and their upstrea
 limitations are retained—not silently replaced by the earlier 127-field enrichment.
 See the [exact-input contract and verification](docs/native-identical-input-v1.md).
 
-## Start here — current identical-input comparison
+### Commands
 
 Run from the repository root. The launcher selects the main Python interpreter
 for ProtGNN/GSAT/PNA and `.venv-graphcare/bin/python` for GraphCare.
@@ -39,15 +52,17 @@ is used for selection. `--loss native` declares method-native class weighting;
 `--loss ce` and `--loss sqrt_inverse` provide shared classification-loss policies
 without removing prototype or information-bottleneck auxiliary losses.
 
-Historical reproduction commands (`run_all`, `run_benchmark`, `run_common_input`,
-`pna_benchmark`, and `enriched_input_v1`) are **not current equal-input defaults**.
+Older historical reproduction commands (`run_all`, `run_benchmark`, `run_common_input`,
+`pna_benchmark`, and `enriched_input_v1`) are **not defaults for any current task**.
 Their inputs/results/checkpoints remain unchanged and cannot be mixed with this
 version. The [historical runbook](comparison/standardized/README.md) documents
 those older runs; their three-method topology parity did not establish equal hub
-payloads. The current entrypoint rejects any other artifact fingerprint.
+payloads. The native entrypoint rejects any other artifact fingerprint.
+
+## More links
 
 - [Repository map and output ownership](STRUCTURE.md)
-- [Exact verification evidence and remaining limitations](docs/usability-verification.md)
+- [Exact verification evidence and remaining limitations (historical tooling verification)](docs/usability-verification.md)
 - [Browser graph viewer](visualizer/README.md)
 - [Working-tree cleanup and reversible restoration](docs/cleanup-working-tree.md)
 - [Raw data workflow (legacy caveats)](docs/RUN_WITH_OWN_DATA.md)
@@ -60,7 +75,7 @@ payloads. The current entrypoint rejects any other artifact fingerprint.
 ├── shared/                   Shared code and standardized contracts
 │   ├── data_prep/            MIMIC-IV-ED -> merged_ed.csv (merge_ed.py + standardizers)
 │   └── lib/                  Split / metrics / config base (identical across methods)
-├── protgnn_analysis/         METHOD A — intra-patient ProtGNN (current)
+├── protgnn_analysis/         Intra-patient ProtGNN
 │   ├── config.py             Hyperparameters
 │   ├── load_dataset.py       IntraPatientHeteroDataset + graph builders
 │   ├── models/               GCN / GAT / GIN + GnnNets
@@ -69,11 +84,15 @@ payloads. The current entrypoint rejects any other artifact fingerprint.
 │   ├── train.py              Train + explain entry point
 │   ├── scripts/              eval / summarize / confusion / hpo / ...
 │   └── outputs/              Checkpoints, runs, results
-├── graphcare_analysis/       METHOD B — GraphCare (KG + BAT-GNN); model vendored upstream
+├── graphcare_analysis/       GraphCare (KG + BAT-GNN); model vendored upstream
 │   ├── config.py  adapter.py  build_kg.py  run.py
 │   └── outputs/
-├── gsat_analysis/            METHOD C — GSAT on shared patient graphs
-├── comparison/standardized/  Current benchmark CLI, cache audit, explanations, summary
+├── gsat_analysis/            GSAT on shared patient graphs
+├── gchm_analysis/            GCHM / GCHM-PNA models
+├── pna_analysis/             Opt-in interaction PNA
+├── event_graph_analysis/     Event-graph analysis
+├── comparison/standardized/  Native reference CLI, historical tooling, explanations, summary
+│   └── clinical_graph_v2/    Current max6 / Top-10 task (current)
 ├── tests/                    Maintained contract, fixture and model smoke tests
 ├── visualizer/               React/TypeScript graph viewer
 ├── baselines/                Exploratory tabular baseline (XGBoost / HistGB)
@@ -109,12 +128,12 @@ See `docs/RUN_WITH_OWN_DATA.md` for the full data placement and rerun workflow.
 
 The commands below are historical method-specific workflows. They may train
 models or generate caches, and do not use the current native identical-input
-artifact. For the four-method comparison, use `train_identical` above.
+artifact. For the current task use the clinical_graph_v2 runbook; for the native reference use `train_identical` above.
 
 All commands run from the repo root with the repo root on `PYTHONPATH`
 (so the `protgnn_analysis` / `graphcare_analysis` / `shared` packages resolve).
 
-### Method A — ProtGNN (current)
+### ProtGNN (legacy 30-class)
 
 Configuration lives in `protgnn_analysis/config.py`.
 
@@ -130,7 +149,7 @@ Run with prototype learning enabled:
 PYTHONPATH=.:external/GraphXAI-main python3 protgnn_analysis/train.py --explain_n 100
 ```
 
-### Method B — GraphCare (comparison)
+### GraphCare (legacy 30-class)
 
 Clone the upstream model first (see `external/GraphCare/README.md`), then:
 
