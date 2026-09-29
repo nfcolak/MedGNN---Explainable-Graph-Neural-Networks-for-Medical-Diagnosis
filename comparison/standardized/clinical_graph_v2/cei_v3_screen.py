@@ -8,12 +8,16 @@ from __future__ import annotations
 import random
 import sys
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Optional
 
+from .contracts import sample_ids_sha256
+from .schema import sha256
 from .train import load_targets, select_top_labels
 
 SCREEN_FOLD_NAME = 'screen'
 SELECTOR_VERSION = 'cei_v3_screen_selector_v1'
+SERIALIZATION_VERSION = 'json_compact_utf8_v1'  # contracts.sample_ids_sha256 layout
 SEED_STRING_FORMAT = 'screen-{screen_seed}'
 DEFAULT_SCREEN_LIMIT = 5000
 DEFAULT_SCREEN_SEED = 20260929
@@ -98,10 +102,130 @@ def screen_record(targets_path, screen_ids, train_ids, dev_ids, *, artifact_sha2
                   preprocessing_sha256, serialization_version,
                   screen_limit=DEFAULT_SCREEN_LIMIT, screen_seed=DEFAULT_SCREEN_SEED,
                   top_k_labels=10, eligible=None) -> dict:
-    return {}
+    """Hash-bound screen fold record (v3 §5 "Hash binding and replay", §12.5–6).
+
+    The record holds aggregates and SHA-256 digests only; it never lists sample or
+    subject identifiers. `screen_ids` must be exactly what the frozen selector draws
+    from the immutable target file and the bound parent ids, in order.
+    """
+    if serialization_version != SERIALIZATION_VERSION:
+        raise ValueError(f'unsupported id serialization version {serialization_version!r}; '
+                         f'this module binds {SERIALIZATION_VERSION!r}')
+    screen_ids = list(screen_ids)
+    train_ids, dev_ids = set(train_ids), set(dev_ids)
+    targets, kept = load_screen_targets(targets_path, top_k_labels=top_k_labels)
+    expected = select_screen_ids(targets, train_ids, dev_ids, screen_limit=screen_limit,
+                                 screen_seed=screen_seed, eligible=eligible)
+    if screen_ids != expected:
+        raise ValueError('screen_ids differ from the frozen selector draw (order, content '
+                         'or count); the record binds only the reproducible draw')
+    candidates = screen_candidates(targets, train_ids, dev_ids, eligible=eligible)
+    excluded = sorted(excluded_subjects(targets, train_ids, dev_ids))
+    environment = selector_environment()
+    return {
+        'fold': SCREEN_FOLD_NAME,
+        'selector_version': SELECTOR_VERSION,
+        'python_version': environment['python_version'],
+        'seed_string_format': SEED_STRING_FORMAT,
+        'seed_string': SEED_STRING_FORMAT.format(screen_seed=screen_seed),
+        'screen_seed': int(screen_seed),
+        'screen_limit': int(screen_limit),
+        'eligibility_rule': ELIGIBILITY_RULE,
+        'eligible_bound': eligible is not None,
+        'top_k_labels': None if top_k_labels is None else int(top_k_labels),
+        'class_order': None if kept is None else list(range(len(kept))),
+        'kept_label_indices': kept,
+        'serialization_version': SERIALIZATION_VERSION,
+        'targets_sha256': sha256(Path(targets_path)),
+        'screen_sample_ids_sha256': sample_ids_sha256(screen_ids),
+        'excluded_subjects_sha256': sample_ids_sha256(excluded),
+        'excluded_subject_count': len(excluded),
+        'row_count': len(screen_ids),
+        'distinct_subject_count': len({targets[sid][2] for sid in screen_ids}),
+        'candidate_row_count': len(candidates),
+        'candidate_subject_count': len({targets[sid][2] for sid in candidates}),
+        'artifact_sha256': artifact_sha256,
+        'preprocessing_sha256': preprocessing_sha256,
+        'parent_train_sample_ids_sha256': sample_ids_sha256(sorted(train_ids)),
+        'parent_train_count': len(train_ids),
+        'parent_dev_sample_ids_sha256': sample_ids_sha256(sorted(dev_ids)),
+        'parent_dev_count': len(dev_ids),
+    }
+
+
+_REPLAY_KEYS = ('fold', 'selector_version', 'seed_string_format', 'seed_string', 'screen_seed',
+                'screen_limit', 'eligibility_rule', 'eligible_bound', 'top_k_labels',
+                'class_order', 'kept_label_indices', 'serialization_version', 'targets_sha256',
+                'screen_sample_ids_sha256', 'excluded_subjects_sha256',
+                'excluded_subject_count', 'row_count', 'distinct_subject_count',
+                'candidate_row_count', 'candidate_subject_count',
+                'parent_train_sample_ids_sha256', 'parent_train_count',
+                'parent_dev_sample_ids_sha256', 'parent_dev_count')
 
 
 def assert_screen_replay(record, targets_path, train_ids, dev_ids, *, eligible=None) -> None:
+    """Recompute the draw from the immutable target file and bound parents.
+
+    Raises ValueError on any drift: target bytes, parent ids, seed, limit, versions,
+    ordered screen hash, counts, excluded subjects, duplicates, or a subject shared
+    with train or dev. Pure: `record` is not modified.
+    """
+    if not isinstance(record, dict):
+        raise ValueError('screen record must be a dict')
+    missing = [key for key in _REPLAY_KEYS if key not in record]
+    if missing:
+        raise ValueError(f'screen record lacks bound fields: {missing}')
+    if record['fold'] != SCREEN_FOLD_NAME:
+        raise ValueError('screen record fold name differs')
+    if record['selector_version'] != SELECTOR_VERSION:
+        raise ValueError('screen record was produced by another selector version')
+    if record['serialization_version'] != SERIALIZATION_VERSION:
+        raise ValueError('screen record binds another id serialization version')
+    if record['seed_string_format'] != SEED_STRING_FORMAT:
+        raise ValueError('screen record binds another seed string format')
+    if type(record['screen_seed']) is not int or type(record['screen_limit']) is not int:
+        raise ValueError('screen record seed/limit must be integers')
+    if record['seed_string'] != SEED_STRING_FORMAT.format(screen_seed=record['screen_seed']):
+        raise ValueError('screen record seed string differs from its seed')
+    if record['eligibility_rule'] != ELIGIBILITY_RULE:
+        raise ValueError('screen record binds another eligibility rule')
+    if record['eligible_bound'] != (eligible is not None):
+        raise ValueError('screen record eligibility set presence differs from replay input')
+    targets_path = Path(targets_path)
+    if record['targets_sha256'] != sha256(targets_path):
+        raise ValueError('target sidecar bytes differ from the screen record')
+    train_ids, dev_ids = set(train_ids), set(dev_ids)
+    if record['parent_train_sample_ids_sha256'] != sample_ids_sha256(sorted(train_ids)):
+        raise ValueError('parent train sample ids differ from the screen record')
+    if record['parent_dev_sample_ids_sha256'] != sample_ids_sha256(sorted(dev_ids)):
+        raise ValueError('parent dev sample ids differ from the screen record')
+    if record['parent_train_count'] != len(train_ids) or record['parent_dev_count'] != len(dev_ids):
+        raise ValueError('parent sample counts differ from the screen record')
+    targets, kept = load_screen_targets(targets_path, top_k_labels=record['top_k_labels'])
+    class_order = None if kept is None else list(range(len(kept)))
+    if record['class_order'] != class_order or record['kept_label_indices'] != kept:
+        raise ValueError('class order differs from the screen record')
+    excluded = sorted(excluded_subjects(targets, train_ids, dev_ids))
+    if (record['excluded_subjects_sha256'] != sample_ids_sha256(excluded)
+            or record['excluded_subject_count'] != len(excluded)):
+        raise ValueError('excluded subject set differs from the screen record')
+    replay = select_screen_ids(targets, train_ids, dev_ids, screen_limit=record['screen_limit'],
+                               screen_seed=record['screen_seed'], eligible=eligible)
+    if len(replay) != record['row_count'] or len(set(replay)) != record['row_count']:
+        raise ValueError('replayed screen row count differs or has duplicate ids')
+    if record['screen_sample_ids_sha256'] != sample_ids_sha256(replay):
+        raise ValueError('ordered screen sample ids differ from the screen record')
+    if set(replay) & (train_ids | dev_ids):
+        raise ValueError('replayed screen ids intersect train or dev ids')
+    replay_subjects = {targets[sid][2] for sid in replay}
+    if replay_subjects & set(excluded):
+        raise ValueError('replayed screen subjects intersect train or dev subjects')
+    if record['distinct_subject_count'] != len(replay_subjects):
+        raise ValueError('screen distinct subject count differs from the screen record')
+    candidates = screen_candidates(targets, train_ids, dev_ids, eligible=eligible)
+    if (record['candidate_row_count'] != len(candidates)
+            or record['candidate_subject_count'] != len({targets[s][2] for s in candidates})):
+        raise ValueError('candidate counts differ from the screen record')
     return None
 
 
