@@ -118,6 +118,83 @@ def fit_knots(values_by_item: Dict[str, np.ndarray], K: int, *, min_values: int 
     return table
 
 
+def _validate_knots(knots: torch.Tensor, active: torch.Tensor) -> torch.Tensor:
+    """Return effective knot count per row; raise on any invalid active row (F2)."""
+    if knots.dim() != 2 or knots.dtype != torch.float32:
+        raise ValueError('knots must be float32[items, K+1]')
+    if active.shape != (knots.shape[0],) or active.dtype != torch.bool:
+        raise ValueError('active must be bool[items]')
+    padded = torch.isposinf(knots)
+    counts = (~padded).sum(dim=1)
+    if knots.shape[0] == 0:
+        return counts
+    # padding must be a suffix of +inf: no finite knot after the first padding column
+    cols = torch.arange(knots.shape[1]).unsqueeze(0)
+    if bool((padded & (cols < counts.unsqueeze(1))).any()):
+        raise ValueError('knot padding must be a trailing +inf suffix')
+    act = active
+    if bool(act.any()):
+        rows = knots[act]
+        n = counts[act]
+        if not bool(torch.isfinite(rows[cols.expand_as(rows) < n.unsqueeze(1)]).all()):
+            raise ValueError('non-finite knot in an active row')
+        if bool((n < MIN_ACTIVE_KNOTS).any()):
+            raise ValueError('active row with fewer than 3 knots')
+        widths = rows[:, 1:] - rows[:, :-1]
+        valid = (cols[:, 1:].expand_as(widths) < n.unsqueeze(1))
+        if not bool((widths[valid] > 0).all()):
+            raise ValueError('active knot row is not strictly increasing (zero-width interval)')
+    return counts
+
+
 def ple_basis(values: torch.Tensor, has_value: torch.Tensor, knot_row: torch.Tensor,
               knots: torch.Tensor, active: torch.Tensor) -> torch.Tensor:
-    return torch.zeros((values.shape[0], knots.shape[1]), dtype=torch.float32)
+    """Piecewise-linear hat basis float32[N, K+1].
+
+    Interior: linear interpolation between the two adjacent knots; outside the fitted
+    range: the endpoint basis (clamped, no extrapolation). Zero rows for ``has_value == 0``,
+    an inactive row, or ``knot_row == -1`` (no table). Raises on a zero-width interval, a
+    non-finite active knot, or an out-of-range row index; asserts the result is finite."""
+    counts = _validate_knots(knots, active)
+    n_items, width = knots.shape
+    values = values.to(torch.float32).reshape(-1)
+    has_value = has_value.to(torch.float32).reshape(-1)
+    knot_row = knot_row.to(torch.long).reshape(-1)
+    n = values.shape[0]
+    if has_value.shape[0] != n or knot_row.shape[0] != n:
+        raise ValueError('values, has_value and knot_row must share length N')
+    out = torch.zeros((n, width), dtype=torch.float32, device=knots.device)
+    if n == 0:
+        return out
+    if bool((knot_row < -1).any()) or bool((knot_row >= n_items).any()):
+        raise ValueError('knot_row out of range')
+    use = (knot_row >= 0) & (has_value > 0)
+    if n_items > 0:
+        use = use & active[knot_row.clamp(min=0)]
+    idx = use.nonzero(as_tuple=True)[0]
+    if idx.numel() == 0:
+        return out
+    rows = knot_row[idx]
+    v = values[idx]
+    if not bool(torch.isfinite(v).all()):
+        raise ValueError('non-finite value with has_value=1')
+    k = knots[rows]                                   # [n, K+1]
+    last = counts[rows] - 1                           # index of last real knot
+    lo = k[:, 0]
+    hi = k.gather(1, last.unsqueeze(1)).squeeze(1)
+    v = torch.minimum(torch.maximum(v, lo), hi)       # clamp to the fitted range
+    # right index: number of knots <= v, in [1, last]; left = right - 1
+    right = (k <= v.unsqueeze(1)).sum(dim=1).clamp(max=last)
+    right = torch.maximum(right, torch.ones_like(right))
+    left = right - 1
+    k_left = k.gather(1, left.unsqueeze(1)).squeeze(1)
+    k_right = k.gather(1, right.unsqueeze(1)).squeeze(1)
+    w = (v - k_left) / (k_right - k_left)
+    w = w.clamp(0.0, 1.0)
+    basis = torch.zeros((idx.numel(), width), dtype=torch.float32, device=knots.device)
+    basis.scatter_(1, left.unsqueeze(1), (1.0 - w).unsqueeze(1))
+    basis.scatter_add_(1, right.unsqueeze(1), w.unsqueeze(1))
+    out[idx] = basis
+    if not bool(torch.isfinite(out).all()):
+        raise ValueError('non-finite PLE basis')
+    return out
