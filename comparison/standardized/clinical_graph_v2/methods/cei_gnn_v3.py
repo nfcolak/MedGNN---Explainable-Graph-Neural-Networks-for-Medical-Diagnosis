@@ -36,17 +36,37 @@ MEASUREMENT_KINDS = tuple(NODE_KINDS.index(kind) for kind in ('measurement', 'vi
 NEW_PARAMETER_NAMES = ('ple_projection.weight', 'absence_vote', 'absence_gate')
 ABSENCE_KEYS = ('absence_contributions', 'absence_items', 'absence_gates',
                 'absence_denominator')
-EXTRA_BLOCK_PREFIX = 'blocks'                 # STUB (U3x red): wrong value
-RESERVED_BLOCK_NAMES = frozenset()            # STUB (U3x red): wrong value
+EXTRA_BLOCK_PREFIX = 'extra_blocks'
+RESERVED_BLOCK_NAMES = frozenset(('node', 'edge', 'pair', 'absence'))
 
 __all__ = ['ARMS', 'MEASUREMENT_KINDS', 'NEW_PARAMETER_NAMES', 'ABSENCE_KEYS', 'ABSENCE_LABEL',
-           'EXTRA_BLOCK_PREFIX', 'RESERVED_BLOCK_NAMES', 'EvidenceNetworkV3',
+           'EXTRA_BLOCK_PREFIX', 'RESERVED_BLOCK_NAMES', 'ExtraBlock', 'EvidenceNetworkV3',
            'tensor_generator', 'tensor_seed']
 
 
 @runtime_checkable
 class ExtraBlock(Protocol):
-    """STUB (U3x red): the `extra_blocks` protocol is filled in by the green step."""
+    """Additive logit block plugged into ``EvidenceNetworkV3`` (extensions spec §9 U3x).
+
+    Contract (X5's ``comorbid_block.build_block`` returns one of these):
+
+    * ``name`` — identifier, no ``.``, not in ``RESERVED_BLOCK_NAMES``, unique per network;
+      the block is registered as ``extra_blocks.<name>`` and its parameters appear as
+      ``extra_blocks.<name>.<local>`` in ``state_dict``/``parameter_inventory``.
+    * ``uses_rng`` — must be ``False``: the block draws no dropout mask or other random
+      number from the global stream (the network asserts the global RNG state is unchanged
+      by the call; a dedicated ``torch.Generator`` is allowed). Its tensors are initialised
+      by the block itself from ``tensor_generator(seed, 'extra_blocks.<name>.<local>')``.
+    * ``parameter_names()`` — exactly the qualified names of its registered parameters.
+    * ``__call__(h, edge_index, edge_relation, batch_index, graph_count)`` with
+      ``h: float32[N, hidden]`` (after the encoder and the residual blocks),
+      ``edge_index: long[2, E]``, ``edge_relation: long[E]``, ``batch_index: long[N]``,
+      ``graph_count: int`` → ``(total: float32[G, C], parts: dict[str, Tensor])``. ``total``
+      is added to the logit sum; every ``parts`` key must start with ``'<name>_'`` and must
+      not collide with a v2/absence/other-block key.
+
+    Blocks must be ``nn.Module`` instances (registration) that also satisfy this protocol.
+    """
 
     name: str
     uses_rng: bool
@@ -54,6 +74,10 @@ class ExtraBlock(Protocol):
     def parameter_names(self) -> Tuple[str, ...]: ...
 
     def __call__(self, h, edge_index, edge_relation, batch_index, graph_count): ...
+
+
+V2_PART_KEYS = frozenset(('logits', 'node_contributions', 'edge_contributions',
+                          'pair_contributions', 'pairs', 'bias', 'pair_gates', 'pair_denominator'))
 
 
 def tensor_seed(seed, name):
@@ -123,10 +147,18 @@ class EvidenceNetworkV3(PairEvidenceNetwork):
                 [_ResidualBlock(self.hidden, dropout=self.dropout_rate, seed=self.seed,
                                 name=f'encoder_blocks.{index}')
                  for index in range(self.encoder_depth - 1)])
-        # STUB (U3x red): blocks are stored but not validated, registered or called.
-        self.extra_block_names = tuple(block.name for block in extra_blocks)
+        # `extra_blocks` protocol (§9 U3x): validated, registered as extra_blocks.<name>.
+        self.extra_block_names = tuple(str(block.name) for block in
+                                       self._validated_extra_blocks(extra_blocks))
         if extra_blocks:
             self.extra_blocks = nn.ModuleDict({block.name: block for block in extra_blocks})
+            for block in extra_blocks:
+                registered = tuple(f'{EXTRA_BLOCK_PREFIX}.{block.name}.{local}'
+                                   for local, _ in block.named_parameters())
+                declared = tuple(block.parameter_names())
+                if sorted(declared) != sorted(registered):
+                    raise ValueError(f'extra block {block.name!r}: parameter_names() {declared} '
+                                     f'differ from the registered parameters {registered}')
         self.ple_active, self.absence_active = arm != 'A', arm == 'C'
         layout = [str(name) for name in feature_layout]
         if len(layout) != self.node_dim:
@@ -182,11 +214,61 @@ class EvidenceNetworkV3(PairEvidenceNetwork):
 
     # ------------------------------------------------------------------ new paths
 
+    @staticmethod
+    def _validated_extra_blocks(blocks):
+        """Protocol checks that need no registration: type, name, uses_rng, uniqueness."""
+        seen = set()
+        for block in blocks:
+            if not isinstance(block, nn.Module) or not isinstance(block, ExtraBlock):
+                raise ValueError('every extra block must be an nn.Module satisfying ExtraBlock '
+                                 '(name, uses_rng, parameter_names, __call__)')
+            name = block.name
+            if (not isinstance(name, str) or not name or '.' in name
+                    or name in RESERVED_BLOCK_NAMES):
+                raise ValueError(f'extra block name {name!r} must be a non-empty identifier '
+                                 f'without "." and outside {sorted(RESERVED_BLOCK_NAMES)}')
+            if block.uses_rng is not False:
+                raise ValueError(f'extra block {name!r}: uses_rng must be False (§2.2: no RNG '
+                                 'operation inside extension blocks)')
+            if name in seen:
+                raise ValueError(f'duplicate extra block name {name!r}')
+            seen.add(name)
+        return tuple(blocks)
+
+    def _extra_block_terms(self, h, edge_index, metadata, existing_keys):
+        """Call every extra block; returns ``(total or None, merged parts)`` (§9 U3x)."""
+        graph_count, classes = int(metadata.graph_count), self.num_classes
+        total, parts, keys = None, {}, set(existing_keys)
+        for name in self.extra_block_names:
+            block = self.extra_blocks[name]
+            before = torch.get_rng_state()
+            block_total, block_parts = block(h, edge_index, metadata.edge_relation,
+                                             metadata.batch_index, graph_count)
+            if not torch.equal(torch.get_rng_state(), before):
+                raise ValueError(f'extra block {name!r} consumed the global RNG stream '
+                                 '(uses_rng=False requires a dedicated generator)')
+            if (not torch.is_tensor(block_total)
+                    or tuple(block_total.shape) != (graph_count, classes)):
+                raise ValueError(f'extra block {name!r} must return a total of shape '
+                                 f'[{graph_count}, {classes}]')
+            for key, value in dict(block_parts).items():
+                if not key.startswith(f'{name}_'):
+                    raise ValueError(f'extra block {name!r} part key {key!r} must start with '
+                                     f'{name + "_"!r}')
+                if key in keys:
+                    raise ValueError(f'extra block {name!r} part key {key!r} collides with an '
+                                     'existing return_parts key')
+                keys.add(key)
+                parts[key] = value
+            total = block_total if total is None else total + block_total
+        return total, parts
+
     def parameter_inventory(self):
         """name -> (shape, active) for every registered parameter (§4.4 inventory).
 
         v2 tensors are always active; the PLE projection is active in arms B and C, the
-        absence tables in arm C only (F3).
+        absence tables in arm C only (F3). Residual and extra blocks are always active
+        (they are absent, not inactive, in C — extensions spec §1 / E17).
         """
         active_by_name = {'ple_projection.weight': self.ple_active,
                           'absence_vote': self.absence_active,
@@ -334,11 +416,18 @@ class EvidenceNetworkV3(PairEvidenceNetwork):
                 'absence_items': torch.zeros((2, 0), dtype=torch.long, device=features.device),
                 'absence_gates': features.new_zeros((0, classes)),
                 'absence_denominator': features.new_ones((graph_count, classes))}
+        # `extra_blocks` hook (§9 U3x): additive terms after the v2 sum and the absence block.
+        extra_parts = {}
+        if self.extra_block_names:
+            extra_total, extra_parts = self._extra_block_terms(
+                h, edge_index, metadata, set(result) | set(absence_parts))
+            total = extra_total if total is None else total + extra_total
         if total is not None:
             result['logits'] = result['logits'] + total
         if not return_parts:
             return result['logits']
         result.update(absence_parts)
+        result.update(extra_parts)
         return result
 
 
