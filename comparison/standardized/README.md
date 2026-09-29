@@ -1,6 +1,8 @@
+> **Historical.** This runbook documents the retained star/cooccur 30-class tooling, which evaluated the held-out test fold before the no-test-fold rule. It is frozen legacy, not the current task. See [clinical_graph_v2/README.md](clinical_graph_v2/README.md).
+
 # Standardized ProtGNN / GSAT / GraphCare benchmark
 
-This directory owns the auditable primary matrix: three methods × two common
+This directory owns the retained historical matrix: three methods × two common
 topologies (`star`, `cooccur`) × three seeds (`1234`, `1235`, `1236`) = 18
 runs. All commands below are run from the repository root.
 
