@@ -191,3 +191,174 @@ def test_residual_dropout_draws_from_a_dedicated_generator_and_leaves_the_global
     assert not torch.equal(outputs[0], other_outputs[0]), 'block dropout ignored the init seed'
     deep.eval(), other.eval()
     assert torch.equal(_run(deep, graph)['logits'], _run(other, graph)['logits'])
+
+
+# ------------------------------------------------------ step 2: extra blocks protocol
+
+class _StubBlock(nn.Module):
+    """Synthetic `ExtraBlock`: per-node linear votes summed per graph, no RNG (never X5's)."""
+
+    def __init__(self, hidden, num_classes, *, seed, name='stub', uses_rng=False, keys=None,
+                 total_shape=None, names=None, touch_global_rng=False):
+        super().__init__()
+        self.name, self.uses_rng = name, uses_rng
+        self.vote = nn.utils.skip_init(nn.Linear, in_features=hidden, out_features=num_classes,
+                                       bias=False)
+        self.gate = nn.Parameter(torch.zeros(num_classes))
+        bound = 1.0 / hidden ** 0.5
+        with torch.no_grad():
+            self.vote.weight.uniform_(-bound, bound, generator=v3.tensor_generator(
+                seed, f'extra_blocks.{name}.vote.weight'))
+        self._keys = keys or (f'{name}_contributions', f'{name}_relations')
+        self._total_shape = total_shape
+        self._names = names
+        self._touch_global_rng = touch_global_rng
+        self.calls = 0
+
+    def parameter_names(self):
+        if self._names is not None:
+            return self._names
+        return tuple(f'extra_blocks.{self.name}.{local}' for local, _ in self.named_parameters())
+
+    def forward(self, h, edge_index, edge_relation, batch_index, graph_count):
+        self.calls += 1
+        if self._touch_global_rng:
+            torch.rand(1)
+        votes = self.vote(h) * self.gate.sigmoid()
+        total = h.new_zeros((int(graph_count), votes.size(1))).index_add(0, batch_index, votes)
+        if self._total_shape is not None:
+            total = h.new_zeros(self._total_shape)
+        contributions, relations = self._keys
+        return total, {contributions: votes, relations: edge_relation[edge_index[0] >= 0]}
+
+
+def _stub_network(arm='C', **stub_options):
+    stub = _StubBlock(HIDDEN, CLASSES, seed=1234, **stub_options)
+    return _network(arm, extra_blocks=(stub,)), stub
+
+
+def test_stub_block_total_enters_logits_and_its_parts_are_merged():
+    graph = _graph()
+    base = _network().eval()
+    _randomise_gates(base)
+    with torch.no_grad():
+        base.absence_vote.normal_()
+        base.absence_gate.normal_()
+    network, stub = _stub_network()
+    network.eval()
+    _share_weights(base, network)
+    with torch.no_grad():
+        network.extra_blocks['stub'].gate.normal_()
+    reference, parts = _run(base, graph), _run(network, graph)
+    assert stub.calls == 1
+    assert {'stub_contributions', 'stub_relations'} <= set(parts)
+    assert set(parts) - set(reference) == {'stub_contributions', 'stub_relations'}
+    for key in reference:
+        assert torch.equal(parts[key], reference[key]) or key == 'logits', f'{key} changed by the stub'
+    assert parts['stub_contributions'].abs().sum() > 0
+    assert tuple(parts['stub_contributions'].shape) == (graph.num_nodes, CLASSES)
+    assert torch.equal(parts['stub_relations'], graph.edge_relation)
+    torch.testing.assert_close(parts['logits'][0], _rebuild(parts, 'stub_contributions'),
+                               rtol=1e-5, atol=1e-5)
+    assert not torch.allclose(parts['logits'], reference['logits'])
+    torch.testing.assert_close(_run(network, graph, return_parts=False), parts['logits'])
+
+
+def test_stub_block_parameters_are_registered_and_inventoried_under_extra_blocks():
+    network, stub = _stub_network()
+    names = {name for name, _ in network.named_parameters()}
+    expected = {'extra_blocks.stub.vote.weight', 'extra_blocks.stub.gate'}
+    assert expected <= names
+    assert set(stub.parameter_names()) == expected
+    assert _count(network) - _count(_network()) == HIDDEN * CLASSES + CLASSES
+    inventory = network.parameter_inventory()
+    assert inventory['extra_blocks.stub.vote.weight'] == ((CLASSES, HIDDEN), True)
+    assert inventory['extra_blocks.stub.gate'] == ((CLASSES,), True)
+    assert network.inactive_parameter_count() == 0
+    assert network.extra_blocks['stub'] is stub
+    assert tuple(network.extra_block_names) == ('stub',)
+    # Per-tensor initialisation from (seed, qualified name), independent of the global stream.
+    expected_weight = torch.empty(CLASSES, HIDDEN).uniform_(
+        -1.0 / HIDDEN ** 0.5, 1.0 / HIDDEN ** 0.5,
+        generator=v3.tensor_generator(1234, 'extra_blocks.stub.vote.weight'))
+    assert torch.equal(stub.vote.weight, expected_weight)
+    parts = _run(network.train(), _graph())
+    parts['logits'].sum().backward()
+    assert stub.vote.weight.grad is not None and stub.gate.grad is not None
+
+
+def test_no_extra_blocks_keeps_the_u3_module_set_and_forward():
+    plain = _network()
+    assert tuple(plain.extra_block_names) == ()
+    assert not any(name.startswith('extra_blocks') for name, _ in plain.named_parameters())
+    assert set(_run(plain, _graph())) == set(_run(_network(extra_blocks=()), _graph()))
+
+
+def test_key_collision_and_missing_prefix_and_bad_total_are_refused():
+    graph = _graph()
+    network, _ = _stub_network(keys=('stub_contributions', 'pairs'))   # collides with a v2 key
+    with pytest.raises(ValueError, match='pairs'):
+        _run(network, graph)
+    network, _ = _stub_network(keys=('stub_contributions', 'absence_items'))
+    with pytest.raises(ValueError, match='absence_items'):
+        _run(network, graph)
+    network, _ = _stub_network(keys=('stub_contributions', 'other_relations'))
+    with pytest.raises(ValueError, match='stub_'):
+        _run(network, graph)
+    network, _ = _stub_network(total_shape=(1, CLASSES + 1))
+    with pytest.raises(ValueError, match='stub'):
+        _run(network, graph)
+
+
+def test_uses_rng_true_duplicate_names_and_parameter_name_mismatch_are_refused():
+    with pytest.raises(ValueError, match='uses_rng'):
+        _stub_network(uses_rng=True)
+    first = _StubBlock(HIDDEN, CLASSES, seed=1234)
+    second = _StubBlock(HIDDEN, CLASSES, seed=1234)
+    with pytest.raises(ValueError, match='stub'):
+        _network(extra_blocks=(first, second))
+    for bad in ('', 'a.b', 'absence', 'node', 'edge', 'pair'):
+        with pytest.raises(ValueError, match='name'):
+            _network(extra_blocks=(_StubBlock(HIDDEN, CLASSES, seed=1234, name=bad),))
+    with pytest.raises(ValueError, match='parameter_names'):
+        _network(extra_blocks=(_StubBlock(HIDDEN, CLASSES, seed=1234,
+                                          names=('extra_blocks.stub.vote.weight',)),))
+    with pytest.raises(ValueError, match='parameter_names'):
+        _network(extra_blocks=(_StubBlock(HIDDEN, CLASSES, seed=1234,
+                                          names=('vote.weight', 'gate')),))
+    # A block that draws from the global stream despite uses_rng=False is caught in the forward.
+    network, _ = _stub_network(touch_global_rng=True)
+    with pytest.raises(ValueError, match='RNG'):
+        _run(network.train(), _graph())
+
+
+def test_zero_edge_mask_leaves_the_stub_block_intact():
+    graph = _graph()
+    network, _ = _stub_network()
+    network.eval()
+    _randomise_gates(network)
+    with torch.no_grad():
+        network.extra_blocks['stub'].gate.normal_()
+    ordinary = _run(network, graph)
+    assert 'stub_contributions' in ordinary and 'stub_relations' in ordinary
+    network.set_edge_mask(torch.zeros(graph.num_edges))
+    masked = _run(network, graph)
+    network.set_edge_mask(None)
+    assert torch.count_nonzero(masked['edge_contributions']) == 0
+    for key in ('node_contributions', 'pair_contributions', 'absence_contributions',
+                'stub_contributions'):
+        torch.testing.assert_close(masked[key], ordinary[key])
+    assert torch.equal(masked['stub_relations'], graph.edge_relation)
+    expected = (masked['bias'] + ordinary['node_contributions'].sum(0)
+                + ordinary['pair_contributions'].sum(0) + ordinary['absence_contributions'].sum(0)
+                + ordinary['stub_contributions'].sum(0))
+    torch.testing.assert_close(masked['logits'][0], expected, rtol=1e-5, atol=1e-5)
+
+
+def test_extra_block_protocol_is_exported_with_the_x5_contract():
+    assert hasattr(v3, 'ExtraBlock')
+    assert 'ExtraBlock' in v3.__all__
+    assert v3.EXTRA_BLOCK_PREFIX == 'extra_blocks'
+    assert v3.RESERVED_BLOCK_NAMES == frozenset(('node', 'edge', 'pair', 'absence'))
+    stub = _StubBlock(HIDDEN, CLASSES, seed=1234)
+    assert isinstance(stub, v3.ExtraBlock)
