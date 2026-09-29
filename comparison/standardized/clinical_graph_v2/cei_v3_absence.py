@@ -152,22 +152,31 @@ def index_visit_absence(membership, num_visits, node_type, token, slot_of_token,
         return absent
     if membership.ndim != 2 or membership.size(0) != 2:
         raise ValueError('visit_membership_index must have shape [2, pairs]')
-    if membership.size(1) == 0:
-        return absent
     membership = membership.to(device=device, dtype=torch.long)
     visit, node = membership[0], membership[1]
     node_count = int(node_type.numel())
-    if int(node.min()) < 0 or int(node.max()) >= node_count or int(visit.min()) < 0:
-        raise ValueError('visit membership refers to a node or visit outside the batch')
     index_visit = torch.cumsum(num_visits, 0) - 1
-    if int(visit.max()) > int(index_visit[-1]):
-        raise ValueError('visit membership refers to a visit outside the batch')
+    if node.numel():
+        if int(node.min()) < 0 or int(node.max()) >= node_count or int(visit.min()) < 0:
+            raise ValueError('visit membership refers to a node or visit outside the batch')
+        if int(visit.max()) > int(index_visit[-1]):
+            raise ValueError('visit membership refers to a visit outside the batch')
+    # Membership contract (§4.3): every measurement/vital node has exactly one
+    # visit membership; missing or ambiguous membership fails, it is never inferred.
+    kinds = torch.tensor(tuple(measurement_kinds), dtype=torch.long, device=device)
+    item_nodes = torch.isin(node_type, kinds)
+    membership_count = torch.bincount(node, minlength=node_count)
+    if bool((item_nodes & (membership_count == 0)).any()):
+        raise ValueError('measurement/vital node has no visit membership')
+    if bool((item_nodes & (membership_count > 1)).any()):
+        raise ValueError('measurement/vital node has ambiguous visit membership (more than one)')
+    if node.numel() == 0:
+        return absent
     # Visit -> graph, then keep only pairs on their graph's index visit.
     visit_graph = torch.repeat_interleave(torch.arange(graph_count, device=device), num_visits)
     graph_of_pair = visit_graph[visit]
     at_index = visit == index_visit[graph_of_pair]
-    kinds = torch.tensor(tuple(measurement_kinds), dtype=torch.long, device=device)
-    is_kind = torch.isin(node_type[node], kinds)
+    is_kind = item_nodes[node]
     slot = slot_of_token[token.to(device=device, dtype=torch.long)[node]]
     keep = at_index & is_kind & (slot >= 0)
     if bool(keep.any()):
