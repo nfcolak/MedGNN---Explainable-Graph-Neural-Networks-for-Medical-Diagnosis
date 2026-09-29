@@ -26,6 +26,22 @@ def test_fit_uses_quantiles_with_multiplicity_linear_method():
     assert np.float32(expected[0]) == 0.0 and np.float32(expected[-1]) == 5.0
 
 
+def test_fit_collapses_knots_equal_after_float32_cast():
+    a = np.float32(1.0)
+    b = np.nextafter(a, np.float32(np.inf))
+    values = np.asarray([a, b], dtype=np.float32)
+    q64 = np.quantile(values.astype(np.float64), [0.0, 0.25, 0.5, 0.75, 1.0], method='linear')
+    distinct32 = np.unique(q64.astype(np.float32))
+    assert np.any(np.diff(q64) > 0) and distinct32.size < q64.size
+    table = ple.fit_knots({'lab:tie': values}, K=4, min_values=2)
+    row = table.items['lab:tie']
+    knots, active, _ = table.tensor()
+    assert np.all(np.diff(np.asarray(row['knots'], dtype=np.float32)) > 0)
+    assert row['effective_knots'] == distinct32.size
+    inside = torch.tensor([float(a)], dtype=torch.float32)
+    ple.ple_basis(inside, torch.ones_like(inside), torch.tensor([table.rows()['lab:tie']]), knots, active)
+
+
 def test_fit_casts_to_float32_before_collapsing_ties():
     # Two float64 quantiles that coincide once cast to float32 must become one knot.
     base = np.float64(1.0)
