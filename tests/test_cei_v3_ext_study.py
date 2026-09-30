@@ -403,3 +403,329 @@ def test_family_bounds_on_u5_bootstrap_output_are_distinct_from_the_v3_linear_ru
     assert bounds['corrected'] <= bounds['nominal']
     assert bounds['linear_quantile'] == float(np.quantile(deltas, 0.025, method='linear'))
     assert ordered[24] <= bounds['linear_quantile'] <= ordered[25]
+
+
+# -------------------------------------------------------- step 3: extension decision
+
+
+def _deltas(*, corrected=0.004, nominal=0.010, seed=1):
+    """1,000 averaged deltas whose sorted[4] and sorted[24] are exactly the given values."""
+    rng = np.random.default_rng(seed)
+    values = np.sort(rng.normal(0.02, 0.005, 1000))
+    values = values - values[4] + corrected            # sorted[4] == corrected
+    if nominal is not None:
+        values[5:25] = np.linspace(corrected, nominal, 21)[1:]   # sorted[24] == nominal
+        values[25:] = np.maximum(values[25:], nominal)
+    return rng.permutation(values)
+
+
+def _scores(treatment=(0.42, 0.43, 0.44), control=(0.40, 0.41, 0.42)):
+    return {'C': dict(zip(SEEDS, control)), 'E2w': dict(zip(SEEDS, treatment)),
+            'E2d': dict(zip(SEEDS, treatment)), 'O': dict(zip(SEEDS, treatment)),
+            'E6a': dict(zip(SEEDS, treatment)), 'E6b': dict(zip(SEEDS, treatment))}
+
+
+def _family_deltas(**per_arm):
+    return {(arm, 'C'): per_arm.get(arm, _deltas()) for arm in ('E2w', 'E2d', 'O', 'E6a', 'E6b')}
+
+
+def test_decide_extension_applies_the_three_condition_rule_with_the_corrected_bound():
+    deltas = _family_deltas()
+    decision = ext.decide_extension(deltas, _scores())
+    assert decision['m'] == 5
+    assert decision['arms'] == ('E2w', 'E2d', 'O', 'E6a', 'E6b')
+    assert decision['arms_not_run'] == ()
+    assert decision['control'] == 'C'
+    assert decision['metric'] == 'weighted_macro_f1'
+    assert decision['resamples'] == 1000 and decision['bootstrap_seed'] == 2026
+    assert decision['bound_rule'] == ext.BOUND_RULE
+    assert decision['validation_evaluated'] is False and decision['test_evaluated'] is False
+    assert list(decision['contrasts']) == ['E2w', 'E2d', 'O', 'E6a', 'E6b']
+    result = decision['contrasts']['E2w']
+    values = deltas[('E2w', 'C')]
+    assert result['contrast'] == ['E2w', 'C']
+    assert result['per_seed'] == {'1234': {'E2w': 0.42, 'C': 0.40}, '2025': {'E2w': 0.43, 'C': 0.41},
+                                  '7': {'E2w': 0.44, 'C': 0.42}}
+    assert result['seed_means'] == {'E2w': pytest.approx(0.43), 'C': pytest.approx(0.41)}
+    assert result['point_delta'] == pytest.approx(0.02)
+    assert result['bounds'] == ext.family_bounds(values)
+    assert result['bounds']['corrected'] == pytest.approx(0.004)
+    assert result['bounds']['nominal'] == pytest.approx(0.010)
+    assert result['corrected_lower_bound'] == float(np.sort(values)[4])
+    assert result['nominal_lower_bound'] == float(np.sort(values)[24])
+    assert result['linear_quantile'] == float(np.quantile(values, 0.025, method='linear'))
+    assert result['checks'] == {'e2w_beats_c_each_seed': True, 'e2w_mean_above_c': True,
+                                'e2w_minus_c_corrected_lower_bound_above_zero': True}
+    assert result['nominal_lower_bound_above_zero'] is True
+    assert result['beats_control'] is True
+    assert result['nominal_win'] is False
+    assert result['statement'] == 'E2w beats C on this screen (family-corrected, m = 5)'
+    assert result['claim'] == 'wider CEI v3 beats CEI v3 C on this screen'
+    assert decision['contrasts']['E2d']['claim'] == 'deeper CEI v3 beats CEI v3 C on this screen'
+    assert decision['contrasts']['O']['claim'] == ("validation-tuned per-class offsets improve "
+                                                   "CEI v3 C's screen macro-F1")
+    assert decision['contrasts']['E6a']['claim'] == ('the bidirectional edge view improves CEI v3 C '
+                                                     'on this screen')
+    assert decision['contrasts']['E6b']['claim'] == ('the additive comorbid pair term improves CEI '
+                                                     'v3 C on this screen')
+    assert decision['winners'] == ('E2w', 'E2d', 'O', 'E6a', 'E6b')
+    assert decision['nominal_only'] == ()
+
+
+def test_decide_extension_labels_a_nominal_win_and_never_counts_it_as_positive():
+    # sorted[24] > 0 but sorted[4] <= 0: the nominal bound passes, the corrected one fails.
+    deltas = _family_deltas(E6b=_deltas(corrected=-0.001, nominal=0.003))
+    decision = ext.decide_extension(deltas, _scores())
+    assert 'E6b' in decision['contrasts']
+    result = decision['contrasts']['E6b']
+    assert result['checks']['e6b_beats_c_each_seed'] is True
+    assert result['checks']['e6b_mean_above_c'] is True
+    assert result['checks']['e6b_minus_c_corrected_lower_bound_above_zero'] is False
+    assert result['nominal_lower_bound_above_zero'] is True
+    assert result['beats_control'] is False
+    assert result['nominal_win'] is True
+    assert result['statement'] == 'E6b: nominal win, not family-corrected'
+    assert result['claim'] is None
+    assert decision['winners'] == ('E2w', 'E2d', 'O', 'E6a')
+    assert decision['nominal_only'] == ('E6b',)
+    # A corrected bound exactly at zero is a failure (strictly above zero).
+    deltas = _family_deltas(E2d=_deltas(corrected=0.0, nominal=0.003))
+    result = ext.decide_extension(deltas, _scores())['contrasts']['E2d']
+    assert result['beats_control'] is False and result['nominal_win'] is True
+    # No nominal win either when the nominal bound is at or below zero.
+    deltas = _family_deltas(O=_deltas(corrected=-0.002, nominal=0.0))
+    result = ext.decide_extension(deltas, _scores())['contrasts']['O']
+    assert result['beats_control'] is False and result['nominal_win'] is False
+    assert result['statement'] == 'O: benefit not demonstrated on this screen'
+
+
+@pytest.mark.parametrize('scores, failing', [
+    (_scores(treatment=(0.42, 0.41, 0.44)), 'e2w_beats_c_each_seed'),          # seed tie
+    (_scores(treatment=(0.42, 0.43, 0.44), control=(0.40, 0.41, 0.50)), 'e2w_beats_c_each_seed'),
+    (_scores(treatment=(0.42, 0.43, 0.44), control=(0.44, 0.43, 0.42)), 'e2w_mean_above_c'),
+])
+def test_decide_extension_fails_closed_on_the_uncorrected_conditions(scores, failing):
+    decision = ext.decide_extension(_family_deltas(), scores)
+    assert 'E2w' in decision['contrasts']
+    result = decision['contrasts']['E2w']
+    assert result['checks'][failing] is False
+    assert result['beats_control'] is False and result['nominal_win'] is False
+    assert result['statement'] == 'E2w: benefit not demonstrated on this screen'
+    assert 'E2w' not in decision['winners'] and 'E2w' not in decision['nominal_only']
+
+
+def test_decide_extension_keeps_m_at_five_when_an_arm_is_missing():
+    deltas = _family_deltas()
+    del deltas[('E6a', 'C')]
+    scores = _scores()
+    del scores['E6a']
+    decision = ext.decide_extension(deltas, scores)
+    assert decision['m'] == 5
+    assert decision['arms'] == ('E2w', 'E2d', 'O', 'E6b')
+    assert decision['arms_not_run'] == ('E6a',)
+    assert list(decision['contrasts']) == ['E2w', 'E2d', 'O', 'E6b']
+    for result in decision['contrasts'].values():
+        assert result['bounds']['m'] == 5 and result['bounds']['corrected_index'] == 4
+        assert result['statement'].endswith('(family-corrected, m = 5)')
+
+
+@pytest.mark.parametrize('kind', ['m_four', 'm_six', 'not_vs_c', 'foreign_arm', 'short_deltas',
+                                  'missing_seed', 'missing_scores', 'no_contrast', 'nan_delta',
+                                  'control_as_arm'])
+def test_decide_extension_refuses_family_drift_and_malformed_inputs(kind):
+    deltas, scores, kwargs = _family_deltas(), _scores(), {}
+    if kind == 'm_four':
+        kwargs['m'] = 4
+    elif kind == 'm_six':
+        kwargs['m'] = 6
+    elif kind == 'not_vs_c':
+        deltas[('E2w', 'A')] = deltas.pop(('E2w', 'C'))
+        scores['A'] = scores['C']
+    elif kind == 'foreign_arm':
+        deltas[('E6c', 'C')] = _deltas()
+        scores['E6c'] = scores['E6b']
+    elif kind == 'short_deltas':
+        deltas[('O', 'C')] = deltas[('O', 'C')][:999]
+    elif kind == 'missing_seed':
+        del scores['E6b'][7]
+    elif kind == 'missing_scores':
+        del scores['E2d']
+    elif kind == 'no_contrast':
+        deltas = {}
+    elif kind == 'nan_delta':
+        deltas[('E6a', 'C')] = deltas[('E6a', 'C')].copy()
+        deltas[('E6a', 'C')][10] = np.nan
+    elif kind == 'control_as_arm':
+        deltas[('C', 'C')] = _deltas()
+    with pytest.raises(ValueError):
+        ext.decide_extension(deltas, scores, **kwargs)
+
+
+# ---- O rows from C's stored screen logits + frozen delta (no inference) ----
+
+
+def _stored_c_screen(tmp_path, seed, *, n=40, rng_seed=3):
+    """A synthetic C screen row (as U5 writes it): logits.npz + screen_result.json dict."""
+    rng = np.random.default_rng(rng_seed + seed)
+    y = rng.integers(0, 10, n)
+    logits = rng.normal(0.0, 1.0, (n, 10)).astype(np.float32)
+    logits[np.arange(n), y] += rng.random(n).astype(np.float32) * 2.0
+    subjects = np.asarray([f'S{i // 2}' for i in range(n)]).astype(str)
+    sample_ids = np.asarray([f'row{seed}_{i}' for i in range(n)]).astype(str)
+    out = tmp_path / f'C_K8_seed{seed}' / study.SCREEN_DIRNAME
+    out.mkdir(parents=True)
+    logits_path = out / 'logits.npz'
+    np.savez_compressed(logits_path, logits=logits, y=y, subjects=subjects, sample_ids=sample_ids)
+    result = {
+        'arm': 'C', 'seed': seed, 'k': 8,
+        'checkpoint_sha256': hashlib.sha256(f'best.pt {seed}'.encode()).hexdigest(),
+        'binding_sha256': hashlib.sha256(f'binding {seed}'.encode()).hexdigest(),
+        'k_selection_sha256': 'k' * 64, 'screen_record_sha256': 's' * 64, 'row_count': n,
+        'macro_f1': float(study.weighted_macro_f1(y, logits.argmax(1))),
+        'logits_path': str(logits_path),
+        'logits_sha256': hashlib.sha256(np.ascontiguousarray(logits).tobytes()).hexdigest(),
+        'proba_path': str(out / 'proba.npz'), 'proba_sha256': 'p' * 64,
+        'absence_share_mean': 0.1, 'validation_evaluated': False, 'test_evaluated': False,
+    }
+    return result, logits, y, subjects
+
+
+def _offset_record_for(c_result, delta_int, approval_hash):
+    """A frozen delta record bound to `c_result`'s checkpoint (synthetic, X3 field set)."""
+    return {
+        'version': offsets.OFFSET_RECORD_VERSION, 'arm': 'O', 'control_arm': 'C',
+        'stage': f"C_K8_seed{c_result['seed']}", 'seed': c_result['seed'], 'k': 8,
+        'delta_int': list(delta_int), 'delta': [v / 10 for v in delta_int],
+        'grid': list(range(-20, 21)), 'sweeps': 5, 'delta_scale': 10,
+        'metric': offsets.METRIC_NAME, 'optimizer_rule': offsets.OPTIMIZER_RULE,
+        'checkpoint_sha256': c_result['checkpoint_sha256'],
+        'binding_sha256': c_result['binding_sha256'],
+        'k_selection_sha256': c_result['k_selection_sha256'],
+        'validation_sample_ids_sha256': 'v' * 64, 'validation_row_count': 4254,
+        'validation_logits_sha256': 'l' * 64, 'validation_logits_path': '/dev/null',
+        'approval_record_sha256': approval_hash, 'validation_result_sha256': 'r' * 64,
+        'tuning_macro_f1_before': 0.4, 'tuning_macro_f1_after': 0.41,
+        'tuning_score_caveat': offsets.TUNING_SCORE_CAVEAT,
+        'validation_evaluated': True, 'test_evaluated': False, 'screen_read_before_freeze': False,
+    }
+
+
+def _o_fixture(tmp_path):
+    approval = hashlib.sha256(b'approval').hexdigest()
+    deltas = {1234: [3, -2, 0, 0, 5, 0, -7, 0, 0, 1], 2025: [0, 0, 4, 0, 0, -3, 0, 0, 2, 0],
+              7: [-1, 0, 0, 6, 0, 0, 0, -4, 0, 0]}
+    c_results, records, arrays = {}, {}, {}
+    for seed in SEEDS:
+        result, logits, y, subjects = _stored_c_screen(tmp_path, seed)
+        c_results[seed] = result
+        records[seed] = _offset_record_for(result, deltas[seed], approval)
+        arrays[seed] = (logits, y, subjects)
+    return approval, c_results, records, arrays
+
+
+def test_offset_screen_rows_build_o_from_stored_logits_and_delta_without_inference(tmp_path, monkeypatch):
+    from comparison.standardized.clinical_graph_v2 import cei_v3_screen, contracts, tensorize
+    approval, c_results, records, arrays = _o_fixture(tmp_path)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError('O rows must come from stored logits: no loader, encoder or model')
+    for module, name in ((cei_v3_screen, 'encode_rows'), (contracts, 'iter_graphs_with_membership'),
+                         (tensorize, 'encode_graph'), (study, '_default_model_factory'),
+                         (study, 'score_screen')):
+        monkeypatch.setattr(module, name, forbidden)
+    rows = ext.offset_screen_rows(c_results, records, approval_record_sha256=approval)
+    assert set(rows) == set(SEEDS)
+    for seed in SEEDS:
+        logits, y, subjects = arrays[seed]
+        row = rows[seed]
+        assert (row['arm'], row['control_arm'], row['seed'], row['k']) == ('O', 'C', seed, 8)
+        assert row['reinference'] is False
+        assert row['checkpoint_sha256'] == c_results[seed]['checkpoint_sha256']
+        assert row['screen_logits_sha256'] == c_results[seed]['logits_sha256']
+        assert row['offset_record_sha256'] == offsets.offset_record_sha256(records[seed])
+        assert row['approval_record_sha256'] == approval
+        expected = offsets.apply_offsets(logits, np.asarray(records[seed]['delta_int']))
+        with np.load(row['pred_path'], allow_pickle=False) as saved:
+            assert np.array_equal(saved['pred'], expected)
+            assert np.array_equal(saved['y'], y)
+        assert row['macro_f1'] == study.weighted_macro_f1(y, expected)
+        assert Path(row['pred_path']).parent == (Path(c_results[seed]['logits_path']).parent
+                                                 / offsets.OFFSET_SCREEN_DIRNAME)
+        # The screen row loader reads O from o_pred.npz and C from logits.npz (argmax).
+        o_y, o_pred, o_subjects = ext.load_screen_row(row)
+        assert np.array_equal(o_pred, expected) and np.array_equal(o_y, y)
+        assert list(o_subjects) == list(subjects)
+        c_y, c_pred, c_subjects = ext.load_screen_row(c_results[seed])
+        assert np.array_equal(c_pred, logits.argmax(1)) and np.array_equal(c_y, y)
+        assert list(c_subjects) == list(subjects)
+    # The loaded rows feed U5 paired_bootstrap directly, paired on identical rows per seed.
+    arms = {'O': {seed: ext.load_screen_row(rows[seed]) for seed in SEEDS}}
+    for seed in SEEDS:                       # rows differ across seeds in this synthetic
+        arms['C'] = {s: ext.load_screen_row(c_results[s]) for s in SEEDS}
+    with pytest.raises(ValueError, match='paired'):
+        study.paired_bootstrap(arms, [('O', 'C')])
+
+
+@pytest.mark.parametrize('kind', ['missing_seed', 'swapped_records', 'approval_mismatch',
+                                  'no_logits_hash', 'tampered_logits', 'extra_seed'])
+def test_offset_screen_rows_refuse_unbound_or_mismatched_inputs(tmp_path, kind):
+    approval, c_results, records, _ = _o_fixture(tmp_path)
+    if kind == 'missing_seed':
+        del records[7]
+    elif kind == 'swapped_records':
+        records[1234], records[2025] = records[2025], records[1234]
+    elif kind == 'approval_mismatch':
+        approval = '0' * 64
+    elif kind == 'no_logits_hash':
+        del c_results[2025]['logits_sha256']
+    elif kind == 'tampered_logits':
+        path = Path(c_results[7]['logits_path'])
+        with np.load(path, allow_pickle=False) as saved:
+            arrays = {k: saved[k] for k in saved.files}
+        arrays['logits'] = arrays['logits'] * np.float32(2.0)
+        path.unlink()
+        np.savez_compressed(path, **arrays)
+    elif kind == 'extra_seed':
+        c_results[99] = c_results[7]
+        records[99] = records[7]
+    with pytest.raises(ValueError):
+        ext.offset_screen_rows(c_results, records, approval_record_sha256=approval)
+    for seed in SEEDS:
+        assert not (Path(c_results[seed]['logits_path']).parent / offsets.OFFSET_SCREEN_DIRNAME).exists()
+
+
+# ---- secondary E6b metric: comorbid-block share and non-empty pair-set fraction ----
+
+
+def test_comorbid_share_and_nonempty_fraction_follow_the_absence_share_definition():
+    import torch
+    parts = {
+        'node_contributions': torch.tensor([[1.0, -1.0], [0.0, 0.0], [2.0, 0.0], [0.0, 0.0]]),
+        'edge_contributions': torch.tensor([[0.5, 0.5]]),
+        'pair_contributions': torch.tensor([[0.0, 1.0]]),
+        'pairs': torch.tensor([[0], [1]]),
+        'absence_contributions': torch.tensor([[1.0, 0.5], [3.0, 0.0]]),
+        'absence_items': torch.tensor([[0, 1], [0, 1]]),
+        'comorbid_contributions': torch.tensor([[0.5, 1.0], [1.0, 0.0]]),
+        'comorbid_pairs': torch.tensor([[0, 2], [1, 3]]),      # one pair in graph 0, one in graph 1
+        'comorbid_gates': torch.tensor([0.5, 0.5]),
+        'comorbid_denominator': torch.tensor([[1.5, 1.5], [1.5, 1.5], [1.0, 1.0]]),
+    }
+    batch_index = torch.tensor([0, 0, 1, 1])
+    edge_index = torch.tensor([[0], [1]])
+    share = ext.comorbid_share(parts, batch_index=batch_index, edge_index=edge_index, graph_count=3)
+    # graph 0: |comorbid| = (0.5, 1.0); totals = node (1, 1) + edge (0.5, 0.5) + pair (0, 1)
+    #          + absence (1.0, 0.5) + comorbid (0.5, 1.0) = (3.0, 4.0) -> mean(0.5/3, 1.0/4)
+    # graph 1: |comorbid| = (1.0, 0); totals = node (2, 0) + absence (3, 0) + comorbid (1, 0)
+    #          = (6, 0) -> classes (1/6, 0) -> mean 1/12
+    # graph 2: nothing -> 0
+    assert share.shape == (3,)
+    assert share.tolist() == pytest.approx([(0.5 / 3.0 + 1.0 / 4.0) / 2, 1.0 / 12.0, 0.0])
+    nonempty = ext.comorbid_nonempty(parts, batch_index=batch_index, graph_count=3)
+    assert nonempty.dtype == bool and nonempty.tolist() == [True, True, False]
+    assert float(nonempty.mean()) == pytest.approx(2 / 3)
+    # Without the block (arm C parts) the share is zero and no graph has a pair.
+    without = {k: v for k, v in parts.items() if not k.startswith('comorbid_')}
+    assert ext.comorbid_share(without, batch_index=batch_index, edge_index=edge_index,
+                              graph_count=3).tolist() == [0.0, 0.0, 0.0]
+    assert ext.comorbid_nonempty(without, batch_index=batch_index, graph_count=3).tolist() == [False] * 3
