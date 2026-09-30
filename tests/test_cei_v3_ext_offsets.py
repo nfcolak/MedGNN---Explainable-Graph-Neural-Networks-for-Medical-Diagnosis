@@ -240,6 +240,19 @@ def test_apply_offsets_is_argmax_of_logits_plus_delta_over_ten():
         offsets.apply_offsets(logits, np.full(10, 0.5))   # offsets are bound as integers
 
 
+def test_apply_offsets_sums_in_float64():
+    logits = np.zeros((1, 10), dtype=np.float32)
+    logits[0, 2:] = -100.0
+    logits[0, 1] = np.float32(0.1)
+    delta = np.asarray([1, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=np.int64)
+
+    float32_shifted = logits.astype(np.float32) + delta.astype(np.float32) / 10.0
+    assert float32_shifted[0, 0] == float32_shifted[0, 1]  # mutant would tie
+    expected = (logits.astype(np.float64) + delta.astype(np.float64) / 10.0).argmax(1)
+    assert expected.tolist() == [1]
+    assert offsets.apply_offsets(logits, delta).tolist() == expected.tolist()
+
+
 # --------------------------------------------- step 1: validation scorer refusals
 
 
@@ -635,6 +648,18 @@ def _frozen_offsets_and_c_screen(tmp_path, *, clear_margins, n_screen=40):
     fx['screen_subjects'] = [r.subject for r in screen_rows]
     fx['approval_hash'] = vs.approval_record_sha256(fx['approval'])
     return fx
+
+
+def test_offset_screen_refuses_a_control_macro_f1_that_the_stored_logits_do_not_reproduce(tmp_path):
+    fx = _frozen_offsets_and_c_screen(tmp_path, clear_margins=False)
+    c_result = json.loads(json.dumps(fx['screen_result'].__dict__))
+    c_result['macro_f1'] = float(c_result['macro_f1']) + 0.01
+
+    with pytest.raises(ValueError, match='macro-F1'):
+        offsets.score_offset_screen(c_result, fx['offset_record'],
+                                    approval_record_sha256=fx['approval_hash'])
+    assert not (Path(fx['screen_result'].logits_path).parent /
+                offsets.OFFSET_SCREEN_DIRNAME).exists()
 
 
 def test_zero_delta_reproduces_c_screen_predictions_exactly_from_stored_logits(tmp_path):
