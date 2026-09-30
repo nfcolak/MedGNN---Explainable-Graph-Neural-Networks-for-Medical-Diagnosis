@@ -10,6 +10,7 @@ stage, opens a data file or scores a fold. Behaviour is added step by step under
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 import math
 from pathlib import Path
 from typing import Dict, Optional, Tuple
@@ -18,6 +19,7 @@ import numpy as np
 
 from .. import cei_v3_study as study
 from .arm_guards import CONTROL_ARM, EXTENSION_ARMS
+from . import offsets as offsets_module
 from .offsets import OFFSET_SCREEN_DIRNAME
 
 FAMILY_M = 5
@@ -333,28 +335,291 @@ def family_bounds(deltas, m: int = FAMILY_M) -> dict:
 
 # --------------------------------------------------------- extension decision
 
+CLAIMS = {   # EXT §2.5, §4.3, §5.4 wording of a positive (family-corrected) decision
+    'E2w': 'wider CEI v3 beats CEI v3 C on this screen',
+    'E2d': 'deeper CEI v3 beats CEI v3 C on this screen',
+    OFFSET_ARM: "validation-tuned per-class offsets improve CEI v3 C's screen macro-F1",
+    'E6a': 'the bidirectional edge view improves CEI v3 C on this screen',
+    'E6b': 'the additive comorbid pair term improves CEI v3 C on this screen',
+}
+
+
+def _result_dict(result) -> dict:
+    if isinstance(result, dict):
+        return dict(result)
+    if hasattr(result, '__dataclass_fields__'):
+        return dict(vars(result))
+    raise ValueError('screen result must be a U5 ScreenResult, an O row dict or its JSON dict')
+
+
+def _load_npz(path, keys) -> dict:
+    path = Path(path)
+    if not path.is_file():
+        raise ValueError(f'stored screen arrays missing at {path}')
+    with np.load(path, allow_pickle=False) as saved:
+        if set(saved.files) != set(keys):
+            raise ValueError(f'{path.name} does not carry {sorted(keys)}')
+        return {key: np.ascontiguousarray(saved[key]) for key in keys}
+
+
+def _checked_c_screen_result(seed, result) -> dict:
+    """Static + on-disk checks of one C screen result before any O output is written."""
+    result = _result_dict(result)
+    missing = [key for key in offsets_module._SCREEN_RESULT_KEYS if key not in result]
+    if missing:
+        raise ValueError(f'C screen result for seed {seed} lacks bound fields: {missing}')
+    if result['arm'] != CONTROL_ARM:
+        raise ValueError(f"O is built on arm C screen logits only; seed {seed} result is arm "
+                         f"{result['arm']!r}")
+    if result['seed'] != seed:
+        raise ValueError(f'C screen result keyed by seed {seed} carries seed {result["seed"]!r}')
+    if not _is_hex_digest(result['logits_sha256']):
+        raise ValueError(f'C screen result for seed {seed} carries no logits hash; O is never '
+                         'built from proba or unhashed logits (EXT E7)')
+    arrays = _load_npz(result['logits_path'], ('logits', 'y', 'subjects', 'sample_ids'))
+    logits = arrays['logits']
+    if logits.dtype != np.float32:
+        raise ValueError(f'stored screen logits for seed {seed} are not raw float32')
+    if hashlib.sha256(logits.tobytes()).hexdigest() != result['logits_sha256']:
+        raise ValueError(f'stored screen logits for seed {seed} differ from the hash in the C '
+                         'screen result')
+    return result
+
+
 def offset_screen_rows(c_results, offset_records, *, approval_record_sha256,
                        output_dirs=None) -> dict:
-    """Arm O for the three seeds from C's stored screen logits + frozen delta. Stub: empty."""
-    return {}
+    """Arm O for the three seeds: C's frozen delta applied to C's stored raw screen logits
+    (EXT §4.3), through the X3 scorer; no inference, no fold is read.
+
+    `c_results[seed]` = the U5 `ScreenResult` (or its JSON dict) of the C checkpoint;
+    `offset_records[seed]` = the frozen X3 offset record of the same checkpoint. Every seed's
+    inputs are checked (field set, arm C, seed, logits hash on disk, delta binding to the
+    checkpoint / binding / K freeze / approval record) before the first row is written, so
+    a refusal leaves no O output behind. Returns `{seed: o_result dict}`.
+    """
+    if not isinstance(c_results, dict) or not isinstance(offset_records, dict):
+        raise ValueError('c_results and offset_records must map seed -> record')
+    for label, mapping in (('c_results', c_results), ('offset_records', offset_records)):
+        if sorted(mapping) != sorted(study.SEEDS):
+            raise ValueError(f'{label} must carry exactly the seeds {list(study.SEEDS)}, got '
+                             f'{sorted(mapping)}')
+    if not _is_hex_digest(approval_record_sha256):
+        raise ValueError('approval_record_sha256 must be the hex SHA-256 of the item-5 approval record')
+    checked = {}
+    for seed in study.SEEDS:
+        result = _checked_c_screen_result(seed, c_results[seed])
+        record = offset_records[seed]
+        delta_int = offsets_module._validate_offset_record_fields(record)
+        if record['seed'] != seed:
+            raise ValueError(f'offset record keyed by seed {seed} carries seed {record["seed"]!r}')
+        for key in ('checkpoint_sha256', 'binding_sha256', 'k_selection_sha256'):
+            if record[key] != result[key]:
+                raise ValueError(f'seed {seed}: offset record {key} differs from the screened C '
+                                 'checkpoint; delta is bound to one checkpoint only')
+        if record['k'] != result['k']:
+            raise ValueError(f'seed {seed}: offset record K differs from the screened checkpoint')
+        if record['approval_record_sha256'] != approval_record_sha256:
+            raise ValueError(f'seed {seed}: offset record approval-record SHA-256 differs from the '
+                             'bound approval')
+        out = (Path(output_dirs[seed]) if output_dirs is not None and seed in output_dirs
+               else Path(result['logits_path']).parent / OFFSET_SCREEN_DIRNAME)
+        if out.exists():
+            raise FileExistsError(f'Refusing occupied O output {out}')
+        checked[seed] = (result, record, delta_int, out)
+    rows = {}
+    for seed in study.SEEDS:
+        result, record, _delta, out = checked[seed]
+        rows[seed] = offsets_module.score_offset_screen(
+            result, record, approval_record_sha256=approval_record_sha256, output_dir=out)
+    return rows
 
 
 def load_screen_row(result) -> tuple:
-    """(y, pred, subjects) of one screen row from its stored arrays. Stub: empty arrays."""
-    empty = np.zeros(0, dtype=np.int64)
-    return empty, empty, np.zeros(0, dtype=str)
+    """`(y, pred, subjects)` of one screen row from its stored arrays, for `paired_bootstrap`.
+
+    An O row (`o_result.json` dict: `pred_path`, `pred_sha256`) is read from `o_pred.npz`;
+    every other row (U5 `ScreenResult` / `screen_result.json`) is `argmax` of its hashed raw
+    `logits.npz`. Hashes are verified against the stored bytes; nothing is inferred.
+    """
+    result = _result_dict(result)
+    if result.get('arm') == OFFSET_ARM:
+        for key in ('pred_path', 'pred_sha256', 'screen_logits_sha256', 'offset_record_sha256'):
+            if key not in result:
+                raise ValueError(f'O screen row lacks {key}')
+        arrays = _load_npz(result['pred_path'], ('pred', 'y', 'subjects', 'sample_ids'))
+        pred = arrays['pred']
+        if hashlib.sha256(pred.tobytes()).hexdigest() != result['pred_sha256']:
+            raise ValueError('stored O predictions differ from the hash in the O result')
+    else:
+        for key in ('logits_path', 'logits_sha256'):
+            if not result.get(key):
+                raise ValueError(f'screen result lacks {key}; only hashed raw logits are read')
+        arrays = _load_npz(result['logits_path'], ('logits', 'y', 'subjects', 'sample_ids'))
+        logits = arrays['logits']
+        if logits.dtype != np.float32:
+            raise ValueError('stored screen logits are not raw float32')
+        if hashlib.sha256(logits.tobytes()).hexdigest() != result['logits_sha256']:
+            raise ValueError('stored screen logits differ from the hash in the screen result')
+        pred = logits.argmax(1).astype(np.int64)
+    if 'row_count' in result and int(result['row_count']) != pred.shape[0]:
+        raise ValueError('stored screen rows differ from the result row_count')
+    return (np.asarray(arrays['y']).astype(np.int64), np.asarray(pred).astype(np.int64),
+            np.asarray(arrays['subjects']).astype(str))
+
+
+def _validate_family_inputs(deltas, scores, m, seeds) -> Tuple[str, ...]:
+    if isinstance(m, bool) or not isinstance(m, int) or m != FAMILY_M:
+        raise ValueError(f'multiplicity m must be {FAMILY_M} (EXT §7, D10.4); got m = {m!r}')
+    if not isinstance(deltas, dict) or not deltas:
+        raise ValueError('deltas must map (arm, C) -> the 1,000 averaged bootstrap deltas of at '
+                         'least one family contrast')
+    if tuple(seeds) != study.SEEDS:
+        raise ValueError(f'seeds {tuple(seeds)} differ from the pre-registered seeds {study.SEEDS}')
+    arms = []
+    for key in deltas:
+        if not isinstance(key, tuple) or len(key) != 2:
+            raise ValueError(f'contrast key {key!r} is not a (treatment, control) pair')
+        arm, control = key
+        if control != CONTROL_ARM:
+            raise ValueError(f'contrast {key!r} is not vs C: every family contrast is arm vs C '
+                             '(EXT §7)')
+        if arm not in FAMILY_ARMS:
+            raise ValueError(f'arm drift: {arm!r} is not one of the pre-registered family arms '
+                             f'{list(FAMILY_ARMS)}; no contrast may be added after registration')
+        arms.append(arm)
+    if len(set(arms)) != len(arms):
+        raise ValueError('a family contrast appears twice')
+    if not isinstance(scores, dict) or CONTROL_ARM not in scores:
+        raise ValueError("scores must map arm -> {seed: screen macro-F1} and include the control 'C'")
+    for arm in arms + [CONTROL_ARM]:
+        if arm not in scores:
+            raise ValueError(f'scores lack arm {arm!r}')
+        for seed in study.SEEDS:
+            if seed not in scores[arm]:
+                raise ValueError(f'scores for arm {arm!r} lack seed {seed}')
+    return tuple(arm for arm in FAMILY_ARMS if arm in arms)
 
 
 def decide_extension(deltas, scores, *, m: int = FAMILY_M, seeds=study.SEEDS) -> dict:
-    """Family-corrected extension decision (EXT §7). Stub: empty family."""
-    return {'m': 0, 'arms': (), 'arms_not_run': (), 'contrasts': {}, 'control': ''}
+    """The pre-registered extension decision (EXT §7; v3 §6.2 conditions 1–3 per contrast).
+
+    `deltas[(arm, 'C')]` = the 1,000 averaged bootstrap deltas of U5 `paired_bootstrap`;
+    `scores[arm][seed]` = screen macro-F1. Conditions 1 (per-seed strict win) and 2
+    (seed-mean win) are uncorrected; condition 3 requires the corrected order-statistic
+    bound `sorted[4]` (m = 5) strictly above zero. An arm passing all three "beats C on this
+    screen (family-corrected, m = 5)"; one passing 1–2 with only the nominal bound
+    `sorted[24]` above zero is a "nominal win, not family-corrected" and not a positive
+    decision. m stays 5 when an arm is not run; the linear quantile is reported for
+    cross-reading only.
+    """
+    arms = _validate_family_inputs(deltas, scores, m, seeds)
+    contrasts = {}
+    for arm in arms:
+        values = np.asarray(deltas[(arm, CONTROL_ARM)], dtype=np.float64)
+        bounds = family_bounds(values, m=m)
+        per_seed = {str(seed): {arm: float(scores[arm][seed]), CONTROL_ARM: float(scores[CONTROL_ARM][seed])}
+                    for seed in study.SEEDS}
+        means = {name: float(np.mean([per_seed[str(seed)][name] for seed in study.SEEDS]))
+                 for name in (arm, CONTROL_ARM)}
+        low = arm.lower()
+        checks = {
+            f'{low}_beats_c_each_seed': all(per_seed[str(seed)][arm] > per_seed[str(seed)][CONTROL_ARM]
+                                            for seed in study.SEEDS),
+            f'{low}_mean_above_c': means[arm] > means[CONTROL_ARM],
+            f'{low}_minus_c_corrected_lower_bound_above_zero': bounds['corrected'] > 0,
+        }
+        nominal_above = bounds['nominal'] > 0
+        uncorrected = checks[f'{low}_beats_c_each_seed'] and checks[f'{low}_mean_above_c']
+        wins = all(checks.values())
+        nominal_win = bool(uncorrected and nominal_above and not wins)
+        if wins:
+            statement = f'{arm} beats C on this screen (family-corrected, m = {m})'
+        elif nominal_win:
+            statement = f'{arm}: nominal win, not family-corrected'
+        else:
+            statement = f'{arm}: benefit not demonstrated on this screen'
+        contrasts[arm] = {
+            'contrast': [arm, CONTROL_ARM], 'metric': 'weighted_macro_f1',
+            'per_seed': per_seed, 'seed_means': means,
+            'point_delta': means[arm] - means[CONTROL_ARM],
+            'bounds': bounds,
+            'corrected_lower_bound': bounds['corrected'],
+            'nominal_lower_bound': bounds['nominal'],
+            'linear_quantile': bounds['linear_quantile'],
+            'checks': checks,
+            'nominal_lower_bound_above_zero': bool(nominal_above),
+            'beats_control': bool(wins), 'nominal_win': nominal_win,
+            'statement': statement,
+            'claim': CLAIMS[arm] if wins else None,
+        }
+    return {
+        'control': CONTROL_ARM, 'metric': 'weighted_macro_f1', 'm': int(m),
+        'arms': arms, 'arms_not_run': tuple(arm for arm in FAMILY_ARMS if arm not in arms),
+        'family': list(FAMILY_ARMS), 'contrasts': contrasts,
+        'winners': tuple(arm for arm in arms if contrasts[arm]['beats_control']),
+        'nominal_only': tuple(arm for arm in arms if contrasts[arm]['nominal_win']),
+        'resamples': int(study.BOOTSTRAP_RESAMPLES), 'bootstrap_seed': int(study.BOOTSTRAP_SEED),
+        'bound_rule': BOUND_RULE, 'decision_bound': 'corrected',
+        'linear_quantile_use': LINEAR_QUANTILE_USE,
+        'multiplicity_rule': ('Bonferroni on condition 3 only, m = 5 fixed before any result; '
+                              'm stays 5 if an arm is not run (EXT §7, D10.4)'),
+        'validation_evaluated': False, 'test_evaluated': False,
+    }
+
+
+def _per_graph_abs(values, owner, graph_count, classes):
+    import torch
+
+    total = torch.zeros((graph_count, classes), dtype=torch.float64)
+    if values.numel():
+        total.index_add_(0, owner.long(), values.detach().abs().to(torch.float64))
+    return total
+
+
+def _comorbid_owner(parts, batch_index):
+    pairs = parts['comorbid_pairs']
+    return batch_index[pairs[0]] if pairs.numel() else pairs.new_zeros((0,))
 
 
 def comorbid_share(parts, *, batch_index, edge_index, graph_count) -> np.ndarray:
-    """Secondary E6b metric (EXT §5.4). Stub: zeros."""
-    return np.zeros(int(graph_count), dtype=np.float64)
+    """Secondary E6b metric (EXT §5.4), defined as v3 §6.2 defines the absence share: per
+    graph, mean over classes of `sum|comorbid| / sum|node + edge + pair + absence + comorbid|`,
+    0 where the denominator is 0. Parts without the block (arm C) give 0."""
+    import torch
+
+    graph_count = int(graph_count)
+    batch_index = torch.as_tensor(batch_index, dtype=torch.long).view(-1)
+    classes = int(parts['node_contributions'].size(1))
+    node = _per_graph_abs(parts['node_contributions'], batch_index, graph_count, classes)
+    edge_index = torch.as_tensor(edge_index, dtype=torch.long)
+    edge = _per_graph_abs(parts['edge_contributions'], batch_index[edge_index[0]]
+                          if edge_index.numel() else edge_index.new_zeros((0,)), graph_count, classes)
+    pairs = parts['pairs']
+    pair = _per_graph_abs(parts['pair_contributions'], batch_index[pairs[0]]
+                          if pairs.numel() else pairs.new_zeros((0,)), graph_count, classes)
+    absence = _per_graph_abs(parts['absence_contributions'], parts['absence_items'][0],
+                             graph_count, classes)
+    if 'comorbid_contributions' in parts:
+        comorbid = _per_graph_abs(parts['comorbid_contributions'],
+                                  _comorbid_owner(parts, batch_index), graph_count, classes)
+    else:
+        comorbid = torch.zeros((graph_count, classes), dtype=torch.float64)
+    denominator = node + edge + pair + absence + comorbid
+    share = torch.where(denominator > 0, comorbid / denominator.clamp(min=1e-300),
+                        torch.zeros_like(denominator))
+    return share.mean(dim=1).numpy()
 
 
 def comorbid_nonempty(parts, *, batch_index, graph_count) -> np.ndarray:
-    """Per-graph flag: the comorbid pair set is non-empty (EXT §5.4). Stub: all False."""
-    return np.zeros(int(graph_count), dtype=bool)
+    """Per-graph flag: the comorbid pair set is non-empty (EXT §5.4 secondary fraction)."""
+    import torch
+
+    graph_count = int(graph_count)
+    flags = np.zeros(graph_count, dtype=bool)
+    if 'comorbid_pairs' not in parts:
+        return flags
+    batch_index = torch.as_tensor(batch_index, dtype=torch.long).view(-1)
+    owner = _comorbid_owner(parts, batch_index)
+    if owner.numel():
+        flags[np.unique(owner.cpu().numpy())] = True
+    return flags
