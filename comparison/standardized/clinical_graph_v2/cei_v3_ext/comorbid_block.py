@@ -16,7 +16,7 @@ from typing import Dict, Tuple
 import torch
 import torch.nn as nn
 
-from ..methods.cei_gnn_v3 import EXTRA_BLOCK_PREFIX
+from ..methods.cei_gnn_v3 import EXTRA_BLOCK_PREFIX, tensor_generator
 
 BLOCK_NAME = 'comorbid'
 COMORBID_RELATION = 'comorbid_with'
@@ -56,7 +56,23 @@ def comorbid_pairs(edge_index, edge_relation, relation_id, batch_index):
 
 
 class ComorbidPairBlock(nn.Module):
-    """Additive comorbid pair block (E6b) satisfying the U3x ``ExtraBlock`` protocol."""
+    """Additive comorbid pair block (E6b) satisfying the U3x ``ExtraBlock`` protocol.
+
+    For each unique unordered comorbid pair ``(i, j)`` of graph ``G`` (§5.3, D10.6)::
+
+        a_ij        = tanh(P_a h_i) + tanh(P_a h_j)     P_a: hidden × 16, no bias
+        v_ij        = V_a a_ij + b_a                     V_a: 16 × C, b_a: C
+        g_c         = sigmoid(γ_c)                       one gate logit per class
+        comorbid_Gc = Σ_pairs g_c v_ijc / (1 + Σ_pairs g_c)
+
+    Dedicated parameters (never the v2 ``pair_projection``/``pair_vote``): ``P_a`` =
+    ``pair_projection.weight``, ``V_a``/``b_a`` = ``vote.weight``/``vote.bias``, ``γ`` =
+    ``gate``; 2,228 parameters at hidden 128 and 10 classes. Every tensor is initialised
+    from ``tensor_generator(seed, 'extra_blocks.comorbid.<local>')`` (nn.Linear's default
+    uniform bound at its fan-in; the gate logits start at zero like the v2 ``pair_gate``),
+    so the global RNG stream is untouched; the forward has no dropout and no RNG
+    operation. An empty pair set gives an exact-zero total and denominator one.
+    """
 
     name = BLOCK_NAME
     uses_rng = False
@@ -65,25 +81,50 @@ class ComorbidPairBlock(nn.Module):
         super().__init__()
         self.hidden, self.num_classes = int(hidden), int(num_classes)
         self.relation_id, self.seed = int(relation_id), int(seed)
-        # Stub registration (red step 2): shapes only; the maths is added in the green step.
-        self.pair_projection = nn.Linear(self.hidden, PAIR_RANK, bias=False)
-        self.vote = nn.Linear(PAIR_RANK, self.num_classes)
-        self.gate = nn.Parameter(torch.ones(self.num_classes))
+        self.pair_projection = nn.utils.skip_init(nn.Linear, in_features=self.hidden,
+                                                  out_features=PAIR_RANK, bias=False)
+        self.vote = nn.utils.skip_init(nn.Linear, in_features=PAIR_RANK,
+                                       out_features=self.num_classes)
+        self.gate = nn.Parameter(torch.zeros(self.num_classes))
+        prefix = f'{EXTRA_BLOCK_PREFIX}.{self.name}'
+        with torch.no_grad():
+            bound = 1.0 / float(self.hidden) ** 0.5   # nn.Linear default bound, fan_in = hidden
+            self.pair_projection.weight.uniform_(
+                -bound, bound, generator=tensor_generator(seed, f'{prefix}.pair_projection.weight'))
+            bound = 1.0 / float(PAIR_RANK) ** 0.5    # fan_in = 16 for V_a and b_a
+            self.vote.weight.uniform_(
+                -bound, bound, generator=tensor_generator(seed, f'{prefix}.vote.weight'))
+            self.vote.bias.uniform_(
+                -bound, bound, generator=tensor_generator(seed, f'{prefix}.vote.bias'))
 
     def parameter_names(self) -> Tuple[str, ...]:
-        return tuple(f'{EXTRA_BLOCK_PREFIX}.{self.name}.{local}'
-                     for local, _ in self.named_parameters())
+        """Qualified names in the §5.3 order P_a, V_a, b_a, γ."""
+        prefix = f'{EXTRA_BLOCK_PREFIX}.{self.name}'
+        return (f'{prefix}.pair_projection.weight', f'{prefix}.vote.weight',
+                f'{prefix}.vote.bias', f'{prefix}.gate')
 
     def forward(self, h, edge_index, edge_relation, batch_index, graph_count):
         graphs, classes = int(graph_count), self.num_classes
         pairs = comorbid_pairs(edge_index, edge_relation, self.relation_id, batch_index)
-        parts: Dict[str, torch.Tensor] = {
-            'comorbid_contributions': h.new_zeros((pairs.size(1), classes)),
-            'comorbid_pairs': pairs,
-            'comorbid_gates': h.new_zeros((classes,)),
-            'comorbid_denominator': h.new_ones((graphs, classes)),
-        }
-        return h.new_zeros((graphs, classes)), parts
+        gates = self.gate.sigmoid()                                    # [C], shared by all pairs
+        denominator = h.new_ones((graphs, classes))
+        if pairs.size(1) == 0:
+            parts: Dict[str, torch.Tensor] = {
+                'comorbid_contributions': h.new_zeros((0, classes)),
+                'comorbid_pairs': pairs, 'comorbid_gates': gates,
+                'comorbid_denominator': denominator}
+            return h.new_zeros((graphs, classes)), parts
+        left, right = pairs
+        z = torch.tanh(self.pair_projection(h))                        # tanh(P_a h)  [N, 16]
+        votes = self.vote(z[left] + z[right])                          # v_ij         [pairs, C]
+        gated = votes * gates                                          # g_c v_ijc
+        graph = batch_index[left]
+        denominator = denominator.index_add(0, graph, gates.expand(pairs.size(1), classes))
+        total = h.new_zeros((graphs, classes)).index_add(0, graph, gated) / denominator
+        parts = {'comorbid_contributions': gated / denominator[graph],
+                 'comorbid_pairs': pairs, 'comorbid_gates': gates,
+                 'comorbid_denominator': denominator}
+        return total, parts
 
 
 def build_block(hidden, num_classes, *, relation_layout: Dict[str, int], seed) -> ComorbidPairBlock:
