@@ -310,3 +310,96 @@ def test_extension_plan_never_opens_inputs_or_executes(tmp_path, monkeypatch):
     plan_ = ext.extension_plan(v3_plan, _ext_config())
     assert len(plan_.stages) == 27
     assert not any(Path(s.output).exists() for s in plan_.stages)
+
+
+# ------------------------------------------------------------ step 2: family bounds
+
+
+def test_family_bounds_are_the_exact_order_statistics_on_one_to_thousand():
+    deltas = np.arange(1, 1001, dtype=np.float64)
+    bounds = ext.family_bounds(deltas)
+    assert bounds['nominal'] == 25.0          # sorted[floor(1000 * 0.025) - 1] = sorted[24]
+    assert bounds['corrected'] == 5.0         # sorted[floor(1000 * 0.025 / 5) - 1] = sorted[4]
+    assert bounds['linear_quantile'] == 25.975   # np.quantile(deltas, 0.025, method='linear')
+    assert bounds['linear_quantile'] == float(np.quantile(deltas, 0.025, method='linear'))
+    assert bounds['m'] == 5
+    assert bounds['nominal_index'] == 24 and bounds['corrected_index'] == 4
+    assert bounds['nominal_p'] == 0.025 and bounds['corrected_p'] == 0.005
+    assert bounds['corrected_tail_mass'] == 5 / 1000
+    assert bounds['resamples'] == 1000
+    assert bounds['rule'] == 'order statistic: sorted[floor(resamples * p) - 1]'
+    assert bounds['decision_bound'] == 'corrected'
+    assert bounds['linear_quantile_use'] == 'cross-reading only, never the decision'
+    assert isinstance(bounds['nominal'], float) and isinstance(bounds['corrected'], float)
+
+
+def test_family_bounds_sort_the_input_and_leave_it_unchanged():
+    rng = np.random.default_rng(0)
+    shuffled = rng.permutation(np.arange(1, 1001, dtype=np.float64))
+    copy = shuffled.copy()
+    bounds = ext.family_bounds(shuffled)
+    assert (bounds['nominal'], bounds['corrected'], bounds['linear_quantile']) == (25.0, 5.0, 25.975)
+    assert np.array_equal(shuffled, copy)
+    # Ties: the order statistic is still the (index)-th smallest value.
+    tied = np.concatenate([np.full(30, -1.0), np.full(970, 1.0)])
+    bounds = ext.family_bounds(rng.permutation(tied))
+    assert bounds['nominal'] == -1.0 and bounds['corrected'] == -1.0
+    tied = np.concatenate([np.full(5, -1.0), np.full(995, 1.0)])
+    bounds = ext.family_bounds(rng.permutation(tied))
+    assert bounds['corrected'] == -1.0 and bounds['nominal'] == 1.0
+
+
+def test_family_bounds_keep_m_at_five_when_an_arm_is_missing():
+    deltas = np.arange(1, 1001, dtype=np.float64)
+    # The family is pre-registered with five contrasts; a missing arm does not shrink m (§7).
+    for run_arms in (('E2w', 'E2d', 'O', 'E6b'), ('E2w',), ('E2w', 'E2d', 'O', 'E6a', 'E6b')):
+        bounds = ext.family_bounds(deltas, m=ext.family_m(run_arms))
+        assert bounds['m'] == 5 and bounds['corrected'] == 5.0
+    assert ext.family_m(('E2w', 'E2d', 'O', 'E6b')) == 5
+    assert ext.family_m(()) == 5
+    assert ext.family_bounds(deltas)['m'] == 5
+    # Any other m is refused: the correction is fixed before any result (D10.4).
+    for m in (4, 6, 1, 0, -5, 5.0, True):
+        with pytest.raises(ValueError, match='m'):
+            ext.family_bounds(deltas, m=m)
+
+
+def test_family_bounds_refuse_the_wrong_resample_count_or_non_finite_deltas():
+    with pytest.raises(ValueError, match='1000'):
+        ext.family_bounds(np.arange(1, 1000, dtype=np.float64))
+    with pytest.raises(ValueError, match='1000'):
+        ext.family_bounds(np.arange(1, 1002, dtype=np.float64))
+    with pytest.raises(ValueError, match='1000'):
+        ext.family_bounds(np.arange(1, 1001, dtype=np.float64).reshape(10, 100))
+    bad = np.arange(1, 1001, dtype=np.float64)
+    bad[3] = np.nan
+    with pytest.raises(ValueError, match='finite'):
+        ext.family_bounds(bad)
+    bad[3] = np.inf
+    with pytest.raises(ValueError, match='finite'):
+        ext.family_bounds(bad)
+
+
+def test_family_bounds_on_u5_bootstrap_output_are_distinct_from_the_v3_linear_rule():
+    """The extension bound is applied to the U5 averaged deltas; the v3 C-vs-A rule keeps
+    np.quantile(..., 'linear') (v3 §12.20) and the two are printed side by side, not mixed."""
+    rng = np.random.default_rng(7)
+    n, subjects = 90, 30
+    y = rng.integers(0, 10, n)
+    subj = np.repeat(np.arange(subjects), n // subjects).astype(str)
+    arms = {}
+    for arm, flip in (('E2w', 0.35), ('C', 0.55)):
+        arms[arm] = {}
+        for seed in SEEDS:
+            r = np.random.default_rng(seed + int(flip * 100))
+            pred = np.where(r.random(n) < flip, r.integers(0, 10, n), y)
+            arms[arm][seed] = (y, pred, subj)
+    deltas = study.paired_bootstrap(arms, [('E2w', 'C')])[('E2w', 'C')]
+    assert deltas.shape == (1000,)
+    bounds = ext.family_bounds(deltas)
+    ordered = np.sort(deltas)
+    assert bounds['nominal'] == float(ordered[24])
+    assert bounds['corrected'] == float(ordered[4])
+    assert bounds['corrected'] <= bounds['nominal']
+    assert bounds['linear_quantile'] == float(np.quantile(deltas, 0.025, method='linear'))
+    assert ordered[24] <= bounds['linear_quantile'] <= ordered[25]

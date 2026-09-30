@@ -272,3 +272,18 @@ def extension_plan(v3_plan, config) -> study.Plan:
         control_binding_sha256=tuple(config.k_selection['control_binding_sha256']),
         screen_rows=tuple(rows), approval_record_sha256=approval,
         offset_record_sha256=dict(offset_hashes) if offset_hashes else None)
+
+
+# ------------------------------------------------------------- family bounds
+
+NOMINAL_P = 0.025
+
+
+def family_m(arms_run) -> int:
+    """Multiplicity of the pre-registered family (EXT §7). Stub: counts the arms run."""
+    return len(tuple(arms_run))
+
+
+def family_bounds(deltas, m: int = FAMILY_M) -> dict:
+    """Order-statistic bounds of the extension family (EXT §7, E5). Stub: zeros."""
+    return {'nominal': 0.0, 'corrected': 0.0, 'linear_quantile': 0.0, 'm': m}
