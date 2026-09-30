@@ -690,19 +690,147 @@ def assert_k_selection_replay(record, stage_dirs) -> None:
 
 
 def weighted_macro_f1(y, pred, weights=None, *, num_classes=NUM_CLASSES) -> float:
-    return 0.0
+    """Fixed-label macro-F1 with optional row weights; re-implements
+    `cei_v2_study.weighted_macro_f1` (lines 652–661) bit for bit (v3 §12.20 F20)."""
+    y, pred = np.asarray(y, dtype=int), np.asarray(pred, dtype=int)
+    w = np.ones(len(y)) if weights is None else np.asarray(weights, dtype=float)
+    confusion = np.bincount(y * num_classes + pred, weights=w,
+                            minlength=num_classes * num_classes).reshape(num_classes, num_classes)
+    tp = np.diag(confusion)
+    fp, fn = confusion.sum(0) - tp, confusion.sum(1) - tp
+    denominator = 2 * tp + fp + fn
+    f1 = np.divide(2 * tp, denominator, out=np.zeros(num_classes), where=denominator > 0)
+    return float(f1.mean())
 
 
-def paired_bootstrap(arms, contrasts, *, resamples=BOOTSTRAP_RESAMPLES, seed=BOOTSTRAP_SEED):
-    return {}
+def _paired_rows(arms, contrasts, seeds):
+    """Check every arm-seed carries the same (y, subjects) rows; return (y, subjects, preds)."""
+    if not isinstance(arms, dict) or not arms:
+        raise ValueError('arms must map arm name -> {seed: (y, pred, subjects)}')
+    for first, second in contrasts:
+        for name in (first, second):
+            if name not in arms:
+                raise ValueError(f'contrast names an unknown arm {name!r}')
+    reference = None
+    predictions = {}
+    for arm_name, by_seed in arms.items():
+        for seed in seeds:
+            if seed not in by_seed:
+                raise ValueError(f'arm {arm_name!r} lacks seed {seed}')
+            y, pred, subjects = by_seed[seed]
+            y = np.asarray(y, dtype=int)
+            pred = np.asarray(pred, dtype=int)
+            subjects = np.asarray(subjects).astype(str)
+            if y.ndim != 1 or pred.shape != y.shape or subjects.shape != y.shape or not len(y):
+                raise ValueError(f'arm {arm_name!r} seed {seed}: y, pred, subjects must be aligned '
+                                 'nonempty 1-D arrays')
+            if reference is None:
+                reference = (y, subjects)
+            elif not (np.array_equal(y, reference[0]) and np.array_equal(subjects, reference[1])):
+                raise ValueError(f'arm {arm_name!r} seed {seed}: rows are not paired with the '
+                                 'other arm-seeds (y or subjects differ)')
+            predictions[(arm_name, seed)] = pred
+    return reference[0], reference[1], predictions
 
 
-def decide_v3(deltas, scores, *, treatment='C', control='A', seeds=SEEDS) -> dict:
-    return {}
+def paired_bootstrap(arms, contrasts, *, resamples=BOOTSTRAP_RESAMPLES, seed=BOOTSTRAP_SEED,
+                     seeds=SEEDS, num_classes=NUM_CLASSES):
+    """Paired patient-cluster bootstrap of seed-averaged macro-F1 deltas (v3 §6.2 cond. 3).
+
+    `arms[arm][seed] = (y, pred, subjects)`; every arm-seed must carry identical `y` and
+    `subjects`. Returns `{contrast: float64[resamples]}` of `mean_seeds(F1_first − F1_second)`
+    per resample, drawn exactly as `cei_v2_study.paired_bootstrap` (lines 681–694): distinct
+    patients with replacement, one draw shared by every arm and seed. Bound rules (linear
+    quantile here, order statistics in the extension family) are applied by the caller.
+    """
+    contrasts = [tuple(contrast) for contrast in contrasts]
+    if any(len(contrast) != 2 for contrast in contrasts):
+        raise ValueError('each contrast must be a (treatment, control) pair')
+    y, subjects, predictions = _paired_rows(arms, contrasts, seeds)
+    patients, inverse = np.unique(subjects, return_inverse=True)
+    rng = np.random.default_rng(seed)
+    samples = {contrast: [] for contrast in contrasts}
+    for _ in range(int(resamples)):
+        drawn = rng.integers(0, len(patients), len(patients))
+        weights = np.bincount(drawn, minlength=len(patients))[inverse].astype(float)
+        scores = {key: weighted_macro_f1(y, pred, weights, num_classes=num_classes)
+                  for key, pred in predictions.items()}
+        for first, second in contrasts:
+            samples[(first, second)].append(float(np.mean(
+                [scores[(first, s)] - scores[(second, s)] for s in seeds])))
+    return {contrast: np.asarray(values, dtype=np.float64) for contrast, values in samples.items()}
+
+
+def decide_v3(deltas, scores, *, treatment='C', control='A', seeds=SEEDS,
+              resamples=BOOTSTRAP_RESAMPLES, bootstrap_seed=BOOTSTRAP_SEED) -> dict:
+    """The pre-registered C-vs-A rule (v3 §6.2, F20). `scores[arm][seed]` = screen macro-F1;
+    `deltas[(treatment, control)]` = the 1,000 averaged bootstrap deltas."""
+    key = (treatment, control)
+    if key not in deltas:
+        raise ValueError(f'deltas lack the contrast {key}')
+    values = np.asarray(deltas[key], dtype=np.float64)
+    if values.ndim != 1 or values.shape[0] != resamples:
+        raise ValueError(f'the decision requires exactly {resamples} averaged deltas, '
+                         f'got shape {values.shape}')
+    if not np.isfinite(values).all():
+        raise ValueError('bootstrap deltas must be finite')
+    for arm in key:
+        if arm not in scores:
+            raise ValueError(f'scores lack arm {arm!r}')
+        for seed in seeds:
+            if seed not in scores[arm]:
+                raise ValueError(f'scores for arm {arm!r} lack seed {seed}')
+    per_seed = {str(seed): {arm: float(scores[arm][seed]) for arm in key} for seed in seeds}
+    means = {arm: float(np.mean([per_seed[str(seed)][arm] for seed in seeds])) for arm in key}
+    lower = float(np.quantile(values, 0.025, method=QUANTILE_METHOD))
+    upper = float(np.quantile(values, 0.975, method=QUANTILE_METHOD))
+    checks = {
+        f'{treatment.lower()}_beats_{control.lower()}_each_seed': all(
+            per_seed[str(seed)][treatment] > per_seed[str(seed)][control] for seed in seeds),
+        f'{treatment.lower()}_mean_above_{control.lower()}': means[treatment] > means[control],
+        f'{treatment.lower()}_minus_{control.lower()}_lower_bound_above_zero': lower > 0,
+    }
+    wins = all(checks.values())
+    return {
+        'contrast': [treatment, control], 'metric': 'weighted_macro_f1',
+        'per_seed': per_seed, 'seed_means': means,
+        'point_delta': means[treatment] - means[control],
+        'interval_95': [lower, upper], 'quantile_method': QUANTILE_METHOD,
+        'resamples': int(resamples), 'bootstrap_seed': int(bootstrap_seed),
+        'checks': checks, 'v3_beats_control': wins,
+        'statement': ('v3 beats the v2 additive control on this screen' if wins
+                      else 'benefit not demonstrated on this screen'),
+        'validation_evaluated': False, 'test_evaluated': False,
+    }
 
 
 def absence_share(parts, *, batch_index, edge_index, graph_count) -> np.ndarray:
-    return np.zeros(int(graph_count))
+    """Secondary metric (v3 §6.2): per graph, mean over classes of
+    `sum|absence| / sum|node + edge + pair + absence|`, 0 where the denominator is 0."""
+    import torch
+
+    graph_count = int(graph_count)
+    batch_index = torch.as_tensor(batch_index, dtype=torch.long).view(-1)
+    classes = int(parts['node_contributions'].size(1))
+
+    def per_graph(values, owner):
+        total = torch.zeros((graph_count, classes), dtype=torch.float64)
+        if values.numel():
+            total.index_add_(0, owner.long(), values.detach().abs().to(torch.float64))
+        return total
+
+    node = per_graph(parts['node_contributions'], batch_index)
+    edge_index = torch.as_tensor(edge_index, dtype=torch.long)
+    edge = per_graph(parts['edge_contributions'], batch_index[edge_index[0]]
+                     if edge_index.numel() else edge_index.new_zeros((0,)))
+    pairs = parts['pairs']
+    pair = per_graph(parts['pair_contributions'], batch_index[pairs[0]]
+                     if pairs.numel() else pairs.new_zeros((0,)))
+    absence = per_graph(parts['absence_contributions'], parts['absence_items'][0])
+    denominator = node + edge + pair + absence
+    share = torch.where(denominator > 0, absence / denominator.clamp(min=1e-300),
+                        torch.zeros_like(denominator))
+    return share.mean(dim=1).numpy()
 
 
 # -------------------------------------------------------------- screen scoring
@@ -742,12 +870,153 @@ class ScreenResult:
 
 
 def screen_record_sha256(record) -> str:
-    return ''
+    """Canonical SHA-256 of a U4 screen record (sorted compact JSON)."""
+    payload = json.dumps(record, sort_keys=True, separators=(',', ':'), ensure_ascii=True)
+    return hashlib.sha256(payload.encode('utf-8')).hexdigest()
+
+
+def _default_model_factory(binding, checkpoint_path):
+    """Rebuild the bound cei_gnn_v3 adapter and load its dev-selected checkpoint."""
+    import torch
+    from types import SimpleNamespace
+    from comparison.standardized.clinical_graph_v2.methods import build_method
+
+    config = binding['method_config']
+    architecture = config['architecture']
+    args = dict(binding)
+    args['method_options'] = dict(config['effective_settings'])
+    model = build_method(
+        STUDY_METHOD, num_tokens=binding['vocabulary_size'], node_dim=binding['node_dim'],
+        edge_dim=binding['edge_dim'], num_classes=binding['num_classes'],
+        hidden=binding['hidden'], layers=binding['layers'], dropout=binding['dropout'],
+        token_dim=architecture['token_dim'], num_triples=binding['num_meta_relations'],
+        args=SimpleNamespace(**args))
+    model.load_state_dict(torch.load(checkpoint_path, map_location='cpu', weights_only=True),
+                          strict=True)
+    if sum(p.numel() for p in model.parameters()) != binding['parameter_count']:
+        raise ValueError('rebuilt parameter count differs from the checkpoint binding')
+    return model
+
+
+def _stage_of_binding(stage_dir, binding, study_binding) -> Stage:
+    config = binding['method_config']
+    return Stage(name=str(study_binding['stage']), phase='post_freeze', arm=str(config['arm']),
+                 k=int(config['k']), seed=int(binding['seed']), output=str(stage_dir), argv=(),
+                 v3_state=str(config['effective_settings']['v3_state']))
 
 
 def score_screen(checkpoint, record, encoder, *, output_dir=None, model_factory=None,
                  batch_size=128) -> ScreenResult:
-    return ScreenResult(arm='', seed=0, k=0, checkpoint_sha256='', binding_sha256='',
-                        k_selection_sha256='', screen_record_sha256='', row_count=0,
-                        macro_f1=0.0, logits_path='', logits_sha256='', proba_path='',
-                        proba_sha256='', absence_share_mean=None)
+    """Score one frozen checkpoint once on the screen fold (v3 §5, §6.1, §11.2 item 8, EXT E7).
+
+    Refuses, before any screen row is read: a missing K-freeze record; a checkpoint
+    without a study binding carrying `k_selection_sha256`, or with a hash or K that differs
+    from the freeze record; a binding/result with validation or test traces; an encoder
+    fold other than `'screen'`; a screen record whose fold, row count, preprocessing hash or
+    id hash disagree with the encoder ids or the checkpoint binding. Writes raw float32
+    `logits.npz` and `proba.npz` (both hashed) plus `screen_result.json` into
+    `<stage_dir>/screen/` (or `output_dir`), never overwriting.
+    """
+    import torch
+    from torch_geometric.loader import DataLoader
+
+    stage_dir = Path(checkpoint.stage_dir)
+    freeze_path = Path(checkpoint.k_selection_path)
+    if not freeze_path.is_file():
+        raise ValueError(f'no K-freeze record at {freeze_path}; the screen is never read '
+                         'before K is frozen (v3 §11.2 item 8)')
+    k_selection = _load_json(freeze_path, K_SELECTION_FILENAME)
+    _validate_k_selection_record(k_selection)
+    freeze_hash = _file_sha256(freeze_path)
+    if freeze_hash != k_selection_sha256(k_selection):
+        raise ValueError('k_selection.json bytes are not the canonical serialisation')
+    binding_path, result_path = stage_dir / 'binding.json', stage_dir / 'result.json'
+    checkpoint_path, study_path = stage_dir / 'best.pt', stage_dir / STUDY_BINDING_FILENAME
+    for path in (binding_path, result_path, checkpoint_path):
+        if not path.is_file():
+            raise ValueError(f'checkpoint directory lacks {path.name}: {stage_dir}')
+    if not study_path.is_file():
+        raise ValueError(f'checkpoint binding lacks k_selection_sha256 (no {STUDY_BINDING_FILENAME} '
+                         f'in {stage_dir}); only freeze-bound checkpoints are scored')
+    binding = _load_json(binding_path, 'binding.json')
+    result = _load_json(result_path, 'result.json')
+    study_binding = _load_json(study_path, STUDY_BINDING_FILENAME)
+    if study_binding.get('k_selection_sha256') != freeze_hash:
+        raise ValueError('checkpoint k_selection_sha256 differs from the K-freeze record')
+    k_selected = int(k_selection['k_selected'])
+    stage = _stage_of_binding(stage_dir, binding, study_binding)
+    if stage.k != k_selected or study_binding.get('k_selected') != k_selected:
+        raise ValueError(f'checkpoint K {stage.k} differs from the frozen K* {k_selected}; '
+                         'losing-K checkpoints are never scored on the screen')
+    if stage.arm not in ARMS:
+        raise ValueError(f'unknown arm {stage.arm!r}')
+    check_stage_result(stage_dir, binding, result)
+    if not isinstance(record, dict) or record.get('fold') != 'screen':
+        raise ValueError("screen record must carry fold='screen'")
+    validate_v3_binding(binding, stage, screen_record=record, k_selection=k_selection,
+                        study_binding=study_binding)
+    if encoder.fold != 'screen':
+        raise ValueError(f"screen scoring encodes fold='screen' only, got {encoder.fold!r}; "
+                         'validation and test are never scored here')
+    ids = list(encoder.ids)
+    if len(set(ids)) != len(ids):
+        raise ValueError('screen ids contain duplicates')
+    if record.get('row_count') != len(ids):
+        raise ValueError(f'screen record row_count {record.get("row_count")!r} differs from the '
+                         f'{len(ids)} encoder ids')
+    if record.get('preprocessing_sha256') != binding['preprocessing_sha256']:
+        raise ValueError('screen record preprocessing_sha256 differs from the checkpoint binding '
+                         '(v3 §12.7)')
+    if stage.arm == 'C':
+        control_hashes = k_selection.get('control_binding_sha256', [])
+        if _file_sha256(binding_path) not in control_hashes:
+            raise ValueError('C checkpoint binding is not one of the frozen control bindings')
+    out = Path(output_dir) if output_dir is not None else stage_dir / SCREEN_DIRNAME
+    if out.exists():
+        raise FileExistsError(f'Refusing occupied screen output {out}')
+    record_hash = screen_record_sha256(record)
+
+    factory = model_factory or _default_model_factory
+    model = factory(binding, checkpoint_path)
+    model.eval()
+    logits_chunks, y_chunks, subjects, sample_ids, shares = [], [], [], [], []
+    with torch.no_grad():   # one inference per checkpoint: logits and parts from the same pass
+        for batch in DataLoader(list(encoder.rows()), batch_size=int(batch_size), shuffle=False):
+            features = model.continuous_inputs(batch)
+            parts = model.forward_continuous(features, batch.edge_index, batch, return_parts=True)
+            logits_chunks.append(parts['logits'].detach().cpu().to(torch.float32))
+            y_chunks.append(batch.y.view(-1).cpu())
+            batch_subjects = batch.subject if isinstance(batch.subject, (list, tuple)) else [batch.subject]
+            batch_ids = batch.sample_id if isinstance(batch.sample_id, (list, tuple)) else [batch.sample_id]
+            subjects.extend(str(s) for s in batch_subjects)
+            sample_ids.extend(str(s) for s in batch_ids)
+            if stage.arm == 'C':
+                shares.append(absence_share(parts, batch_index=batch.batch,
+                                            edge_index=batch.edge_index,
+                                            graph_count=int(batch.num_graphs)))
+    if sample_ids != ids:
+        raise ValueError('encoded screen rows differ from the bound screen ids (order or content)')
+    logits = torch.cat(logits_chunks).numpy().astype(np.float32, copy=False)
+    if not np.isfinite(logits).all():
+        raise ValueError('non-finite screen logits')
+    y = torch.cat(y_chunks).numpy()
+    proba = torch.softmax(torch.from_numpy(logits), dim=1).numpy().astype(np.float32, copy=False)
+    macro_f1 = weighted_macro_f1(y, logits.argmax(1), num_classes=binding['num_classes'])
+    subjects_array = np.asarray(subjects).astype(str)
+    ids_array = np.asarray(sample_ids).astype(str)
+    out.mkdir(parents=True, exist_ok=False)
+    logits_path, proba_path = out / 'logits.npz', out / 'proba.npz'
+    np.savez_compressed(logits_path, logits=logits, y=y, subjects=subjects_array, sample_ids=ids_array)
+    np.savez_compressed(proba_path, proba=proba, y=y, subjects=subjects_array, sample_ids=ids_array)
+    share = float(np.mean(np.concatenate(shares))) if shares else None
+    result_record = ScreenResult(
+        arm=stage.arm, seed=stage.seed, k=stage.k,
+        checkpoint_sha256=_file_sha256(checkpoint_path), binding_sha256=_file_sha256(binding_path),
+        k_selection_sha256=freeze_hash, screen_record_sha256=record_hash, row_count=len(ids),
+        macro_f1=float(macro_f1), logits_path=str(logits_path),
+        logits_sha256=hashlib.sha256(np.ascontiguousarray(logits).tobytes()).hexdigest(),
+        proba_path=str(proba_path),
+        proba_sha256=hashlib.sha256(np.ascontiguousarray(proba).tobytes()).hexdigest(),
+        absence_share_mean=share)
+    _write_new_json(out / 'screen_result.json', asdict(result_record))
+    return result_record
