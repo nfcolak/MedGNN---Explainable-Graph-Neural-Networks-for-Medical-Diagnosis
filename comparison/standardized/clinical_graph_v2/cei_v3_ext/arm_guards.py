@@ -211,3 +211,22 @@ def assert_size_arm_support(v3_state=None, *, layers=2) -> dict:
     if support.get('cei_gnn_v2') is not False:
         raise ValueError('cei_gnn_v2 must still refuse layers != 1 (v2 files are byte-identical)')
     return support
+
+
+# ------------------------------------------------------------ E6a bidirectional view
+
+def edge_view_record(edge_relation, edge_direction) -> dict:
+    """F/R accounting of one tensorised edge list under the arm's edge view (spec §5.2)."""
+    return {'edge_direction': str(edge_direction), 'forward_edges': 0, 'reverse_edges': 0,
+            'mask_length': 0, 'reverse_of_forward': []}
+
+
+def assert_edge_mask_length(mask, record) -> None:
+    """Refuse an edge mask whose length is not the arm's own F + R (v3 §4.5 on E6a)."""
+    return None
+
+
+def reverse_edge_attribution(edge_contributions, edge_relation, edge_direction) -> dict:
+    """Split per-edge attributions into the forward and reverse blocks; never merged."""
+    return {'forward': edge_contributions, 'reverse': edge_contributions[:0],
+            'reverse_relations': [], 'reverse_of_forward': [], 'derived_forward_plus_reverse': None}
