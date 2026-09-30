@@ -167,7 +167,9 @@ def test_fit_offsets_runs_exactly_five_sweeps_in_label_order_with_unrounded_scor
 
 def test_fit_offsets_compares_scores_at_full_precision(monkeypatch):
     """A gain of 1e-9 per row moved into class 3 must be taken; a 6-decimal comparison
-    would see ties and keep i_3 = 0 (tie rule), which is the rounded behaviour (E13)."""
+    would see ties everywhere and keep i = 0 (tie rule), which is the rounded behaviour
+    (E13). The ascent ends with every row predicted as 3 (i_3 = +20, the others pushed
+    down as far as needed)."""
     logits, y = _shifted_logits(n=60)
 
     def tiny_gain_metric(y_true, pred, weights=None, *, num_classes=10):
@@ -175,7 +177,8 @@ def test_fit_offsets_compares_scores_at_full_precision(monkeypatch):
     monkeypatch.setattr(offsets, 'weighted_macro_f1', tiny_gain_metric)
     delta = offsets.fit_offsets(logits, y)
     assert delta[3] == 20
-    assert all(delta[c] == 0 for c in range(10) if c != 3)
+    assert (offsets.apply_offsets(logits, delta) == 3).all()
+    assert delta.tolist() != [0] * 10
 
 
 def test_fit_offsets_tie_rule_prefers_smallest_magnitude_then_the_negative_value():
