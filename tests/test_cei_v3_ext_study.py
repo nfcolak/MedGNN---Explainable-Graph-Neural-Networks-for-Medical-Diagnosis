@@ -694,6 +694,53 @@ def test_offset_screen_rows_refuse_unbound_or_mismatched_inputs(tmp_path, kind):
         assert not (Path(c_results[seed]['logits_path']).parent / offsets.OFFSET_SCREEN_DIRNAME).exists()
 
 
+def test_load_screen_row_refuses_stored_logits_that_differ_from_the_bound_hash(tmp_path):
+    result, _, _, _ = _stored_c_screen(tmp_path, 1234)
+    path = Path(result['logits_path'])
+    with np.load(path, allow_pickle=False) as saved:
+        arrays = {k: saved[k] for k in saved.files}
+    arrays['logits'] = arrays['logits'].copy()
+    arrays['logits'][0, 0] += np.float32(1.0)
+    path.unlink()
+    np.savez_compressed(path, **arrays)
+    with pytest.raises(ValueError, match='logits'):
+        ext.load_screen_row(result)
+
+
+def test_load_screen_row_refuses_o_predictions_that_differ_from_the_bound_hash(tmp_path):
+    approval, c_results, records, _ = _o_fixture(tmp_path)
+    rows = ext.offset_screen_rows(c_results, records, approval_record_sha256=approval)
+    row = rows[7]
+    path = Path(row['pred_path'])
+    with np.load(path, allow_pickle=False) as saved:
+        arrays = {k: saved[k] for k in saved.files}
+    arrays['pred'] = arrays['pred'].copy()
+    arrays['pred'][0] = (arrays['pred'][0] + 1) % 10
+    path.unlink()
+    np.savez_compressed(path, **arrays)
+    with pytest.raises(ValueError, match='O predictions'):
+        ext.load_screen_row(row)
+
+
+def test_offset_screen_rows_approval_mismatch_on_the_last_seed_leaves_no_o_output(tmp_path):
+    approval, c_results, records, _ = _o_fixture(tmp_path)
+    records[7]['approval_record_sha256'] = '0' * 64
+    with pytest.raises(ValueError):
+        ext.offset_screen_rows(c_results, records, approval_record_sha256=approval)
+    for seed in SEEDS:
+        assert not (Path(c_results[seed]['logits_path']).parent / offsets.OFFSET_SCREEN_DIRNAME).exists()
+
+
+def test_offset_screen_rows_occupied_o_output_on_the_last_seed_leaves_no_new_o_output(tmp_path):
+    approval, c_results, records, _ = _o_fixture(tmp_path)
+    last_out = Path(c_results[7]['logits_path']).parent / offsets.OFFSET_SCREEN_DIRNAME
+    last_out.mkdir()
+    with pytest.raises(FileExistsError):
+        ext.offset_screen_rows(c_results, records, approval_record_sha256=approval)
+    for seed in SEEDS[:2]:
+        assert not (Path(c_results[seed]['logits_path']).parent / offsets.OFFSET_SCREEN_DIRNAME).exists()
+
+
 # ---- secondary E6b metric: comorbid-block share and non-empty pair-set fraction ----
 
 
