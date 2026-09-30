@@ -791,7 +791,7 @@ def test_absence_share_is_the_patient_mean_class_share_with_zero_denominator_rul
         'pair_contributions': torch.tensor([[0.0, 1.0]]),
         'pairs': torch.tensor([[0], [1]]),
         'absence_contributions': torch.tensor([[1.0, 0.5], [3.0, 0.0]]),
-        'absence_items': torch.tensor([[0, 2], [0, 1]]),
+        'absence_items': torch.tensor([[0, 1], [0, 1]]),   # (graph, slot) per absent item
     }
     batch_index = torch.tensor([0, 0, 1])
     edge_index = torch.tensor([[0], [1]])
@@ -926,13 +926,13 @@ def test_score_screen_writes_hashed_raw_logits_and_proba_and_a_bound_result(tmp_
     assert result.binding_sha256 == hashlib.sha256((c_dir / 'binding.json').read_bytes()).hexdigest()
     assert result.k_selection_sha256 == study.k_selection_sha256(record)
     assert result.screen_record_sha256 == study.screen_record_sha256(_screen_record())
-    assert result.absence_share_mean == pytest.approx(
-        float(np.mean(study.absence_share(
-            stub.forward_continuous(rows[0].x, rows[0].edge_index,
-                                    Data(batch=torch.zeros(3, dtype=torch.long), num_graphs=1),
-                                    return_parts=True),
-            batch_index=torch.zeros(3, dtype=torch.long), edge_index=rows[0].edge_index,
-            graph_count=1))))
+    # Patient-mean over ALL screen graphs of the per-graph absence share (v3 §6.2).
+    single = Data(batch=torch.zeros(3, dtype=torch.long), num_graphs=1)
+    per_graph = [study.absence_share(
+        stub.forward_continuous(r.x, r.edge_index, single, return_parts=True),
+        batch_index=single.batch, edge_index=r.edge_index, graph_count=1)[0] for r in rows]
+    assert result.absence_share_mean == pytest.approx(float(np.mean(per_graph)))
+    assert len(set(np.round(per_graph, 6))) > 1   # the mean is not a single-graph value
     assert result.validation_evaluated is False and result.test_evaluated is False
     written = json.loads((out / 'screen_result.json').read_text())
     assert written == json.loads(json.dumps(result.__dict__))
