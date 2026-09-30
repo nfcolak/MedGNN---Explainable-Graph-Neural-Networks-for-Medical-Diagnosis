@@ -537,12 +537,8 @@ def test_adapter_common_init_identical_to_c_covers_width_and_the_bidirectional_v
     assert _bidirectional_adapter(tmp_path, hidden=256).run_config()['common_init_identical_to_c'] is False
 
 
-def test_adapter_comorbid_block_without_the_x5_module_names_x5_and_the_module_path(tmp_path):
-    import importlib.util
-
-    assert importlib.util.find_spec(X5_MODULE.rsplit('.', 1)[0]) is None, \
-        'the cei_v3_ext package must not exist before X5'
-    assert X5_MODULE not in sys.modules
+def test_adapter_comorbid_block_with_the_x5_module_missing_names_x5_and_the_module_path(tmp_path, monkeypatch):
+    monkeypatch.setitem(sys.modules, X5_MODULE, None)
     with pytest.raises(ValueError, match='X5') as info:
         _adapter(tmp_path, comorbid_block=1)
     assert X5_MODULE in str(info.value) and 'build_block' in str(info.value)
