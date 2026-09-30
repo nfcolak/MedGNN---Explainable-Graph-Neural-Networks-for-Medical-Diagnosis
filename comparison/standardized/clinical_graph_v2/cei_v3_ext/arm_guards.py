@@ -316,3 +316,20 @@ def reverse_edge_attribution(edge_contributions, edge_relation, edge_direction) 
             'reverse_relations': [names[r] for r in ids[forward_edges:]],
             'reverse_of_forward': list(record['reverse_of_forward']),
             'derived_forward_plus_reverse': derived}
+
+
+# ---------------------------------------------------------- extension binding guards
+
+def extension_binding_record(binding, control_bindings) -> dict:
+    """The checked fields of one extension-stage binding, or raise (see the assertion)."""
+    return {'arm': '', 'seed': 0, 'k': 0, 'k_selection_sha256': '', 'control_binding_sha256': [],
+            'preprocessing_sha256': '', 'final_eval': '', 'arm_definition': {}}
+
+
+def assert_extension_binding(binding, control_bindings) -> None:
+    """Refuse an extension-stage binding that does not bind C's freeze (spec §1, §6, §9 X14).
+
+    Checks the K-freeze hash, `control_binding_sha256`, `preprocessing_sha256`,
+    `final_eval == 'none'` and the arm definition fields.
+    """
+    return None

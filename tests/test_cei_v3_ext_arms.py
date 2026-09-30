@@ -424,3 +424,274 @@ def test_e6a_adapter_widens_only_the_relation_tensors_and_records_the_arm(tmp_pa
     # Preprocessing state is direction-free (§5.2): the same v3_state, K and hashes as C.
     for key in ('preprocessing_sha256', 'v3_state_sha256', 'knot_table_sha256', 'universe_sha256', 'k'):
         assert config[key] == control_config[key], key
+
+
+# ------------------------------------------------------ step 3: extension binding guards
+
+import copy  # noqa: E402
+import hashlib  # noqa: E402
+
+from comparison.standardized.clinical_graph_v2 import cei_v3_study as study  # noqa: E402
+
+FROZEN_K = 8
+PREP = 'b' * 64
+STATE_PATH = '/study/v3_state/K8.json'
+C_BINDING_HASHES = [hashlib.sha256(f'C binding {seed}'.encode()).hexdigest() for seed in study.SEEDS]
+C_CHECKPOINT_HASHES = [hashlib.sha256(f'C checkpoint {seed}'.encode()).hexdigest() for seed in study.SEEDS]
+
+
+def _k_selection_record():
+    """A frozen `k_selection.json` document in U5's layout (`_k_selection_document`)."""
+    return {'version': study.K_SELECTION_VERSION, 'k_grid': list(study.K_GRID),
+            'seeds': list(study.SEEDS), 'arm': 'C', 'rule': study.K_SELECTION_RULE,
+            'statistic': 'unweighted mean over seeds of selected_dev.metric_value',
+            'tie_rule': 'equal 6-decimal seed-mean -> smaller K',
+            'stages': [{'stage': f'C_K{k}_seed{seed}', 'k': k, 'seed': seed,
+                        'output': f'/study/C_K{k}_seed{seed}',
+                        'checkpoint_sha256': (C_CHECKPOINT_HASHES[i] if k == FROZEN_K
+                                              else hashlib.sha256(f'{k}{seed}'.encode()).hexdigest()),
+                        'binding_sha256': (C_BINDING_HASHES[i] if k == FROZEN_K
+                                           else hashlib.sha256(f'b{k}{seed}'.encode()).hexdigest()),
+                        'metric': 'macro_f1', 'metric_value': 0.4}
+                       for k in study.K_GRID for i, seed in enumerate(study.SEEDS)],
+            'seed_means': {str(k): 0.4 for k in study.K_GRID},
+            'seed_means_rounded': {str(k): 0.4 for k in study.K_GRID},
+            'k_selected': FROZEN_K, 'tie_rule_applied': False,
+            'knot_table_sha256': {str(k): 'd' * 64 for k in study.K_GRID},
+            'v3_state_sha256': {str(k): 'c' * 64 for k in study.K_GRID},
+            'selected_knot_table_sha256': 'd' * 64, 'selected_v3_state_sha256': 'c' * 64,
+            'dev_sample_ids_sha256': 'f' * 64,
+            'control_binding_sha256': list(C_BINDING_HASHES),
+            'k_selection_completed_before_screen': True, 'screen_record_sha256': None}
+
+
+def _control_bindings():
+    """What X6 hands the guard: the frozen record, its hash and C's three binding hashes."""
+    record = _k_selection_record()
+    return {'k_selection': record, 'k_selection_sha256': study.k_selection_sha256(record),
+            'control_binding_sha256': list(C_BINDING_HASHES),
+            'control_checkpoint_sha256': list(C_CHECKPOINT_HASHES),
+            'preprocessing_sha256': PREP, 'v3_state_sha256': 'c' * 64, 'k': FROZEN_K,
+            'v3_state': STATE_PATH}
+
+
+def _extension_binding(arm='E2w', *, seed=1234, controls=None):
+    """A synthetic extension-stage binding: train.py `binding.json` layout + the study
+    binding fields U5 writes (`write_study_binding`) + the §1 control bindings."""
+    controls = controls or _control_bindings()
+    definition = arm_guards.ARM_DEFINITIONS[arm]
+    hidden, depth = definition['hidden'], definition['encoder_depth']
+    direction, comorbid = definition['edge_direction'], definition['comorbid_block']
+    method_config = {
+        'method': 'cei_gnn_v3', 'arm': 'C', 'k': FROZEN_K, 'v3_state_path': STATE_PATH,
+        'v3_state_sha256': 'c' * 64, 'knot_table_sha256': 'd' * 64,
+        'effective_settings': {'arm': 'C', 'k': FROZEN_K, 'v3_state': STATE_PATH,
+                               'encoder_depth': depth, 'comorbid_block': comorbid},
+        'encoder_depth': depth, 'comorbid_block': comorbid, 'edge_direction': direction,
+        'hidden': hidden, 'ple_active': True, 'absence_active': True,
+        'common_init_identical_to_c': definition['common_init_identical_to_c'],
+        'pair_mode': 'additive', 'preprocessing_sha256': PREP,
+        'architecture': {'parameter_count': 1000, 'active_parameter_count': 1000,
+                         'inactive_parameter_count': 0, 'k': FROZEN_K, 'layers': depth,
+                         'hidden': hidden, 'encoder_depth': depth},
+    }
+    return {
+        'method': 'cei_gnn_v3', 'method_config': method_config,
+        'artifact_graphs_sha256': 'a' * 64, 'artifact_visit_membership_sha256': 'a' * 64,
+        'targets_sha256': 't' * 64, 'target_binding_sha256': 't' * 64,
+        'label_order': [f'L{i}' for i in range(10)], 'source_code': {'x': 'y'},
+        'preprocessing_sha256': PREP, 'seed': seed, 'sample_seed': 1234,
+        'selection_fold': 'dev', 'final_eval': 'none', 'train_limit': 10000, 'dev_limit': 5000,
+        'epochs': 40, 'patience': 40, 'test_evaluated': False, 'parameter_count': 1000,
+        'active_parameter_count': 1000, 'weights': 'sqrt_inverse', 'edge_direction': direction,
+        'edges': 'all', 'top_k_labels': 10, 'message_passing': True, 'edge_payload': True,
+        'num_classes': 10, 'input_contract_version': 'clinical_inputs_v3',
+        'hidden': hidden, 'layers': depth, 'dropout': 0.3, 'lr': 1.79e-3,
+        'weight_decay': 4.3e-5, 'batch_size': 128,
+        'split_sample_ids_sha256': {'train': 'e' * 64, 'dev': 'f' * 64, 'validation': '9' * 64},
+        'counts': {'train': 10000, 'dev': 5000, 'validation': 4254},
+        'selected_dev': {'epoch': 12, 'epoch_index': 11, 'metric': 'macro_f1',
+                         'metric_value': 0.41, 'prediction_sha256': '1' * 64,
+                         'sample_ids_sha256': 'f' * 64},
+        # Study binding fields (U5 `write_study_binding`) + the §1 control bindings.
+        'extension_arm': arm, 'k_selected': FROZEN_K, 'k_grid': list(study.K_GRID),
+        'k_selection_rule': study.K_SELECTION_RULE,
+        'k_selection_sha256': controls['k_selection_sha256'],
+        'control_binding_sha256': list(controls['control_binding_sha256']),
+        'control_checkpoint_sha256': list(controls['control_checkpoint_sha256']),
+    }
+
+
+@pytest.mark.parametrize('arm', ['E2w', 'E2d', 'E6a', 'E6b'])
+def test_extension_binding_guard_passes_on_every_conforming_arm(arm):
+    controls = _control_bindings()
+    for seed in study.SEEDS:
+        binding = _extension_binding(arm, seed=seed, controls=controls)
+        assert arm_guards.assert_extension_binding(binding, controls) is None
+        record = arm_guards.extension_binding_record(binding, controls)
+        assert record['arm'] == arm and record['seed'] == seed
+        assert record['k'] == FROZEN_K
+        assert record['k_selection_sha256'] == controls['k_selection_sha256']
+        assert record['control_binding_sha256'] == C_BINDING_HASHES
+        assert record['preprocessing_sha256'] == PREP
+        assert record['final_eval'] == 'none'
+        assert record['arm_definition'] == arm_guards.ARM_DEFINITIONS[arm]
+
+
+def _drop(key):
+    def mutate(binding, controls):
+        del binding[key]
+    return mutate
+
+
+def _set(key, value):
+    def mutate(binding, controls):
+        binding[key] = value
+    return mutate
+
+
+def _set_config(key, value):
+    def mutate(binding, controls):
+        binding['method_config'][key] = value
+    return mutate
+
+
+def _tamper_freeze(binding, controls):
+    controls['k_selection']['k_selected'] = 16   # bytes change -> hash of the record changes
+
+
+def _rotate_controls(binding, controls):
+    binding['control_binding_sha256'] = list(reversed(C_BINDING_HASHES))
+
+
+def _two_controls(binding, controls):
+    binding['control_binding_sha256'] = C_BINDING_HASHES[:2]
+
+
+def _foreign_control(binding, controls):
+    binding['control_binding_sha256'] = C_BINDING_HASHES[:2] + ['0' * 64]
+
+
+def _record_controls_drift(binding, controls):
+    controls['k_selection']['control_binding_sha256'] = C_BINDING_HASHES[:2] + ['1' * 64]
+
+
+def _prep_config_drift(binding, controls):
+    binding['method_config']['preprocessing_sha256'] = '2' * 64
+
+
+def _e2w_says_identical(binding, controls):
+    binding['method_config']['common_init_identical_to_c'] = True
+
+
+def _e2d_says_not_identical(binding, controls):
+    binding['method_config']['common_init_identical_to_c'] = False
+
+
+def _layers_drift(binding, controls):
+    binding['layers'] = 1                          # runner says depth 1, run_config says 2
+
+
+def _hidden_drift(binding, controls):
+    binding['hidden'] = 128                        # runner says 128, run_config says 256
+
+
+def _direction_drift(binding, controls):
+    binding['edge_direction'] = 'forward'          # runner says forward, run_config bidirectional
+
+
+def _arm_label_drift(binding, controls):
+    binding['extension_arm'] = 'E2d'
+
+
+@pytest.mark.parametrize('arm, mutate, message', [
+    # K-freeze hash
+    ('E2w', _drop('k_selection_sha256'), 'k_selection_sha256'),
+    ('E2w', _set('k_selection_sha256', '0' * 64), 'k_selection_sha256'),
+    ('E2w', _tamper_freeze, 'k_selection_sha256'),
+    ('E2w', _set('k_selected', 16), 'k_selected|frozen K'),
+    ('E2w', _set_config('k', 16), 'k'),
+    ('E2w', _set('k_selection_rule', 'other'), 'k_selection_rule'),
+    # control_binding_sha256
+    ('E2w', _drop('control_binding_sha256'), 'control_binding_sha256'),
+    ('E2w', _rotate_controls, 'control_binding_sha256'),
+    ('E2w', _two_controls, 'control_binding_sha256'),
+    ('E2w', _foreign_control, 'control_binding_sha256'),
+    ('E2w', _record_controls_drift, 'control_binding_sha256'),
+    ('E2w', _set('control_checkpoint_sha256', ['0' * 64] * 3), 'control_checkpoint_sha256'),
+    # preprocessing_sha256
+    ('E6a', _set('preprocessing_sha256', '0' * 64), 'preprocessing_sha256'),
+    ('E6a', _prep_config_drift, 'preprocessing_sha256'),
+    ('E6a', _set_config('v3_state_sha256', '0' * 64), 'v3_state_sha256'),
+    ('E6a', _set_config('v3_state_path', '/elsewhere/K8.json'), 'v3_state'),
+    # final_eval == 'none' and no validation/test trace
+    ('E2d', _set('final_eval', 'validation'), 'final_eval'),
+    ('E2d', _set('final_eval', None), 'final_eval'),
+    ('E2d', _set('selected_validation', {'metric': 'macro_f1'}), 'validation'),
+    ('E2d', _set('test_evaluated', True), 'test'),
+    ('E2d', _set('selection_fold', 'validation'), 'selection_fold'),
+    # arm definition fields (§6 table; §2.2 flag)
+    ('E2w', _set_config('hidden', 320), 'arm'),
+    ('E2d', _set_config('encoder_depth', 3), 'arm'),
+    ('E6a', _set_config('edge_direction', 'forward'), 'arm'),
+    ('E6b', _set_config('comorbid_block', 0), 'arm'),
+    ('E2w', _e2w_says_identical, 'common_init_identical_to_c'),
+    ('E2d', _e2d_says_not_identical, 'common_init_identical_to_c'),
+    ('E2w', _set_config('arm', 'A'), 'arm'),
+    ('E2w', _set_config('pair_mode', 'product'), 'pair_mode'),
+    ('E2w', _set_config('ple_active', False), 'ple_active'),
+    ('E2w', _set_config('absence_active', False), 'absence_active'),
+    ('E2d', _layers_drift, 'layers'),
+    ('E2w', _hidden_drift, 'hidden'),
+    ('E6a', _direction_drift, 'edge_direction'),
+    ('E2w', _arm_label_drift, 'extension_arm'),
+    ('E2w', _drop('extension_arm'), 'extension_arm'),
+    ('E2w', _set('extension_arm', 'C'), 'extension_arm'),
+    # protocol drift (§6 common settings)
+    ('E2w', _set('epochs', 20), 'epochs'),
+    ('E2w', _set('patience', 10), 'patience'),
+    ('E2w', _set('train_limit', 5000), 'train_limit'),
+    ('E2w', _set('dev_limit', 4000), 'dev_limit'),
+    ('E2w', _set('sample_seed', 7), 'sample_seed'),
+    ('E2w', _set('seed', 99), 'seed'),
+    ('E2w', _set('weights', 'none'), 'weights'),
+    ('E2w', _set('edges', 'informative'), 'edges'),
+    ('E2w', _set('method', 'cei_gnn_v2'), 'method'),
+])
+def test_extension_binding_guard_refuses_every_mismatch(arm, mutate, message):
+    controls = _control_bindings()
+    binding = _extension_binding(arm, controls=controls)
+    mutate(binding, controls)
+    with pytest.raises(ValueError, match=message):
+        arm_guards.assert_extension_binding(binding, controls)
+
+
+def test_extension_binding_guard_refuses_a_control_set_that_is_not_c_at_the_frozen_k():
+    controls = _control_bindings()
+    binding = _extension_binding('E2w', controls=controls)
+    for key in ('k_selection', 'k_selection_sha256', 'control_binding_sha256'):
+        broken = copy.deepcopy(controls)
+        del broken[key]
+        with pytest.raises(ValueError, match=key):
+            arm_guards.assert_extension_binding(binding, broken)
+    broken = copy.deepcopy(controls)
+    broken['k_selection_sha256'] = '0' * 64          # does not hash the record it carries
+    with pytest.raises(ValueError, match='k_selection_sha256'):
+        arm_guards.assert_extension_binding(binding, broken)
+    broken = copy.deepcopy(controls)
+    broken['k_selection']['arm'] = 'B'
+    broken['k_selection_sha256'] = study.k_selection_sha256(broken['k_selection'])
+    with pytest.raises(ValueError, match='arm'):
+        arm_guards.assert_extension_binding(binding, broken)
+    broken = copy.deepcopy(controls)
+    broken['control_binding_sha256'] = C_BINDING_HASHES[:2]
+    with pytest.raises(ValueError, match='control_binding_sha256'):
+        arm_guards.assert_extension_binding(binding, broken)
+    with pytest.raises(ValueError, match='dict'):
+        arm_guards.assert_extension_binding([], controls)
+    with pytest.raises(ValueError, match='dict'):
+        arm_guards.assert_extension_binding(binding, None)
+    # The guard never mutates its inputs.
+    before = copy.deepcopy((binding, controls))
+    arm_guards.assert_extension_binding(binding, controls)
+    assert (binding, controls) == before
