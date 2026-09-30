@@ -456,21 +456,24 @@ def test_e6a_shaped_widening_renews_only_the_widened_tensors_from_their_generato
     relation = widened.relation_embedding.weight
     assert tuple(relation.shape) == (BIDIRECTIONAL_RELATIONS, HIDDEN)
     assert torch.equal(relation, torch.empty(BIDIRECTIONAL_RELATIONS, HIDDEN).normal_(
-        generator=v3.tensor_generator(123, 'relation_embedding.weight')))
+        generator=v3.tensor_generator(1234, 'relation_embedding.weight')))
     assert torch.equal(widened.triple_embedding.weight, torch.empty(
         E6A_SHAPES['num_triples'], HIDDEN).normal_(
-        generator=v3.tensor_generator(123, 'triple_embedding.weight')))
+        generator=v3.tensor_generator(1234, 'triple_embedding.weight')))
     projection = widened.edge_feature_projection.weight
     assert tuple(projection.shape) == (HIDDEN, E6A_SHAPES['edge_dim'])
     bound = 1.0 / E6A_SHAPES['edge_dim'] ** 0.5   # nn.Linear default bound at the new fan-in
     assert torch.equal(projection, torch.empty(HIDDEN, E6A_SHAPES['edge_dim']).uniform_(
-        -bound, bound, generator=v3.tensor_generator(123, 'edge_feature_projection.weight')))
+        -bound, bound, generator=v3.tensor_generator(1234, 'edge_feature_projection.weight')))
     assert widened.edge_feature_projection.bias is None
-    # Without control shapes the later common tensors shift along the global stream.
+    # Without control shapes the common tensors registered AFTER the widened ones
+    # (`cei_gnn_v2.py` lines 109–119: edge_source … bias) shift along the global stream;
+    # the ones registered before (lines 101–105, e.g. node_head) do not.
     torch.manual_seed(123)
     naive = _network(seed=123, dropout=0.3, **E6A_SHAPES)
     assert naive.widened_tensors == ()
-    assert not torch.equal(naive.node_head.weight, control.node_head.weight)
+    assert torch.equal(naive.node_head.weight, control.node_head.weight)
+    assert not torch.equal(naive.edge_source[0].weight, control.edge_source[0].weight)
     # Partial widening: only the named tensor is renewed.
     torch.manual_seed(123)
     partial = _network(seed=123, dropout=0.3, num_relations=BIDIRECTIONAL_RELATIONS,
