@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 
 import numpy as np
 import pytest
@@ -547,11 +548,12 @@ def test_adapter_refuses_dimension_mismatch_and_missing_arm_or_seed(tmp_path):
         cls(num_tokens=NUM_TOKENS, **common, args=Namespace(method_options=options))
 
 
-def test_u3x_options_encoder_depth_accepted_and_invalid_values_refused(tmp_path):
+def test_u3x_options_encoder_depth_accepted_and_invalid_values_refused(tmp_path, monkeypatch):
     adapter = _adapter(tmp_path, encoder_depth=1, comorbid_block=0)
     assert adapter.encoder_depth == 1 and adapter.comorbid_block == 0
     assert _adapter(tmp_path, encoder_depth=2).encoder_depth == 2
     assert _adapter(tmp_path, layers=2).encoder_depth == 2
+    monkeypatch.setitem(sys.modules, 'comparison.standardized.clinical_graph_v2.cei_v3_ext.comorbid_block', None)
     with pytest.raises(ValueError, match='U3x'):
         _adapter(tmp_path, comorbid_block=1)
     with pytest.raises(ValueError, match='encoder_depth'):
