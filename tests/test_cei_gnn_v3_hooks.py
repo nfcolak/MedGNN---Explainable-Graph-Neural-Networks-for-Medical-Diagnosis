@@ -588,11 +588,6 @@ def test_adapter_comorbid_block_calls_build_block_with_the_x5_contract(tmp_path,
     assert X5_MODULE not in sys.modules
 
 
-@pytest.mark.xfail(strict=True, raises=ValueError,
-                   reason='blocked by tests/test_cei_gnn_v3_core.py::test_u3x_options_are_accepted_'
-                          'only_at_their_u3_values (line 550): it requires the adapter to refuse '
-                          'encoder_depth=2 and layers=2 with a ValueError naming U3x; U3x may not '
-                          'edit that test (report.md Blocker 1). Remove this marker once it is lifted.')
 def test_adapter_maps_layers_to_encoder_depth_and_records_e2d(tmp_path):
     adapter = _adapter(tmp_path, 'C', hidden=CONTROL_HIDDEN, layers=2)
     assert adapter.encoder_depth == 2 and adapter.network.encoder_depth == 2

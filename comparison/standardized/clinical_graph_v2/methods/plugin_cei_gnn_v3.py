@@ -5,9 +5,8 @@ Method id ``cei_gnn_v3``. Options (closed set, extensions spec §9 U3 / E18):
 state's K); ``encoder_depth`` (E2d residual blocks, spec §2.2; the runner's ``--layers``
 maps to it) and ``comorbid_block`` ∈ {0, 1} (E6b: lazily imports unit X5's
 ``cei_v3_ext.comorbid_block.build_block`` through the ``extra_blocks`` protocol).
-NOTE: ``encoder_depth >= 2`` / ``layers >= 2`` are still refused here because
-``tests/test_cei_gnn_v3_core.py::test_u3x_options_are_accepted_only_at_their_u3_values``
-asserts the refusal; the network already supports them (see the U3x report).
+NOTE: ``encoder_depth >= 2`` / ``layers >= 2`` are supported by the v3 adapter
+and map to U3x E2d residual blocks.
 
 v3_state file (JSON, produced by U5 ``fit_v3_state``; see ``build_v3_state`` for the exact
 schema): {version, K, knot_table (KnotTable.state()), knot_table_sha256,
@@ -209,9 +208,6 @@ class EvidenceAdapterV3(ClinicalMethodAdapter):
         if self.k != self.state.K:
             raise ValueError(f"method option k={self.k} differs from the v3_state K={self.state.K}")
         self.encoder_depth = method_option(args, "encoder_depth", self.layers_count, int, minimum=1)
-        if self.encoder_depth != 1:
-            raise ValueError("encoder_depth >= 2 (runner --layers >= 2) is added by U3x; "
-                             "U3 supports encoder_depth=1 only")
         self.comorbid_block = method_option(args, "comorbid_block", 0, int, minimum=0, maximum=1)
 
         if self.state.num_tokens != self.num_tokens:
