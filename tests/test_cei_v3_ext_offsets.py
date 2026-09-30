@@ -398,3 +398,190 @@ def test_approval_record_sha256_is_canonical_and_matches_the_written_file(tmp_pa
         vs.write_approval_record(path, fx['approval'])
     with pytest.raises(ValueError, match='approval'):
         vs.write_approval_record(fx['root'] / 'other.json', dict(fx['approval'], allow_validation=False))
+
+
+# ------------------------------------------------------ step 2: offset freeze replay
+
+
+class _PresetAdapter:
+    """Adapter stub returning preset logits per sample id (raw float32, shape [G, 10])."""
+
+    def __init__(self, logits_by_id):
+        self.logits_by_id = logits_by_id
+        self.training = True
+
+    def eval(self):
+        self.training = False
+        return self
+
+    def continuous_inputs(self, batch):
+        return batch.x
+
+    def forward_continuous(self, features, edge_index, metadata, *, return_parts=False):
+        ids = metadata.sample_id if isinstance(metadata.sample_id, (list, tuple)) else [metadata.sample_id]
+        logits = torch.tensor(np.stack([self.logits_by_id[str(s)] for s in ids]), dtype=torch.float32)
+        return {'logits': logits} if return_parts else logits
+
+
+def _scored_validation(tmp_path, n=60, seed=3):
+    """Frozen study whose validation fold has `n` rows with EXT-shaped logits; the C_K8_seed7
+    checkpoint is scored on validation through `score_validation` (synthetic adapter)."""
+    logits, y = _shifted_logits(n=n, seed=seed)
+    rows = _validation_rows(n=n, seed=seed)
+    for row, label in zip(rows, y):
+        row.y = torch.tensor([int(label)])
+    fx = _frozen_c_study(tmp_path, rows)
+    fx['rows'], fx['logits'], fx['y'] = rows, logits, y
+    fx['adapter'] = _PresetAdapter({r.sample_id: logits[i] for i, r in enumerate(rows)})
+    fx['approval_path'] = fx['root'] / vs.APPROVAL_FILENAME
+    vs.write_approval_record(fx['approval_path'], fx['approval'])
+    c_dir = fx['c_dirs'][7]
+    fx['c_dir'] = c_dir
+    fx['validation_dir'] = Path(vs.score_validation(
+        study.Checkpoint(str(c_dir), fx['frozen'].k_selection_path), _encoder(rows),
+        fx['approval'], model_factory=lambda binding, path: fx['adapter'], batch_size=16))
+    return fx
+
+
+def _replay_kwargs(fx):
+    return dict(stage_dir=fx['c_dir'], approval_path=fx['approval_path'])
+
+
+def test_offset_record_binds_every_hash_and_the_fitted_offsets(tmp_path):
+    fx = _scored_validation(tmp_path)
+    c_dir, out = fx['c_dir'], fx['validation_dir']
+    with np.load(out / 'logits.npz', allow_pickle=False) as saved:
+        stored_logits, stored_y = saved['logits'], saved['y']
+    assert np.array_equal(stored_logits, fx['logits']) and np.array_equal(stored_y, fx['y'])
+    expected_delta = offsets.fit_offsets(stored_logits, stored_y)
+    assert expected_delta.tolist() != [0] * 10       # the fixture exercises a real fit
+    record = offsets.offset_record(out, fx['approval_path'])
+    assert record['version'] == offsets.OFFSET_RECORD_VERSION
+    assert record['arm'] == 'O' and record['control_arm'] == 'C'
+    assert (record['stage'], record['seed'], record['k']) == ('C_K8_seed7', 7, 8)
+    assert record['delta_int'] == expected_delta.tolist()
+    assert all(type(v) is int for v in record['delta_int'])
+    assert record['delta'] == [v / 10 for v in expected_delta.tolist()]
+    assert record['grid'] == list(range(-20, 21)) and record['sweeps'] == 5
+    assert record['delta_scale'] == 10
+    assert record['metric'] == 'weighted_macro_f1_unrounded'
+    assert record['optimizer_rule'] == offsets.OPTIMIZER_RULE
+    assert record['checkpoint_sha256'] == hashlib.sha256((c_dir / 'best.pt').read_bytes()).hexdigest()
+    assert record['binding_sha256'] == hashlib.sha256((c_dir / 'binding.json').read_bytes()).hexdigest()
+    assert record['k_selection_sha256'] == study.k_selection_sha256(fx['record'])
+    assert record['validation_sample_ids_sha256'] == fx['validation_hash']
+    assert record['validation_row_count'] == 60
+    assert record['validation_logits_sha256'] == hashlib.sha256(
+        np.ascontiguousarray(stored_logits).tobytes()).hexdigest()
+    assert record['validation_logits_path'] == str(out / 'logits.npz')
+    assert record['approval_record_sha256'] == vs.approval_record_sha256(fx['approval'])
+    result = json.loads((out / 'validation_result.json').read_text())
+    assert record['validation_result_sha256'] == hashlib.sha256(
+        (out / 'validation_result.json').read_bytes()).hexdigest()
+    assert record['validation_result_sha256'] != record['validation_logits_sha256']
+    assert result['approval_record_sha256'] == record['approval_record_sha256']
+    assert record['tuning_macro_f1_before'] == result['tuning_macro_f1']
+    assert record['tuning_macro_f1_after'] == study.weighted_macro_f1(
+        stored_y, offsets.apply_offsets(stored_logits, expected_delta))
+    assert record['tuning_macro_f1_after'] > record['tuning_macro_f1_before']
+    assert 'tuning score' in record['tuning_score_caveat']
+    assert record['validation_evaluated'] is True and record['test_evaluated'] is False
+    assert record['screen_read_before_freeze'] is False
+    # Frozen to disk once, canonical bytes, hash of the record equals the file hash.
+    path = out / offsets.OFFSET_RECORD_FILENAME
+    assert path.is_file() and json.loads(path.read_text()) == record
+    assert offsets.offset_record_sha256(record) == hashlib.sha256(path.read_bytes()).hexdigest()
+    with pytest.raises(FileExistsError):
+        offsets.offset_record(out, fx['approval_path'])
+
+
+def test_offset_record_refuses_unbound_inputs_before_fitting(tmp_path):
+    fx = _scored_validation(tmp_path)
+    out = fx['validation_dir']
+    # approval record on disk differs from the one bound at scoring time
+    other = dict(fx['approval'], timestamp='2026-10-01T00:00:00+02:00')
+    other_path = fx['root'] / 'other_approval.json'
+    vs.write_approval_record(other_path, other)
+    with pytest.raises(ValueError, match='approval'):
+        offsets.offset_record(out, other_path)
+    # logits tampered after scoring
+    with np.load(out / 'logits.npz', allow_pickle=False) as saved:
+        arrays = {k: saved[k] for k in saved.files}
+    tampered = dict(arrays)
+    tampered['logits'] = arrays['logits'] * np.float32(1.5)
+    (out / 'logits.npz').unlink()
+    np.savez_compressed(out / 'logits.npz', **tampered)
+    with pytest.raises(ValueError, match='logits'):
+        offsets.offset_record(out, fx['approval_path'])
+    (out / 'logits.npz').unlink()
+    np.savez_compressed(out / 'logits.npz', **arrays)
+    # checkpoint bytes changed after scoring
+    (fx['c_dir'] / 'best.pt').write_bytes(b'another checkpoint')
+    with pytest.raises(ValueError, match='checkpoint'):
+        offsets.offset_record(out, fx['approval_path'])
+    assert not (out / offsets.OFFSET_RECORD_FILENAME).exists()
+
+
+def test_offset_replay_recomputes_delta_bit_for_bit_and_detects_every_tamper(tmp_path):
+    fx = _scored_validation(tmp_path)
+    out = fx['validation_dir']
+    record = offsets.offset_record(out, fx['approval_path'])
+    assert offsets.assert_offset_replay(record, out, fx['approval_path']) is None
+    frozen_path = out / offsets.OFFSET_RECORD_FILENAME
+    assert frozen_path.is_file(), 'the offset record must be frozen to disk before any screen read'
+    loaded = json.loads(frozen_path.read_text())
+    assert offsets.assert_offset_replay(loaded, out, fx['approval_path']) is None
+    assert loaded == record   # pure: replay does not modify the record
+
+    def expect(mutation, message):
+        tampered = json.loads(json.dumps(record))
+        mutation(tampered)
+        with pytest.raises(ValueError, match=message):
+            offsets.assert_offset_replay(tampered, out, fx['approval_path'])
+
+    expect(lambda r: r.__setitem__('delta_int', [v + 1 for v in r['delta_int']]), 'delta')
+    expect(lambda r: r.__setitem__('delta_int', r['delta_int'][:9]), 'delta')
+    expect(lambda r: r.__setitem__('delta', [v + 0.1 for v in r['delta']]), 'delta')
+    expect(lambda r: r.__setitem__('checkpoint_sha256', '0' * 64), 'checkpoint')
+    expect(lambda r: r.__setitem__('validation_sample_ids_sha256', '0' * 64), 'sample')
+    expect(lambda r: r.__setitem__('validation_logits_sha256', '0' * 64), 'logits')
+    expect(lambda r: r.__setitem__('approval_record_sha256', '0' * 64), 'approval')
+    expect(lambda r: r.__setitem__('k_selection_sha256', '0' * 64), 'k_selection')
+    expect(lambda r: r.__setitem__('binding_sha256', '0' * 64), 'binding')
+    expect(lambda r: r.__setitem__('grid', list(range(-10, 11))), 'grid')
+    expect(lambda r: r.__setitem__('sweeps', 4), 'sweep')
+    expect(lambda r: r.__setitem__('metric', 'macro_f1_rounded'), 'metric')
+    expect(lambda r: r.__setitem__('optimizer_rule', 'other'), 'rule')
+    expect(lambda r: r.__setitem__('tuning_macro_f1_after', r['tuning_macro_f1_after'] + 1e-9), 'tuning')
+    expect(lambda r: r.__setitem__('version', 'other'), 'version')
+    expect(lambda r: r.pop('validation_result_sha256'), 'validation_result')
+    # the stored validation logits changed on disk -> the fit is not reproducible
+    with np.load(out / 'logits.npz', allow_pickle=False) as saved:
+        arrays = {k: saved[k] for k in saved.files}
+    arrays['logits'] = np.ascontiguousarray(arrays['logits'][:, ::-1])
+    (out / 'logits.npz').unlink()
+    np.savez_compressed(out / 'logits.npz', **arrays)
+    with pytest.raises(ValueError, match='logits'):
+        offsets.assert_offset_replay(record, out, fx['approval_path'])
+
+
+def test_offset_records_are_one_per_checkpoint_and_seed_specific(tmp_path):
+    fx = _scored_validation(tmp_path)
+    record_7 = offsets.offset_record(fx['validation_dir'], fx['approval_path'])
+    # a second C checkpoint (seed 1234) with different logits gets its own record and delta
+    other_logits = np.ascontiguousarray(fx['logits'][:, ::-1])
+    adapter = _PresetAdapter({r.sample_id: other_logits[i] for i, r in enumerate(fx['rows'])})
+    c_1234 = fx['c_dirs'][1234]
+    out_1234 = Path(vs.score_validation(
+        study.Checkpoint(str(c_1234), fx['frozen'].k_selection_path), _encoder(fx['rows']),
+        fx['approval'], model_factory=lambda binding, path: adapter))
+    record_1234 = offsets.offset_record(out_1234, fx['approval_path'])
+    assert record_1234['seed'] == 1234 and record_7['seed'] == 7
+    assert record_1234['checkpoint_sha256'] != record_7['checkpoint_sha256']
+    assert record_1234['validation_logits_sha256'] != record_7['validation_logits_sha256']
+    assert record_1234['delta_int'] != record_7['delta_int']
+    assert record_1234['approval_record_sha256'] == record_7['approval_record_sha256']
+    assert record_1234['validation_sample_ids_sha256'] == record_7['validation_sample_ids_sha256']
+    # replaying one record against the other checkpoint's directory fails
+    with pytest.raises(ValueError):
+        offsets.assert_offset_replay(record_7, out_1234, fx['approval_path'])
