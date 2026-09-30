@@ -341,3 +341,19 @@ def assert_offset_replay(record, validation_dir, approval_path) -> None:
     if record['validation_evaluated'] is not True or record['test_evaluated'] is not False:
         raise ValueError('offset record fold flags differ from the validation-only scoring')
     return None
+
+
+# --------------------------------------------------------- screen application
+
+OFFSET_SCREEN_DIRNAME = 'O'
+
+
+def score_offset_screen(screen_result, offset_record, *, approval_record_sha256,
+                        output_dir=None) -> dict:
+    """Arm O on C's stored raw screen logits (stub: writes nothing, zero result)."""
+    return {'arm': 'O', 'control_arm': 'C', 'seed': 0, 'k': 0, 'macro_f1': 0.0,
+            'control_macro_f1': 0.0, 'delta_int': [], 'pred_path': '', 'pred_sha256': '',
+            'control_pred_sha256': '', 'changed_row_count': -1, 'checkpoint_sha256': '',
+            'screen_record_sha256': '', 'screen_logits_sha256': '', 'offset_record_sha256': '',
+            'approval_record_sha256': '', 'row_count': 0, 'reinference': True,
+            'validation_evaluated': False, 'test_evaluated': False}

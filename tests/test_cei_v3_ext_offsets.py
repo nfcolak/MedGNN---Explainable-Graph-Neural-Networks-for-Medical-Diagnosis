@@ -420,7 +420,16 @@ class _PresetAdapter:
     def forward_continuous(self, features, edge_index, metadata, *, return_parts=False):
         ids = metadata.sample_id if isinstance(metadata.sample_id, (list, tuple)) else [metadata.sample_id]
         logits = torch.tensor(np.stack([self.logits_by_id[str(s)] for s in ids]), dtype=torch.float32)
-        return {'logits': logits} if return_parts else logits
+        if not return_parts:
+            return logits
+        graphs = logits.shape[0]
+        return {'logits': logits, 'node_contributions': features[:, :10],
+                'edge_contributions': torch.zeros((edge_index.size(1), 10)),
+                'pair_contributions': torch.zeros((0, 10)),
+                'pairs': torch.zeros((2, 0), dtype=torch.long),
+                'absence_contributions': torch.ones((graphs, 10)) * 0.25,
+                'absence_items': torch.stack([torch.arange(graphs),
+                                              torch.zeros(graphs, dtype=torch.long)])}
 
 
 def _scored_validation(tmp_path, n=60, seed=3):
@@ -585,3 +594,174 @@ def test_offset_records_are_one_per_checkpoint_and_seed_specific(tmp_path):
     # replaying one record against the other checkpoint's directory fails
     with pytest.raises(ValueError):
         offsets.assert_offset_replay(record_7, out_1234, fx['approval_path'])
+
+
+# ------------------------------------------------- step 3: offset screen application
+
+
+def _frozen_offsets_and_c_screen(tmp_path, *, clear_margins, n_screen=40):
+    """Validation scored + delta frozen for C_K8_seed7, then C scored on a synthetic screen
+    (U5 score_screen, no re-inference afterwards). `clear_margins` -> delta = 0."""
+    fx = _scored_validation(tmp_path) if not clear_margins else None
+    if clear_margins:
+        n = 50
+        logits, y = _shifted_logits(n=n, shift=(0.0,) * 10)
+        logits[np.arange(n), y] += 10.0
+        rows = _validation_rows(n=n)
+        for row, label in zip(rows, y):
+            row.y = torch.tensor([int(label)])
+        fx = _frozen_c_study(tmp_path, rows)
+        fx['rows'], fx['logits'], fx['y'] = rows, logits, y
+        fx['approval_path'] = fx['root'] / vs.APPROVAL_FILENAME
+        vs.write_approval_record(fx['approval_path'], fx['approval'])
+        fx['c_dir'] = fx['c_dirs'][7]
+        adapter = _PresetAdapter({r.sample_id: logits[i] for i, r in enumerate(rows)})
+        fx['validation_dir'] = Path(vs.score_validation(
+            study.Checkpoint(str(fx['c_dir']), fx['frozen'].k_selection_path), _encoder(rows),
+            fx['approval'], model_factory=lambda binding, path: adapter))
+    fx['offset_record'] = offsets.offset_record(fx['validation_dir'], fx['approval_path'])
+    screen_logits, screen_y = _shifted_logits(n=n_screen, seed=9)
+    screen_rows = u5._screen_rows(n=n_screen, seed=9)
+    for row, label in zip(screen_rows, screen_y):
+        row.y = torch.tensor([int(label)])
+    adapter = _PresetAdapter({r.sample_id: screen_logits[i] for i, r in enumerate(screen_rows)})
+    encoder = study.ScreenEncoder(ids=tuple(r.sample_id for r in screen_rows), fold='screen',
+                                  rows=lambda: iter(screen_rows))
+    fx['screen_result'] = study.score_screen(
+        study.Checkpoint(str(fx['c_dir']), fx['frozen'].k_selection_path),
+        u5._screen_record(row_count=n_screen), encoder,
+        model_factory=lambda binding, path: adapter)
+    fx['screen_logits'], fx['screen_y'] = screen_logits, screen_y
+    fx['screen_subjects'] = [r.subject for r in screen_rows]
+    fx['approval_hash'] = vs.approval_record_sha256(fx['approval'])
+    return fx
+
+
+def test_zero_delta_reproduces_c_screen_predictions_exactly_from_stored_logits(tmp_path):
+    fx = _frozen_offsets_and_c_screen(tmp_path, clear_margins=True)
+    record, c_result = fx['offset_record'], fx['screen_result']
+    assert record['delta_int'] == [0] * 10
+    result = offsets.score_offset_screen(c_result, record,
+                                         approval_record_sha256=fx['approval_hash'])
+    assert result['arm'] == 'O' and result['control_arm'] == 'C'
+    assert (result['seed'], result['k']) == (c_result.seed, c_result.k)
+    assert result['macro_f1'] == c_result.macro_f1
+    assert result['control_macro_f1'] == c_result.macro_f1
+    assert result['delta_int'] == [0] * 10
+    out = Path(c_result.logits_path).parent / offsets.OFFSET_SCREEN_DIRNAME
+    assert Path(result['pred_path']) == out / 'o_pred.npz'
+    with np.load(out / 'o_pred.npz', allow_pickle=False) as saved:
+        assert set(saved.files) == {'pred', 'y', 'subjects', 'sample_ids'}
+        pred = saved['pred']
+        assert np.array_equal(saved['y'], fx['screen_y'])
+        assert list(saved['subjects'].astype(str)) == fx['screen_subjects']
+    with np.load(c_result.logits_path, allow_pickle=False) as saved:
+        stored = saved['logits']
+    assert np.array_equal(pred, stored.argmax(1))
+    assert np.array_equal(pred, fx['screen_logits'].argmax(1))
+    assert result['pred_sha256'] == hashlib.sha256(np.ascontiguousarray(pred).tobytes()).hexdigest()
+    assert result['control_pred_sha256'] == result['pred_sha256']
+    assert result['changed_row_count'] == 0
+    assert result['checkpoint_sha256'] == c_result.checkpoint_sha256
+    assert result['screen_record_sha256'] == c_result.screen_record_sha256
+    assert result['screen_logits_sha256'] == c_result.logits_sha256
+    assert result['offset_record_sha256'] == offsets.offset_record_sha256(record)
+    assert result['approval_record_sha256'] == fx['approval_hash']
+    assert result['row_count'] == 40 and result['reinference'] is False
+    assert result['validation_evaluated'] is False and result['test_evaluated'] is False
+    assert json.loads((out / 'o_result.json').read_text()) == result
+    with pytest.raises(FileExistsError):
+        offsets.score_offset_screen(c_result, record, approval_record_sha256=fx['approval_hash'])
+
+
+def test_nonzero_delta_is_applied_to_stored_screen_logits_without_reinference(tmp_path):
+    fx = _frozen_offsets_and_c_screen(tmp_path, clear_margins=False)
+    record, c_result = fx['offset_record'], fx['screen_result']
+    assert record['delta_int'] != [0] * 10
+    result = offsets.score_offset_screen(c_result, record,
+                                         approval_record_sha256=fx['approval_hash'])
+    assert result['delta_int'] == record['delta_int']
+    assert Path(result['pred_path']).is_file()
+    with np.load(result['pred_path'], allow_pickle=False) as saved:
+        pred = saved['pred']
+    expected = offsets.apply_offsets(fx['screen_logits'], np.asarray(record['delta_int']))
+    assert np.array_equal(pred, expected)
+    assert not np.array_equal(pred, fx['screen_logits'].argmax(1))
+    assert result['changed_row_count'] == int((pred != fx['screen_logits'].argmax(1)).sum())
+    assert result['macro_f1'] == study.weighted_macro_f1(fx['screen_y'], expected)
+    assert result['macro_f1'] != c_result.macro_f1
+    assert result['control_pred_sha256'] != result['pred_sha256']
+    # The screen result may be given as its written dict as well (X6 reads screen_result.json).
+    other_out = tmp_path / 'o_from_dict'
+    again = offsets.score_offset_screen(json.loads(json.dumps(c_result.__dict__)), record,
+                                        approval_record_sha256=fx['approval_hash'],
+                                        output_dir=other_out)
+    assert again['pred_sha256'] == result['pred_sha256'] and again['macro_f1'] == result['macro_f1']
+
+
+@pytest.mark.parametrize('kind', ['no_logits_hash', 'empty_logits_hash', 'no_logits_path',
+                                  'logits_tampered', 'other_checkpoint', 'approval_mismatch',
+                                  'unbound_delta', 'raw_delta', 'k_selection', 'binding',
+                                  'arm_a_result', 'delta_off_grid', 'row_count', 'version'])
+def test_offset_screen_refuses_unbound_or_mismatched_inputs(tmp_path, kind):
+    fx = _frozen_offsets_and_c_screen(tmp_path, clear_margins=False)
+    record = json.loads(json.dumps(fx['offset_record']))
+    c_result = json.loads(json.dumps(fx['screen_result'].__dict__))
+    approval_hash = fx['approval_hash']
+    if kind == 'no_logits_hash':
+        del c_result['logits_sha256']
+    elif kind == 'empty_logits_hash':
+        c_result['logits_sha256'] = None
+    elif kind == 'no_logits_path':
+        c_result['logits_path'] = str(tmp_path / 'absent.npz')
+    elif kind == 'logits_tampered':
+        path = Path(c_result['logits_path'])
+        with np.load(path, allow_pickle=False) as saved:
+            arrays = {k: saved[k] for k in saved.files}
+        arrays['logits'] = arrays['logits'] * np.float32(2.0)
+        path.unlink()
+        np.savez_compressed(path, **arrays)
+    elif kind == 'other_checkpoint':
+        record['checkpoint_sha256'] = hashlib.sha256(b'checkpoint C_K8_seed1234').hexdigest()
+    elif kind == 'approval_mismatch':
+        approval_hash = '0' * 64
+    elif kind == 'unbound_delta':
+        record = {'delta_int': record['delta_int']}
+    elif kind == 'raw_delta':
+        record = np.asarray(record['delta_int'])
+    elif kind == 'k_selection':
+        record['k_selection_sha256'] = '0' * 64
+    elif kind == 'binding':
+        record['binding_sha256'] = '0' * 64
+    elif kind == 'arm_a_result':
+        c_result['arm'] = 'A'
+    elif kind == 'delta_off_grid':
+        record['delta_int'] = [21] + record['delta_int'][1:]
+    elif kind == 'row_count':
+        c_result['row_count'] = 39
+    elif kind == 'version':
+        record['version'] = 'other'
+    with pytest.raises(ValueError):
+        offsets.score_offset_screen(c_result, record, approval_record_sha256=approval_hash)
+    assert not (Path(fx['screen_result'].logits_path).parent / offsets.OFFSET_SCREEN_DIRNAME).exists()
+
+
+def test_offset_screen_never_calls_a_fold_loader_or_the_model(tmp_path, monkeypatch):
+    from comparison.standardized.clinical_graph_v2 import contracts, tensorize
+    fx = _frozen_offsets_and_c_screen(tmp_path, clear_margins=False)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError('a fold loader / encoder was called during O scoring')
+    monkeypatch.setattr(screen, 'encode_rows', forbidden)
+    monkeypatch.setattr(screen, 'iter_graphs_with_membership', forbidden)
+    monkeypatch.setattr(screen, 'encode_graph', forbidden)
+    monkeypatch.setattr(contracts, 'iter_graphs_with_membership', forbidden)
+    monkeypatch.setattr(tensorize, 'encode_graph', forbidden)
+    monkeypatch.setattr(study, '_default_model_factory', forbidden)
+    result = offsets.score_offset_screen(fx['screen_result'], fx['offset_record'],
+                                         approval_record_sha256=fx['approval_hash'])
+    assert Path(result['pred_path']).is_file() and result['reinference'] is False
+    # There is no test fold value anywhere: the fold map has no 'test' entry.
+    with pytest.raises(ValueError):
+        screen.fold_split('test')
+    assert 'test' not in screen.FOLD_SPLITS and 'test' not in screen.FOLD_SPLITS.values()
