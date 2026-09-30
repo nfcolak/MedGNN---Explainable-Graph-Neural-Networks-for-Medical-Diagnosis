@@ -86,7 +86,6 @@ class ComorbidPairBlock(nn.Module):
         self.vote = nn.utils.skip_init(nn.Linear, in_features=PAIR_RANK,
                                        out_features=self.num_classes)
         self.gate = nn.Parameter(torch.zeros(self.num_classes))
-        torch.rand(1)   # red step 3 stub: a global-stream draw the isolation tests must catch
         prefix = f'{EXTRA_BLOCK_PREFIX}.{self.name}'
         with torch.no_grad():
             bound = 1.0 / float(self.hidden) ** 0.5   # nn.Linear default bound, fan_in = hidden
