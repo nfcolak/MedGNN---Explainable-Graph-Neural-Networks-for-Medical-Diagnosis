@@ -70,7 +70,9 @@ def _stage(plan_, name):
 
 
 def _pairs(argv):
-    return list(zip(argv, argv[1:]))
+    """(flag, value) options of a train.py argv; every option here takes one value."""
+    argv = list(argv)
+    return [(argv[i], argv[i + 1]) for i in range(len(argv) - 1) if argv[i].startswith('--')]
 
 
 # ------------------------------------------------------ step 1: extension plan lock
