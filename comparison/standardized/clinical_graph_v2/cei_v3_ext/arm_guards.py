@@ -320,16 +320,198 @@ def reverse_edge_attribution(edge_contributions, edge_relation, edge_direction) 
 
 # ---------------------------------------------------------- extension binding guards
 
+# §6 common settings of every CEI stage, as `binding.json` records them (U5 policy check).
+_STAGE_POLICY = {'method': 'cei_gnn_v3', 'train_limit': 10000, 'dev_limit': 5000, 'epochs': 40,
+                 'patience': 40, 'sample_seed': 1234, 'selection_fold': 'dev',
+                 'final_eval': 'none', 'test_evaluated': False, 'weights': 'sqrt_inverse',
+                 'edges': 'all', 'top_k_labels': 10, 'num_classes': 10}
+_STAGE_SEEDS = (1234, 2025, 7)
+_CONTROL_FIELDS = ('k_selection', 'k_selection_sha256', 'control_binding_sha256')
+_SHA256 = re.compile(r'^[0-9a-f]{64}$')
+
+
+def _require(document, key, label):
+    if key not in document or document[key] is None:
+        raise ValueError(f'{label} missing required field: {key}')
+    return document[key]
+
+
+def _hash_list(value, label):
+    if (not isinstance(value, list) or len(value) != len(_STAGE_SEEDS)
+            or not all(isinstance(h, str) and _SHA256.match(h) for h in value)):
+        raise ValueError(f'{label} must be a list of {len(_STAGE_SEEDS)} hex SHA-256 values')
+    return list(value)
+
+
+def _validated_controls(control_bindings) -> dict:
+    """The frozen C reference (v3 §12.17, §12.21): record, its canonical hash, C's hashes."""
+    from ..cei_v3_study import k_selection_sha256
+
+    if not isinstance(control_bindings, dict):
+        raise ValueError('control_bindings must be a dict')
+    for key in _CONTROL_FIELDS:
+        _require(control_bindings, key, 'control_bindings')
+    record = control_bindings['k_selection']
+    if not isinstance(record, dict):
+        raise ValueError('control_bindings k_selection must be the frozen k_selection.json content')
+    if control_bindings['k_selection_sha256'] != k_selection_sha256(record):
+        raise ValueError('control_bindings k_selection_sha256 does not hash the k_selection record')
+    if record.get('arm') != CONTROL_ARM:
+        raise ValueError(f'k_selection arm {record.get("arm")!r} is not the control arm {CONTROL_ARM!r}')
+    if record.get('k_selection_completed_before_screen') is not True:
+        raise ValueError('k_selection must record k_selection_completed_before_screen: true')
+    k_selected = record.get('k_selected')
+    if isinstance(k_selected, bool) or not isinstance(k_selected, int):
+        raise ValueError(f'k_selection k_selected {k_selected!r} is not an integer (frozen K)')
+    controls = _hash_list(control_bindings['control_binding_sha256'], 'control_bindings control_binding_sha256')
+    if controls != _hash_list(record.get('control_binding_sha256'), 'k_selection control_binding_sha256'):
+        raise ValueError('control_bindings control_binding_sha256 differs from the k_selection record')
+    stages = record.get('stages')
+    if not isinstance(stages, list):
+        raise ValueError('k_selection stages must be a list')
+    winners = [s for s in stages if isinstance(s, dict) and s.get('k') == k_selected]
+    if [s.get('seed') for s in winners] != list(_STAGE_SEEDS):
+        raise ValueError(f'k_selection stages at the frozen K must be seeds {list(_STAGE_SEEDS)} in order')
+    if [s.get('binding_sha256') for s in winners] != controls:
+        raise ValueError('control_binding_sha256 differs from the binding hashes of the frozen-K C stages')
+    checkpoints = [s.get('checkpoint_sha256') for s in winners]
+    if 'control_checkpoint_sha256' in control_bindings:
+        if _hash_list(control_bindings['control_checkpoint_sha256'], 'control_checkpoint_sha256') != checkpoints:
+            raise ValueError('control_bindings control_checkpoint_sha256 differs from the frozen-K C checkpoints')
+    return {'record': record, 'k_selection_sha256': control_bindings['k_selection_sha256'],
+            'k_selected': int(k_selected), 'control_binding_sha256': controls,
+            'control_checkpoint_sha256': checkpoints,
+            'v3_state_sha256': record.get('selected_v3_state_sha256'),
+            'knot_table_sha256': record.get('selected_knot_table_sha256'),
+            'preprocessing_sha256': control_bindings.get('preprocessing_sha256'),
+            'v3_state': control_bindings.get('v3_state'), 'rule': record.get('rule')}
+
+
 def extension_binding_record(binding, control_bindings) -> dict:
     """The checked fields of one extension-stage binding, or raise (see the assertion)."""
-    return {'arm': '', 'seed': 0, 'k': 0, 'k_selection_sha256': '', 'control_binding_sha256': [],
-            'preprocessing_sha256': '', 'final_eval': '', 'arm_definition': {}}
+    assert_extension_binding(binding, control_bindings)
+    config = binding['method_config']
+    return {'arm': binding['extension_arm'], 'seed': int(binding['seed']), 'k': int(config['k']),
+            'k_selection_sha256': binding['k_selection_sha256'],
+            'control_binding_sha256': list(binding['control_binding_sha256']),
+            'control_checkpoint_sha256': list(binding.get('control_checkpoint_sha256', [])),
+            'preprocessing_sha256': binding['preprocessing_sha256'],
+            'v3_state_sha256': config['v3_state_sha256'], 'final_eval': binding['final_eval'],
+            'arm_definition': dict(ARM_DEFINITIONS[binding['extension_arm']]),
+            'parameter_count': binding['parameter_count'],
+            'common_init_identical_to_c': config['common_init_identical_to_c']}
 
 
 def assert_extension_binding(binding, control_bindings) -> None:
     """Refuse an extension-stage binding that does not bind C's freeze (spec §1, §6, §9 X14).
 
-    Checks the K-freeze hash, `control_binding_sha256`, `preprocessing_sha256`,
-    `final_eval == 'none'` and the arm definition fields.
+    `binding` is the stage's `binding.json` content plus the study-binding fields
+    (`extension_arm`, `k_selected`, `k_grid`, `k_selection_rule`, `k_selection_sha256`,
+    `control_binding_sha256`, optional `control_checkpoint_sha256`). `control_bindings`
+    carries the frozen `k_selection` record, its canonical hash, and C's three binding
+    hashes (and optionally the checkpoint hashes, `preprocessing_sha256`, `v3_state_sha256`,
+    `v3_state`, `k` of the C stages).
+
+    Checks, in order: the K-freeze hash and frozen K; `control_binding_sha256` (exactly C's
+    three, in seed order); `preprocessing_sha256` and the v3 state hash/path;
+    `final_eval == 'none'` with no validation/test trace; the §6 protocol settings; the arm
+    definition fields (§6 table, `common_init_identical_to_c` of §2.2) and their agreement
+    between the runner binding and the adapter's `run_config`. Inputs are never mutated.
     """
+    if not isinstance(binding, dict):
+        raise ValueError('binding must be a dict')
+    controls = _validated_controls(control_bindings)
+    config = _require(binding, 'method_config', 'binding')
+    if not isinstance(config, dict) or config.get('method') != 'cei_gnn_v3':
+        raise ValueError('binding method_config is not a cei_gnn_v3 run_config')
+
+    # --- K-freeze hash and frozen K (v3 §12.17; EXT §1) -----------------------------------
+    freeze = _require(binding, 'k_selection_sha256', 'binding')
+    if freeze != controls['k_selection_sha256']:
+        raise ValueError('binding k_selection_sha256 differs from the frozen K-freeze record hash')
+    k_selected = controls['k_selected']
+    if binding.get('k_selected') != k_selected:
+        raise ValueError(f'binding k_selected {binding.get("k_selected")!r} differs from the frozen K '
+                         f'{k_selected}')
+    settings = config.get('effective_settings')
+    if not isinstance(settings, dict):
+        raise ValueError('binding method_config lacks effective_settings')
+    architecture = config.get('architecture', {})
+    if not (config.get('k') == k_selected == settings.get('k') == architecture.get('k')):
+        raise ValueError(f'k drift: binding k {config.get("k")!r} differs from the frozen K {k_selected}')
+    if binding.get('k_selection_rule') != controls['rule']:
+        raise ValueError('binding k_selection_rule differs from the frozen record rule')
+    if list(binding.get('k_grid', [])) != list(controls['record'].get('k_grid', [])):
+        raise ValueError('binding k_grid differs from the frozen record grid')
+
+    # --- control_binding_sha256 (v3 §12.21) ----------------------------------------------
+    bound = _hash_list(_require(binding, 'control_binding_sha256', 'binding'), 'binding control_binding_sha256')
+    if bound != controls['control_binding_sha256']:
+        raise ValueError("binding control_binding_sha256 differs from C's three frozen binding hashes "
+                         '(seed order 1234, 2025, 7)')
+    if 'control_checkpoint_sha256' in binding:
+        if _hash_list(binding['control_checkpoint_sha256'], 'binding control_checkpoint_sha256') != controls['control_checkpoint_sha256']:
+            raise ValueError("binding control_checkpoint_sha256 differs from C's three frozen checkpoint hashes")
+
+    # --- preprocessing_sha256 and the v3 state (EXT §5.2; v3 §12.18) ---------------------
+    prep = _require(binding, 'preprocessing_sha256', 'binding')
+    if config.get('preprocessing_sha256') != prep:
+        raise ValueError('preprocessing_sha256 of the v3 state differs from the stage binding')
+    if controls['preprocessing_sha256'] is not None and prep != controls['preprocessing_sha256']:
+        raise ValueError("binding preprocessing_sha256 differs from C's")
+    if controls['v3_state_sha256'] is not None and config.get('v3_state_sha256') != controls['v3_state_sha256']:
+        raise ValueError('binding v3_state_sha256 differs from the frozen selected_v3_state_sha256')
+    if controls['knot_table_sha256'] is not None and config.get('knot_table_sha256') != controls['knot_table_sha256']:
+        raise ValueError('binding knot_table_sha256 differs from the frozen selected_knot_table_sha256')
+    if controls['v3_state'] is not None:
+        if config.get('v3_state_path') != controls['v3_state'] or settings.get('v3_state') != controls['v3_state']:
+            raise ValueError("binding v3_state path differs from C's frozen state file")
+
+    # --- final_eval == 'none', no validation/test trace (EXT §6 E4; v3 §12.7) ------------
+    if binding.get('final_eval') != 'none':
+        raise ValueError(f"binding final_eval {binding.get('final_eval')!r} must be 'none'")
+    if 'selected_validation' in binding:
+        raise ValueError('binding carries selected_validation: validation was scored')
+    if binding.get('test_evaluated') is not False:
+        raise ValueError('binding test_evaluated must be False: the test fold is never scored')
+    splits = binding.get('split_sample_ids_sha256', {})
+    counts = binding.get('counts', {})
+    if 'test' in splits or 'test' in counts or 'screen' in splits or 'screen' in counts:
+        raise ValueError('binding carries a test/screen split: never present in a stage binding')
+    if binding.get('selection_fold') != 'dev':
+        raise ValueError(f"binding selection_fold {binding.get('selection_fold')!r} must be 'dev'")
+
+    # --- protocol settings (EXT §6 common settings) --------------------------------------
+    for key, value in _STAGE_POLICY.items():
+        if binding.get(key) != value:
+            raise ValueError(f'study policy mismatch for {key}: expected {value!r}, got {binding.get(key)!r}')
+    if binding.get('seed') not in _STAGE_SEEDS:
+        raise ValueError(f'binding seed {binding.get("seed")!r} is not one of {list(_STAGE_SEEDS)}')
+
+    # --- arm definition fields (EXT §6 table, §2.2 flag) ---------------------------------
+    arm = _require(binding, 'extension_arm', 'binding')
+    if arm not in EXTENSION_ARMS:
+        raise ValueError(f'binding extension_arm {arm!r} is not one of {list(EXTENSION_ARMS)}')
+    if settings.get('arm') != CONTROL_ARM:
+        raise ValueError(f'extension arms are built on arm C; effective_settings arm is {settings.get("arm")!r}')
+    for key, expected in (('ple_active', True), ('absence_active', True)):
+        if config.get(key) is not expected:
+            raise ValueError(f'{key} {config.get(key)!r} differs from arm C ({expected})')
+    realised = arm_of_run_config(config)   # raises 'arm'/'pair_mode' on any other combination
+    if realised != arm:
+        raise ValueError(f'binding extension_arm {arm!r} differs from the arm the run_config realises ({realised!r})')
+    definition = ARM_DEFINITIONS[arm]
+    if config.get('common_init_identical_to_c') is not definition['common_init_identical_to_c']:
+        raise ValueError(f'common_init_identical_to_c must be {definition["common_init_identical_to_c"]} for {arm}')
+    for key in ('encoder_depth', 'comorbid_block'):
+        if settings.get(key) != definition[key]:
+            raise ValueError(f'effective_settings {key} {settings.get(key)!r} differs from arm {arm}')
+    if binding.get('hidden') != definition['hidden'] or architecture.get('hidden') != definition['hidden']:
+        raise ValueError(f'runner hidden {binding.get("hidden")!r} differs from arm {arm} ({definition["hidden"]})')
+    if binding.get('layers') != definition['encoder_depth'] or architecture.get('layers') != definition['encoder_depth']:
+        raise ValueError(f'runner layers {binding.get("layers")!r} differs from arm {arm} encoder_depth '
+                         f'{definition["encoder_depth"]}')
+    if binding.get('edge_direction') != definition['edge_direction']:
+        raise ValueError(f'runner edge_direction {binding.get("edge_direction")!r} differs from arm {arm} '
+                         f'({definition["edge_direction"]})')
     return None
