@@ -329,3 +329,32 @@ def family_bounds(deltas, m: int = FAMILY_M) -> dict:
         'linear_quantile_method': study.QUANTILE_METHOD,
         'linear_quantile_use': LINEAR_QUANTILE_USE,
     }
+
+
+# --------------------------------------------------------- extension decision
+
+def offset_screen_rows(c_results, offset_records, *, approval_record_sha256,
+                       output_dirs=None) -> dict:
+    """Arm O for the three seeds from C's stored screen logits + frozen delta. Stub: empty."""
+    return {}
+
+
+def load_screen_row(result) -> tuple:
+    """(y, pred, subjects) of one screen row from its stored arrays. Stub: empty arrays."""
+    empty = np.zeros(0, dtype=np.int64)
+    return empty, empty, np.zeros(0, dtype=str)
+
+
+def decide_extension(deltas, scores, *, m: int = FAMILY_M, seeds=study.SEEDS) -> dict:
+    """Family-corrected extension decision (EXT §7). Stub: empty family."""
+    return {'m': 0, 'arms': (), 'arms_not_run': (), 'contrasts': {}, 'control': ''}
+
+
+def comorbid_share(parts, *, batch_index, edge_index, graph_count) -> np.ndarray:
+    """Secondary E6b metric (EXT §5.4). Stub: zeros."""
+    return np.zeros(int(graph_count), dtype=np.float64)
+
+
+def comorbid_nonempty(parts, *, batch_index, graph_count) -> np.ndarray:
+    """Per-graph flag: the comorbid pair set is non-empty (EXT §5.4). Stub: all False."""
+    return np.zeros(int(graph_count), dtype=bool)
