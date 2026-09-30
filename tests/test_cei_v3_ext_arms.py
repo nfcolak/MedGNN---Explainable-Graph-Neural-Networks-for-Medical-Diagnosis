@@ -125,7 +125,8 @@ def test_e2w_and_e2d_analytic_deltas_equal_adapter_parameter_count_differences(t
     assert diff['added'] == [] and diff['removed'] == []
     assert set(diff['widened']) == {name for name in control_inventory
                                     if wide_inventory[name]['shape'] != control_inventory[name]['shape']}
-    assert 'token_embedding.weight' in diff['unchanged'] and 'bias' in diff['widened']
+    assert 'token_embedding.weight' in diff['unchanged'] and 'bias' in diff['unchanged']
+    assert 'node_head.weight' in diff['widened'] and 'ple_projection.weight' in diff['widened']
     diff = arm_guards.inventory_diff(control_inventory, deep_inventory)
     assert diff['widened'] == [] and set(diff['added']) == set(deep_inventory) - set(control_inventory)
     assert sorted(diff['unchanged']) == sorted(control_inventory)
