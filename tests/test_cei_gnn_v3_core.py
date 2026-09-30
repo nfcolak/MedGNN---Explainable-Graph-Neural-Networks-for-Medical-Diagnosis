@@ -547,14 +547,13 @@ def test_adapter_refuses_dimension_mismatch_and_missing_arm_or_seed(tmp_path):
         cls(num_tokens=NUM_TOKENS, **common, args=Namespace(method_options=options))
 
 
-def test_u3x_options_are_accepted_only_at_their_u3_values(tmp_path):
+def test_u3x_options_encoder_depth_accepted_and_invalid_values_refused(tmp_path):
     adapter = _adapter(tmp_path, encoder_depth=1, comorbid_block=0)
     assert adapter.encoder_depth == 1 and adapter.comorbid_block == 0
-    for options in ({'encoder_depth': 2}, {'comorbid_block': 1}):
-        with pytest.raises(ValueError, match='U3x'):
-            _adapter(tmp_path, **options)
+    assert _adapter(tmp_path, encoder_depth=2).encoder_depth == 2
+    assert _adapter(tmp_path, layers=2).encoder_depth == 2
     with pytest.raises(ValueError, match='U3x'):
-        _adapter(tmp_path, layers=2)
+        _adapter(tmp_path, comorbid_block=1)
     with pytest.raises(ValueError, match='encoder_depth'):
         _adapter(tmp_path, layers=1, encoder_depth=0)
 
