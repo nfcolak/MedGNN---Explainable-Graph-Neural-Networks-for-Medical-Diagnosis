@@ -346,14 +346,137 @@ def assert_offset_replay(record, validation_dir, approval_path) -> None:
 # --------------------------------------------------------- screen application
 
 OFFSET_SCREEN_DIRNAME = 'O'
+OFFSET_SCREEN_RESULT_FILENAME = 'o_result.json'
+_SCREEN_RESULT_KEYS = ('arm', 'seed', 'k', 'checkpoint_sha256', 'binding_sha256',
+                       'k_selection_sha256', 'screen_record_sha256', 'row_count', 'macro_f1',
+                       'logits_path', 'logits_sha256')
+
+
+def _screen_result_dict(screen_result) -> dict:
+    if isinstance(screen_result, dict):
+        return dict(screen_result)
+    if hasattr(screen_result, '__dataclass_fields__'):
+        return dict(vars(screen_result))
+    raise ValueError('screen_result must be a U5 ScreenResult or its screen_result.json dict')
+
+
+def _validate_offset_record_fields(record) -> list:
+    """Static checks of a frozen delta record (no disk); returns delta_int."""
+    if not isinstance(record, dict):
+        raise ValueError('delta must be given as the frozen offset record (dict), never as a '
+                         'raw vector; an unbound delta is refused (EXT §4.3)')
+    missing = [key for key in _RECORD_KEYS if key not in record]
+    if missing:
+        raise ValueError(f'offset record lacks bound fields: {missing}; an unbound delta is refused')
+    if record['version'] != OFFSET_RECORD_VERSION:
+        raise ValueError(f'offset record version {record["version"]!r} is not '
+                         f'{OFFSET_RECORD_VERSION!r}')
+    if record['arm'] != 'O' or record['control_arm'] != 'C':
+        raise ValueError('offset record arm must be O on control arm C')
+    if list(record['grid']) != list(GRID) or record['sweeps'] != SWEEPS \
+            or record['delta_scale'] != DELTA_SCALE or record['metric'] != METRIC_NAME \
+            or record['optimizer_rule'] != OPTIMIZER_RULE:
+        raise ValueError('offset record grid/sweeps/scale/metric/rule differ from the '
+                         'pre-registered protocol')
+    delta_int = record['delta_int']
+    if (not isinstance(delta_int, list) or len(delta_int) != NUM_CLASSES
+            or any(isinstance(v, bool) or not isinstance(v, int) for v in delta_int)
+            or any(v not in GRID for v in delta_int)):
+        raise ValueError('offset record delta_int must be ten grid integers')
+    if list(record['delta']) != [v / DELTA_SCALE for v in delta_int]:
+        raise ValueError('offset record delta differs from delta_int / 10')
+    for key in ('checkpoint_sha256', 'binding_sha256', 'k_selection_sha256',
+                'approval_record_sha256', 'validation_logits_sha256'):
+        value = record[key]
+        if not isinstance(value, str) or len(value) != 64:
+            raise ValueError(f'offset record {key} is not a hex digest; delta is unbound')
+    return delta_int
 
 
 def score_offset_screen(screen_result, offset_record, *, approval_record_sha256,
                         output_dir=None) -> dict:
-    """Arm O on C's stored raw screen logits (stub: writes nothing, zero result)."""
-    return {'arm': 'O', 'control_arm': 'C', 'seed': 0, 'k': 0, 'macro_f1': 0.0,
-            'control_macro_f1': 0.0, 'delta_int': [], 'pred_path': '', 'pred_sha256': '',
-            'control_pred_sha256': '', 'changed_row_count': -1, 'checkpoint_sha256': '',
-            'screen_record_sha256': '', 'screen_logits_sha256': '', 'offset_record_sha256': '',
-            'approval_record_sha256': '', 'row_count': 0, 'reinference': True,
-            'validation_evaluated': False, 'test_evaluated': False}
+    """Arm O = C's frozen delta applied to C's stored raw float32 screen logits (EXT §4.3).
+
+    No re-inference: predictions are `argmax(z + delta)` on `logits.npz` written by the U5
+    screen scorer. Refuses a C screen result without a logits hash or path, stored logits
+    whose bytes differ from that hash, a non-C result, an unbound / raw / off-grid delta,
+    and a delta record whose checkpoint, binding, K-freeze or approval-record hash differs
+    from the screen result / the given approval hash. Writes `o_pred.npz` (pred, y,
+    subjects, sample_ids) and `o_result.json` into `<screen_dir>/O/` (or `output_dir`),
+    never overwriting.
+    """
+    result = _screen_result_dict(screen_result)
+    missing = [key for key in _SCREEN_RESULT_KEYS if key not in result]
+    if missing:
+        raise ValueError(f'C screen result lacks bound fields: {missing}')
+    if result['arm'] != 'C':
+        raise ValueError(f"offsets apply to arm C screen logits only, got arm {result['arm']!r}")
+    logits_hash = result['logits_sha256']
+    if not isinstance(logits_hash, str) or len(logits_hash) != 64:
+        raise ValueError('C screen result carries no logits hash; O is never scored from '
+                         'proba or unhashed logits (EXT E7)')
+    delta_int = _validate_offset_record_fields(offset_record)
+    if offset_record['checkpoint_sha256'] != result['checkpoint_sha256']:
+        raise ValueError('offset record checkpoint SHA-256 differs from the screened checkpoint')
+    if offset_record['binding_sha256'] != result['binding_sha256']:
+        raise ValueError('offset record binding SHA-256 differs from the screened checkpoint')
+    if offset_record['k_selection_sha256'] != result['k_selection_sha256']:
+        raise ValueError('offset record k_selection SHA-256 differs from the screen result')
+    if (offset_record['seed'], offset_record['k']) != (result['seed'], result['k']):
+        raise ValueError('offset record seed/K differ from the screened checkpoint')
+    if not isinstance(approval_record_sha256, str) or \
+            offset_record['approval_record_sha256'] != approval_record_sha256:
+        raise ValueError('offset record approval-record SHA-256 differs from the bound approval')
+    logits_path = Path(result['logits_path'])
+    if not logits_path.is_file():
+        raise ValueError(f'C screen logits.npz missing at {logits_path}')
+    out = Path(output_dir) if output_dir is not None else logits_path.parent / OFFSET_SCREEN_DIRNAME
+    if out.exists():
+        raise FileExistsError(f'Refusing occupied O output {out}')
+    with np.load(logits_path, allow_pickle=False) as saved:
+        if set(saved.files) != {'logits', 'y', 'subjects', 'sample_ids'}:
+            raise ValueError('screen logits.npz does not carry logits, y, subjects, sample_ids')
+        logits = np.ascontiguousarray(saved['logits'])
+        y = np.asarray(saved['y'])
+        subjects = np.asarray(saved['subjects']).astype(str)
+        sample_ids = np.asarray(saved['sample_ids']).astype(str)
+    if logits.dtype != np.float32:
+        raise ValueError('stored screen logits are not raw float32')
+    if hashlib.sha256(logits.tobytes()).hexdigest() != logits_hash:
+        raise ValueError('stored screen logits differ from the hash in the C screen result')
+    if logits.shape != (int(result['row_count']), NUM_CLASSES):
+        raise ValueError(f'stored screen logits shape {logits.shape} differs from the screen '
+                         f"result row_count {result['row_count']}")
+    delta = np.asarray(delta_int, dtype=np.int64)
+    control_pred = logits.argmax(1).astype(np.int64)
+    control_f1 = float(weighted_macro_f1(y, control_pred))
+    if control_f1 != float(result['macro_f1']):
+        raise ValueError('C macro-F1 recomputed from the stored logits differs from the screen result')
+    pred = apply_offsets(logits, delta)
+    out.mkdir(parents=True, exist_ok=False)
+    pred_path = out / 'o_pred.npz'
+    np.savez_compressed(pred_path, pred=pred, y=y, subjects=subjects, sample_ids=sample_ids)
+    document = {
+        'arm': 'O', 'control_arm': 'C', 'seed': int(result['seed']), 'k': int(result['k']),
+        'row_count': int(result['row_count']),
+        'macro_f1': float(weighted_macro_f1(y, pred)), 'control_macro_f1': control_f1,
+        'metric': 'weighted_macro_f1', 'delta_int': list(delta_int),
+        'delta': [v / DELTA_SCALE for v in delta_int],
+        'pred_path': str(pred_path),
+        'pred_sha256': hashlib.sha256(np.ascontiguousarray(pred).tobytes()).hexdigest(),
+        'control_pred_sha256': hashlib.sha256(np.ascontiguousarray(control_pred).tobytes()).hexdigest(),
+        'changed_row_count': int((pred != control_pred).sum()),
+        'checkpoint_sha256': result['checkpoint_sha256'],
+        'binding_sha256': result['binding_sha256'],
+        'k_selection_sha256': result['k_selection_sha256'],
+        'screen_record_sha256': result['screen_record_sha256'],
+        'screen_logits_path': str(logits_path), 'screen_logits_sha256': logits_hash,
+        'offset_record_sha256': offset_record_sha256(offset_record),
+        'approval_record_sha256': approval_record_sha256,
+        'reinference': False, 'validation_evaluated': False, 'test_evaluated': False,
+        'statement_scope': ('decision-rule change on C: validation-tuned class thresholds; '
+                            'not a model change (EXT §4.1, §4.3)'),
+    }
+    with (out / OFFSET_SCREEN_RESULT_FILENAME).open('xb') as stream:
+        stream.write(_canonical_bytes(document))
+    return document
