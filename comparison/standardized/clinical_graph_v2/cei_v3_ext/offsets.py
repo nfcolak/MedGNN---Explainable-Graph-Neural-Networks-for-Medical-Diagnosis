@@ -10,6 +10,9 @@ offset screen application).
 """
 from __future__ import annotations
 
+import hashlib
+import json
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -139,28 +142,202 @@ def fit_offsets(logits, y, *, grid=GRID, sweeps=SWEEPS, fold=VALIDATION_FOLD,
 
 OFFSET_RECORD_VERSION = 'cei_v3_item5_offsets_v1'
 OFFSET_RECORD_FILENAME = 'offset_record.json'
+TUNING_SCORE_CAVEAT = ('validation macro-F1 before/after the offsets is a tuning score on the '
+                       'fold the offsets were fitted on, not a result (EXT §4.2, §4.4)')
+_RECORD_KEYS = ('version', 'arm', 'control_arm', 'stage', 'seed', 'k', 'delta_int', 'delta',
+                'grid', 'sweeps', 'delta_scale', 'metric', 'optimizer_rule',
+                'checkpoint_sha256', 'binding_sha256', 'k_selection_sha256',
+                'validation_sample_ids_sha256', 'validation_row_count',
+                'validation_logits_sha256', 'validation_logits_path', 'approval_record_sha256',
+                'validation_result_sha256', 'tuning_macro_f1_before', 'tuning_macro_f1_after',
+                'tuning_score_caveat', 'validation_evaluated', 'test_evaluated',
+                'screen_read_before_freeze')
+
+
+def _canonical_bytes(document) -> bytes:
+    return (json.dumps(document, indent=2, sort_keys=True) + '\n').encode('utf-8')
+
+
+def _file_sha256(path) -> str:
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
 def offset_record_sha256(record) -> str:
-    """SHA-256 of the frozen offset record bytes (stub)."""
-    return '0' * 64
+    """SHA-256 of the frozen offset record (equals the SHA-256 of the written file bytes)."""
+    return hashlib.sha256(_canonical_bytes(record)).hexdigest()
+
+
+def _load_scored_validation(validation_dir, approval_path):
+    """Read the X3 validation scoring output and check every hash it binds against disk.
+
+    Returns `(stage_dir, result, approval, approval_hash, logits, y, sample_ids, logits_hash)`.
+    """
+    from . import validation_scoring as vs
+    from ..contracts import sample_ids_sha256
+
+    validation_dir = Path(validation_dir)
+    stage_dir = validation_dir.parent
+    result_path = validation_dir / vs.VALIDATION_RESULT_FILENAME
+    logits_path = validation_dir / 'logits.npz'
+    for path in (result_path, logits_path):
+        if not path.is_file():
+            raise ValueError(f'validation scoring output lacks {path.name}: {validation_dir}')
+    result = json.loads(result_path.read_bytes().decode('utf-8'))
+    if not isinstance(result, dict) or result.get('fold') != VALIDATION_FOLD:
+        raise ValueError('validation_result.json is not an X3 validation scoring result')
+    if result.get('arm') != 'C':
+        raise ValueError(f"offsets are fitted on arm C only; result arm {result.get('arm')!r}")
+    if result.get('metric') != METRIC_NAME:
+        raise ValueError(f'validation result binds metric {result.get("metric")!r}, '
+                         f'not {METRIC_NAME!r}')
+    approval, approval_hash = vs.load_approval_record(approval_path)
+    if approval_hash != result.get('approval_record_sha256'):
+        raise ValueError('approval record differs from the one bound at validation scoring')
+    checkpoint_path, binding_path = stage_dir / 'best.pt', stage_dir / 'binding.json'
+    for path in (checkpoint_path, binding_path):
+        if not path.is_file():
+            raise ValueError(f'checkpoint directory lacks {path.name}: {stage_dir}')
+    checkpoint_sha = _file_sha256(checkpoint_path)
+    if checkpoint_sha != result.get('checkpoint_sha256'):
+        raise ValueError('checkpoint best.pt differs from the one scored on validation')
+    if checkpoint_sha not in approval.get('checkpoint_sha256', []):
+        raise ValueError('approval record does not list this checkpoint SHA-256')
+    if _file_sha256(binding_path) != result.get('binding_sha256'):
+        raise ValueError('binding.json differs from the one scored on validation')
+    with np.load(logits_path, allow_pickle=False) as saved:
+        if set(saved.files) != {'logits', 'y', 'subjects', 'sample_ids'}:
+            raise ValueError('logits.npz does not carry logits, y, subjects, sample_ids')
+        logits = np.ascontiguousarray(saved['logits'])
+        y = np.asarray(saved['y'])
+        sample_ids = [str(s) for s in saved['sample_ids']]
+    logits_hash = hashlib.sha256(logits.tobytes()).hexdigest()
+    if logits.dtype != np.float32 or logits_hash != result.get('logits_sha256'):
+        raise ValueError('validation logits.npz differs from the hashed scoring output')
+    ids_hash = sample_ids_sha256(sample_ids)
+    if (ids_hash != result.get('validation_sample_ids_sha256')
+            or ids_hash != approval.get('validation_sample_ids_sha256')
+            or len(sample_ids) != result.get('row_count')):
+        raise ValueError('validation sample ids differ from the scoring result / approval record')
+    return stage_dir, result, approval, approval_hash, logits, y, sample_ids, logits_hash
+
+
+def _offset_document(result, approval_hash, logits, y, delta, *, logits_hash, result_hash,
+                     logits_path) -> dict:
+    delta_int = [int(v) for v in delta]
+    return {
+        'version': OFFSET_RECORD_VERSION, 'arm': 'O', 'control_arm': 'C',
+        'stage': str(result['stage']), 'seed': int(result['seed']), 'k': int(result['k']),
+        'delta_int': delta_int, 'delta': [v / DELTA_SCALE for v in delta_int],
+        'grid': list(GRID), 'sweeps': SWEEPS, 'delta_scale': DELTA_SCALE,
+        'metric': METRIC_NAME, 'optimizer_rule': OPTIMIZER_RULE,
+        'checkpoint_sha256': result['checkpoint_sha256'],
+        'binding_sha256': result['binding_sha256'],
+        'k_selection_sha256': result['k_selection_sha256'],
+        'validation_sample_ids_sha256': result['validation_sample_ids_sha256'],
+        'validation_row_count': int(result['row_count']),
+        'validation_logits_sha256': logits_hash,
+        'validation_logits_path': str(logits_path),
+        'approval_record_sha256': approval_hash,
+        'validation_result_sha256': result_hash,
+        'tuning_macro_f1_before': float(weighted_macro_f1(y, logits.argmax(1))),
+        'tuning_macro_f1_after': float(weighted_macro_f1(y, apply_offsets(logits, delta))),
+        'tuning_score_caveat': TUNING_SCORE_CAVEAT,
+        'validation_evaluated': True, 'test_evaluated': False,
+        'screen_read_before_freeze': False,
+    }
 
 
 def offset_record(validation_dir, approval_path) -> dict:
-    """Fit and freeze delta for one scored C checkpoint (stub: a zero record, nothing written)."""
-    return {'version': OFFSET_RECORD_VERSION, 'arm': 'O', 'control_arm': 'C',
-            'stage': '', 'seed': 0, 'k': 0, 'delta_int': [0] * NUM_CLASSES,
-            'delta': [0.0] * NUM_CLASSES, 'grid': [], 'sweeps': 0, 'delta_scale': 0,
-            'metric': '', 'optimizer_rule': '', 'checkpoint_sha256': '', 'binding_sha256': '',
-            'k_selection_sha256': '', 'validation_sample_ids_sha256': '',
-            'validation_row_count': 0, 'validation_logits_sha256': '',
-            'validation_logits_path': '', 'approval_record_sha256': '',
-            'validation_result_sha256': '', 'tuning_macro_f1_before': 0.0,
-            'tuning_macro_f1_after': 0.0, 'tuning_score_caveat': '',
-            'validation_evaluated': False, 'test_evaluated': False,
-            'screen_read_before_freeze': False}
+    """Fit delta for one scored C checkpoint and freeze it (EXT §4.2 "Freeze").
+
+    `validation_dir` is the directory `score_validation` returned; `approval_path` the
+    approval record file bound at scoring time. Every hash is checked against disk before
+    the fit; the record is written once to `<validation_dir>/offset_record.json` (never
+    overwriting), so its SHA-256 is bound before any screen read.
+    """
+    from . import validation_scoring as vs
+
+    validation_dir = Path(validation_dir)
+    out_path = validation_dir / OFFSET_RECORD_FILENAME
+    if out_path.exists():
+        raise FileExistsError(f'Refusing occupied offset record {out_path}')
+    (_stage_dir, result, _approval, approval_hash, logits, y, _ids,
+     logits_hash) = _load_scored_validation(validation_dir, approval_path)
+    result_hash = _file_sha256(validation_dir / vs.VALIDATION_RESULT_FILENAME)
+    if result.get('tuning_macro_f1') != float(weighted_macro_f1(y, logits.argmax(1))):
+        raise ValueError('validation result tuning_macro_f1 differs from the stored logits')
+    delta = fit_offsets(logits, y)
+    document = _offset_document(result, approval_hash, logits, y, delta, logits_hash=logits_hash,
+                                result_hash=result_hash, logits_path=validation_dir / 'logits.npz')
+    with out_path.open('xb') as stream:
+        stream.write(_canonical_bytes(document))
+    return document
 
 
 def assert_offset_replay(record, validation_dir, approval_path) -> None:
-    """Recompute delta from the stored validation logits and check every bound hash (stub)."""
+    """Recompute delta from the stored validation logits; raise ValueError on any drift.
+
+    Checks the record's version, grid, sweeps, metric, rule, integer delta and every bound
+    hash (checkpoint, binding, K freeze, validation ids, validation logits, approval record,
+    validation result), then refits and compares delta and both tuning scores exactly.
+    Pure: `record` is not modified.
+    """
+    from . import validation_scoring as vs
+
+    if not isinstance(record, dict):
+        raise ValueError('offset record must be a dict')
+    missing = [key for key in _RECORD_KEYS if key not in record]
+    if missing:
+        raise ValueError(f'offset record lacks bound fields: {missing}')
+    if record['version'] != OFFSET_RECORD_VERSION:
+        raise ValueError(f'offset record version {record["version"]!r} is not '
+                         f'{OFFSET_RECORD_VERSION!r}')
+    if record['arm'] != 'O' or record['control_arm'] != 'C':
+        raise ValueError('offset record arm must be O on control arm C')
+    if list(record['grid']) != list(GRID):
+        raise ValueError('offset record grid differs from the frozen grid -20..20')
+    if record['sweeps'] != SWEEPS:
+        raise ValueError(f'offset record sweeps {record["sweeps"]!r} differs from the fixed {SWEEPS}')
+    if record['delta_scale'] != DELTA_SCALE:
+        raise ValueError('offset record delta_scale differs from 10')
+    if record['metric'] != METRIC_NAME:
+        raise ValueError(f'offset record metric {record["metric"]!r} is not {METRIC_NAME!r}')
+    if record['optimizer_rule'] != OPTIMIZER_RULE:
+        raise ValueError('offset record optimizer rule differs from the pre-registered rule')
+    delta_int = record['delta_int']
+    if (not isinstance(delta_int, list) or len(delta_int) != NUM_CLASSES
+            or any(isinstance(v, bool) or not isinstance(v, int) for v in delta_int)
+            or any(v not in GRID for v in delta_int)):
+        raise ValueError('offset record delta_int must be ten grid integers')
+    if list(record['delta']) != [v / DELTA_SCALE for v in delta_int]:
+        raise ValueError('offset record delta differs from delta_int / 10')
+    validation_dir = Path(validation_dir)
+    (_stage_dir, result, _approval, approval_hash, logits, y, _ids,
+     logits_hash) = _load_scored_validation(validation_dir, approval_path)
+    result_hash = _file_sha256(validation_dir / vs.VALIDATION_RESULT_FILENAME)
+    for key, expected, label in (
+            ('checkpoint_sha256', result['checkpoint_sha256'], 'checkpoint'),
+            ('binding_sha256', result['binding_sha256'], 'binding'),
+            ('k_selection_sha256', result['k_selection_sha256'], 'k_selection'),
+            ('validation_sample_ids_sha256', result['validation_sample_ids_sha256'],
+             'validation sample ids'),
+            ('validation_logits_sha256', logits_hash, 'validation logits'),
+            ('approval_record_sha256', approval_hash, 'approval record'),
+            ('validation_result_sha256', result_hash, 'validation_result')):
+        if record[key] != expected:
+            raise ValueError(f'offset record {label} hash ({key}) differs from disk')
+    if (record['stage'], record['seed'], record['k'], record['validation_row_count']) != (
+            result['stage'], result['seed'], result['k'], result['row_count']):
+        raise ValueError('offset record stage/seed/k/row_count differ from the validation result')
+    replay = fit_offsets(logits, y)
+    if replay.tolist() != delta_int:
+        raise ValueError(f'replayed delta_int {replay.tolist()} differs from the frozen '
+                         f'{delta_int}')
+    before = float(weighted_macro_f1(y, logits.argmax(1)))
+    after = float(weighted_macro_f1(y, apply_offsets(logits, replay)))
+    if record['tuning_macro_f1_before'] != before or record['tuning_macro_f1_after'] != after:
+        raise ValueError('offset record tuning_macro_f1 before/after differ from the '
+                         'recomputed scores')
+    if record['validation_evaluated'] is not True or record['test_evaluated'] is not False:
+        raise ValueError('offset record fold flags differ from the validation-only scoring')
     return None
