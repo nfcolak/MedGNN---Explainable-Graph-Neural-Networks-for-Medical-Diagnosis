@@ -328,8 +328,15 @@ def load_parents(screen_ids, validation_ids):
                 result, rows, prediction = loader(directory, ids, reference_rows.get(fold))
                 equal(f'{name}: {fold} checkpoint', result['checkpoint_sha256'], sha256(stage / 'best.pt'))
                 equal(f'{name}: {fold} binding', result['binding_sha256'], sha256(stage / 'binding.json'))
-                equal(f'{name}: {fold} result hash', result['result_sha256'],
-                      pilot._sha_json({k: v for k, v in result.items() if k != 'result_sha256'}))
+                # The original core screen schema binds arrays/files but has no
+                # self-hash; later P screen and validation schemas also self-hash.
+                if 'result_sha256' in result:
+                    equal(f'{name}: {fold} result hash', result['result_sha256'],
+                          pilot._sha_json({k: v for k, v in result.items() if k != 'result_sha256'}))
+                for key in ('logits', 'proba'):
+                    if f'{key}_file_sha256' in result:
+                        equal(f'{name}: {fold} {key} file hash', sha256(directory / f'{key}.npz'),
+                              result[f'{key}_file_sha256'])
                 equal(f'{name}: {fold} stored decision score', result['macro_f1'],
                       (old_screen[arm]['screen_macro_f1'] if fold == 'screen'
                        else old_validation['validation_macro_f1'])[arm][str(seed)])
