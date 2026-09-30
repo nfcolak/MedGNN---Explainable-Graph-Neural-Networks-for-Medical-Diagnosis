@@ -2,8 +2,11 @@
 
 Method id ``cei_gnn_v3``. Options (closed set, extensions spec §9 U3 / E18):
 ``arm`` ∈ {A, B, C}; ``v3_state=<path>`` (v3 §12 F18) and ``k=<int>`` (must equal the
-state's K); ``encoder_depth`` (1 only in U3; ≥ 2 is added by U3x) and ``comorbid_block``
-(0 only in U3; 1 is added by U3x). The runner's ``--layers`` maps to ``encoder_depth``.
+state's K); ``encoder_depth`` (E2d residual blocks, spec §2.2; the runner's ``--layers``
+maps to it) and ``comorbid_block`` ∈ {0, 1} (E6b: lazily imports unit X5's
+``cei_v3_ext.comorbid_block.build_block`` through the ``extra_blocks`` protocol).
+NOTE: ``encoder_depth >= 2`` / ``layers >= 2`` are supported by the v3 adapter
+and map to U3x E2d residual blocks.
 
 v3_state file (JSON, produced by U5 ``fit_v3_state``; see ``build_v3_state`` for the exact
 schema): {version, K, knot_table (KnotTable.state()), knot_table_sha256,
@@ -15,6 +18,7 @@ The file is derived from medical data and lives under the git-ignored output roo
 from __future__ import annotations
 
 import hashlib
+import importlib
 import json
 import re
 from dataclasses import dataclass
@@ -26,6 +30,7 @@ import torch
 from .. import NODE_KINDS
 from ..cei_v3_absence import Universe
 from ..cei_v3_ple import KnotTable
+from ..tensorize import relation_vocabulary
 from .base import (ClinicalMethodAdapter, MethodOutput, diagnostic_float, method_option,
                    parameter_count, read_clinical_batch, relation_count,
                    reject_unknown_options)
@@ -33,6 +38,8 @@ from .cei_gnn_v3 import ARMS, EvidenceNetworkV3
 from .plugin_cei_gnn_v2 import _INDEX_FIELDS, _INTEGER_DTYPES
 
 KNOWN_OPTIONS = frozenset(("arm", "v3_state", "k", "encoder_depth", "comorbid_block"))
+# Unit X5 owns this module; the adapter imports it lazily for comorbid_block=1 only.
+COMORBID_BLOCK_MODULE = 'comparison.standardized.clinical_graph_v2.cei_v3_ext.comorbid_block'
 STATE_VERSION = 'cei_v3_state_v1'
 STATE_FIELDS = ('version', 'K', 'knot_table', 'knot_table_sha256', 'universe',
                 'universe_sha256', 'vocabulary', 'preprocessing_sha256', 'node_feature_layout')
@@ -201,18 +208,17 @@ class EvidenceAdapterV3(ClinicalMethodAdapter):
         if self.k != self.state.K:
             raise ValueError(f"method option k={self.k} differs from the v3_state K={self.state.K}")
         self.encoder_depth = method_option(args, "encoder_depth", self.layers_count, int, minimum=1)
-        if self.encoder_depth != 1:
-            raise ValueError("encoder_depth >= 2 (runner --layers >= 2) is added by U3x; "
-                             "U3 supports encoder_depth=1 only")
         self.comorbid_block = method_option(args, "comorbid_block", 0, int, minimum=0, maximum=1)
-        if self.comorbid_block != 0:
-            raise ValueError("comorbid_block=1 is added by U3x; U3 supports comorbid_block=0 only")
 
         if self.state.num_tokens != self.num_tokens:
             raise ValueError(f"v3_state vocabulary gives num_tokens={self.state.num_tokens}, "
                              f"the runner passed num_tokens={self.num_tokens}")
         if len(self.state.node_feature_layout) != self.node_dim:
             raise ValueError("v3_state node_feature_layout length differs from node_dim")
+        self.control_shapes = self._control_shapes()
+        extra_blocks = ()
+        if self.comorbid_block == 1:
+            extra_blocks = (self._build_comorbid_block(),)
         knots, active, _ = self.state.knot_table.tensor()
         self.network = EvidenceNetworkV3(
             num_tokens=self.num_tokens, node_dim=self.node_dim, edge_dim=self.edge_dim,
@@ -222,8 +228,56 @@ class EvidenceAdapterV3(ClinicalMethodAdapter):
             arm=self.arm, knots=knots, knot_active=active,
             slot_of_token=self.state.universe.slot_of_token(self.num_tokens),
             universe_size=len(self.state.universe), feature_layout=self.state.node_feature_layout,
-            seed=self.seed, encoder_depth=self.encoder_depth, extra_blocks=(),
-            knot_row_of_token=self.state.knot_row_of_token())
+            seed=self.seed, encoder_depth=self.encoder_depth, extra_blocks=extra_blocks,
+            knot_row_of_token=self.state.knot_row_of_token(), control_shapes=self.control_shapes)
+
+    # ---------------------------------------------------------- extension hooks
+
+    def _control_shapes(self):
+        """Arm C's (forward-view) shapes of the view-dependent tensors, or None.
+
+        E6a widens exactly the relation table (+R reverse ids), the triple table
+        (T + t for the reverse of fitted triple t) and the payload projection input
+        (+R one-hot columns) — ``tensorize.py`` lines 76–93, 359. When the runner's shapes
+        match that widening the control shapes are recoverable; any other shape under the
+        bidirectional view is reported as non-comparable (``common_init_identical_to_c``
+        False) instead of guessed.
+        """
+        if self.edge_direction != 'bidirectional':
+            return None
+        forward = len(relation_vocabulary('forward'))
+        reverse = self.num_relations - forward
+        fitted_triples, remainder = divmod(self.num_triples - 1, 2)
+        if reverse <= 0 or remainder != 0 or fitted_triples < 0:
+            return None
+        if self.edge_dim <= reverse:
+            return None
+        return {'num_relations': forward, 'num_triples': fitted_triples + 1,
+                'edge_dim': self.edge_dim - reverse}
+
+    def _relation_layout(self):
+        """Relation name -> id of this arm's edge view (forward ids never renumbered)."""
+        names = relation_vocabulary(self.edge_direction)
+        if len(names) != self.num_relations:
+            raise ValueError("relation vocabulary size differs from num_relations")
+        return {name: index for index, name in enumerate(names)}
+
+    def _build_comorbid_block(self):
+        """Lazily import X5's block builder; a clear error names X5 when it is absent."""
+        try:
+            module = importlib.import_module(COMORBID_BLOCK_MODULE)
+        except ImportError as error:
+            raise ValueError(
+                f"comorbid_block=1 (U3x extra_blocks hook) needs unit X5: module "
+                f"{COMORBID_BLOCK_MODULE} providing build_block(hidden, num_classes, *, "
+                f"relation_layout, seed) is not available ({error})") from error
+        build_block = getattr(module, 'build_block', None)
+        if build_block is None:
+            raise ValueError(f"comorbid_block=1 (U3x extra_blocks hook) needs unit X5: "
+                             f"{COMORBID_BLOCK_MODULE} has no build_block(hidden, num_classes, *, "
+                             "relation_layout, seed)")
+        return build_block(self.hidden, self.num_classes, relation_layout=self._relation_layout(),
+                           seed=self.seed)
 
     # --------------------------------------------------------------- batch reading
 
@@ -291,6 +345,20 @@ class EvidenceAdapterV3(ClinicalMethodAdapter):
     def inactive_parameter_count(self) -> int:
         return self.network.inactive_parameter_count()
 
+    def common_init_identical_to_c(self) -> bool:
+        """§2.2: True iff every tensor C also has starts from C's initial values.
+
+        Width must equal the control's (E2w is the stated exception); under the
+        bidirectional view the widened tensors must have been registered at C's shapes
+        (``control_shapes`` recovered from the runner's dimensions), otherwise the later
+        common tensors were drawn at a different point of the global stream.
+        """
+        if self.hidden != CONTROL_HIDDEN:
+            return False
+        if self.edge_direction != 'forward' and self.control_shapes is None:
+            return False
+        return True
+
     def run_config(self) -> dict:
         total, inactive = parameter_count(self), self.inactive_parameter_count()
         inventory = {name: {"shape": list(shape), "active": bool(active)}
@@ -322,9 +390,13 @@ class EvidenceAdapterV3(ClinicalMethodAdapter):
             "inactive_parameter_count": inactive,
             "ple_active": self.network.ple_active,
             "absence_active": self.network.absence_active,
-            # Extensions spec §2.2: every arm at the control width shares C's initial
-            # values for the common tensors (per-tensor generators); E2w does not.
-            "common_init_identical_to_c": self.hidden == CONTROL_HIDDEN,
+            # Extensions spec §2.2: an arm at the control width whose common tensors were
+            # registered at C's shapes shares C's initial values (per-tensor generators);
+            # E2w does not, nor does a bidirectional arm whose shapes cannot be mapped to C's.
+            "common_init_identical_to_c": self.common_init_identical_to_c(),
+            "control_shapes": self.control_shapes,
+            "widened_tensors": list(self.network.widened_tensors),
+            "extra_blocks": list(self.network.extra_block_names),
             "parameter_inventory": inventory,
             "architecture": {
                 "node_dim": self.node_dim, "edge_dim": self.edge_dim,
