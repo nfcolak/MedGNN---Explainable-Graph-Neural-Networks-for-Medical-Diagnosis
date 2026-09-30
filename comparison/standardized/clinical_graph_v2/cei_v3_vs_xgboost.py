@@ -230,7 +230,10 @@ def check_training_matrix(X, y, folds, metadata, prep, reference):
           read(V3_ROOT / 'A_seed1234/preprocessing.json'))
     equal('train class counts', np.bincount(y[folds == 0], minlength=10).tolist(),
           reference['class_counts_train'])
-    equal('train class weights', train.class_weights(y[folds == 0], 'sqrt_inverse', 10).tolist(),
+    # The GNN binding serializes its float32 torch loss weights. XGBoost's
+    # DMatrix also stores weights as float32; compare at that consumed dtype.
+    equal('train class weights at consumed float32 dtype',
+          train.class_weights(y[folds == 0], 'sqrt_inverse', 10).astype(np.float32).tolist(),
           reference['class_weight_values'])
     if not np.isfinite(X).all():
         raise ValueError('Nonfinite training features')
