@@ -9,14 +9,18 @@ from __future__ import annotations
 import re
 from argparse import Namespace
 
+import torch
+
 from ..methods.cei_gnn_v2 import KIND_PAIR_COUNT
-from ..tensorize import REVERSE_RELATIONS
+from ..tensorize import (ALL_RELATIONS, EDGE_DIRECTIONS, REVERSE_RELATIONS, REVERSIBLE_RELATIONS,
+                         relation_vocabulary)
 
 __all__ = ['CONTROL_ARM', 'EXTENSION_ARMS', 'ARM_DEFINITIONS', 'ARM_FIELDS',
            'V2_REFERENCE_DIMENSIONS', 'V2_REFERENCE_PARAMETER_COUNT',
            'ANALYTIC_V2_SCHEMA_DELTAS', 'COMORBID_RANK', 'analytic_parameter_count',
            'analytic_arm_delta', 'arm_of_run_config', 'inventory_diff',
-           'assert_size_arm_support']
+           'assert_size_arm_support', 'edge_view_record', 'assert_edge_mask_length',
+           'reverse_edge_attribution']
 
 CONTROL_ARM = 'C'
 EXTENSION_ARMS = ('E2w', 'E2d', 'E6a', 'E6b')
@@ -215,18 +219,100 @@ def assert_size_arm_support(v3_state=None, *, layers=2) -> dict:
 
 # ------------------------------------------------------------ E6a bidirectional view
 
+def _relation_ids(edge_relation):
+    if not torch.is_tensor(edge_relation) or edge_relation.ndim != 1:
+        raise ValueError('edge_relation must be a 1-D integer tensor')
+    if edge_relation.numel() and edge_relation.dtype not in (torch.int8, torch.int16, torch.int32,
+                                                              torch.int64, torch.uint8):
+        raise ValueError('edge_relation must use an integer dtype')
+    return edge_relation.long().tolist()
+
+
 def edge_view_record(edge_relation, edge_direction) -> dict:
-    """F/R accounting of one tensorised edge list under the arm's edge view (spec §5.2)."""
-    return {'edge_direction': str(edge_direction), 'forward_edges': 0, 'reverse_edges': 0,
-            'mask_length': 0, 'reverse_of_forward': []}
+    """F/R accounting of one tensorised edge list under the arm's edge view (spec §5.2).
+
+    `tensorize.py` lines 348–358 append the reverse block strictly after the forward block,
+    so the relation ids must be `[< forward ids …] + [>= len(ALL_RELATIONS) …]` with no
+    interleaving; `reverse_of_forward` lists, in order, the forward position each reverse
+    edge mirrors (the reversible forward edges in their forward order). The forward view
+    must carry no reverse id at all.
+    """
+    if edge_direction not in EDGE_DIRECTIONS:
+        raise ValueError(f'edge_direction must be one of {EDGE_DIRECTIONS}, got {edge_direction!r}')
+    ids = _relation_ids(edge_relation)
+    names = relation_vocabulary(edge_direction)
+    forward_count = len(ALL_RELATIONS)
+    if any(r < 0 for r in ids) or any(r >= len(relation_vocabulary('bidirectional')) for r in ids):
+        raise ValueError('edge_relation id outside the bidirectional relation vocabulary')
+    is_reverse = [r >= forward_count for r in ids]
+    reverse_edges = sum(is_reverse)
+    if edge_direction == 'forward' and reverse_edges:
+        raise ValueError(f'forward view carries {reverse_edges} reverse-relation edge(s) '
+                         f'(ids >= {forward_count})')
+    forward_edges = len(ids) - reverse_edges
+    if any(is_reverse[:forward_edges]) or not all(is_reverse[forward_edges:]):
+        raise ValueError('reverse block must be appended strictly after the forward block '
+                         '(tensorize.py line 350); reverse ids are interleaved with forward ids')
+    reversible = [i for i in range(forward_edges) if names[ids[i]] in REVERSIBLE_RELATIONS]
+    if edge_direction == 'bidirectional':
+        expected = ['rev:' + names[ids[i]] for i in reversible]
+        actual = [names[r] for r in ids[forward_edges:]]
+        if actual != expected:
+            raise ValueError(f'reverse block {actual} is not the reversible forward edges in '
+                             f'forward order {expected}')
+    return {'edge_direction': edge_direction, 'forward_edges': forward_edges,
+            'reverse_edges': reverse_edges, 'mask_length': forward_edges + reverse_edges,
+            'reverse_of_forward': reversible if edge_direction == 'bidirectional' else []}
 
 
 def assert_edge_mask_length(mask, record) -> None:
-    """Refuse an edge mask whose length is not the arm's own F + R (v3 §4.5 on E6a)."""
+    """Refuse an edge mask whose length is not the arm's own F + R (v3 §4.5 on E6a).
+
+    A forward-length mask under the bidirectional view is the specific error §5.2 names;
+    values must be finite probabilities in [0, 1] (the network's own rule).
+    """
+    if not isinstance(record, dict) or 'mask_length' not in record:
+        raise ValueError('record must be an edge_view_record with mask_length')
+    expected = int(record['mask_length'])
+    if not torch.is_tensor(mask) or mask.ndim != 1:
+        raise ValueError('edge mask must be a 1-D tensor')
+    if mask.numel() != expected:
+        forward = int(record.get('forward_edges', expected))
+        hint = (' (a forward-length mask; the bidirectional list is forward + reverse)'
+                if record.get('edge_direction') == 'bidirectional' and mask.numel() == forward else '')
+        raise ValueError(f'edge mask length {mask.numel()} differs from the arm edge list length '
+                         f'{expected} = {forward} forward + {expected - forward} reverse{hint}')
+    if not torch.isfinite(mask).all() or bool((mask < 0).any()) or bool((mask > 1).any()):
+        raise ValueError('edge mask values must be finite and in [0, 1]')
     return None
 
 
 def reverse_edge_attribution(edge_contributions, edge_relation, edge_direction) -> dict:
-    """Split per-edge attributions into the forward and reverse blocks; never merged."""
-    return {'forward': edge_contributions, 'reverse': edge_contributions[:0],
-            'reverse_relations': [], 'reverse_of_forward': [], 'derived_forward_plus_reverse': None}
+    """Split per-edge attributions into the forward and reverse blocks; never merged.
+
+    A reverse edge is its own item (relation `rev:*`); the forward + reverse sum is returned
+    only under `derived_forward_plus_reverse` as `{label, values, forward_positions}` and is
+    `None` for the forward view (spec §5.2).
+    """
+    record = edge_view_record(edge_relation, edge_direction)
+    if not torch.is_tensor(edge_contributions) or edge_contributions.ndim != 2:
+        raise ValueError('edge_contributions must be float[edges, classes]')
+    if edge_contributions.size(0) != record['mask_length']:
+        raise ValueError(f'edge_contributions has {edge_contributions.size(0)} rows, the edge list '
+                         f'has {record["mask_length"]} (= {record["forward_edges"]} forward + '
+                         f'{record["reverse_edges"]} reverse)')
+    forward_edges = record['forward_edges']
+    names = relation_vocabulary(edge_direction)
+    ids = _relation_ids(edge_relation)
+    forward = edge_contributions[:forward_edges]
+    reverse = edge_contributions[forward_edges:]
+    derived = None
+    if edge_direction == 'bidirectional':
+        positions = record['reverse_of_forward']
+        derived = {'label': 'derived: forward + reverse (not a model attribution)',
+                   'values': forward[positions] + reverse,
+                   'forward_positions': list(positions)}
+    return {'forward': forward, 'reverse': reverse,
+            'reverse_relations': [names[r] for r in ids[forward_edges:]],
+            'reverse_of_forward': list(record['reverse_of_forward']),
+            'derived_forward_plus_reverse': derived}
