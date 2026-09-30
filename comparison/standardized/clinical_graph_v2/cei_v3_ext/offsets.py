@@ -133,3 +133,34 @@ def fit_offsets(logits, y, *, grid=GRID, sweeps=SWEEPS, fold=VALIDATION_FOLD,
                 trace.append({'sweep': sweep, 'label': label, 'i': int(best_i),
                               'score': best_key[0]})
     return current
+
+
+# ------------------------------------------------------------- freeze record
+
+OFFSET_RECORD_VERSION = 'cei_v3_item5_offsets_v1'
+OFFSET_RECORD_FILENAME = 'offset_record.json'
+
+
+def offset_record_sha256(record) -> str:
+    """SHA-256 of the frozen offset record bytes (stub)."""
+    return '0' * 64
+
+
+def offset_record(validation_dir, approval_path) -> dict:
+    """Fit and freeze delta for one scored C checkpoint (stub: a zero record, nothing written)."""
+    return {'version': OFFSET_RECORD_VERSION, 'arm': 'O', 'control_arm': 'C',
+            'stage': '', 'seed': 0, 'k': 0, 'delta_int': [0] * NUM_CLASSES,
+            'delta': [0.0] * NUM_CLASSES, 'grid': [], 'sweeps': 0, 'delta_scale': 0,
+            'metric': '', 'optimizer_rule': '', 'checkpoint_sha256': '', 'binding_sha256': '',
+            'k_selection_sha256': '', 'validation_sample_ids_sha256': '',
+            'validation_row_count': 0, 'validation_logits_sha256': '',
+            'validation_logits_path': '', 'approval_record_sha256': '',
+            'validation_result_sha256': '', 'tuning_macro_f1_before': 0.0,
+            'tuning_macro_f1_after': 0.0, 'tuning_score_caveat': '',
+            'validation_evaluated': False, 'test_evaluated': False,
+            'screen_read_before_freeze': False}
+
+
+def assert_offset_replay(record, validation_dir, approval_path) -> None:
+    """Recompute delta from the stored validation logits and check every bound hash (stub)."""
+    return None
