@@ -311,3 +311,159 @@ def _per_graph(parts, batch_index, edge_graph, index):
             'pair_contributions': rows('pair_contributions', batch_index[pairs[0]]),
             'absence_contributions': rows('absence_contributions', absence[0]),
             'comorbid_contributions': rows('comorbid_contributions', batch_index[comorbid[0]])}
+
+
+# ---------------------------------------------------- step 3: comorbid block isolation
+
+from tests.test_cei_gnn_v3_core import _adapter  # noqa: E402
+from tests.test_cei_gnn_v3_hooks import _three_training_forwards  # noqa: E402
+
+
+def test_zero_edge_mask_removes_the_edge_block_and_leaves_the_comorbid_block_intact():
+    graph = _comorbid_graph()
+    network, block = _comorbid_network()
+    network.eval()
+    _randomise_gates(network)
+    _randomise_block(block)
+    ordinary = _run(network, graph)
+    assert ordinary['comorbid_contributions'].abs().sum() > 0
+    network.set_edge_mask(torch.zeros(graph.num_edges))
+    masked = _run(network, graph)
+    network.set_edge_mask(None)
+    assert torch.count_nonzero(masked['edge_contributions']) == 0
+    for key in ('node_contributions', 'pair_contributions', 'absence_contributions',
+                'comorbid_contributions', 'comorbid_denominator', 'comorbid_gates'):
+        torch.testing.assert_close(masked[key], ordinary[key]), key
+    assert torch.equal(masked['comorbid_pairs'], ordinary['comorbid_pairs'])
+    expected = (masked['bias'] + ordinary['node_contributions'].sum(0)
+                + ordinary['pair_contributions'].sum(0) + ordinary['absence_contributions'].sum(0)
+                + ordinary['comorbid_contributions'].sum(0))
+    torch.testing.assert_close(masked['logits'][0], expected, rtol=1e-5, atol=1e-5)
+    # Masking only the comorbid_with edges to zero also leaves the block intact: the pair
+    # set is derived from the edge list, not from the mask (§5.3 / E15).
+    mask = torch.ones(graph.num_edges)
+    mask[graph.edge_relation == COMORBID] = 0.0
+    network.set_edge_mask(mask)
+    partial = _run(network, graph)
+    network.set_edge_mask(None)
+    torch.testing.assert_close(partial['comorbid_contributions'], ordinary['comorbid_contributions'])
+    assert torch.equal(partial['comorbid_pairs'], ordinary['comorbid_pairs'])
+    assert torch.count_nonzero(partial['edge_contributions'][graph.edge_relation == COMORBID]) == 0
+    assert not torch.allclose(partial['logits'], ordinary['logits'])
+
+
+def test_comorbid_block_consumes_no_global_rng_in_construction_or_training_forwards():
+    graph = _comorbid_graph()
+    torch.manual_seed(123)
+    control = _network(seed=123, dropout=0.3).train()
+    control_state = torch.get_rng_state().clone()
+    torch.manual_seed(123)
+    seeded = torch.get_rng_state().clone()
+    block = _block(seed=1234)
+    assert torch.equal(torch.get_rng_state(), seeded), 'block construction touched the global RNG'
+    e6b = _network(seed=123, dropout=0.3, extra_blocks=(block,)).train()
+    assert torch.equal(torch.get_rng_state(), control_state), 'E6b construction touched the global RNG'
+    common = dict(control.named_parameters())
+    for name, parameter in e6b.named_parameters():
+        if name in common:
+            assert torch.equal(parameter, common[name]), f'E6b: {name} differs from C'
+    assert set(dict(e6b.named_parameters())) - set(common) == set(PARAMETER_NAMES)
+    _randomise_block(block)
+    control_states, control_outputs = _three_training_forwards(control, graph)
+    e6b_states, outputs = _three_training_forwards(e6b, graph)
+    for index, (state, expected) in enumerate(zip(e6b_states, control_states)):
+        assert torch.equal(state, expected), f'E6b: global RNG state differs after forward {index + 1}'
+    # The block itself is deterministic: identical inputs give identical outputs in
+    # training mode (no dropout inside the block), while the v2 dropouts still vary.
+    assert not torch.equal(outputs[0], outputs[1])
+    h = torch.randn(graph.num_nodes, HIDDEN, generator=torch.Generator().manual_seed(4))
+    batch_index = torch.zeros(graph.num_nodes, dtype=torch.long)
+    first, _ = block(h, graph.edge_index, graph.edge_relation, batch_index, 1)
+    second, _ = block(h, graph.edge_index, graph.edge_relation, batch_index, 1)
+    assert torch.equal(first, second)
+    e6b.eval(), control.eval()
+    delta = _run(e6b, graph)['logits'] - _run(control, graph)['logits']
+    torch.testing.assert_close(delta[0], _run(e6b, graph)['comorbid_contributions'].sum(0),
+                               rtol=1e-5, atol=1e-5)
+
+
+def test_parameter_names_match_the_registered_set_and_the_network_inventory():
+    network, block = _comorbid_network()
+    declared = tuple(block.parameter_names())
+    registered = tuple(f'extra_blocks.comorbid.{local}' for local, _ in block.named_parameters())
+    assert sorted(declared) == sorted(registered)
+    assert declared == PARAMETER_NAMES
+    inventory = network.parameter_inventory()
+    assert {name for name in inventory if name.startswith('extra_blocks.')} == set(PARAMETER_NAMES)
+    assert inventory['extra_blocks.comorbid.pair_projection.weight'] == ((16, HIDDEN), True)
+    assert inventory['extra_blocks.comorbid.vote.weight'] == ((CLASSES, 16), True)
+    assert inventory['extra_blocks.comorbid.vote.bias'] == ((CLASSES,), True)
+    assert inventory['extra_blocks.comorbid.gate'] == ((CLASSES,), True)
+    state = network.state_dict()
+    assert set(PARAMETER_NAMES) <= set(state)
+    for name in PARAMETER_NAMES:
+        assert torch.equal(state[name], dict(network.named_parameters())[name])
+    # A v3 arm-C state_dict loads into the E6b network with exactly the block missing.
+    missing, unexpected = _share_weights(_network(), network)
+    assert unexpected == set() and missing == set(PARAMETER_NAMES)
+
+
+def test_adapter_end_to_end_with_comorbid_block_one(tmp_path):
+    control = _adapter(tmp_path, 'C')
+    e6b = _adapter(tmp_path, 'C', comorbid_block=1)
+    assert isinstance(e6b.network.extra_blocks['comorbid'], cb.ComorbidPairBlock)
+    assert e6b.network.extra_blocks['comorbid'].relation_id == COMORBID
+    config = e6b.run_config()
+    assert config['comorbid_block'] == 1 and config['extra_blocks'] == ['comorbid']
+    assert config['parameter_count'] - control.run_config()['parameter_count'] == (
+        HIDDEN * 16 + 16 * CLASSES + 2 * CLASSES)
+    assert config['inactive_parameter_count'] == 0
+    for name in PARAMETER_NAMES:
+        assert config['parameter_inventory'][name]['active'] is True
+    # At the control width the delta is the analytic +2,228 (10 classes) and the binding
+    # records common_init_identical_to_c (§2.2); the width-8 fixture is not the control width.
+    assert config['common_init_identical_to_c'] is False
+    wide = _adapter(tmp_path, 'C', hidden=CONTROL_HIDDEN, comorbid_block=1).run_config()
+    assert wide['common_init_identical_to_c'] is True
+    assert wide['parameter_count'] - _adapter(tmp_path, 'C', hidden=CONTROL_HIDDEN).run_config()['parameter_count'] == (
+        CONTROL_HIDDEN * 16 + 16 * CLASSES + 2 * CLASSES)
+    # The adapter builds the block between the runner seed and the network: every common
+    # tensor must still start from C's initial values (§2.2), the block's from its generators.
+    common = dict(control.named_parameters())
+    for name, parameter in e6b.named_parameters():
+        if name in common:
+            assert torch.equal(parameter, common[name]), f'adapter E6b: {name} differs from C'
+    assert set(dict(e6b.named_parameters())) - set(common) == {f'network.{n}' for n in PARAMETER_NAMES}
+    assert torch.equal(e6b.network.extra_blocks['comorbid'].pair_projection.weight,
+                       _block(seed=1234).pair_projection.weight)
+    # Forward on a synthetic batch with comorbid edges: reconstruction within 1e-5.
+    e6b.eval()
+    _randomise_gates(e6b.network)
+    _randomise_block(e6b.network.extra_blocks['comorbid'])
+    batch = _batch(_comorbid_graph(), _graph(seed=8), _comorbid_graph(seed=9))
+    output = e6b(batch, epoch=0)
+    features = e6b.continuous_inputs(batch)
+    parts = e6b.forward_continuous(features, batch.edge_index, batch, return_parts=True)
+    assert torch.equal(parts['logits'], output.logits)
+    assert parts['comorbid_pairs'].size(1) == 4
+    edge_graph = batch.batch[batch.edge_index[0]]
+    for index in range(3):
+        torch.testing.assert_close(parts['logits'][index],
+                                   _rebuild(_per_graph(parts, batch.batch, edge_graph, index),
+                                            'comorbid_contributions'),
+                                   rtol=1e-5, atol=1e-5)
+    assert torch.equal(e6b.forward_continuous(features, batch.edge_index, batch), output.logits)
+    # Global RNG state equals arm C's after three training forwards (§2.2 / §5.5.2).
+    torch.manual_seed(31)
+    control_adapter = _adapter(tmp_path, 'C', dropout=0.3, seed=31).train()
+    torch.manual_seed(31)
+    e6b_adapter = _adapter(tmp_path, 'C', dropout=0.3, seed=31, comorbid_block=1).train()
+    states = {}
+    for label, adapter in (('C', control_adapter), ('E6b', e6b_adapter)):
+        torch.manual_seed(947)
+        states[label] = []
+        for _ in range(3):
+            adapter(batch, epoch=0)
+            states[label].append(torch.get_rng_state().clone())
+    for index, (state, expected) in enumerate(zip(states['E6b'], states['C'])):
+        assert torch.equal(state, expected), f'adapter E6b: RNG state differs after forward {index + 1}'
