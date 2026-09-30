@@ -134,15 +134,24 @@ class EvidenceNetworkV3(PairEvidenceNetwork):
         if isinstance(encoder_depth, bool) or int(encoder_depth) != encoder_depth or encoder_depth < 1:
             raise ValueError(f'encoder_depth must be an integer >= 1, got {encoder_depth!r}')
         extra_blocks = tuple(extra_blocks)
-        super().__init__(num_tokens=num_tokens, node_dim=node_dim, edge_dim=edge_dim,
+        actual = {'num_relations': int(num_relations), 'num_triples': int(num_triples),
+                  'edge_dim': int(edge_dim)}
+        control = self._validated_control_shapes(control_shapes, actual)
+        # E6a (§2.2 / §5 E6a): the relation, triple and payload tensors are registered by the
+        # v2 constructor BEFORE the later common tensors, so widening them would shift every
+        # later tensor along the global stream. The v2 constructor therefore runs at the
+        # control's shapes (global RNG consumed exactly as C) and the widened tensors are
+        # replaced afterwards, initialised from their own per-tensor generators.
+        super().__init__(num_tokens=num_tokens, node_dim=node_dim,
+                         edge_dim=control.get('edge_dim', actual['edge_dim']),
                          num_classes=num_classes, hidden=hidden, token_dim=token_dim,
-                         num_triples=num_triples, num_relations=num_relations, dropout=dropout,
-                         pair_rank=pair_rank, pair_mode='additive',
+                         num_triples=control.get('num_triples', actual['num_triples']),
+                         num_relations=control.get('num_relations', actual['num_relations']),
+                         dropout=dropout, pair_rank=pair_rank, pair_mode='additive',
                          num_node_types=num_node_types)
         self.arm, self.seed, self.encoder_depth = str(arm), int(seed), int(encoder_depth)
-        # STUB (U3x red): control shapes are stored but never applied.
-        self.control_shapes = dict(control_shapes) if control_shapes else None
-        self.widened_tensors = ()
+        self.control_shapes = dict(control) if control else None
+        self.widened_tensors = self._widen_relation_tensors(control, actual)
         # E2d residual blocks (§2.2): registered only for depth >= 2, so depth 1 keeps the
         # exact U3 module set; parameters live under `encoder_blocks.<i>.*`.
         if self.encoder_depth > 1:
@@ -216,6 +225,58 @@ class EvidenceNetworkV3(PairEvidenceNetwork):
         self.absence_gate = nn.Parameter(torch.zeros(self.universe_size, self.num_classes))
 
     # ------------------------------------------------------------------ new paths
+
+    WIDENABLE = ('num_relations', 'num_triples', 'edge_dim')
+
+    @classmethod
+    def _validated_control_shapes(cls, control_shapes, actual):
+        """Control (arm C) values of the view-dependent dimensions; equal values drop out."""
+        if not control_shapes:
+            return {}
+        control = {}
+        for key, value in dict(control_shapes).items():
+            if key not in cls.WIDENABLE:
+                raise ValueError(f'control_shapes key {key!r} is not one of {list(cls.WIDENABLE)}')
+            if isinstance(value, bool) or int(value) != value or int(value) < 1:
+                raise ValueError(f'control_shapes[{key!r}] must be a positive integer')
+            if int(value) > actual[key]:
+                raise ValueError(f'control_shapes[{key!r}]={value} is wider than the actual '
+                                 f'{key}={actual[key]}; only widening relative to C is allowed')
+            if int(value) != actual[key]:
+                control[key] = int(value)
+        return control
+
+    def _widen_relation_tensors(self, control, actual):
+        """Replace the view-dependent v2 tensors at their actual (wider) shapes (E6a)."""
+        widened = []
+        width = self.hidden
+        if 'num_relations' in control:
+            self.num_relations = actual['num_relations']
+            self.relation_embedding = nn.utils.skip_init(
+                nn.Embedding, num_embeddings=self.num_relations, embedding_dim=width)
+            with torch.no_grad():   # nn.Embedding default: standard normal
+                self.relation_embedding.weight.normal_(
+                    generator=tensor_generator(self.seed, 'relation_embedding.weight'))
+            widened.append('relation_embedding.weight')
+        if 'num_triples' in control:
+            self.num_triples = actual['num_triples']
+            self.triple_embedding = nn.utils.skip_init(
+                nn.Embedding, num_embeddings=self.num_triples, embedding_dim=width)
+            with torch.no_grad():
+                self.triple_embedding.weight.normal_(
+                    generator=tensor_generator(self.seed, 'triple_embedding.weight'))
+            widened.append('triple_embedding.weight')
+        if 'edge_dim' in control:
+            self.edge_dim = actual['edge_dim']
+            self.edge_feature_projection = nn.utils.skip_init(
+                nn.Linear, in_features=self.edge_dim, out_features=width, bias=False)
+            bound = 1.0 / float(self.edge_dim) ** 0.5   # nn.Linear default bound at the new fan-in
+            with torch.no_grad():
+                self.edge_feature_projection.weight.uniform_(
+                    -bound, bound,
+                    generator=tensor_generator(self.seed, 'edge_feature_projection.weight'))
+            widened.append('edge_feature_projection.weight')
+        return tuple(widened)
 
     @staticmethod
     def _validated_extra_blocks(blocks):
