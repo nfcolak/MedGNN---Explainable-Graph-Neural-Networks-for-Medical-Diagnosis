@@ -1,0 +1,34 @@
+{
+  "counts": {
+    "train": 10000,
+    "validation": 4254
+  },
+  "degree_histogram_sha256": "8e9f55fcb2d17d92eadced8b4b9ec681b845ea14e969d9ea3600500eb137c57b",
+  "encoded_tensor_sha256": "ae0e70a77c23801d7b0872cb9240c4d6a450096cc8ebd64f3f5f884ec67ab7b6",
+  "kept_labels": [
+    6,
+    7,
+    9,
+    12,
+    13,
+    19,
+    20,
+    21,
+    25,
+    26
+  ],
+  "parameter_count": {
+    "gchm": 556938,
+    "graphcare": 120306,
+    "gsat": 200046,
+    "protgnn": 399884
+  },
+  "preprocessing_equals_frozen_run": true,
+  "preprocessing_sha256": "f9d9bf2a002e3ac9c4bc4bf881ecef0b791b7ecc4d441afd6fa2bae58d2e196a",
+  "untrained_state_sha256": {
+    "gchm": "4f7f2f205f5b1ae70c2c8b01577bc57104111689717cc1236c5bf36ea5b4d618",
+    "graphcare": "4e389128038c27553f474a65e8897c2dfccadea785a7c0935af9c3e3bd13de19",
+    "gsat": "a9444e6bc99553e8dde88841035c2b9261cbb2dc4aba11bc26d94ac4bb5cfe47",
+    "protgnn": "92857207ec9b52fc11d8ad7a8a1a2ebad9d796d69b205eb7b4d077a89c27d1ad"
+  }
+}

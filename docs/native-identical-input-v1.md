@@ -2,7 +2,7 @@
 
 ## Delivered scope
 
-The current comparison entrypoint is `python3 -m comparison.standardized.train_identical`.
+The entrypoint of the preserved 30-class native reference (not the current max6 / Top-10 task) is `python3 -m comparison.standardized.train_identical`.
 It trains ProtGNN, GSAT, GraphCare, PNA plain and PNA interaction on one immutable
 artifact. Default execution has **59,607 train / 7,448 validation / 7,456 test
 members**; test members are retained in the artifact but never loaded for training

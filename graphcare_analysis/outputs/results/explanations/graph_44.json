@@ -1,0 +1,98 @@
+{
+  "graph_idx": 44,
+  "dataset_index": null,
+  "subject_id": 10066927,
+  "pred_label": 21,
+  "true_label": 5,
+  "correct": false,
+  "pred_class": "Major depressive disorder",
+  "true_class": "Anxiety disorder",
+  "num_nodes": 4,
+  "num_edges": 3,
+  "node_global_ids": [
+    133,
+    159,
+    192,
+    245
+  ],
+  "explanations": {
+    "GradExplainer": {
+      "node_importance": [
+        -0.012066403403878212,
+        -0.0006702389800921082,
+        -0.0012608898105099797,
+        0.002689932705834508
+      ],
+      "top_nodes": [
+        {
+          "index": 0,
+          "importance": -0.012066403403878212
+        },
+        {
+          "index": 3,
+          "importance": 0.002689932705834508
+        },
+        {
+          "index": 2,
+          "importance": -0.0012608898105099797
+        },
+        {
+          "index": 1,
+          "importance": -0.0006702389800921082
+        }
+      ]
+    },
+    "IntegratedGradExplainer": {
+      "node_importance": [
+        0.002345502143725753,
+        0.00258653168566525,
+        0.004560660105198622,
+        -0.003974811173975468
+      ],
+      "top_nodes": [
+        {
+          "index": 2,
+          "importance": 0.004560660105198622
+        },
+        {
+          "index": 3,
+          "importance": -0.003974811173975468
+        },
+        {
+          "index": 1,
+          "importance": 0.00258653168566525
+        },
+        {
+          "index": 0,
+          "importance": 0.002345502143725753
+        }
+      ]
+    },
+    "GNNExplainer": {
+      "node_importance": [
+        0.0,
+        1.0,
+        0.0,
+        1.0
+      ],
+      "top_nodes": [
+        {
+          "index": 3,
+          "importance": 1.0
+        },
+        {
+          "index": 1,
+          "importance": 1.0
+        },
+        {
+          "index": 2,
+          "importance": 0.0
+        },
+        {
+          "index": 0,
+          "importance": 0.0
+        }
+      ]
+    }
+  }
+}

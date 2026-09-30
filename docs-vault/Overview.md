@@ -2,18 +2,24 @@
 title: MedGNN
 type: project-overview
 slug: medgnn
-repo: nfcolak/MP---Self-Explainable-Graph-Neural-Networks-via-Prototype-Learning-for-Medical-Diagnosis
+repo: ".."
 tier: B
-bucket: done
-corebrain_pointer: /Users/necatifurkancolak/Library/Mobile Documents/iCloud~md~obsidian/Documents/CoreBrain/🏰 300-Projects/done/medgnn.md
+bucket: current
+projectos_vault: ProjectOS
+projectos_pointer: 10-Projects/medgnn/MedGNN.md
 ---
 # MedGNN
 
-Prototip öğrenmeyle açıklanabilir grafik sinir ağları, tıbbi teşhis (Master Project). Kanonik klasör; eski medgnn-main çöpe taşındı.
+Tıbbi teşhis için açıklanabilir grafik sinir ağları (Master Project).
+Bu dosya yerel yönlendirmedir; karar ve çalışma geçmişinin kanonik kaydı ProjectOS'tadır.
 
-- 🧠 [CoreBrain pointer note](obsidian://open?path=%2FUsers%2Fnecatifurkancolak%2FLibrary%2FMobile%20Documents%2FiCloud~md~obsidian%2FDocuments%2FCoreBrain%2F%F0%9F%8F%B0%20300-Projects%2Fdone%2Fmedgnn.md)
-- 💻 https://github.com/nfcolak/MP---Self-Explainable-Graph-Neural-Networks-via-Prototype-Learning-for-Medical-Diagnosis
+- Yerel ProjectOS vault'u: `10-Projects/medgnn/MedGNN.md`; bu özel kayıt GitHub'a yayımlanmaz.
+- [Güncel klinik çalışma akışı](../comparison/standardized/clinical_graph_v2/README.md)
+- [Korunan native 30-sınıf referansı](../docs/native-identical-input-v1.md)
+- [Repo haritası ve arşiv sınırları](../STRUCTURE.md)
 
 ## Status
 
-_(not written yet)_
+Aktif geliştirme. Güncel klinik görev max6 / train-derived Top-10'dur;
+eski native 30-sınıf sonuçlarıyla doğrudan karşılaştırılmaz. Deney sonuçları ve
+güncel durum için ProjectOS kayıtlarını kullanın; bu sayfa ayrı bir sonuç tablosu tutmaz.

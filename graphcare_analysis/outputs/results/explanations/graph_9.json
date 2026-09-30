@@ -1,0 +1,106 @@
+{
+  "graph_idx": 9,
+  "dataset_index": null,
+  "subject_id": 10015168,
+  "pred_label": 3,
+  "true_label": 3,
+  "correct": true,
+  "pred_class": "Alcohol abuse with intoxication",
+  "true_class": "Alcohol abuse with intoxication",
+  "num_nodes": 6,
+  "num_edges": 5,
+  "node_global_ids": [
+    110,
+    119,
+    158,
+    176,
+    210,
+    244
+  ],
+  "explanations": {
+    "GradExplainer": {
+      "node_importance": [
+        -2.9761551559204236e-05,
+        4.698786142398603e-05,
+        2.2557916963705793e-05,
+        0.00019446607620920986,
+        5.9940823120996356e-05,
+        2.1687341359211132e-05
+      ],
+      "top_nodes": [
+        {
+          "index": 3,
+          "importance": 0.00019446607620920986
+        },
+        {
+          "index": 4,
+          "importance": 5.9940823120996356e-05
+        },
+        {
+          "index": 1,
+          "importance": 4.698786142398603e-05
+        },
+        {
+          "index": 0,
+          "importance": -2.9761551559204236e-05
+        }
+      ]
+    },
+    "IntegratedGradExplainer": {
+      "node_importance": [
+        5.1995990361319855e-05,
+        -6.09731359872967e-05,
+        1.054750828188844e-05,
+        -5.056180089013651e-05,
+        -1.5243762391037308e-05,
+        -6.833701627328992e-05
+      ],
+      "top_nodes": [
+        {
+          "index": 5,
+          "importance": -6.833701627328992e-05
+        },
+        {
+          "index": 1,
+          "importance": -6.09731359872967e-05
+        },
+        {
+          "index": 0,
+          "importance": 5.1995990361319855e-05
+        },
+        {
+          "index": 3,
+          "importance": -5.056180089013651e-05
+        }
+      ]
+    },
+    "GNNExplainer": {
+      "node_importance": [
+        1.0,
+        0.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "top_nodes": [
+        {
+          "index": 5,
+          "importance": 1.0
+        },
+        {
+          "index": 4,
+          "importance": 1.0
+        },
+        {
+          "index": 3,
+          "importance": 1.0
+        },
+        {
+          "index": 2,
+          "importance": 1.0
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "graph_idx": 11,
+  "dataset_index": null,
+  "subject_id": 10018602,
+  "pred_label": 3,
+  "true_label": 3,
+  "correct": true,
+  "pred_class": "Alcohol abuse with intoxication",
+  "true_class": "Alcohol abuse with intoxication",
+  "num_nodes": 3,
+  "num_edges": 2,
+  "node_global_ids": [
+    110,
+    158,
+    244
+  ],
+  "explanations": {
+    "GradExplainer": {
+      "node_importance": [
+        0.03485308215022087,
+        7.619301322847605e-05,
+        -0.005252028815448284
+      ],
+      "top_nodes": [
+        {
+          "index": 0,
+          "importance": 0.03485308215022087
+        },
+        {
+          "index": 2,
+          "importance": -0.005252028815448284
+        },
+        {
+          "index": 1,
+          "importance": 7.619301322847605e-05
+        }
+      ]
+    },
+    "IntegratedGradExplainer": {
+      "node_importance": [
+        -0.012185131199657917,
+        0.0025135923642665148,
+        -0.0027441808488219976
+      ],
+      "top_nodes": [
+        {
+          "index": 0,
+          "importance": -0.012185131199657917
+        },
+        {
+          "index": 2,
+          "importance": -0.0027441808488219976
+        },
+        {
+          "index": 1,
+          "importance": 0.0025135923642665148
+        }
+      ]
+    },
+    "GNNExplainer": {
+      "node_importance": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "top_nodes": [
+        {
+          "index": 2,
+          "importance": 0.0
+        },
+        {
+          "index": 1,
+          "importance": 0.0
+        },
+        {
+          "index": 0,
+          "importance": 0.0
+        }
+      ]
+    }
+  }
+}
