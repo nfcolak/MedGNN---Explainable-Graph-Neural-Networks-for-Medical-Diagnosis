@@ -23,7 +23,7 @@ from comparison.standardized.clinical_graph_v2.tensorize import (ALL_RELATIONS, 
                                                                  REVERSE_RELATIONS)
 from tests.test_cei_gnn_v3_core import (CLASSES, EDGE_DIM, HIDDEN, K, NODE_DIM, NUM_TOKENS,
                                         TOKEN_DIM, TRIPLES, _graph, _randomise_gates, _run,
-                                        _share_weights, _visit_graph, _write_state)
+                                        _visit_graph, _write_state)
 from tests.test_cei_gnn_v3_hooks import (BLOCK_DELTA_AT_128, CONTROL_HIDDEN, E6A_CONTROL,
                                          E6A_SHAPES, E6A_WIDENED, _count, _network)
 
@@ -342,7 +342,10 @@ def test_edge_mask_of_length_f_plus_r_is_accepted_and_length_f_is_rejected():
     for bad in (torch.ones(F + R, 1), torch.ones(F + R + 1), torch.full((F + R,), 2.0)):
         with pytest.raises(ValueError):
             arm_guards.assert_edge_mask_length(bad, record)
-    # Masking a forward edge to zero does not mask its reverse twin (spec §5.2).
+    # Masking a forward edge to zero does not mask its reverse twin (spec §5.2): the twin's
+    # vote stays nonzero and changes only by the shared per-graph renormalisation
+    # (edge denominator 1 + Σ masked gates), i.e. by the same per-class factor as every
+    # other unmasked edge.
     mask = torch.ones(F + R)
     mask[1] = 0.0                      # forward reports_complaint (reverse twin sits at F + 0)
     arm_guards.assert_edge_mask_length(mask, record)
@@ -351,7 +354,10 @@ def test_edge_mask_of_length_f_plus_r_is_accepted_and_length_f_is_rejected():
     network.set_edge_mask(None)
     assert torch.count_nonzero(masked['edge_contributions'][1]) == 0
     assert torch.count_nonzero(masked['edge_contributions'][F]) > 0
-    torch.testing.assert_close(masked['edge_contributions'][F], ordinary['edge_contributions'][F])
+    twin_ratio = masked['edge_contributions'][F] / ordinary['edge_contributions'][F]
+    other_ratio = masked['edge_contributions'][2] / ordinary['edge_contributions'][2]
+    torch.testing.assert_close(twin_ratio, other_ratio)
+    assert not torch.allclose(twin_ratio, torch.ones_like(twin_ratio))
 
 
 def test_reverse_edge_attribution_is_kept_separate_from_its_forward_edge():
@@ -382,11 +388,13 @@ def test_reverse_edge_attribution_is_kept_separate_from_its_forward_edge():
     assert derived['label'] == 'derived: forward + reverse (not a model attribution)'
     assert tuple(derived['values'].shape) == (R, CLASSES)
     torch.testing.assert_close(derived['values'], contributions[1:F] + contributions[F:])
-    # Under the forward view there is no reverse block and no derived sum.
+    # Under the forward view there is no reverse block and no derived sum. (The widened
+    # E6a tensors cannot be copied into a forward-view network, so the control is built
+    # under the same seed instead; its common tensors equal E6a's by the per-tensor rule.)
     forward_graph = _graph()
     torch.manual_seed(123)
     control = _network(seed=123).eval()
-    _share_weights(network, control)
+    _randomise_gates(control)
     control_parts = _run(control, forward_graph)
     split = arm_guards.reverse_edge_attribution(control_parts['edge_contributions'],
                                                 forward_graph.edge_relation, 'forward')
