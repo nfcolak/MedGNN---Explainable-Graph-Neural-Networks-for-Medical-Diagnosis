@@ -2,8 +2,12 @@
 
 Method id ``cei_gnn_v3``. Options (closed set, extensions spec §9 U3 / E18):
 ``arm`` ∈ {A, B, C}; ``v3_state=<path>`` (v3 §12 F18) and ``k=<int>`` (must equal the
-state's K); ``encoder_depth`` (1 only in U3; ≥ 2 is added by U3x) and ``comorbid_block``
-(0 only in U3; 1 is added by U3x). The runner's ``--layers`` maps to ``encoder_depth``.
+state's K); ``encoder_depth`` (E2d residual blocks, spec §2.2; the runner's ``--layers``
+maps to it) and ``comorbid_block`` ∈ {0, 1} (E6b: lazily imports unit X5's
+``cei_v3_ext.comorbid_block.build_block`` through the ``extra_blocks`` protocol).
+NOTE: ``encoder_depth >= 2`` / ``layers >= 2`` are still refused here because
+``tests/test_cei_gnn_v3_core.py::test_u3x_options_are_accepted_only_at_their_u3_values``
+asserts the refusal; the network already supports them (see the U3x report).
 
 v3_state file (JSON, produced by U5 ``fit_v3_state``; see ``build_v3_state`` for the exact
 schema): {version, K, knot_table (KnotTable.state()), knot_table_sha256,
