@@ -96,7 +96,8 @@ def test_comorbid_pairs_follow_batch_offsets_and_never_cross_graphs():
     assert pairs.tolist() == [[8, 9, offset + 8, offset + 9], [9, 10, offset + 9, offset + 10]]
     assert torch.equal(batch.batch[pairs[0]], batch.batch[pairs[1]])
     crossing = batch.edge_index.clone()
-    crossing[1, -1] = 0   # the last comorbid record of graph 2 now ends in graph 0
+    assert int(batch.edge_relation[-2]) == COMORBID   # the last comorbid record of graph 2
+    crossing[1, -2] = 0                                # ... now ends in graph 0
     with pytest.raises(ValueError, match='graph'):
         cb.comorbid_pairs(crossing, batch.edge_relation, COMORBID, batch.batch)
     with pytest.raises(ValueError, match='edge_relation'):
