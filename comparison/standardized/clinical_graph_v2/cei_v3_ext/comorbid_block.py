@@ -65,6 +65,10 @@ class ComorbidPairBlock(nn.Module):
         super().__init__()
         self.hidden, self.num_classes = int(hidden), int(num_classes)
         self.relation_id, self.seed = int(relation_id), int(seed)
+        # Stub registration (red step 2): shapes only; the maths is added in the green step.
+        self.pair_projection = nn.Linear(self.hidden, PAIR_RANK, bias=False)
+        self.vote = nn.Linear(PAIR_RANK, self.num_classes)
+        self.gate = nn.Parameter(torch.ones(self.num_classes))
 
     def parameter_names(self) -> Tuple[str, ...]:
         return tuple(f'{EXTRA_BLOCK_PREFIX}.{self.name}.{local}'
