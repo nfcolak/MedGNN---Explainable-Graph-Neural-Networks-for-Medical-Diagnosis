@@ -573,7 +573,11 @@ def _foreign_control(binding, controls):
 
 
 def _record_controls_drift(binding, controls):
+    # A re-hashed record whose control list differs from the one handed to the guard
+    # (an unhashed edit would trip the freeze-hash check first, v3 §12.17).
     controls['k_selection']['control_binding_sha256'] = C_BINDING_HASHES[:2] + ['1' * 64]
+    controls['k_selection_sha256'] = study.k_selection_sha256(controls['k_selection'])
+    binding['k_selection_sha256'] = controls['k_selection_sha256']
 
 
 def _prep_config_drift(binding, controls):
