@@ -47,6 +47,7 @@ those older runs; their three-method topology parity did not establish equal hub
 payloads. The current entrypoint rejects any other artifact fingerprint.
 
 - [Repository map and output ownership](STRUCTURE.md)
+- [CEI-GNN v3 delivery report (aggregate results, provenance, open limits)](docs/cei-v3-delivery-2026-10-01.md)
 - [Exact verification evidence and remaining limitations](docs/usability-verification.md)
 - [Browser graph viewer](visualizer/README.md)
 - [Working-tree cleanup and reversible restoration](docs/cleanup-working-tree.md)
