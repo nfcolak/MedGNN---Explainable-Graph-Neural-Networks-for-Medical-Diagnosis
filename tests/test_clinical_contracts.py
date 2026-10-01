@@ -18,7 +18,10 @@ def test_rewiring_with_numeric_payload_is_refused():
 
 def test_corrected_manifest_requires_explicit_temporal_uncertainty():
     manifest = {'status': 'completed', 'logic_contract_version': 'clinical_graph_logic_v2',
-                'temporal_clean': False}
+                'temporal_clean': False,
+                'visit_membership_contract_version': 'clinical_visit_membership_v1',
+                'visit_membership_file': 'visit_membership.jsonl',
+                'visit_membership_rows': 0, 'visit_membership_sha256': '0' * 64}
     train.validate_artifact_manifest(manifest)
     manifest['temporal_clean'] = True
     with pytest.raises(ValueError, match='temporal_clean'):
