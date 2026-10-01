@@ -337,19 +337,20 @@ def build_pptx(path):
     s3 = prs.slides.add_slide(blank)
     title(s3, "Prediction and explanation quality")
     tb(s3, 0.6, 1.38, 3.65, 0.42, [("Primary screen: macro-F1", 17, NAVY, True)])
-    acc = [("Method", "Macro-F1"), ("CEI-GNN v3", f"{evidence['macro_f1_seed_means']['screen']['C']:.4f}"),
-           ("CEI-GNN v2", f"{evidence['macro_f1_seed_means']['screen']['A']:.4f}"),
-           ("ProtGNN", f"{evidence['macro_f1_seed_means']['screen']['P']:.4f}"),
-           ("XGBoost", f"{evidence['macro_f1_seed_means']['screen']['X']:.4f}")]
-    at = s3.shapes.add_table(5, 2, Inches(0.6), Inches(1.85), Inches(3.65), Inches(2.25)).table
-    at.columns[0].width, at.columns[1].width = Inches(2.45), Inches(1.2)
+    acc = [("Method", "Macro-F1", "Active\nparams"), ("CEI-GNN v3", f"{evidence['macro_f1_seed_means']['screen']['C']:.4f}", "94,380"),
+           ("CEI-GNN v2", f"{evidence['macro_f1_seed_means']['screen']['A']:.4f}", "92,300"),
+           ("ProtGNN", f"{evidence['macro_f1_seed_means']['screen']['P']:.4f}", "399,884"),
+           ("XGBoost", f"{evidence['macro_f1_seed_means']['screen']['X']:.4f}", "N/A")]
+    at = s3.shapes.add_table(5, 3, Inches(0.6), Inches(1.85), Inches(3.65), Inches(2.25)).table
+    at.columns[0].width, at.columns[1].width, at.columns[2].width = Inches(1.55), Inches(0.90), Inches(1.20)
     for r, row in enumerate(acc):
         for c, value in enumerate(row):
             cell=at.cell(r,c); cell.text=value; cell.fill.solid(); cell.fill.fore_color.rgb=rgb(NAVY if r==0 else ("D2EEF0" if r==1 else ("FFFFFF" if r%2 else "F4F4F4"))); cell.vertical_anchor=MSO_ANCHOR.MIDDLE
             p=cell.text_frame.paragraphs[0]; p.alignment=PP_ALIGN.RIGHT if c else PP_ALIGN.LEFT
-            f=p.runs[0].font; f.name=FONT; f.size=Pt(16); f.bold=(r==0 or r==1); f.color.rgb=rgb("FFFFFF" if r==0 else INK)
+            f=p.runs[0].font; f.name=FONT; f.size=Pt(15 if c == 2 else (14 if c == 1 else 16)); f.bold=(r==0 or r==1); f.color.rgb=rgb("FFFFFF" if r==0 else INK)
     tb(s3, 0.62, 4.18, 3.65, 0.66, [("Patient-equal macro-F1; 5,000 screen visits / 3 seeds.", 14, GREY, False)])
-    tb(s3, 0.62, 5.00, 3.6, 1.1, [("No decisive accuracy gain on the primary screen.", 17, TEAL, True), ("No superiority or equivalence claim.", 14, INK, False)])
+    tb(s3, 0.62, 4.76, 3.65, 0.70, [("v2 control: 94,380 total, 92,300 active. XGBoost: not a neural parameter count.", 12, GREY, False)])
+    tb(s3, 0.62, 5.48, 3.6, 1.1, [("No decisive accuracy gain on the primary screen.", 17, TEAL, True)])
     tb(s3,4.48,1.38,8.25,0.4,[("Explanation quality: CEI / ProtGNN (3-seed means)",17,NAVY,True)])
     names=[("Native","Native"),("GradExplainer","GradExplainer"),("IntegratedGradExplainer","Integrated Gradients"),("GNNExplainer","GNNExplainer"),("Random","Random")]
     headers=["Explainer","Fidelity-\n(lower better)","Fidelity+\n(higher better)","Sparsity\n(higher better)"]
@@ -388,7 +389,7 @@ def build_pptx(path):
     notes_text = ("Source keys: docs/cei-v3-evidence-2026-10-01.json graphxai.seed_means and graphxai.C_minus_P. Absolute seed means C_K4 / P, rounded to 3 decimals:\n" +
        "\n".join(mean_lines) +
        "\nPaired differences are C_minus_P, not absolute scores; 95% paired subject-cluster bootstrap CIs, conditional on three checkpoints:\n" + "\n".join(ci_lines) +
-       "\nFidelity-minus: probability drop when only important node inputs are kept (other node inputs are zeroed; edges are unchanged); fidelity-plus: drop when important node inputs are masked (zeroed; edges are unchanged). Sparsity is fraction excluded at 90% importance mass. Cohort: 500 screen visits / 498 subjects / 3 seeds. Native ProtGNN unavailable. These are model-faithfulness metrics, not clinical validity. No macro-F1 superiority or equivalence claim.")
+       "\nFidelity-minus: probability drop when only important node inputs are kept (other node inputs are zeroed; edges are unchanged); fidelity-plus: drop when important node inputs are masked (zeroed; edges are unchanged). Sparsity is fraction excluded at 90% importance mass. Cohort: 500 screen visits / 498 subjects / 3 seeds. Native ProtGNN unavailable. These are model-faithfulness metrics, not clinical validity. No macro-F1 superiority or equivalence claim.\n\nParameter counts (verified from the parent-run logical bindings; no checkpoint loading): CEI-GNN v3 C_K4 has 94,380 registered parameters, all active. CEI-GNN v2 additive control A is implemented in the v3 superset: 94,380 registered total, 92,300 active, 2,080 inactive. ProtGNN has 399,884 total, all active. These counts are identical across seeds 1234, 2025 and 7 and share preprocessing SHA-256 9a9ab7a4df8b9a9d6b6c56bc53335f94716df8041d2acd7428e7b512710c5ecd. Logical binding sources: core/C_K4_seed{seed}/binding.json, core/A_seed{seed}/binding.json, protgnn/P_seed{seed}/binding.json. Source roots: /Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.worktrees/run-cei3-core/comparison/standardized/clinical_runs_cei_v3_20260930 and /Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.worktrees/run-cei3-vs-protgnn/comparison/standardized/clinical_runs_cei_v3_vs_protgnn_20260930. XGBoost has no neural parameter count. Parameter counts do not establish compute speed.")
     notes(s3, notes_text)
     prs.save(path)
 
