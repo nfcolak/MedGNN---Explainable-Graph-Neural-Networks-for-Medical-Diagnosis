@@ -361,11 +361,11 @@ def build_pptx(path):
        [("What we can say", 20, NAVY, True),
         ([("Interpretable by construction. ", {"bold": True}),
           ("Every CEI score splits exactly into signed evidence terms.", {})], 18, INK, False),
-        ([("Explanations are model-faithful, not clinical proof. ", {"bold": True}),
-          ("Against Grad and IG on 500 screen visits, CEI is favoured on fidelity-minus and sparsity, "
-           "not uniformly on fidelity-plus; ProtGNN has no native explanation to compare.", {})], 18, INK, False),
-        ([("Accuracy is on par, not superior. ", {"bold": True}),
-          ("Differences are within about 0.005; no winner claim.", {})], 18, INK, False)])
+        ([("Explanation evidence is mixed. ", {"bold": True}),
+          ("Using Grad and IG on 500 screen visits, CEI outperforms ProtGNN on fidelity-minus and sparsity, "
+           "not uniformly on fidelity-plus. Native ProtGNN attribution was unavailable in this implementation.", {})], 18, INK, False),
+        ([("Superiority is not established. ", {"bold": True}),
+          ("The screen is inconclusive; this does not prove equivalence.", {})], 18, INK, False)])
     footer(s3, "Max6 cohort, train-derived Top-10 classes; 10,000 train / 5,000 screen visits; seeds 1234, 2025, 7; patient-disjoint splits; "
                "rounded seed means. Held-out test never accessed.  Source: docs/cei-v3-evidence-2026-10-01.json", y=6.75)
     notes(s3, "Source: docs/cei-v3-delivery-2026-10-01.md and docs/cei-v3-evidence-2026-10-01.json (aggregate only). "
@@ -374,9 +374,9 @@ def build_pptx(path):
               "Screen seed means: CEI v3 C 0.6418, v2 A 0.6420, ProtGNN 0.6371, XGBoost 0.6371. No screen contrast passes the preregistered rule; v3 benefit over v2 not demonstrated. "
               "Validation second-look (opened after the inconclusive screen, no multiplicity correction, 3 seeds): C 0.6395 vs ProtGNN 0.6303, delta 0.0092 (95% CI 0.0024-0.0153); "
               "not a broad winner claim, and no XGBoost victory is claimed. A non-significant interval is not evidence of equivalence. "
-              "GraphXAI: 500 screen visits / 498 subjects, 3 seeds; Grad and IG favour CEI on fidelity-minus and sparsity, not uniformly on fidelity-plus; "
-              "native ProtGNN explanations unavailable. Faithfulness to the model, not clinical validity. "
-              "Arm C absence share is about 1.7-1.8% of visits (row mean); arm B without absence is above C on screen, so no benefit of absence evidence is shown.")
+              "GraphXAI: 500 screen visits / 498 subjects, 3 seeds; comparison using Grad and IG: CEI outperforms ProtGNN on fidelity-minus and sparsity, not uniformly on fidelity-plus; "
+              "native ProtGNN attribution unavailable in this implementation. Faithfulness to the model, not clinical validity. "
+              "Arm C absence evidence share is about 1.7-1.8%, averaged over visits; arm B without absence is above C on screen, so no benefit of absence evidence is shown.")
     prs.save(path)
 
 
