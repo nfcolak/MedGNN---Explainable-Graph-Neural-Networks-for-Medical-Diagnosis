@@ -137,6 +137,8 @@ def array_hash(values):
 
 def load_screen(directory, ids, reference_rows=None):
     result = read(directory / 'screen_result.json')
+    study.assert_absence_share_replay(result, shares_path=directory / 'shares.npz',
+                                     logits_path=directory / 'logits.npz')
     with np.load(directory / 'logits.npz', allow_pickle=False) as saved:
         logits = saved['logits'].copy()
         rows = tuple(saved[key].copy() for key in ('y', 'subjects', 'sample_ids'))

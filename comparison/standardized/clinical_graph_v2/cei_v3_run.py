@@ -224,7 +224,8 @@ def _screen_predictions(stage, config, frozen, record, encoder):
     study.validate_v3_binding(binding, stage, screen_record=record, k_selection=frozen,
                              study_binding=_read(directory / study.STUDY_BINDING_FILENAME))
     path = directory / study.SCREEN_DIRNAME / 'screen_result.json'
-    result = study.ScreenResult(**_read(path))
+    result = study.load_screen_result(path, shares_path=path.parent / 'shares.npz',
+                                      logits_path=path.parent / 'logits.npz')
     expected = {'arm': stage.arm, 'seed': stage.seed, 'k': stage.k,
                 'checkpoint_sha256': sha256(directory / 'best.pt'),
                 'binding_sha256': sha256(directory / 'binding.json'),

@@ -330,6 +330,9 @@ def preflight(limit):
                 equal(f'bound source {key}', source.get(key), value)
             equal('preprocessing bytes', sha256(directory / 'preprocessing.json'), binding['preprocessing_sha256'])
             saved_result = read(directory / 'screen/screen_result.json')
+            study.assert_absence_share_replay(
+                saved_result, shares_path=directory / 'screen/shares.npz',
+                logits_path=directory / 'screen/logits.npz')
             checkpoint_hash = sha256(directory / 'best.pt')
             equal('screen-bound checkpoint', checkpoint_hash, saved_result['checkpoint_sha256'])
             equal('screen-bound binding', sha256(directory / 'binding.json'), saved_result['binding_sha256'])

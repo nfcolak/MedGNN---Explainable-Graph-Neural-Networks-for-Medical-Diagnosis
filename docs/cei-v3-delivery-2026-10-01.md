@@ -23,7 +23,7 @@ source file hashes under `source_aggregate_sha256`). No patient-level data, pred
 ## Selection policy (frozen before screen)
 
 - K grid [4, 8, 16], arm C only, statistic: unweighted mean over seeds of selected_dev.metric_value. Dev seed means: K4 0.6493, K8 0.6482, K16 0.6482; K = 4 selected (tie rule not applied).
-- Class weighting: dev-selected sqrt-inverse (unchanged). XGBoost selection from screen or validation: False; validation reselection: False; validation retraining: False.
+- Class weighting: fixed sqrt-inverse policy (unchanged), with checkpoints selected on dev macro-F1. XGBoost selection from screen or validation: False; validation reselection: False; validation retraining: False.
 
 ## Macro-F1 seed means
 
@@ -69,7 +69,7 @@ Reading: on the screen no contrast clears the rule. On validation only C - P cle
 
 ## Absence evidence
 
-Arm C screen absence share (historical): 1.67% / 1.83% / 1.81% for seeds 1234 / 2025 / 7. This is a **row (visit) mean**, not a patient mean; the patient mean has not been computed. A code fix is forthcoming; historical outputs are not repaired and are not rewritten. Arm B (no absence) is above C on the screen (0.6439 vs 0.6418), so no benefit of absence evidence is shown.
+Arm C screen absence share (historical): 1.67% / 1.83% / 1.81% for seeds 1234 / 2025 / 7. This is a **row (visit) mean**, not a patient mean; the historical patient mean has not been computed. The implemented correction retains the legacy row field and adds explicit row/equal-patient means, an aggregation version and a file-hashed per-visit proof with replay validation in the core and extension consumers. Existing targeted CEI tests verify the implementation; historical outputs are neither recomputed nor rewritten. Arm B (no absence) is above C on the screen (0.6439 vs 0.6418), so no benefit of absence evidence is shown.
 
 ## GraphXAI explanation comparison (C K4 vs ProtGNN)
 
@@ -99,9 +99,48 @@ Grad and IntegratedGrad favour C on fidelity-minus and sparsity (3/3 seeds). Fid
 - Extension families E2w, E2d, E6a, E6b, O: **not executed** (`extensions_executed` false in the core decision record).
 - Arm O validation fitting: **refused** (not approved). Long-run matrix: **unapproved** until a measured train/dev budget is shown. Test fold: closed.
 
-## Expected interfaces (pending integrator confirmation)
+## Verified interfaces and protected archive usage
 
-Concurrent work packages are expected to add a preservation/backup helper, a parameterized runner with a preflight/plan mode, and an extension CLI (`cei_v3_ext`, `cei_v3_preflight.py`). Their names, flags and behaviour are **not verified here**; read-only plan/help modes must write nothing and deserialize no graphs. Nothing in this report depends on them being merged.
+Run from the merged checkout. Set `DATA_ROOT` to the original private repository-layout input root and `ARCHIVE` to the separately preserved `cei-v3-20261001` archive, **outside all worktrees**. These are operator-supplied absolute paths, not public data. The archive holds `core`, `protgnn`, `validation`, `xgboost` and `graphxai` children; its private `preservation_manifest.json` maps historical paths only at verified file-open boundaries. Original bindings, source hashes and checkpoint bytes are never rewritten. Archive verification reports 291 files / 231136374 bytes and zero mismatches; manifest SHA-256: `b0a1118f420d3cce6d892fcc22877e867b08276555c5e6f57140e31eb71bf522`.
+
+Actual `--help` and metadata plans for all five CLIs below passed against that external archive. The four comparisons each verified 12 bindings; plans created no output, loaded no prediction arrays and deserialized no graphs. Before/after hash snapshots of the archive, original evidence roots and tracked source matched. Choose fresh ignored output paths, never inside an input/archive root.
+
+```bash
+# Read-only archive verification; no copying or historical mutation.
+env -u PYTHONPATH PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 \
+  -m comparison.standardized.clinical_graph_v2.cei_v3_preserve --verify "$ARCHIVE"
+
+# Verified comparison metadata interfaces; no --execute here.
+for cli in cei_v3_vs_protgnn cei_v3_validation cei_v3_vs_xgboost cei_v3_graphxai; do
+  env -u PYTHONPATH PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 \
+    -m "comparison.standardized.clinical_graph_v2.$cli" --help
+  env -u PYTHONPATH PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 \
+    -m "comparison.standardized.clinical_graph_v2.$cli" \
+    --data-root "$DATA_ROOT" --results-root "$ARCHIVE" \
+    --path-map "$ARCHIVE/preservation_manifest.json" \
+    --output-root "comparison/standardized/clinical_runs_plan_only_recovery_$cli" --plan
+done
+
+# Extension plan (no --execute): four sequential bounded stages, 12 full stages.
+# OUTPUT_ROOT must be an absolute, fresh, ignored path in the merged checkout.
+env -u PYTHONPATH PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 \
+  -m comparison.standardized.clinical_graph_v2.cei_v3_ext.run --help
+env -u PYTHONPATH PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 \
+  -m comparison.standardized.clinical_graph_v2.cei_v3_ext.run \
+  --core-root "$ARCHIVE/core" \
+  --artifact "$DATA_ROOT/comparison/standardized/event_inputs/clinical_graph_v3_membership_max6_20260923" \
+  --targets "$DATA_ROOT/comparison/standardized/event_inputs/first_recorded_lab_all_visits_v2_targets_local_v2_max6/targets.csv" \
+  --canonical "$DATA_ROOT/comparison/canonical_split.json" \
+  --path-map "$ARCHIVE/preservation_manifest.json" --output-root "$OUTPUT_ROOT" \
+  --python /usr/bin/python3 --device cpu --threads 2 \
+  --memory-ceiling-gib 8 --stage-timeout-seconds 1800
+```
+
+The exact extension argv parses against the merged training entrypoint and retained control metadata passes replay checks. A **separate approved smoke unit**, not this integration, may append `--execute smoke` to the extension command: E2d/E6b/E6a/E2w sequentially, seed 1234, 256 train / 128 dev / 2 epochs, frozen K=4, fixed sqrt-inverse weights. It uses selected train/dev graph reads only; no screen, validation or test scoring, no cache rebuild. Its fresh outputs include a journal, actual epoch timing/peak memory and a measured scaling estimate; no such measurement exists yet.
+
+`m=5` remains mandatory even with O omitted. Do not pass `--include-o` or create an O approval: validation fitting is refused. `--execute full` fails closed without a distinct approval bound to the completed measured smoke journal, unchanged source/input identity and AC power. A historical scoring-pass approval does not authorize fitting. Long-run execution remains unapproved.
+
+**Plan success is not reproduction or execution preflight.** Historical comparison `--execute` remains intentionally fail-closed: retained source hashes differ for `cei_v3_ext/study.py`, `cei_v3_run.py`, `cei_v3_study.py`, `cei_v3_vs_protgnn.py` and `train.py`. Exact historical replay from this merged source is unsupported; a matching isolated historical-source environment would require separately authorized execution and has not been supplied or verified here. No validation or GraphXAI scoring was launched. XGBoost no longer requires an arbitrary agent branch name; clean committed source plus the existing bound scientific source/input/fold/hash checks remain required. No source parity is silently waived.
 
 ## Provenance
 
@@ -120,7 +159,6 @@ Concurrent work packages are expected to add a preservation/backup helper, a par
 | `graphxai.*` | `graphxai/summary.json` |
 | `not_run.extensions_executed` | `core/decision.json` |
 
-Logical roots: core = `clinical_runs_cei_v3_20260930`; protgnn = `clinical_runs_cei_v3_vs_protgnn_20260930`; validation = `clinical_runs_cei_v3_validation_20260930`; xgboost = `clinical_runs_cei_v3_vs_xgboost_20260930_retry2`; graphxai = `cei_v3_graphxai_screen500_20260930`. Saved results are git-ignored and live in linked worktrees; immutable outputs embed their original absolute paths, which are not rewritten (hashes would break).
+Logical roots: core = `clinical_runs_cei_v3_20260930`; protgnn = `clinical_runs_cei_v3_vs_protgnn_20260930`; validation = `clinical_runs_cei_v3_validation_20260930`; xgboost = `clinical_runs_cei_v3_vs_xgboost_20260930_retry2`; graphxai = `cei_v3_graphxai_screen500_20260930`. Saved results are protected in the verified external archive; original worktree outputs are retained unchanged. Private immutable outputs embed their original absolute paths, which are mapped at I/O boundaries, not rewritten (hashes would break).
 
 Historical context: [`graphxai-500-results.md`](graphxai-500-results.md), [`cei-gnn-v2-pair-study-result-2026-09-29.md`](cei-gnn-v2-pair-study-result-2026-09-29.md).
-

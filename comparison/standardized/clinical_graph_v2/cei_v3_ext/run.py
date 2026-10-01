@@ -21,7 +21,8 @@ from .. import cei_v3_study as core
 from ..contracts import recursive_source_hashes
 from . import study
 from .arm_guards import EXTENSION_ARMS, arm_of_run_config, assert_extension_binding
-from .io import PathMap, digest, read_json
+from ..cei_v3_paths import PathMap, check_output, resolve as resolve_paths
+from .io import digest, read_json
 
 MODULE = 'comparison.standardized.clinical_graph_v2.cei_v3_ext.run'
 SMOKE_BUDGET = (256, 128, 2)
@@ -54,6 +55,11 @@ def plan(args, path_map):
                  Path(args.python)):
         if not path.exists():
             raise ValueError(f'input missing: {path}')
+    paths = resolve_paths(argparse.Namespace(
+        results_root=Path(args.path_map).parent if args.path_map else core_root.parent,
+        v3_root=core_root, artifact=args.artifact, targets=args.targets,
+        canonical=args.canonical, path_map=args.path_map))
+    check_output(paths, root)
     if root == core_root or root in core_root.parents or core_root in root.parents:
         raise ValueError('extension root must be disjoint from immutable core root')
     if args.threads < 1 or args.memory_ceiling_gib <= 0 or args.stage_timeout_seconds <= 0:
