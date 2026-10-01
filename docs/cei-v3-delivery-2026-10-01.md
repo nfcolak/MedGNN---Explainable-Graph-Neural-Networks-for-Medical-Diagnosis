@@ -96,8 +96,8 @@ Grad and IntegratedGrad favour C on fidelity-minus and sparsity (3/3 seeds). Fid
 
 ## Not executed / not approved
 
-- Extension families E2w, E2d, E6a, E6b, O: **not executed** (`extensions_executed` false in the core decision record).
-- Arm O validation fitting: **refused** (not approved). Long-run matrix: **unapproved** until a measured train/dev budget is shown. Test fold: closed.
+- Extension families E2w, E2d, E6a, E6b: **not executed at full scale** (`extensions_executed` false in the core decision record, which is unchanged); only the bounded train/dev smoke below was run. O: not executed.
+- Arm O validation fitting: **refused** (not approved). Full long-run matrix: **unapproved and unrun**; a measured train/dev smoke budget now exists (below) but is not an approval. Test fold: closed.
 
 ## Verified interfaces and protected archive usage
 
@@ -136,11 +136,38 @@ env -u PYTHONPATH PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 \
   --memory-ceiling-gib 8 --stage-timeout-seconds 1800
 ```
 
-The exact extension argv parses against the merged training entrypoint and retained control metadata passes replay checks. A **separate approved smoke unit**, not this integration, may append `--execute smoke` to the extension command: E2d/E6b/E6a/E2w sequentially, seed 1234, 256 train / 128 dev / 2 epochs, frozen K=4, fixed sqrt-inverse weights. It uses selected train/dev graph reads only; no screen, validation or test scoring, no cache rebuild. Its fresh outputs include a journal, actual epoch timing/peak memory and a measured scaling estimate; no such measurement exists yet.
+The exact extension argv parses against the merged training entrypoint and retained control metadata passes replay checks. A **separate approved smoke unit**, not this integration, may append `--execute smoke` to the extension command: E2d/E6b/E6a/E2w sequentially, seed 1234, 256 train / 128 dev / 2 epochs, frozen K=4, fixed sqrt-inverse weights. It uses selected train/dev graph reads only; no screen, validation or test scoring, no cache rebuild. That smoke has now been run (see the next section).
 
 `m=5` remains mandatory even with O omitted. Do not pass `--include-o` or create an O approval: validation fitting is refused. `--execute full` fails closed without a distinct approval bound to the completed measured smoke journal, unchanged source/input identity and AC power. A historical scoring-pass approval does not authorize fitting. Long-run execution remains unapproved.
 
 **Plan success is not reproduction or execution preflight.** Historical comparison `--execute` remains intentionally fail-closed: retained source hashes differ for `cei_v3_ext/study.py`, `cei_v3_run.py`, `cei_v3_study.py`, `cei_v3_vs_protgnn.py` and `train.py`. Exact historical replay from this merged source is unsupported; a matching isolated historical-source environment would require separately authorized execution and has not been supplied or verified here. No validation or GraphXAI scoring was launched. XGBoost no longer requires an arbitrary agent branch name; clean committed source plus the existing bound scientific source/input/fold/hash checks remain required. No source parity is silently waived.
+
+## Smoke and verification (2026-10-01)
+
+Approved bounded train/dev smoke, run from source commit `12c7bf3c` (RSS-monitor fallback). Aggregate receipt: [`cei-v3-smoke-2026-10-01.json`](cei-v3-smoke-2026-10-01.json). Private evidence (journal, logs, failed attempt) lives in the private archives `$PRIVATE_ARCHIVE/cei-v3-20261001` and `$PRIVATE_ARCHIVE/cei-v3-smoke-20261001/{completed,failed-attempt}`; they are not part of this repository.
+
+- E2d, E6b, E6a, E2w each ran sequentially: seed 1234, 256 train / 128 dev rows, 2 real epochs, CPU, 2 threads, 8 GiB ceiling, completed and verified checkpoint (8 real epochs in total, journal return code 0). Held-out test, validation and screen graphs were not deserialized; no validation fitting; O excluded.
+- One earlier attempt failed because the sandbox denied `ps` for RSS monitoring. A native `psutil` fallback (the only source change, in `cei_v3_ext/run.py`) fixed it; the failed attempt is preserved.
+- Existing smoke checks: 372 passed. Combined 12-file existing suite on the merged branch: 381 passed. Archive verification: 291 files / 231136374 bytes, zero mismatches.
+- The smoke is a runtime/plumbing check, not a scientific result; the main experiment evidence above is unchanged.
+
+Measured budget for a future full run (three seeds per arm, 40 epochs, 10,000 train / 5,000 dev), minutes:
+
+| Arm | Three seeds |
+|---|---:|
+| E2d | 29.17 |
+| E6b | 27.76 |
+| E6a | 29.41 |
+| E2w | 32.08 |
+| Total (12 trainings) | 118.41 |
+
+This is a linear scaling of a small two-epoch CPU smoke (setup held constant, first epoch includes warmup, combined-row scale 39.0625), **not a promise**. The extension screen encoding/inference, paired bootstrap/decision aggregation and full-data setup tail are unmeasured, and O is excluded. Larger graph/batch composition, early stopping and peak-memory scaling are unmeasured.
+
+Source-scoped limitations:
+
+- The smoke binds to source `12c7bf3c`; the later documentation/test merge did not change `clinical_graph_v2` Python source (hash inventory compared). Historical source-bound execution approvals are incompatible with it, and any full approval must bind this completed smoke and unchanged source/input identity.
+- Full execution has not been run and is not approved. Arm O validation fitting remains refused. Test fold never opened.
+- The historical patient-mean absence share has not been recalculated, and exact historical replay is not supported on this source.
 
 ## Provenance
 
