@@ -202,7 +202,7 @@ def _extension_argv(arm, control_argv, output) -> Tuple[str, ...]:
     return tuple(argv)
 
 
-def extension_plan(v3_plan, config) -> study.Plan:
+def extension_plan(v3_plan, config, *, allow_existing=False) -> study.Plan:
     """Locked combined run plan (EXT §8) on top of a frozen v3 plan (U5 `plan`).
 
     Order: the v3 plan unchanged (state fit, nine C stages, K freeze, A and B), the twelve
@@ -225,7 +225,7 @@ def extension_plan(v3_plan, config) -> study.Plan:
         for seed in study.SEEDS:
             name = f'{arm}_seed{seed}'
             output = root / name
-            if output.exists():
+            if output.exists() and not allow_existing:
                 raise FileExistsError(f'Refusing occupied stage output {output}')
             control = controls[seed]
             stages.append(study.Stage(
@@ -253,7 +253,7 @@ def extension_plan(v3_plan, config) -> study.Plan:
                 rows.append(ScreenRow(name=f'{arm}_seed{seed}', arm=arm, seed=seed,
                                       stage=stage_name, source='inference', output=str(screen_dir)))
     for row in rows:
-        if Path(row.output).exists():
+        if Path(row.output).exists() and not allow_existing:
             raise FileExistsError(f'Refusing to plan screen row {row.name}: output {row.output} '
                                   'exists; a frozen checkpoint is screened once, never twice')
     freeze = ['freeze:checkpoint_hashes']
