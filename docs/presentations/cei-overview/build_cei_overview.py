@@ -9,8 +9,7 @@ Usage (from anywhere):
 Outputs next to this script:
     assets/clinical-graph.svg        standalone vector diagram (+ legend, caveats)
     cei-overview.pptx                editable 3-slide deck
-PNG and PDF are produced separately (see README.md): the PNG by macOS Quick Look
-from the SVG, the PDF by a genuine Keynote export of the PPTX.
+PNG is produced from the SVG by the browser; PDF is exported from the PPTX by the parent PowerPoint workflow.
 Requires python-pptx.
 """
 import sys
@@ -330,53 +329,67 @@ def build_pptx(path):
               "The decomposition is exact on logits, not probabilities. The method name CEI-GNN is used without an invented expansion. "
               "v3 uses the v2 additive pair mode; the multiplicative pair interaction did not succeed.")
 
-    # ---- Slide 3: evidence
+    # ---- Slide 3: compact accuracy + numeric explanation evidence
+    import json
+    evidence = json.loads((HERE.parents[1] / "cei-v3-evidence-2026-10-01.json").read_text())
+    gx = evidence["graphxai"]
+    means = gx["seed_means"]
     s3 = prs.slides.add_slide(blank)
-    title(s3, "What the evidence supports")
-    tb(s3, 0.6, 1.4, 6.3, 0.4, [("Primary screen, macro-F1 (3-seed mean)", 16, GREY, True)])
-    data = [("CEI-GNN v3 (arm C)", "0.6418"), ("CEI-GNN v2 (arm A)", "0.6420"),
-            ("ProtGNN", "0.6371"), ("XGBoost", "0.6371")]
-    tbl = s3.shapes.add_table(len(data) + 1, 2, Inches(0.6), Inches(1.95), Inches(6.3), Inches(2.9)).table
-    tbl.columns[0].width, tbl.columns[1].width = Inches(4.3), Inches(2.0)
-    for r in range(len(data) + 1):
-        for c in range(2):
-            cell = tbl.cell(r, c)
-            txt = (("Method", "Macro-F1") if r == 0 else data[r - 1])[c]
-            cell.text = txt
-            p = cell.text_frame.paragraphs[0]
-            p.alignment = PP_ALIGN.RIGHT if c else PP_ALIGN.LEFT
-            f = p.runs[0].font
-            f.name, f.size = FONT, Pt(20)
-            f.bold = r == 0 or r == 1
-            f.color.rgb = rgb("FFFFFF" if r == 0 else INK)
-            cell.fill.solid()
-            cell.fill.fore_color.rgb = rgb(NAVY if r == 0 else ("D2EEF0" if r == 1 else ("FFFFFF" if r % 2 else "F4F4F4")))
-            cell.vertical_anchor = MSO_ANCHOR.MIDDLE
-    box(s3, 0.6, 5.05, 6.3, 1.25, "FFFFFF", TEAL, "", lw=2.25)
-    tb(s3, 0.75, 5.1, 6.0, 1.15,
-       [("No decisive screen gain yet", 24, TEAL, True),
-        ("No contrast passes the preregistered rule; v3 over v2: \u22120.0002, 95% CI [\u22120.0047, +0.0042].", 14, INK, False)],
-       anchor=MSO_ANCHOR.MIDDLE)
-    tb(s3, 7.4, 1.4, 5.4, 4.9,
-       [("What we can say", 20, NAVY, True),
-        ([("Interpretable by construction. ", {"bold": True}),
-          ("Every CEI score splits exactly into signed evidence terms.", {})], 18, INK, False),
-        ([("Explanation evidence is mixed. ", {"bold": True}),
-          ("Using Grad and IG on 500 screen visits, CEI outperforms ProtGNN on fidelity-minus and sparsity, "
-           "not uniformly on fidelity-plus. Native ProtGNN attribution was unavailable in this implementation.", {})], 18, INK, False),
-        ([("Superiority is not established. ", {"bold": True}),
-          ("The screen is inconclusive; this does not prove equivalence.", {})], 18, INK, False)])
-    footer(s3, "Max6 cohort, train-derived Top-10 classes; 10,000 train / 5,000 screen visits; seeds 1234, 2025, 7; patient-disjoint splits; "
-               "rounded seed means. Held-out test never accessed.  Source: docs/cei-v3-evidence-2026-10-01.json", y=6.75)
-    notes(s3, "Source: docs/cei-v3-delivery-2026-10-01.md and docs/cei-v3-evidence-2026-10-01.json (aggregate only). "
-              "Cohort: max6 (patients with more than 6 total visits excluded), train-derived Top-10 classes; 10,000 train, 5,000 dev (selection), "
-              "5,000 screen visits, 4,254 validation. Seeds 1234/2025/7, patient-disjoint; key weighted_macro_f1 (patient-equal). Held-out test untouched. "
-              "Screen seed means: CEI v3 C 0.6418, v2 A 0.6420, ProtGNN 0.6371, XGBoost 0.6371. No screen contrast passes the preregistered rule; v3 benefit over v2 not demonstrated. "
-              "Validation second-look (opened after the inconclusive screen, no multiplicity correction, 3 seeds): C 0.6395 vs ProtGNN 0.6303, delta 0.0092 (95% CI 0.0024-0.0153); "
-              "not a broad winner claim, and no XGBoost victory is claimed. A non-significant interval is not evidence of equivalence. "
-              "GraphXAI: 500 screen visits / 498 subjects, 3 seeds; comparison using Grad and IG: CEI outperforms ProtGNN on fidelity-minus and sparsity, not uniformly on fidelity-plus; "
-              "native ProtGNN attribution unavailable in this implementation. Faithfulness to the model, not clinical validity. "
-              "Arm C absence evidence share is about 1.7-1.8%, averaged over visits; arm B without absence is above C on screen, so no benefit of absence evidence is shown.")
+    title(s3, "Accuracy is close; explanation metrics differ")
+    tb(s3, 0.6, 1.38, 3.65, 0.42, [("Primary screen: macro-F1", 17, NAVY, True)])
+    acc = [("Method", "Macro-F1"), ("CEI-GNN v3", f"{evidence['macro_f1_seed_means']['screen']['C']:.3f}"),
+           ("CEI-GNN v2", f"{evidence['macro_f1_seed_means']['screen']['A']:.3f}"),
+           ("ProtGNN", f"{evidence['macro_f1_seed_means']['screen']['P']:.3f}"),
+           ("XGBoost", f"{evidence['macro_f1_seed_means']['screen']['X']:.3f}")]
+    at = s3.shapes.add_table(5, 2, Inches(0.6), Inches(1.85), Inches(3.65), Inches(2.25)).table
+    at.columns[0].width, at.columns[1].width = Inches(2.45), Inches(1.2)
+    for r, row in enumerate(acc):
+        for c, value in enumerate(row):
+            cell=at.cell(r,c); cell.text=value; cell.fill.solid(); cell.fill.fore_color.rgb=rgb(NAVY if r==0 else ("D2EEF0" if r==1 else ("FFFFFF" if r%2 else "F4F4F4"))); cell.vertical_anchor=MSO_ANCHOR.MIDDLE
+            p=cell.text_frame.paragraphs[0]; p.alignment=PP_ALIGN.RIGHT if c else PP_ALIGN.LEFT
+            f=p.runs[0].font; f.name=FONT; f.size=Pt(16); f.bold=(r==0 or r==1); f.color.rgb=rgb("FFFFFF" if r==0 else INK)
+    tb(s3, 0.62, 4.18, 3.65, 0.66, [("Patient-equal macro-F1; 5,000 screen visits / 3 seeds.", 14, GREY, False)])
+    tb(s3, 0.62, 5.00, 3.6, 1.1, [("No decisive accuracy gain on the primary screen.", 17, TEAL, True), ("No superiority or equivalence claim.", 14, INK, False)])
+    tb(s3, 4.45, 1.38, 8.25, 0.4, [("Model-faithfulness metrics (absolute seed means)", 17, NAVY, True)])
+    names=[("Native","Native"),("GradExplainer","GradExplainer"),("IntegratedGradExplainer","Integrated Gradients"),("GNNExplainer","GNNExplainer"),("Random","Random")]
+    headers=["Explainer","Fidelity-\n(lower better)","Fidelity+\n(higher better)","Sparsity\n(higher better)"]
+    rows=[headers]
+    for key,label in names:
+        c=means[key]["C_K4"]; prot=means[key]["P"]
+        fmt=lambda x: "N/A" if x is None else f"{x:.3f}"
+        rows.append([label, f"CEI {fmt(c['fidelity_minus'])} / ProtGNN {fmt(prot['fidelity_minus'])}", f"CEI {fmt(c['fidelity_plus'])} / ProtGNN {fmt(prot['fidelity_plus'])}", f"CEI {fmt(c['sparsity'])} / ProtGNN {fmt(prot['sparsity'])}"])
+    et=s3.shapes.add_table(len(rows),4, Inches(4.45), Inches(1.85), Inches(8.25), Inches(3.05)).table
+    for i,w in enumerate((1.55,2.15,2.35,2.2)): et.columns[i].width=Inches(w)
+    for r,row in enumerate(rows):
+        for c,value in enumerate(row):
+            cell=et.cell(r,c); cell.text=value; cell.fill.solid(); cell.fill.fore_color.rgb=rgb(NAVY if r==0 else ("D2EEF0" if r==1 else ("FFFFFF" if r%2 else "F4F4F4"))); cell.vertical_anchor=MSO_ANCHOR.MIDDLE
+            cell.margin_left=cell.margin_right= Inches(0.045); cell.margin_top=cell.margin_bottom= Inches(0.02)
+            for p in cell.text_frame.paragraphs:
+                p.alignment=PP_ALIGN.LEFT; p.space_after=Pt(0)
+                for run in p.runs:
+                    run.font.name=FONT; run.font.size=Pt(14); run.font.bold=(r==0 or r==1); run.font.color.rgb=rgb("FFFFFF" if r==0 else INK)
+    tb(s3,4.48,4.98,8.15,0.5,[("500 screen visits / 498 subjects / 3 seeds. Native ProtGNN attribution unavailable in this implementation.",14,GREY,False)])
+    tb(s3,4.48,5.48,8.15,0.74,[("Grad/IG: lower fidelity- and higher sparsity; fidelity+ gains not established. GNNExplainer fidelity+ favors ProtGNN.",14,INK,True),("Faithfulness to each model, not clinical validity.",13,GREY,False)])
+    footer(s3, "Fidelity-: remove important nodes; fidelity+: remove unimportant nodes and measure retention. Sparsity: excluded-node fraction at 90% importance mass.", y=6.70)
+    ci_lines=[]
+    for key,_ in names[1:]:
+        pieces=[]
+        for metric in ("fidelity_minus","fidelity_plus","sparsity"):
+            v=gx["C_minus_P"][key][metric]
+            pieces.append(f"{metric}: delta C_minus_P={v['C_minus_P']:.6f}, 95% CI={v['interval_95']}")
+        ci_lines.append(key+": "+"; ".join(pieces))
+    mean_lines=[]
+    for key,_ in names:
+        values=[]
+        for metric in ("fidelity_minus","fidelity_plus","sparsity"):
+            cv=means[key]["C_K4"][metric]; pv=means[key]["P"][metric]
+            values.append(f"{metric}={cv:.3f}/{pv:.3f}" if pv is not None else f"{metric}={cv:.3f}/N/A")
+        mean_lines.append(key+": "+"; ".join(values))
+    notes_text = ("Source keys: docs/cei-v3-evidence-2026-10-01.json graphxai.seed_means and graphxai.C_minus_P. Absolute seed means C_K4 / P, rounded to 3 decimals:\n" +
+       "\n".join(mean_lines) +
+       "\nPaired differences are C_minus_P, not absolute scores; 95% paired subject-cluster bootstrap CIs, conditional on three checkpoints:\n" + "\n".join(ci_lines) +
+       "\nFidelity-minus: prediction change after removing important nodes (keeping important nodes is thereby tested); fidelity-plus: prediction change when important nodes are retained after other nodes are removed. Sparsity is excluded-node fraction at 90% importance mass. Cohort: 500 screen visits / 498 subjects / 3 seeds. Native ProtGNN unavailable. These are model-faithfulness metrics, not clinical validity. No macro-F1 superiority or equivalence claim.")
+    notes(s3, notes_text)
     prs.save(path)
 
 
