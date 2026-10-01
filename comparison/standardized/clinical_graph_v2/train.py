@@ -438,7 +438,8 @@ def load_targets(path):
 
 def build_dataset(artifact, targets, edge_mode, limit, token_min_count, seed,
                   drop_relations=(), rewire_relations=(), min_prior_visits=0, *,
-                  edge_direction='forward', dev_limit=None, sample_seed=None):
+                  edge_direction='forward', dev_limit=None, sample_seed=None,
+                  train_dev_only=False):
     """Encode labelled graphs. Test-fold rows are dropped before any tensor work.
 
     `min_prior_visits` keeps only visits with at least that many COMPLETED earlier
@@ -470,13 +471,23 @@ def build_dataset(artifact, targets, edge_mode, limit, token_min_count, seed,
         train_ids &= eligible
         if not train_ids:
             raise ValueError('No training visits meet --min-prior-visits')
-    prep = fit_preprocessing(graphs_path, train_ids, token_min_count,
-                             membership_path=membership_path)
-    splits = {'train': [], 'validation': []}
-    if dev_ids:
-        splits['dev'] = []
+    if train_dev_only:
+        if min_prior_visits or not dev_ids:
+            raise ValueError('train/dev-only requires an unfiltered patient-disjoint dev draw')
+        from .cei_v3_ext.io import selected_graphs, selected_preprocessing
+        prep = selected_preprocessing(graphs_path, train_ids, token_min_count,
+                                      membership_path=membership_path)
+        rows = selected_graphs(graphs_path, membership_path, train_ids | set(dev_ids))
+        splits = {'train': [], 'dev': []}
+    else:
+        prep = fit_preprocessing(graphs_path, train_ids, token_min_count,
+                                 membership_path=membership_path)
+        rows = iter_graphs_with_membership(graphs_path, membership_path)
+        splits = {'train': [], 'validation': []}
+        if dev_ids:
+            splits['dev'] = []
     labels_seen = Counter()
-    for graph, visit_membership in iter_graphs_with_membership(graphs_path, membership_path):
+    for graph, visit_membership in rows:
         entry = targets.get(graph['sample_id'])
         if entry is None:
             continue
@@ -567,6 +578,18 @@ def run(args):
         if getattr(args, 'no_message_passing', False):
             raise ValueError('--no-message-passing is only valid with --method clinical_gnn')
     t0 = time.monotonic()
+    train_dev_only = getattr(args, 'train_dev_only', False)
+    if train_dev_only and (args.selection_fold != 'dev' or args.final_eval != 'none'
+                           or args.min_prior_visits != 0 or args.method != 'cei_gnn_v3'
+                           or args.train_limit is None or not 1 <= args.train_limit <= 256
+                           or args.dev_limit is None or not 1 <= args.dev_limit <= 128
+                           or not 1 <= args.epochs <= 2):
+        raise ValueError('--train-dev-only is restricted to bounded CEI-v3 dev-only smoke')
+    threads = getattr(args, 'cpu_threads', None)
+    if threads is not None:
+        if threads < 1:
+            raise ValueError('--cpu-threads must be positive')
+        torch.set_num_threads(threads)
     out = Path(args.output).resolve()
     if out.exists():
         raise FileExistsError('Occupied output directory; choose a fresh path')
@@ -615,11 +638,12 @@ def run(args):
                                  args.token_min_count, args.seed, drop_relations,
                                  rewire_relations, args.min_prior_visits,
                                  edge_direction=edge_direction, dev_limit=args.dev_limit,
-                                 sample_seed=sample_seed)
+                                 sample_seed=sample_seed, train_dev_only=train_dev_only)
 
     device = torch.device(args.device)
     train_loader = DataLoader(splits['train'], batch_size=args.batch_size, shuffle=True)
-    val_loader = DataLoader(splits['validation'], batch_size=args.batch_size)
+    val_loader = (DataLoader(splits['validation'], batch_size=args.batch_size)
+                  if 'validation' in splits else None)
     select_loader = (DataLoader(splits['dev'], batch_size=args.batch_size)
                      if selection_fold == 'dev' else val_loader)
 
@@ -866,6 +890,7 @@ def run(args):
     history, best = [], None
     early_stop_best, epochs_without_gain = None, 0
     for epoch_index in range(args.epochs):
+        epoch_t0 = time.monotonic()
         model.train()
         if isinstance(model, ClinicalMethodAdapter):
             model.on_epoch_start(epoch_index, train_loader)
@@ -889,6 +914,8 @@ def run(args):
         display_epoch = epoch_index + 1
         row = {'epoch': display_epoch, 'train_loss': round(total / seen, 6), **m,
                'seconds': round(time.monotonic() - t0, 1)}
+        if train_dev_only:
+            row['epoch_seconds'] = time.monotonic() - epoch_t0
         if selection_fold == 'dev':
             row['selection_fold'] = 'dev'
         if isinstance(model, ClinicalMethodAdapter):
@@ -954,7 +981,7 @@ def run(args):
             'sample_ids_sha256': binding['split_sample_ids_sha256']['validation'],
         }
     (out / 'binding.json').write_text(json.dumps(binding, indent=2, sort_keys=True) + '\n')
-    validation_subjects = [d.subject for d in splits['validation']]
+    validation_subjects = [d.subject for d in splits.get('validation', [])]
     result = {
         'status': 'completed', 'binding': binding,
         'selected_epoch': best['epoch'],
@@ -1120,6 +1147,10 @@ def parser():
     p.add_argument('--token-min-count', type=int, default=20)
     p.add_argument('--seed', type=int, default=1234)
     p.add_argument('--device', default='cpu')
+    p.add_argument('--train-dev-only', action='store_true',
+                   help='bounded CEI-v3 smoke only: deserialize selected train/dev graphs only')
+    p.add_argument('--cpu-threads', type=int,
+                   help='explicit torch CPU thread count; omitted preserves existing behavior')
     p.add_argument('--execute', action='store_true')
     return p
 
