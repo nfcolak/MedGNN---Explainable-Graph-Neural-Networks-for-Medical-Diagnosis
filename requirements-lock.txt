@@ -1,6 +1,6 @@
 # Locked dependency set for reproducing the project environment.
 # Core versions were inspected from the working local environment.
-# Python used locally: 3.9.6; Python 3.10/3.11 is recommended for new installs.
+# The repo targets Python 3.10/3.11 (environment.yml: python=3.11); this lock was generated on Python 3.9.6.
 #
 # This is intentionally a minimal project lock, not a full `pip freeze` dump.
 # The global environment contains many unrelated packages; only packages used by

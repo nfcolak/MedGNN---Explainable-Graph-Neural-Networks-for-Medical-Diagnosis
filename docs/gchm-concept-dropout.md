@@ -52,23 +52,6 @@ without increasing model capacity. Whether it helps must be measured.
 Changing these sources means old run bindings no longer match the current tree;
 use their saved source snapshots for historical replay, not `--resume` under new code.
 
-## Deferred verification and decision gate
+## Follow-up
 
-After explicit testing-phase permission:
-
-1. Verify probability range, row-wise dropout, untouched hub encoding, gradients,
-   hub-only graphs, and evaluation determinism.
-2. Verify probability-zero baseline equivalence and unchanged parameter/state-dict
-   structure; check explicit and PyG edge masks and no-message interventions.
-3. Exercise the registered method with the real runner in isolated bounded wiring
-   scope. This is not evidence of benchmark improvement.
-4. With full-cohort scope approval, run the challenger first at seed 1234, 30 epochs,
-   batch 128, sqrt-inverse loss, same pinned artifact and patient order. Save under
-   a new `comparison/standardized/native_runs/gchm_concept_dropout_v1/seed1234` directory.
-5. Check selected and final validation macro-F1, accuracy, balanced accuracy, class
-   metrics, manifest bindings, cohort order and exact checkpoint replay. Do not use
-   test labels for tuning. Do not change rate/epochs after inspecting this pilot.
-6. Only extend to seeds 1235/1236 with approval and a promising pilot. Compare paired
-   seeds and stability; do not replace the incumbent based on a single peak epoch.
-
-No acceptance threshold or full-run authorization is implied by this document.
+No further run is planned; the measured outcome is in `docs/gchm-concept-dropout-pilot-results.md`.
