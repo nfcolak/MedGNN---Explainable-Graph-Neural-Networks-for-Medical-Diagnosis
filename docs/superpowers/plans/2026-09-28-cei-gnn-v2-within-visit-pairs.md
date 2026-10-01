@@ -14,7 +14,7 @@
 
 ## Global Constraints
 
-- Work only in worktree `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.worktrees/cei-v2-pairs`, branch `feature/cei-v2-pairs`, base `5f23c829`.
+- Work only in worktree `<repo>/.worktrees/cei-v2-pairs`, branch `feature/cei-v2-pairs`, base `5f23c829`.
 - Do not modify: `methods/cei_gnn.py`, `methods/plugin_cei_gnn.py`, `cei_pilot.py`, `cei_graphxai.py`, `train.py`, `tensorize.py`, `methods/base.py`, `methods/__init__.py`, any ProtGNN file, any artifact or existing run directory.
 - TDD: each task commits a `red:` commit (new tests failing on an assertion, not an ImportError) before its `green:` commit.
 - Never load test-fold tensors; never evaluate validation; `--final-eval none`, `--selection-fold dev` only.
@@ -2181,7 +2181,7 @@ Do not start without an explicit user "yes" to "preflight + smoke".
 
 Run from the worktree root:
 ```bash
-M=/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN
+M=<repo>
 python3 -m comparison.standardized.clinical_graph_v2.cei_v2_study \
   --artifact $M/comparison/standardized/event_inputs/clinical_graph_v3_membership_max6_20260923 \
   --targets $M/comparison/standardized/event_inputs/first_recorded_lab_all_visits_v2_targets_local_v2_max6/targets.csv \
