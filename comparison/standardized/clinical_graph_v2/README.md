@@ -28,6 +28,8 @@ gerçek-kenar kontrolüne** karşı kullanılmalıdır. `--rewire-relation` bu n
 `--no-edge-payload` gerektirir. Takas yapılamayan graflar değişmeden kalabilir.
 Tek bir skor farkı, grafın gereksizliğini veya nedensel faydasını kanıtlamaz.
 
+> CEI-GNN v3 study results (screen/validation/GraphXAI, aggregate only, with provenance): [`docs/cei-v3-delivery-2026-10-01.md`](../../../docs/cei-v3-delivery-2026-10-01.md).
+
 ## v3 yöntem adaptörleri — uygulama sözleşmesi
 
 Bu dal, aynı `clinical_inputs_v3` tensor girdisi üzerinde dört yöntem seçeneği

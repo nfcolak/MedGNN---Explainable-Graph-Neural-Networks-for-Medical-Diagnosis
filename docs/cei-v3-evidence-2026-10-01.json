@@ -1,0 +1,838 @@
+{
+  "schema": "cei_v3_evidence_public_v1",
+  "date": "2026-10-01",
+  "task": {
+    "cohort": "MIMIC-IV-ED max6 (patients with >6 total visits excluded)",
+    "classes": "Top-10 diagnoses by TRAIN-fold frequency (other labels dropped)",
+    "train_rows": 10000,
+    "dev_rows": 5000,
+    "screen_rows": 5000,
+    "screen_distinct_subjects": 4840,
+    "validation_rows": 4254,
+    "validation_distinct_subjects": 3472,
+    "seeds": [
+      1234,
+      2025,
+      7
+    ],
+    "train_seed_order": [
+      1234,
+      2025,
+      7
+    ],
+    "screen_selection_seed": 20260929,
+    "top_k_labels": 10,
+    "metric": "weighted_macro_f1",
+    "arms": {
+      "A": "v2 additive control",
+      "B": "PLE only",
+      "C": "PLE (selected K) + absence",
+      "P": "ProtGNN",
+      "X": "XGBoost control"
+    },
+    "test_evaluated": false,
+    "native_30_class_comparable": false
+  },
+  "selection_policy": {
+    "k_grid": [
+      4,
+      8,
+      16
+    ],
+    "k_selected": 4,
+    "k_seed_means_dev": {
+      "16": 0.6481603333333333,
+      "4": 0.6493093333333334,
+      "8": 0.648247
+    },
+    "arm_used": "C",
+    "statistic": "unweighted mean over seeds of selected_dev.metric_value",
+    "tie_rule": "equal 6-decimal seed-mean -> smaller K",
+    "tie_rule_applied": false,
+    "k_selected_before_screen": true,
+    "checkpoint_selection": "dev macro-F1",
+    "xgboost_selection_from_screen_or_validation": false,
+    "validation_reselection": false,
+    "validation_retraining": false
+  },
+  "split_hashes": {
+    "train_ids_sha256": "83e85ae2a80a6f32b5b19d3d3d0af1876dc347278114afde4d12dc559be00664",
+    "dev_ids_sha256": "6a4447ca328df63dda211d456de5c56cd9f9db4471dce2766530dcd64d2a4f48",
+    "screen_ids_sha256": "5634fcec9fc8892f6addbaca5281dbd42b3d0ff84049476131cc2583b86c433e",
+    "validation_ids_sha256": "287973edfea71e36731eddaed887928b7bf0553f7a8b684187336c789b379173",
+    "preprocessing_sha256": "9a9ab7a4df8b9a9d6b6c56bc53335f94716df8041d2acd7428e7b512710c5ecd"
+  },
+  "macro_f1_seed_means": {
+    "screen": {
+      "A": 0.6419615941627986,
+      "B": 0.6438676388826593,
+      "C": 0.6417510155284395,
+      "P": 0.6371097456931137,
+      "X": 0.6370578981908407
+    },
+    "validation": {
+      "A": 0.6342368443761464,
+      "B": 0.637478436623188,
+      "C": 0.6394681154726604,
+      "P": 0.6302797942809367,
+      "X": 0.6316891535351536
+    }
+  },
+  "macro_f1_per_seed": {
+    "screen": {
+      "A": {
+        "1234": 0.6416201933829113,
+        "2025": 0.6468263783104001,
+        "7": 0.6374382107950843
+      },
+      "B": {
+        "1234": 0.6429645245778524,
+        "2025": 0.6454981406104567,
+        "7": 0.6431402514596688
+      },
+      "C": {
+        "1234": 0.6429307610085063,
+        "2025": 0.6418033839532187,
+        "7": 0.6405189016235935
+      },
+      "P": {
+        "1234": 0.6346652072874761,
+        "2025": 0.6384251993744595,
+        "7": 0.6382388304174059
+      },
+      "X": {
+        "1234": 0.6327145100101118,
+        "2025": 0.639431442295851,
+        "7": 0.6390277422665591
+      }
+    },
+    "validation": {
+      "A": {
+        "1234": 0.6371511739953174,
+        "2025": 0.6342366923902711,
+        "7": 0.6313226667428506
+      },
+      "B": {
+        "1234": 0.6444440110646186,
+        "2025": 0.634554156935319,
+        "7": 0.6334371418696266
+      },
+      "C": {
+        "1234": 0.6445812146315102,
+        "2025": 0.6327638069483037,
+        "7": 0.6410593248381671
+      },
+      "P": {
+        "1234": 0.6271673546600278,
+        "2025": 0.6311569513994748,
+        "7": 0.6325150767833077
+      },
+      "X": {
+        "1234": 0.6246323423303505,
+        "2025": 0.6369163325796156,
+        "7": 0.6335187856954948
+      }
+    }
+  },
+  "contrasts": {
+    "screen": {
+      "C_vs_A": {
+        "contrast": "C-A",
+        "point_delta": -0.0002105786343591376,
+        "interval_95": [
+          -0.004656421459680765,
+          0.004195361313944841
+        ],
+        "seed_means": {
+          "A": 0.6419615941627986,
+          "C": 0.6417510155284395
+        },
+        "per_seed_delta": {
+          "1234": 0.001310567625595005,
+          "2025": -0.005022994357181454,
+          "7": 0.003080690828509147
+        },
+        "checks": {
+          "c_beats_a_each_seed": false,
+          "c_mean_above_a": false,
+          "c_minus_a_lower_bound_above_zero": false
+        },
+        "decisive": null,
+        "statement": "benefit not demonstrated on this screen",
+        "resamples": 1000,
+        "bootstrap_seed": 2026
+      },
+      "B_vs_A": {
+        "contrast": "B-A",
+        "point_delta": 0.0019060447198606667,
+        "interval_95": [
+          -0.002380007692106422,
+          0.006297510646570075
+        ],
+        "seed_means": {
+          "A": 0.6419615941627986,
+          "B": 0.6438676388826593
+        },
+        "per_seed_delta": {
+          "1234": 0.0013443311949410397,
+          "2025": -0.001328237699943391,
+          "7": 0.005702040664584462
+        },
+        "checks": {
+          "b_beats_a_each_seed": false,
+          "b_mean_above_a": true,
+          "b_minus_a_lower_bound_above_zero": false
+        },
+        "decisive": false,
+        "statement": "secondary B versus A; not an input to the core C versus A decision",
+        "resamples": 1000,
+        "bootstrap_seed": 2026
+      },
+      "C_vs_P": {
+        "contrast": "C-P",
+        "point_delta": 0.004641269835325756,
+        "interval_95": [
+          -0.0016528773082991979,
+          0.010693154503204615
+        ],
+        "seed_means": {
+          "C": 0.6417510155284395,
+          "P": 0.6371097456931137
+        },
+        "per_seed_delta": {
+          "1234": 0.008265553721030217,
+          "2025": 0.003378184578759158,
+          "7": 0.0022800712061875616
+        },
+        "checks": {
+          "c_beats_p_each_seed": true,
+          "c_mean_above_p": true,
+          "c_minus_p_lower_bound_above_zero": false
+        },
+        "decisive": null,
+        "statement": "CEI-GNN v3 C benefit over ProtGNN not demonstrated on this frozen screen",
+        "resamples": 1000,
+        "bootstrap_seed": 2026
+      },
+      "A_vs_P": {
+        "contrast": "A-P",
+        "point_delta": 0.004851848469684894,
+        "interval_95": [
+          -0.0007234241991650884,
+          0.010970042898688304
+        ],
+        "seed_means": {
+          "A": 0.6419615941627986,
+          "P": 0.6371097456931137
+        },
+        "per_seed_delta": {
+          "1234": 0.006954986095435212,
+          "2025": 0.008401178935940612,
+          "7": -0.0008006196223215856
+        },
+        "checks": {
+          "a_beats_p_each_seed": false,
+          "a_mean_above_p": true,
+          "a_minus_p_lower_bound_above_zero": false
+        },
+        "decisive": false,
+        "statement": "secondary CEI-GNN v3 A versus ProtGNN; not an input to the primary C versus P decision",
+        "resamples": 1000,
+        "bootstrap_seed": 2026
+      },
+      "A_vs_X": {
+        "contrast": "A-X",
+        "point_delta": 0.004903695971957944,
+        "interval_95": [
+          -0.002396599697971029,
+          0.01230416523937145
+        ],
+        "seed_means": {
+          "A": 0.6419615941627986,
+          "X": 0.6370578981908407
+        },
+        "per_seed_delta": {
+          "1234": 0.008905683372799511,
+          "2025": 0.007394936014549103,
+          "7": -0.001589531471474781
+        },
+        "checks": {
+          "a_beats_x_each_seed": false,
+          "a_mean_above_x": true,
+          "a_minus_x_lower_bound_above_zero": false
+        },
+        "decisive": false,
+        "statement": "A benefit over X not demonstrated on screen",
+        "resamples": 1000,
+        "bootstrap_seed": 2026
+      },
+      "B_vs_X": {
+        "contrast": "B-X",
+        "point_delta": 0.006809740691818611,
+        "interval_95": [
+          -0.0005078293891596197,
+          0.013884174329202222
+        ],
+        "seed_means": {
+          "B": 0.6438676388826593,
+          "X": 0.6370578981908407
+        },
+        "per_seed_delta": {
+          "1234": 0.01025001456774055,
+          "2025": 0.006066698314605712,
+          "7": 0.004112509193109681
+        },
+        "checks": {
+          "b_beats_x_each_seed": true,
+          "b_mean_above_x": true,
+          "b_minus_x_lower_bound_above_zero": false
+        },
+        "decisive": false,
+        "statement": "B benefit over X not demonstrated on screen",
+        "resamples": 1000,
+        "bootstrap_seed": 2026
+      },
+      "C_vs_X": {
+        "contrast": "C-X",
+        "point_delta": 0.004693117337598807,
+        "interval_95": [
+          -0.0024922463297791186,
+          0.011747753861886387
+        ],
+        "seed_means": {
+          "C": 0.6417510155284395,
+          "X": 0.6370578981908407
+        },
+        "per_seed_delta": {
+          "1234": 0.010216250998394516,
+          "2025": 0.002371941657367649,
+          "7": 0.0014911593570343662
+        },
+        "checks": {
+          "c_beats_x_each_seed": true,
+          "c_mean_above_x": true,
+          "c_minus_x_lower_bound_above_zero": false
+        },
+        "decisive": true,
+        "statement": "C benefit over X not demonstrated on screen",
+        "resamples": 1000,
+        "bootstrap_seed": 2026
+      },
+      "P_vs_X": {
+        "contrast": "P-X",
+        "point_delta": 5.184750227305024e-05,
+        "interval_95": [
+          -0.007894706103124692,
+          0.007875552848973625
+        ],
+        "seed_means": {
+          "P": 0.6371097456931137,
+          "X": 0.6370578981908407
+        },
+        "per_seed_delta": {
+          "1234": 0.0019506972773642994,
+          "2025": -0.0010062429213915092,
+          "7": -0.0007889118491531955
+        },
+        "checks": {
+          "p_beats_x_each_seed": false,
+          "p_mean_above_x": true,
+          "p_minus_x_lower_bound_above_zero": false
+        },
+        "decisive": false,
+        "statement": "P benefit over X not demonstrated on screen",
+        "resamples": 1000,
+        "bootstrap_seed": 2026
+      }
+    },
+    "validation": {
+      "A_vs_P": {
+        "contrast": "A-P",
+        "point_delta": 0.0039570500952096355,
+        "interval_95": [
+          -0.0025611005901553944,
+          0.010237250310463247
+        ],
+        "seed_means": {
+          "A": 0.6342368443761464,
+          "P": 0.6302797942809367
+        },
+        "per_seed_delta": {
+          "1234": 0.009983819335289579,
+          "2025": 0.0030797409907963313,
+          "7": -0.0011924100404570037
+        },
+        "checks": {
+          "a_beats_p_each_seed": false,
+          "a_mean_above_p": true,
+          "a_minus_p_lower_bound_above_zero": false
+        },
+        "decisive": false,
+        "statement": "A benefit over P not demonstrated on this validation fold",
+        "resamples": 1000,
+        "bootstrap_seed": 2026
+      },
+      "B_vs_A": {
+        "contrast": "B-A",
+        "point_delta": 0.0032415922470416803,
+        "interval_95": [
+          -0.0016742875535738823,
+          0.008012888876057006
+        ],
+        "seed_means": {
+          "A": 0.6342368443761464,
+          "B": 0.637478436623188
+        },
+        "per_seed_delta": {
+          "1234": 0.007292837069301172,
+          "2025": 0.00031746454504788524,
+          "7": 0.002114475126775983
+        },
+        "checks": {
+          "b_beats_a_each_seed": true,
+          "b_mean_above_a": true,
+          "b_minus_a_lower_bound_above_zero": false
+        },
+        "decisive": false,
+        "statement": "B benefit over A not demonstrated on this validation fold",
+        "resamples": 1000,
+        "bootstrap_seed": 2026
+      },
+      "C_vs_A": {
+        "contrast": "C-A",
+        "point_delta": 0.005231271096514001,
+        "interval_95": [
+          0.0006192932414104948,
+          0.009848359309852015
+        ],
+        "seed_means": {
+          "A": 0.6342368443761464,
+          "C": 0.6394681154726604
+        },
+        "per_seed_delta": {
+          "1234": 0.007430040636192792,
+          "2025": -0.001472885441967442,
+          "7": 0.00973665809531643
+        },
+        "checks": {
+          "c_beats_a_each_seed": false,
+          "c_mean_above_a": true,
+          "c_minus_a_lower_bound_above_zero": true
+        },
+        "decisive": false,
+        "statement": "C benefit over A not demonstrated on this validation fold",
+        "resamples": 1000,
+        "bootstrap_seed": 2026
+      },
+      "C_vs_P": {
+        "contrast": "C-P",
+        "point_delta": 0.009188321191723636,
+        "interval_95": [
+          0.002357076819311485,
+          0.015299886802647149
+        ],
+        "seed_means": {
+          "C": 0.6394681154726604,
+          "P": 0.6302797942809367
+        },
+        "per_seed_delta": {
+          "1234": 0.01741385997148237,
+          "2025": 0.0016068555488288894,
+          "7": 0.008544248054859427
+        },
+        "checks": {
+          "c_beats_p_each_seed": true,
+          "c_mean_above_p": true,
+          "c_minus_p_lower_bound_above_zero": true
+        },
+        "decisive": true,
+        "statement": "C benefit over P demonstrated on this validation fold",
+        "resamples": 1000,
+        "bootstrap_seed": 2026
+      },
+      "A_vs_X": {
+        "contrast": "A-X",
+        "point_delta": 0.0025476908409927113,
+        "interval_95": [
+          -0.005511326002749428,
+          0.010267799408250258
+        ],
+        "seed_means": {
+          "A": 0.6342368443761464,
+          "X": 0.6316891535351536
+        },
+        "per_seed_delta": {
+          "1234": 0.012518831664966923,
+          "2025": -0.002679640189344412,
+          "7": -0.002196118952644155
+        },
+        "checks": {
+          "a_beats_x_each_seed": false,
+          "a_mean_above_x": true,
+          "a_minus_x_lower_bound_above_zero": false
+        },
+        "decisive": false,
+        "statement": "A benefit over X not demonstrated on validation",
+        "resamples": 1000,
+        "bootstrap_seed": 2026
+      },
+      "B_vs_X": {
+        "contrast": "B-X",
+        "point_delta": 0.0057892830880343915,
+        "interval_95": [
+          -0.0021737107322257936,
+          0.013570540230661026
+        ],
+        "seed_means": {
+          "B": 0.637478436623188,
+          "X": 0.6316891535351536
+        },
+        "per_seed_delta": {
+          "1234": 0.019811668734268095,
+          "2025": -0.002362175644296527,
+          "7": -8.164382586817176e-05
+        },
+        "checks": {
+          "b_beats_x_each_seed": false,
+          "b_mean_above_x": true,
+          "b_minus_x_lower_bound_above_zero": false
+        },
+        "decisive": false,
+        "statement": "B benefit over X not demonstrated on validation",
+        "resamples": 1000,
+        "bootstrap_seed": 2026
+      },
+      "C_vs_X": {
+        "contrast": "C-X",
+        "point_delta": 0.007778961937506712,
+        "interval_95": [
+          -0.00022758509770530452,
+          0.015523555554536843
+        ],
+        "seed_means": {
+          "C": 0.6394681154726604,
+          "X": 0.6316891535351536
+        },
+        "per_seed_delta": {
+          "1234": 0.019948872301159715,
+          "2025": -0.004152525631311854,
+          "7": 0.007540539142672276
+        },
+        "checks": {
+          "c_beats_x_each_seed": false,
+          "c_mean_above_x": true,
+          "c_minus_x_lower_bound_above_zero": false
+        },
+        "decisive": true,
+        "statement": "C benefit over X not demonstrated on validation",
+        "resamples": 1000,
+        "bootstrap_seed": 2026
+      },
+      "P_vs_X": {
+        "contrast": "P-X",
+        "point_delta": -0.0014093592542169242,
+        "interval_95": [
+          -0.00999512537926968,
+          0.006781538811276797
+        ],
+        "seed_means": {
+          "P": 0.6302797942809367,
+          "X": 0.6316891535351536
+        },
+        "per_seed_delta": {
+          "1234": 0.002535012329677344,
+          "2025": -0.0057593811801407435,
+          "7": -0.0010037089121871512
+        },
+        "checks": {
+          "p_beats_x_each_seed": false,
+          "p_mean_above_x": false,
+          "p_minus_x_lower_bound_above_zero": false
+        },
+        "decisive": false,
+        "statement": "P benefit over X not demonstrated on validation",
+        "resamples": 1000,
+        "bootstrap_seed": 2026
+      }
+    }
+  },
+  "contrast_source": {
+    "screen.C_vs_A": "core",
+    "screen.B_vs_A": "core",
+    "screen.C_vs_P": "protgnn",
+    "screen.A_vs_P": "protgnn",
+    "screen.A_vs_X": "xgboost",
+    "screen.B_vs_X": "xgboost",
+    "screen.C_vs_X": "xgboost",
+    "screen.P_vs_X": "xgboost",
+    "validation.A_vs_P": "validation",
+    "validation.B_vs_A": "validation",
+    "validation.C_vs_A": "validation",
+    "validation.C_vs_P": "validation",
+    "validation.A_vs_X": "xgboost",
+    "validation.B_vs_X": "xgboost",
+    "validation.C_vs_X": "xgboost",
+    "validation.P_vs_X": "xgboost"
+  },
+  "absence_share": {
+    "arm": "C",
+    "split": "screen",
+    "per_seed": {
+      "1234": 0.016723990489525834,
+      "2025": 0.018274848417662568,
+      "7": 0.018054005970306184
+    },
+    "aggregation": "row (visit) mean as saved by historical code",
+    "patient_mean_computed": false,
+    "historical_outputs_repaired": false
+  },
+  "graphxai": {
+    "n_patients": 500,
+    "distinct_subjects": 498,
+    "record_count": 15000,
+    "per_class": 50,
+    "classes": 10,
+    "seeds": [
+      1234,
+      2025,
+      7
+    ],
+    "bootstrap": {
+      "inference_scope": "conditional on these three trained checkpoints; not a seed-population interval",
+      "paired_across_models_and_seeds": true,
+      "quantile_method": "linear",
+      "resamples": 1000,
+      "seed": 2026,
+      "statistic": "mean across checkpoint seeds of paired-patient metric differences",
+      "unit": "patient/subject cluster (all visits together)"
+    },
+    "native_protgnn_status": "unavailable",
+    "causal_claim": false,
+    "training_performed": false,
+    "validation_evaluated": false,
+    "test_evaluated": false,
+    "seed_means": {
+      "GNNExplainer": {
+        "C_K4": {
+          "fidelity_minus": 0.39826470356186233,
+          "fidelity_plus": 0.2159840748459101,
+          "sparsity": 0.26863299999999996
+        },
+        "P": {
+          "fidelity_minus": 0.5760486141145229,
+          "fidelity_plus": 0.3811311972041925,
+          "sparsity": 0.2696284666666666
+        }
+      },
+      "GradExplainer": {
+        "C_K4": {
+          "fidelity_minus": 0.14379756402472654,
+          "fidelity_plus": 0.508815510481596,
+          "sparsity": 0.5133085333333334
+        },
+        "P": {
+          "fidelity_minus": 0.5709593933920066,
+          "fidelity_plus": 0.5096794684330622,
+          "sparsity": 0.3878244
+        }
+      },
+      "IntegratedGradExplainer": {
+        "C_K4": {
+          "fidelity_minus": 0.09956266320248446,
+          "fidelity_plus": 0.5384311251839002,
+          "sparsity": 0.5211809333333334
+        },
+        "P": {
+          "fidelity_minus": 0.5698258565465609,
+          "fidelity_plus": 0.5351479403773943,
+          "sparsity": 0.28936080000000003
+        }
+      },
+      "Native": {
+        "C_K4": {
+          "fidelity_minus": 0.10499137385686237,
+          "fidelity_plus": 0.5537128354062637,
+          "sparsity": 0.7004678000000001
+        },
+        "P": {
+          "fidelity_minus": null,
+          "fidelity_plus": null,
+          "sparsity": null
+        }
+      },
+      "Random": {
+        "C_K4": {
+          "fidelity_minus": 0.4838280888448159,
+          "fidelity_plus": 0.10738034953673681,
+          "sparsity": 0.2853046
+        },
+        "P": {
+          "fidelity_minus": 0.5780920840551456,
+          "fidelity_plus": 0.30894019771615666,
+          "sparsity": 0.2853046
+        }
+      }
+    },
+    "C_minus_P": {
+      "GNNExplainer": {
+        "fidelity_minus": {
+          "C_minus_P": -0.17778391055266066,
+          "interval_95": [
+            -0.20115243419378384,
+            -0.15470507840750994
+          ],
+          "C_better_seed_count": 3,
+          "better_direction": "lower"
+        },
+        "fidelity_plus": {
+          "C_minus_P": -0.1651471223582824,
+          "interval_95": [
+            -0.18303717712992937,
+            -0.14623125127908276
+          ],
+          "C_better_seed_count": 0,
+          "better_direction": "higher"
+        },
+        "sparsity": {
+          "C_minus_P": -0.000995466666666667,
+          "interval_95": [
+            -0.002651219104876419,
+            0.0006569820379281496
+          ],
+          "C_better_seed_count": 1,
+          "better_direction": "higher"
+        }
+      },
+      "GradExplainer": {
+        "fidelity_minus": {
+          "C_minus_P": -0.42716182936728003,
+          "interval_95": [
+            -0.44985684363473355,
+            -0.40430027914714267
+          ],
+          "C_better_seed_count": 3,
+          "better_direction": "lower"
+        },
+        "fidelity_plus": {
+          "C_minus_P": -0.0008639579514662402,
+          "interval_95": [
+            -0.018268945488595492,
+            0.01593477348389595
+          ],
+          "C_better_seed_count": 1,
+          "better_direction": "higher"
+        },
+        "sparsity": {
+          "C_minus_P": 0.12548413333333333,
+          "interval_95": [
+            0.11304490685296074,
+            0.13725250397127586
+          ],
+          "C_better_seed_count": 3,
+          "better_direction": "higher"
+        }
+      },
+      "IntegratedGradExplainer": {
+        "fidelity_minus": {
+          "C_minus_P": -0.4702631933440765,
+          "interval_95": [
+            -0.4935411711680781,
+            -0.44786387276011425
+          ],
+          "C_better_seed_count": 3,
+          "better_direction": "lower"
+        },
+        "fidelity_plus": {
+          "C_minus_P": 0.00328318480650584,
+          "interval_95": [
+            -0.01288460690326586,
+            0.018862188015107674
+          ],
+          "C_better_seed_count": 2,
+          "better_direction": "higher"
+        },
+        "sparsity": {
+          "C_minus_P": 0.23182013333333334,
+          "interval_95": [
+            0.2217338810107095,
+            0.2406996905288059
+          ],
+          "C_better_seed_count": 3,
+          "better_direction": "higher"
+        }
+      },
+      "Random": {
+        "fidelity_minus": {
+          "C_minus_P": -0.09426399521032969,
+          "interval_95": [
+            -0.11447657641503317,
+            -0.07460849767977928
+          ],
+          "C_better_seed_count": 3,
+          "better_direction": "lower"
+        },
+        "fidelity_plus": {
+          "C_minus_P": -0.20155984817941985,
+          "interval_95": [
+            -0.2187959747065453,
+            -0.18241111693875542
+          ],
+          "C_better_seed_count": 0,
+          "better_direction": "higher"
+        },
+        "sparsity": {
+          "C_minus_P": 0.0,
+          "interval_95": [
+            0.0,
+            0.0
+          ],
+          "C_better_seed_count": 0,
+          "better_direction": "higher"
+        }
+      }
+    }
+  },
+  "not_run": {
+    "extensions_executed": false,
+    "extension_families": [
+      "E2w",
+      "E2d",
+      "E6a",
+      "E6b",
+      "O"
+    ],
+    "o_validation_fitting": "refused (not approved)",
+    "long_training_matrix": "not approved until measured budget is shown",
+    "held_out_test": "never accessed"
+  },
+  "source_aggregate_sha256": {
+    "core/decision.json": "8058e8cf9a2a7f095aed86d14275afed871d814e74effc179b9a0007c322fede",
+    "core/k_selection.json": "8c2197d4a59d1721cf3e0b8dfa9594cb4788947987f633c5795dde59ccf949f0",
+    "core/screen_record.json": "1a488a2e06b9273f1a1db21290d9965862ee66a4fc36b4021e972768379d0a62",
+    "protgnn/decision.json": "6c83168ab3a21a192a63948b6b2ff11d502777ed8335b6f9f5006abab6ca979e",
+    "validation/decision.json": "bfdd778480582462692f808f5e3a7784fa9adcc2c8e748a058b36fd1b1a1bd3c",
+    "xgboost/decision.json": "422cb9a4dac7f186f0dc52ed435f7bbdc2ea23d90f04c7c3368935db93ae64c5",
+    "graphxai/summary.json": "790de43a3707673b36dc0591d428a76677167d333508452d70cc83c5d26b81b4"
+  },
+  "provenance": {
+    "task.train_rows / dev_rows / split_hashes.train_ids_sha256 / dev_ids_sha256 / screen_ids_sha256 / task.screen_rows / screen_distinct_subjects": "core/screen_record.json",
+    "task.validation_rows / validation_distinct_subjects / split_hashes.validation_ids_sha256 / selection_policy.validation_*": "validation/decision.json",
+    "selection_policy.k_*": "core/k_selection.json",
+    "selection_policy.xgboost_selection_from_screen_or_validation": "xgboost/decision.json",
+    "macro_f1_seed_means / macro_f1_per_seed": "xgboost/decision.json (cross-asserted equal to core, protgnn, validation decision.json for shared arms)",
+    "contrasts.screen.C_vs_A / B_vs_A": "core/decision.json",
+    "contrasts.screen.C_vs_P / A_vs_P": "protgnn/decision.json",
+    "contrasts.screen.*_vs_X / contrasts.validation.*_vs_X": "xgboost/decision.json (decisions.<split>)",
+    "contrasts.validation.C_vs_P / C_vs_A / B_vs_A / A_vs_P": "validation/decision.json (decisions)",
+    "absence_share.per_seed": "core/C_K4_seed<seed>/screen/screen_result.json (field absence_share_mean only)",
+    "graphxai.*": "graphxai/summary.json",
+    "not_run.extensions_executed": "core/decision.json"
+  },
+  "claims": {
+    "v3_vs_v2_screen": "benefit not demonstrated",
+    "validation_C_vs_P": "second-look result only (validation opened after inconclusive screen)",
+    "broad_winner": false,
+    "xgboost_victory": false,
+    "equivalence_claimed": false
+  }
+}
