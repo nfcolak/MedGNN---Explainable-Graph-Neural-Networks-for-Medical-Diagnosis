@@ -1,7 +1,7 @@
 # Run With Your Own Data
 
 > **Legacy workflow, not the standardized benchmark.** Use the
-> [current runbook](../comparison/standardized/README.md) for the three-method
+> [historical star/cooccur runbook](../comparison/standardized/README.md) for the three-method
 > comparison. This raw-data recipe is not fully verified: `merge_ed.py` runs at
 > import time, both raw batch scripts currently resolve `shared/data` instead
 > of root `data/`, and the merger also reads `patients.csv` and `omr.csv` beyond

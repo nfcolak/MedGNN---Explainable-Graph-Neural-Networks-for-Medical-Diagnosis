@@ -402,6 +402,8 @@ python3 -m comparison.standardized.clinical_graph_v2.audit \
 Çıktı klasörü varsa üretim **başlamaz** (no-overwrite); yeniden denemek için
 yeni bir yol verin.
 
+Status: implemented but PROPOSED, not accepted (ADR-007 bidirectional edges/GCHM-PNA v2, ADR-008 dev-selected protocol). Results from these flags are exploratory until the ADRs are accepted.
+
 ### GCHM-PNA v2 ve eşit bütçeli protokol
 
 Ölçülen sorun: üretici ziyaret→kanıt kenarlarını tek yönde yazıyor; ileri yönde
@@ -433,6 +435,8 @@ Her arm'a aynı 6 deneme bütçesi, dev'de seçim, 3 seed final, v2 ablasyonlar�
 değişmemiş v1 referansı. Önceden kilitli kazanma kuralı: en yüksek ortalama **ve**
 ikinciye karşı hasta-bootstrap %95 aralığı sıfırın üstünde. Aksi durumda sonuç olduğu
 gibi raporlanır. Tasarım: `docs/superpowers/specs/2026-09-24-gchm-pna-v2-design.md`.
+
+Status: experimental; no ADR exists.
 
 ### GCHM-PNA v3 (`--conv gchm_v3`, `gchm_v3.py`)
 
