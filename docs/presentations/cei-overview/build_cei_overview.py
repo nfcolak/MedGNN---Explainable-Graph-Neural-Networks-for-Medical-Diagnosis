@@ -348,9 +348,9 @@ def build_pptx(path):
             cell=at.cell(r,c); cell.text=value; cell.fill.solid(); cell.fill.fore_color.rgb=rgb(NAVY if r==0 else ("D2EEF0" if r==1 else ("FFFFFF" if r%2 else "F4F4F4"))); cell.vertical_anchor=MSO_ANCHOR.MIDDLE
             p=cell.text_frame.paragraphs[0]; p.alignment=PP_ALIGN.RIGHT if c else PP_ALIGN.LEFT
             f=p.runs[0].font; f.name=FONT; f.size=Pt(15 if c == 2 else (14 if c == 1 else 16)); f.bold=(r==0 or r==1); f.color.rgb=rgb("FFFFFF" if r==0 else INK)
-    tb(s3, 0.62, 4.18, 3.65, 0.66, [("Patient-equal macro-F1; 5,000 screen visits / 3 seeds.", 14, GREY, False)])
-    tb(s3, 0.62, 4.76, 3.65, 0.70, [("v2 control: 94,380 total, 92,300 active. XGBoost: not a neural parameter count.", 12, GREY, False)])
-    tb(s3, 0.62, 5.48, 3.6, 1.1, [("No decisive accuracy gain on the primary screen.", 17, TEAL, True)])
+    tb(s3, 0.62, 4.38, 3.65, 0.66, [("Patient-equal macro-F1; 5,000 screen visits / 3 seeds.", 14, GREY, False)])
+    tb(s3, 0.62, 4.96, 3.65, 0.70, [("v2 control: 94,380 total, 92,300 active. XGBoost: not a neural parameter count.", 12, GREY, False)])
+    tb(s3, 0.62, 5.68, 3.6, 1.1, [("No decisive accuracy gain on the primary screen.", 17, TEAL, True)])
     tb(s3,4.48,1.38,8.25,0.4,[("Explanation quality: CEI / ProtGNN (3-seed means)",17,NAVY,True)])
     names=[("Native","Native"),("GradExplainer","GradExplainer"),("IntegratedGradExplainer","Integrated Gradients"),("GNNExplainer","GNNExplainer"),("Random","Random")]
     headers=["Explainer","Fidelity-\n(lower better)","Fidelity+\n(higher better)","Sparsity\n(higher better)"]
