@@ -1,0 +1,129 @@
+{
+  "aggregate_only": true,
+  "arm_execution_order": [
+    "E2d",
+    "E6b",
+    "E6a",
+    "E2w"
+  ],
+  "arms": {
+    "E2d": {
+      "active_parameter_count": 97952,
+      "checkpoint_verified": true,
+      "dev_rows": 128,
+      "epoch_seconds": [
+        0.6588101250000005,
+        0.07940933300000008
+      ],
+      "epochs_completed": 2,
+      "estimated_full_three_seed_minutes": 29.16896975522502,
+      "measured_setup_seconds": 6.645443542,
+      "parameter_count": 97952,
+      "peak_rss_bytes": 585547776,
+      "seed": 1234,
+      "train_rows": 256,
+      "training_wall_seconds": 7.383663
+    },
+    "E2w": {
+      "active_parameter_count": 257696,
+      "checkpoint_verified": true,
+      "dev_rows": 128,
+      "epoch_seconds": [
+        0.6995470840000007,
+        0.11300987500000037
+      ],
+      "epochs_completed": 2,
+      "estimated_full_three_seed_minutes": 32.07978078383754,
+      "measured_setup_seconds": 6.785491458,
+      "parameter_count": 257696,
+      "peak_rss_bytes": 736755712,
+      "seed": 1234,
+      "train_rows": 256,
+      "training_wall_seconds": 7.598048417000001
+    },
+    "E6a": {
+      "active_parameter_count": 85408,
+      "checkpoint_verified": true,
+      "dev_rows": 128,
+      "epoch_seconds": [
+        0.6556618749999998,
+        0.0886500830000001
+      ],
+      "epochs_completed": 2,
+      "estimated_full_three_seed_minutes": 29.406744130224993,
+      "measured_setup_seconds": 6.641165416999997,
+      "parameter_count": 85408,
+      "peak_rss_bytes": 614645760,
+      "seed": 1234,
+      "train_rows": 256,
+      "training_wall_seconds": 7.385477374999997
+    },
+    "E6b": {
+      "active_parameter_count": 83412,
+      "checkpoint_verified": true,
+      "dev_rows": 128,
+      "epoch_seconds": [
+        0.6288177500000005,
+        0.07322545800000047
+      ],
+      "epochs_completed": 2,
+      "estimated_full_three_seed_minutes": 27.757376666700043,
+      "measured_setup_seconds": 6.676277083999999,
+      "parameter_count": 83412,
+      "peak_rss_bytes": 562872320,
+      "seed": 1234,
+      "train_rows": 256,
+      "training_wall_seconds": 7.378320292
+    }
+  },
+  "budget": {
+    "assumptions": [
+      "linear combined train/dev row scaling; larger graph and batch composition unmeasured",
+      "setup held constant per training; includes artifact reads, import, tensorization and post-training overhead",
+      "first epoch includes warmup, so the two-epoch mean may overestimate steady-state work",
+      "40 epochs assumed; early stopping, larger vocabulary and peak-memory scaling are not measured"
+    ],
+    "combined_row_scale": 39.0625,
+    "estimated_full_training_minutes": 118.41287133598759,
+    "estimated_full_training_seconds": 7104.772280159255,
+    "formula": "3 * (measured_setup + 40 * mean(two_measured_epochs) * combined_row_scale)",
+    "full_dev_rows": 5000,
+    "full_epochs": 40,
+    "full_train_rows": 10000,
+    "full_training_count": 12,
+    "o_excluded": true,
+    "seeds_per_arm": 3,
+    "status": "measured_linear_scaling_estimate_not_approval",
+    "tail_seconds": null,
+    "unmeasured_tail": [
+      "extension screen encoding/inference",
+      "paired bootstrap and decision aggregation",
+      "full-data setup overhead"
+    ]
+  },
+  "budget_caveat": "linear row scaling from 256/128/2; graph sizes, setup, memory, scoring and early stopping differ; not equal compute or a guaranteed ETA",
+  "completed_journal_sha256": "b1f816f50120825eedafd949fe84ab1961003dc218a464afe2e1cd7f5f284407",
+  "completed_real_epochs": 8,
+  "completed_training_arms": 4,
+  "date": "2026-10-01",
+  "device": "cpu",
+  "execution_returncode": 0,
+  "existing_checks": {
+    "failed": 0,
+    "passed": 372
+  },
+  "full_execution_approved": false,
+  "full_execution_performed": false,
+  "measured_budget_sha256": "97ee5812c62ab5095ef3443d82eee8a9632cd3d2f779145564b5d685a05ad2fe",
+  "memory_ceiling_gib": 8,
+  "o_enabled": false,
+  "purpose": "bounded train/dev runtime verification only",
+  "schema": "medgnn.cei_v3_smoke_receipt.v1",
+  "scientific_result": false,
+  "screen_graphs_deserialized": false,
+  "source_commit": "12c7bf3cdc7cbe2aa1084ab08f48a7c497d6230f",
+  "test_graphs_deserialized": false,
+  "threads": 2,
+  "validation_fitting_performed": false,
+  "validation_graphs_deserialized": false
+}
