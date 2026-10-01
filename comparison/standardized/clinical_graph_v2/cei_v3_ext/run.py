@@ -287,8 +287,18 @@ def train_stage(stage, args, frozen, controls, smoke=False):
             if pid:
                 process.returncode = os.waitstatus_to_exitcode(status)
                 break
-            rss = subprocess.run(['ps', '-o', 'rss=', '-p', str(process.pid)],
-                                 capture_output=True, text=True, check=False).stdout.strip()
+            try:
+                rss = subprocess.run(['ps', '-o', 'rss=', '-p', str(process.pid)],
+                                     capture_output=True, text=True, check=False).stdout.strip()
+            except PermissionError:
+                # Some macOS execution environments refuse spawning ps. Query
+                # the same child's RSS through the native process API instead;
+                # permission failures still propagate, never disable the ceiling.
+                import psutil
+                try:
+                    rss = str(psutil.Process(process.pid).memory_info().rss // 1024)
+                except psutil.NoSuchProcess:
+                    rss = ''  # wait4 above will reap it on the next iteration.
             if rss:
                 sampled_peak = max(sampled_peak, int(rss) * 1024)
             if sampled_peak > ceiling or time.perf_counter() - start > args.stage_timeout_seconds:
