@@ -34,11 +34,23 @@ from .methods import build_method
 from .schema import sha256
 from shared.lib.explanation_contract import build_node_explanation
 
-REPO = Path(__file__).resolve().parents[3]
-MAIN = Path('/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN')
-V3_ROOT = MAIN / '.worktrees/run-cei3-core/comparison/standardized/clinical_runs_cei_v3_20260930'
-P_ROOT = MAIN / '.worktrees/run-cei3-vs-protgnn/comparison/standardized/clinical_runs_cei_v3_vs_protgnn_20260930'
-OUTPUT = REPO / 'comparison/standardized/cei_v3_graphxai_screen500_20260930'
+from . import cei_v3_paths as io_paths
+
+REPO = io_paths.REPO
+MAIN = REPO
+V3_ROOT = io_paths.DEFAULT_RESULTS / 'core'
+P_ROOT = io_paths.DEFAULT_RESULTS / 'protgnn'
+OUTPUT = REPO / 'comparison/standardized/clinical_runs_cei_v3_graphxai_screen500_20261001'
+PATHS = None
+
+
+def configure(paths, output=None):
+    global PATHS, MAIN, V3_ROOT, P_ROOT, OUTPUT
+    PATHS = paths
+    MAIN, V3_ROOT, P_ROOT = paths.data_root, paths.v3_root, paths.protgnn_root
+    if output is not None:
+        OUTPUT = io_paths.check_output(paths, output)
+
 SEEDS = (1234, 2025, 7)
 MODELS = ('C_K4', 'P')
 EXPLAINERS = ('GradExplainer', 'IntegratedGradExplainer', 'GNNExplainer', 'Native', 'Random')
@@ -74,7 +86,8 @@ def stage_dir(model, seed):
 def reconstruct_adapter(binding, checkpoint_path):
     """Strict bound reconstruction; no optimizer or epoch/projection hook called."""
     if binding['method'] == 'cei_gnn_v3':
-        model = study._default_model_factory(binding, checkpoint_path)
+        model = io_paths.mapped_model_factory(binding, checkpoint_path,
+                    paths=PATHS or io_paths.resolve(), factory=study._default_model_factory)
     elif binding['method'] == 'protgnn':
         config = binding['method_config']
         architecture = config['architecture']
@@ -270,7 +283,7 @@ def preflight(limit):
     reference = read(stage_dir('C_K4', 1234) / 'binding.json')
     record = read(V3_ROOT / 'screen_record.json')
     equal('screen fold', record['fold'], 'screen')
-    targets_path = Path(reference['targets_path'])
+    targets_path = (PATHS or io_paths.resolve()).targets
     equal('target bytes', sha256(targets_path), record['targets_sha256'])
     targets, kept = screen.load_screen_targets(targets_path, top_k_labels=10)
     equal('class order', kept, reference['kept_label_indices'])
@@ -332,7 +345,7 @@ def preflight(limit):
             manifest_stages.append({'model': model, 'seed': seed, 'directory': str(directory),
                                     'checkpoint_sha256': checkpoint_hash, 'binding_sha256': sha256(directory / 'binding.json'),
                                     'parameter_count': binding['parameter_count']})
-    artifact = Path(reference['artifact'])
+    artifact = (PATHS or io_paths.resolve()).artifact
     for filename, key in (('graphs.jsonl', 'artifact_graphs_sha256'),
                           (reference['artifact_visit_membership_file'], 'artifact_visit_membership_sha256')):
         equal(f'artifact bytes {filename}', sha256(artifact / filename), reference[key])
@@ -509,9 +522,12 @@ def aggregate(root, wall_seconds):
     # Read-only input identity recheck of exact checkpoint/binding/preprocessing targets.
     for entry in manifest['stages']:
         directory = Path(entry['directory'])
+        mapper = (PATHS or io_paths.resolve()).path_map
         for filename, key in (('best.pt', 'checkpoint_sha256'), ('binding.json', 'binding_sha256')):
-            equal(f'unchanged input {directory}/{filename}', sha256(directory / filename), entry[key])
-        equal('unchanged preprocessing', sha256(directory / 'preprocessing.json'), manifest['preprocessing_sha256'])
+            equal(f'unchanged input {directory}/{filename}',
+                  sha256(mapper.resolve(directory / filename, entry[key])), entry[key])
+        equal('unchanged preprocessing', sha256(mapper.resolve(directory / 'preprocessing.json',
+              manifest['preprocessing_sha256'])), manifest['preprocessing_sha256'])
     write_new(root / 'summary.json', summary)
     print(json.dumps(summary, indent=2, sort_keys=True), flush=True)
 
@@ -538,7 +554,8 @@ def execute(root, limit, workers):
                 model, seed = pending.pop(0)
                 log = (root / f'{model}_seed{seed}.log').open('x')
                 command = [sys.executable, '-m', 'comparison.standardized.clinical_graph_v2.cei_v3_graphxai',
-                           '--worker', '--output', str(root), '--model', model, '--seed', str(seed)]
+                           '--worker', '--output', str(root), '--model', model, '--seed', str(seed)] + \
+                          (PATHS or io_paths.resolve()).cli_args()
                 process = subprocess.Popen(command, cwd=REPO, env=env, stdout=log, stderr=subprocess.STDOUT)
                 active.append((process, log, model, seed))
             finished = []
@@ -565,25 +582,29 @@ def execute(root, limit, workers):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--output', type=Path, default=OUTPUT)
+    parser.add_argument('--output', '--output-root', dest='output', type=Path, default=None)
     parser.add_argument('--limit', type=int, choices=(5, 500), default=500)
     parser.add_argument('--workers', type=int, choices=range(1, 7), default=6)
     parser.add_argument('--execute', action='store_true')
     parser.add_argument('--worker', action='store_true')
     parser.add_argument('--model', choices=MODELS)
     parser.add_argument('--seed', type=int, choices=SEEDS)
+    io_paths.add_arguments(parser)
     args = parser.parse_args(argv)
+    if args.plan and (args.execute or args.worker):
+        parser.error('--plan is read-only and incompatible with execution/worker mode')
+    configure(io_paths.resolve(args), args.output or REPO / 'comparison/standardized/clinical_runs_cei_v3_graphxai_screen500_20261001')
     if args.worker:
         if args.model is None or args.seed is None:
             parser.error('Worker requires model and seed')
-        return worker(args.output, args.model, args.seed)
+        return worker(OUTPUT, args.model, args.seed)
     if not args.execute:
-        print(json.dumps({'status': 'plan_only', 'output': str(args.output), 'n': args.limit,
-                          'models': MODELS, 'seeds': SEEDS, 'explainers': EXPLAINERS,
-                          'steps': 32, 'epochs': 50, 'workers': args.workers,
-                          'fold': 'screen', 'causal_claim': False}, indent=2))
+        report = io_paths.metadata_plan(PATHS, OUTPUT)
+        report.update(n=args.limit, models=MODELS, seeds=SEEDS, explainers=EXPLAINERS,
+                      steps=32, epochs=50, workers=args.workers, fold='screen', causal_claim=False)
+        print(json.dumps(report, indent=2, sort_keys=True))
         return 0
-    return execute(args.output, args.limit, args.workers)
+    return execute(OUTPUT, args.limit, args.workers)
 
 
 if __name__ == '__main__':

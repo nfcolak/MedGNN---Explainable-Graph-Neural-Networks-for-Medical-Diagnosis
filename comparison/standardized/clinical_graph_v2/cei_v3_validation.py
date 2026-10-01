@@ -32,11 +32,27 @@ from .cei_v3_ext.validation_scoring import (
 from .methods import build_method
 from .schema import sha256
 
-REPO = Path(__file__).resolve().parents[3]
-V3_ROOT = comparison.V3_ROOT
-P_ROOT = comparison.MAIN / '.worktrees/run-cei3-vs-protgnn/comparison/standardized/clinical_runs_cei_v3_vs_protgnn_20260930'
-ARTIFACT, TARGETS, CANONICAL = comparison.ARTIFACT, comparison.TARGETS, comparison.CANONICAL
-OUTPUT = REPO / 'comparison/standardized/clinical_runs_cei_v3_validation_20260930'
+from . import cei_v3_paths as io_paths
+
+REPO = io_paths.REPO
+V3_ROOT = io_paths.DEFAULT_RESULTS / 'core'
+P_ROOT = io_paths.DEFAULT_RESULTS / 'protgnn'
+ARTIFACT = REPO / io_paths.ARTIFACT_REL
+TARGETS = REPO / io_paths.TARGETS_REL
+CANONICAL = REPO / 'comparison/canonical_split.json'
+OUTPUT = REPO / 'comparison/standardized/clinical_runs_cei_v3_validation_20261001'
+PATHS = None
+
+
+def configure(paths, output=None):
+    global PATHS, V3_ROOT, P_ROOT, ARTIFACT, TARGETS, CANONICAL, OUTPUT
+    PATHS = paths
+    comparison.configure(paths)
+    V3_ROOT, P_ROOT = paths.v3_root, paths.protgnn_root
+    ARTIFACT, TARGETS, CANONICAL = paths.artifact, paths.targets, paths.canonical
+    if output is not None:
+        OUTPUT = io_paths.check_output(paths, output)
+
 APPROVAL_REFERENCE = ('user chat 2026-09-30: validation setini acip tekrar dene; '
                       'scope v3 core A/B/C_K4 + ProtGNN P, 3 seeds, one pass')
 CONTRASTS = [('C', 'P'), ('A', 'P'), ('C', 'A'), ('B', 'A')]
@@ -165,7 +181,8 @@ def preflight(root):
             study.validate_v3_binding(binding, stage, k_selection=frozen, study_binding=successor)
             equal(f'{name}: arm', stage.arm, arm)
             equal(f'{name}: K', stage.k, 4)
-            equal(f'{name}: bound v3 state', sha256(binding['method_config']['v3_state_path']),
+            equal(f'{name}: bound v3 state', sha256((PATHS or io_paths.resolve()).path_map.resolve(
+                      binding['method_config']['v3_state_path'], binding['method_config']['v3_state_sha256'])),
                   binding['method_config']['v3_state_sha256'])
         bindings[name] = binding
         checkpoints[name] = sha256(directory / 'best.pt')
@@ -180,7 +197,8 @@ def load_model(binding, checkpoint_path):
     """CEI factory; ProtGNN reconstruction exactly as score_protgnn's loader."""
     import torch
     if binding['method'] == study.STUDY_METHOD:
-        model = study._default_model_factory(binding, checkpoint_path)
+        model = io_paths.mapped_model_factory(binding, checkpoint_path,
+                    paths=PATHS or io_paths.resolve(), factory=study._default_model_factory)
     else:
         config = binding['method_config']
         architecture = config['architecture']
@@ -386,20 +404,19 @@ def execute(root):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--execute', action='store_true')
-    parser.add_argument('--output-root', type=Path, default=OUTPUT)
+    parser.add_argument('--output-root', type=Path, default=None)
+    io_paths.add_arguments(parser)
     args = parser.parse_args(argv)
-    root = args.output_root.expanduser().resolve()
+    if args.plan and args.execute:
+        parser.error('--plan and --execute are mutually exclusive')
+    configure(io_paths.resolve(args), args.output_root or REPO / 'comparison/standardized/clinical_runs_cei_v3_validation_20261001')
+    root = OUTPUT
     if not args.execute:
-        _, ids, digest, _, checkpoints, _ = preflight(root)
-        print(json.dumps({'status': 'not_executed', 'output_root': str(root),
-                          'read_only_inputs': [str(V3_ROOT), str(P_ROOT)],
-                          'validation_row_count': len(ids), 'validation_sample_ids_sha256': digest,
-                          'validation_hash_matches_all_12_bindings': True, 'checkpoints': checkpoints,
-                          'inference_passes_per_checkpoint': 1, 'k_selected': 4,
-                          'contrasts': CONTRASTS, 'resamples': 1000, 'bootstrap_seed': 2026,
-                          'quantile_method': study.QUANTILE_METHOD, 'retraining': False,
-                          'reselection': False, 'validation_evaluated': False, 'test_evaluated': False,
-                          'test_graphs_will_be_deserialized': False}, indent=2, sort_keys=True))
+        report = io_paths.metadata_plan(PATHS, root)
+        report.update(inference_passes_per_checkpoint=1, contrasts=CONTRASTS,
+                      resamples=1000, bootstrap_seed=2026, quantile_method=study.QUANTILE_METHOD,
+                      retraining=False, reselection=False, test_graphs_will_be_deserialized=False)
+        print(json.dumps(report, indent=2, sort_keys=True))
         return 0
     return execute(root)
 
