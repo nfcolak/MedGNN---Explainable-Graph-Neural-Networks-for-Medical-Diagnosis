@@ -434,7 +434,7 @@ def offset_screen_rows(c_results, offset_records, *, approval_record_sha256,
     return rows
 
 
-def load_screen_row(result) -> tuple:
+def load_screen_row(result, *, shares_path=None, logits_path=None) -> tuple:
     """`(y, pred, subjects)` of one screen row from its stored arrays, for `paired_bootstrap`.
 
     An O row (`o_result.json` dict: `pred_path`, `pred_sha256`) is read from `o_pred.npz`;
@@ -451,10 +451,13 @@ def load_screen_row(result) -> tuple:
         if hashlib.sha256(pred.tobytes()).hexdigest() != result['pred_sha256']:
             raise ValueError('stored O predictions differ from the hash in the O result')
     else:
+        study.assert_absence_share_replay(result, shares_path=shares_path,
+                                          logits_path=logits_path)
         for key in ('logits_path', 'logits_sha256'):
             if not result.get(key):
                 raise ValueError(f'screen result lacks {key}; only hashed raw logits are read')
-        arrays = _load_npz(result['logits_path'], ('logits', 'y', 'subjects', 'sample_ids'))
+        arrays = _load_npz(logits_path or result['logits_path'],
+                           ('logits', 'y', 'subjects', 'sample_ids'))
         logits = arrays['logits']
         if logits.dtype != np.float32:
             raise ValueError('stored screen logits are not raw float32')

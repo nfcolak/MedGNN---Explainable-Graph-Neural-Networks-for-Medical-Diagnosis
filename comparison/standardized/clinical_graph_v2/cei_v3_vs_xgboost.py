@@ -454,8 +454,10 @@ def execute(root):
     start = time.monotonic()
     before = snapshot_inputs()
     reference, targets, record, screen_ids, ordered, source = preflight(root)
-    equal('correct branch', subprocess.check_output(['git', 'branch', '--show-current'], cwd=REPO, text=True).strip(),
-          'agent/run-cei3-vs-xgboost')
+    # Branch labels are not scientific identity: preflight above binds historical
+    # scientific source, immutable input bytes, K, folds and sample hashes.
+    equal('source unchanged after identity preflight',
+          recursive_source_hashes(Path(__file__).parent), source)
     equal('clean committed tree', subprocess.check_output(['git', 'status', '--porcelain=v1'], cwd=REPO, text=True), '')
     revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=REPO, text=True).strip()
     root.mkdir(parents=True, exist_ok=False)

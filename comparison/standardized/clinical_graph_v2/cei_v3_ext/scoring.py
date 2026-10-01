@@ -1,9 +1,8 @@
 """Extension-specific scorer: immutable controls are inputs, not rerun targets."""
 from __future__ import annotations
 
-import copy
 import hashlib
-from dataclasses import replace
+from types import SimpleNamespace
 from pathlib import Path
 
 import numpy as np
@@ -28,22 +27,10 @@ def mapped_model(binding, checkpoint, path_map):
         if name.startswith('methods/') or name in protected:
             if current_source.get(name) != expected:
                 raise ValueError(f'historical scientific source mismatch: {name}')
-    view = copy.deepcopy(binding)
-    config = view['method_config']
-    mapped = str(path_map.resolve(config['v3_state_path'], config['v3_state_sha256']))
-    config['v3_state_path'] = mapped
-    config['effective_settings']['v3_state'] = mapped
-    model = core._default_model_factory(view, checkpoint)
-    actual = model.run_config()
-    for key in ('v3_state_sha256', 'knot_table_sha256', 'universe_sha256',
-                'preprocessing_sha256', 'arm', 'k', 'encoder_depth', 'edge_direction',
-                'hidden', 'comorbid_block', 'pair_mode', 'common_init_identical_to_c'):
-        if actual.get(key) != binding['method_config'].get(key):
-            raise ValueError(f'rebuilt model config drift: {key}')
-    model.state = replace(model.state, path=binding['method_config']['v3_state_path'])
-    if model.run_config() != binding['method_config']:
-        raise ValueError('rebuilt model full run_config differs from retained provenance')
-    return model
+    from ..cei_v3_paths import mapped_model_factory
+    return mapped_model_factory(binding, checkpoint,
+                                paths=SimpleNamespace(path_map=path_map),
+                                factory=core._default_model_factory)
 
 
 def retained_screen(core_root, frozen, controls, path_map):
@@ -55,6 +42,10 @@ def retained_screen(core_root, frozen, controls, path_map):
     for seed, directory in controls['directories'].items():
         binding = read_json(directory / 'binding.json')
         result = read_json(directory / 'screen' / 'screen_result.json')
+        core.assert_absence_share_replay(
+            result, shares_path=(path_map.resolve(result['shares_path'], result['shares_sha256'])
+                                 if result.get('shares_path') else None),
+            logits_path=path_map.resolve(result['logits_path']))
         for key, expected in (
                 ('arm', 'C'), ('seed', seed), ('k', frozen['k_selected']),
                 ('checkpoint_sha256', digest(directory / 'best.pt')),
@@ -187,7 +178,13 @@ def score_extension(directory, output, record, reference, frozen, controls,
     np.savez_compressed(output / 'logits.npz', logits=raw, **arrays)
     np.savez_compressed(output / 'proba.npz', proba=proba, **arrays)
     shares = {name: np.concatenate(chunks) for name, chunks in secondary.items()}
-    np.savez_compressed(output / 'shares.npz', sample_ids=arrays['sample_ids'], **shares)
+    shares['absence_share'] = shares['absence_share'].astype(np.float64, copy=False)
+    row_mean, patient_mean = core.absence_share_means(shares['absence_share'], arrays['subjects'])
+    np.savez_compressed(output / 'shares.npz', absence_share=shares['absence_share'],
+                        subjects=arrays['subjects'], sample_ids=arrays['sample_ids'])
+    np.savez_compressed(output / 'comorbid_shares.npz',
+                        comorbid_share=shares['comorbid_share'],
+                        comorbid_nonempty=shares['comorbid_nonempty'], **arrays)
     result = dict(
         arm=successor['extension_arm'], seed=binding['seed'], k=frozen['k_selected'],
         checkpoint_sha256=digest(directory / 'best.pt'),
@@ -200,11 +197,16 @@ def score_extension(directory, output, record, reference, frozen, controls,
         proba_path=str(output / 'proba.npz'), proba_sha256=array_digest(proba),
         shares_path=str(output / 'shares.npz'), shares_sha256=digest(output / 'shares.npz'),
         screen_sample_ids_sha256=sample_ids_sha256(ids),
-        absence_share_mean=float(shares['absence_share'].mean()),
+        absence_share_mean=row_mean, absence_share_row_mean=row_mean,
+        absence_share_patient_mean=patient_mean,
+        absence_share_aggregation_version=core.ABSENCE_AGGREGATION_VERSION,
+        comorbid_shares_path=str(output / 'comorbid_shares.npz'),
+        comorbid_shares_sha256=digest(output / 'comorbid_shares.npz'),
         training_source_code=binding['source_code'],
         scorer_source_code=recursive_source_hashes(Path(__file__).parents[1]),
         control_binding_sha256=controls['control_binding_sha256'],
         interpretation='exploratory reuse of an already inspected screen; not prospective confirmation',
         validation_evaluated=False, test_evaluated=False)
+    core.assert_absence_share_replay(result)
     core._write_new_json(output / 'screen_result.json', result)
     return result
