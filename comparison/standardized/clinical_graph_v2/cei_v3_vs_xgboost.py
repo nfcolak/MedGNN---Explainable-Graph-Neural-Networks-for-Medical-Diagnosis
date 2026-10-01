@@ -34,13 +34,33 @@ from .cei_v3_ext.validation_scoring import (
 from .contracts import recursive_source_hashes, sample_ids_sha256
 from .schema import sha256
 
-REPO = Path(__file__).resolve().parents[3]
-V3_ROOT, P_ROOT = validation.V3_ROOT, validation.P_ROOT
-MAIN = comparison.MAIN
-VALIDATION_ROOT = MAIN / '.worktrees/run-cei3-validation/comparison/standardized/clinical_runs_cei_v3_validation_20260930'
-ARTIFACT, TARGETS, CANONICAL = comparison.ARTIFACT, comparison.TARGETS, comparison.CANONICAL
-OUTPUT = REPO / 'comparison/standardized/clinical_runs_cei_v3_vs_xgboost_20260930'
-INPUT_ROOTS = (V3_ROOT, P_ROOT, VALIDATION_ROOT)
+from . import cei_v3_paths as io_paths
+
+REPO = io_paths.REPO
+V3_ROOT = io_paths.DEFAULT_RESULTS / 'core'
+P_ROOT = io_paths.DEFAULT_RESULTS / 'protgnn'
+MAIN = REPO
+VALIDATION_ROOT = io_paths.DEFAULT_RESULTS / 'validation'
+ARTIFACT = REPO / io_paths.ARTIFACT_REL
+TARGETS = REPO / io_paths.TARGETS_REL
+CANONICAL = REPO / 'comparison/canonical_split.json'
+OUTPUT = REPO / 'comparison/standardized/clinical_runs_cei_v3_vs_xgboost_20261001'
+PATHS = None
+
+
+def configure(paths, output=None):
+    global PATHS, MAIN, V3_ROOT, P_ROOT, VALIDATION_ROOT, ARTIFACT, TARGETS, CANONICAL, OUTPUT
+    PATHS = paths
+    validation.configure(paths)
+    MAIN, V3_ROOT, P_ROOT = paths.data_root, paths.v3_root, paths.protgnn_root
+    VALIDATION_ROOT = paths.validation_root
+    ARTIFACT, TARGETS, CANONICAL = paths.artifact, paths.targets, paths.canonical
+    if output is not None:
+        OUTPUT = io_paths.check_output(paths, output)
+
+
+def input_roots():
+    return V3_ROOT, P_ROOT, VALIDATION_ROOT
 CONTRASTS = [('C', 'X'), ('A', 'X'), ('B', 'X'), ('P', 'X')]
 VALIDATION_HASH = '287973edfea71e36731eddaed887928b7bf0553f7a8b684187336c789b379173'
 APPROVAL_REFERENCE = ('user chat 2026-09-30: xgboost icinde aynisini yap; '
@@ -142,7 +162,7 @@ def install_io_guards():
 def snapshot_inputs():
     return {str(root): {p.relative_to(root).as_posix(): sha256(p)
                        for p in sorted(root.rglob('*')) if p.is_file()}
-            for root in INPUT_ROOTS}
+            for root in input_roots()}
 
 
 def training_argv(seed, root):
@@ -305,7 +325,8 @@ def train_stage(seed, root, reference):
     start = time.monotonic()
     with (root / 'driver_logs' / f'X_seed{seed}.log').open('xb') as stream:
         subprocess.run(['/usr/bin/python3', '-m', __package__ + '.cei_v3_vs_xgboost',
-                        '--execute', '--train-seed', str(seed), '--output-root', str(root)],
+                        '--execute', '--train-seed', str(seed), '--output-root', str(root)] +
+                       (PATHS or io_paths.resolve()).cli_args(),
                        cwd=REPO, env=env, stdout=stream, stderr=subprocess.STDOUT, check=True)
     checked = validate_trained(root / f'X_seed{seed}', seed, reference)
     print(f'X_seed{seed}: dev={checked[1]["dev_metrics"]["macro_f1"]}; '
@@ -520,32 +541,29 @@ def execute(root):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--execute', action='store_true')
-    parser.add_argument('--output-root', type=Path, default=OUTPUT)
+    parser.add_argument('--output-root', type=Path, default=None)
     parser.add_argument('--train-seed', type=int, choices=study.SEEDS, help=argparse.SUPPRESS)
+    io_paths.add_arguments(parser)
     args = parser.parse_args(argv)
-    root = args.output_root.expanduser().resolve()
+    if args.plan and args.execute:
+        parser.error('--plan and --execute are mutually exclusive')
+    configure(io_paths.resolve(args), args.output_root or REPO / 'comparison/standardized/clinical_runs_cei_v3_vs_xgboost_20261001')
+    root = OUTPUT
     if args.train_seed is not None:
         if not args.execute:
             raise ValueError('Internal training worker requires --execute')
-        if root.parent != OUTPUT.parent or not root.name.startswith(OUTPUT.name):
-            raise ValueError('Worker outside approved output scope')
         if not (root / 'input_snapshot_before.json').is_file():
             raise ValueError('Training worker requires parent execution record')
         return train_worker(args.train_seed, root)
     if not args.execute:
-        _, _, record, ids, ordered, _ = preflight(root)
-        print(json.dumps({'status': 'not_executed', 'output_root': str(root),
-            'read_only_inputs': [str(p) for p in INPUT_ROOTS], 'parallel_trainings': 3,
-            'booster_threads_per_training': 8, 'rounds': 300, 'round_step': 25,
-            'screen_row_count': len(ids), 'validation_row_count': len(ordered['validation']),
-            'screen_sample_ids_sha256': record['screen_sample_ids_sha256'],
-            'validation_sample_ids_sha256': VALIDATION_HASH, 'identity_preflight_verified': True,
-            'test_graphs_will_be_deserialized': False, 'test_evaluated': False,
-            'validation_evaluated': False, 'selection_fold': 'dev',
-            'screen_passes_per_model': 1, 'validation_passes_per_model': 1,
-            'contrasts': CONTRASTS, 'resamples': 1000, 'bootstrap_seed': 2026,
-            'quantile_method': study.QUANTILE_METHOD,
-            'training_argv': {str(s): training_argv(s, root) for s in study.SEEDS}}, indent=2, sort_keys=True))
+        report = io_paths.metadata_plan(PATHS, root, include_validation=True)
+        report.update(parallel_trainings=3, booster_threads_per_training=8,
+                      rounds=300, round_step=25, selection_fold='dev',
+                      screen_passes_per_model=1, validation_passes_per_model=1,
+                      contrasts=CONTRASTS, resamples=1000, bootstrap_seed=2026,
+                      quantile_method=study.QUANTILE_METHOD,
+                      training_argv={str(s): training_argv(s, root) for s in study.SEEDS})
+        print(json.dumps(report, indent=2, sort_keys=True))
         return 0
     return execute(root)
 

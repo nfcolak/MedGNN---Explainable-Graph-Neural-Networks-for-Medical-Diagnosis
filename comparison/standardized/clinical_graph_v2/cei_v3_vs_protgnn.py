@@ -29,14 +29,26 @@ from .contracts import recursive_source_hashes, sample_ids_sha256
 from .methods import build_method
 from .schema import sha256
 
-REPO = Path(__file__).resolve().parents[3]
-MAIN = Path('/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN')
-V3_ROOT = MAIN / '.worktrees/run-cei3-core/comparison/standardized/clinical_runs_cei_v3_20260930'
-PILOT_ROOT = MAIN / 'comparison/standardized/clinical_runs_cei_pilot_20260928/protgnn_control'
-ARTIFACT = MAIN / 'comparison/standardized/event_inputs/clinical_graph_v3_membership_max6_20260923'
-TARGETS = MAIN / 'comparison/standardized/event_inputs/first_recorded_lab_all_visits_v2_targets_local_v2_max6/targets.csv'
-CANONICAL = MAIN / 'comparison/canonical_split.json'
-OUTPUT = REPO / 'comparison/standardized/clinical_runs_cei_v3_vs_protgnn_20260930'
+from . import cei_v3_paths as io_paths
+
+REPO = io_paths.REPO
+MAIN = REPO  # Compatibility alias; configured explicitly before CLI use.
+V3_ROOT = io_paths.DEFAULT_RESULTS / 'core'
+PILOT_ROOT = REPO / io_paths.PILOT_REL
+ARTIFACT = REPO / io_paths.ARTIFACT_REL
+TARGETS = REPO / io_paths.TARGETS_REL
+CANONICAL = REPO / 'comparison/canonical_split.json'
+OUTPUT = REPO / 'comparison/standardized/clinical_runs_cei_v3_vs_protgnn_20261001'
+PATHS = None
+
+
+def configure(paths, output=None):
+    global PATHS, MAIN, V3_ROOT, PILOT_ROOT, ARTIFACT, TARGETS, CANONICAL, OUTPUT
+    PATHS = paths
+    MAIN, V3_ROOT, PILOT_ROOT = paths.data_root, paths.v3_root, paths.pilot_root
+    ARTIFACT, TARGETS, CANONICAL = paths.artifact, paths.targets, paths.canonical
+    if output is not None:
+        OUTPUT = io_paths.check_output(paths, output)
 THREADS = 6
 IDENTITY_KEYS = (
     'artifact_graphs_sha256', 'artifact_visit_membership_sha256', 'targets_sha256',
@@ -381,11 +393,14 @@ def execute(root, planned):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--execute', action='store_true')
+    parser.add_argument('--output-root', type=Path, default=None)
+    io_paths.add_arguments(parser)
     args = parser.parse_args(argv)
+    if args.plan and args.execute:
+        parser.error('--plan and --execute are mutually exclusive')
+    configure(io_paths.resolve(args), args.output_root or REPO / 'comparison/standardized/clinical_runs_cei_v3_vs_protgnn_20261001')
     planned = stages(OUTPUT)
     if not args.execute:
-        if OUTPUT.exists():
-            raise FileExistsError(f'Plan requires a fresh output root: {OUTPUT}')
         template = next(stage for stage in pilot.build_plan(artifact=ARTIFACT, targets=TARGETS,
                         canonical=CANONICAL, output_root=OUTPUT) if stage.name == 'protgnn_control')
         for stage in planned:
@@ -393,13 +408,13 @@ def main(argv=None):
             normalized[normalized.index('--seed') + 1] = '1234'
             normalized[normalized.index('--output') + 1] = template.output
             require_equal(f'{stage.name}: exact pilot argv', normalized, template.argv)
+        report = io_paths.metadata_plan(PATHS, OUTPUT)
         identity(read(PILOT_ROOT / 'binding.json'), read(V3_ROOT / 'A_seed1234/binding.json'), 'pilot preflight')
-        print(json.dumps({'status': 'not_executed', 'output_root': str(OUTPUT), 'v3_root_read_only': str(V3_ROOT),
-                          'parallel_trainings': 3, 'threads_per_training': THREADS,
-                          'validation_evaluated': False, 'test_evaluated': False,
-                          'contrasts': [['C', 'P'], ['A', 'P']], 'resamples': 1000,
-                          'bootstrap_seed': 2026, 'quantile_method': study.QUANTILE_METHOD,
-                          'stages': [asdict(stage) for stage in planned]}, indent=2, sort_keys=True))
+        report.update(parallel_trainings=3, threads_per_training=THREADS,
+                      contrasts=[['C', 'P'], ['A', 'P']], resamples=1000,
+                      bootstrap_seed=2026, quantile_method=study.QUANTILE_METHOD,
+                      pilot_identity_verified=True, stages=[asdict(stage) for stage in planned])
+        print(json.dumps(report, indent=2, sort_keys=True))
         return 0
     return execute(OUTPUT, planned)
 
