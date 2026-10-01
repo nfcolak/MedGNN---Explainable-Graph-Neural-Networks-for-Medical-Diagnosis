@@ -44,6 +44,8 @@ V3_STATE_DIRNAME = 'v3_state'
 K_SELECTION_FILENAME = 'k_selection.json'
 STUDY_BINDING_FILENAME = 'study_binding.json'
 SCREEN_DIRNAME = 'screen'
+ABSENCE_AGGREGATION_LEGACY = 'cei_v3_absence_row_mean_legacy_v1'
+ABSENCE_AGGREGATION_VERSION = 'cei_v3_absence_row_and_equal_patient_mean_v2'
 
 
 # ------------------------------------------------------------------ plan lock
@@ -851,6 +853,16 @@ class ScreenEncoder:
 
 @dataclass(frozen=True)
 class ScreenResult:
+    """Historical JSON loads unchanged via ``ScreenResult(**old_json)``.
+
+    ``absence_share_mean`` ALWAYS means the row (visit) mean, including in new
+    results; it is retained for legacy consumers, never relabelled patient mean.
+    Missing new fields default to None and the legacy aggregation version: no
+    equal-patient statistic or shares proof is inferred from a historical mean.
+    New absence-active results report both means and bind the exact shares.npz
+    FILE bytes (not only the share array) with ``shares_sha256``. Absence-inactive
+    arms keep all means/proof fields None. All shares files remain private outputs.
+    """
     arm: str
     seed: int
     k: int
@@ -867,6 +879,112 @@ class ScreenResult:
     absence_share_mean: Optional[float]
     validation_evaluated: bool = False
     test_evaluated: bool = False
+    absence_share_row_mean: Optional[float] = None
+    absence_share_patient_mean: Optional[float] = None
+    absence_share_aggregation_version: str = ABSENCE_AGGREGATION_LEGACY
+    shares_path: Optional[str] = None
+    shares_sha256: Optional[str] = None
+
+
+def absence_share_means(shares, subjects) -> Tuple[float, float]:
+    """Return visit mean and equal-patient mean, without reading data or writing.
+
+    Each subject first receives the mean of its visits; these subject means then
+    receive equal weight. The per-visit class-share arithmetic is unchanged.
+    """
+    shares = np.asarray(shares, dtype=np.float64)
+    subjects = np.asarray(subjects)
+    if (shares.ndim != 1 or not len(shares) or subjects.shape != shares.shape
+            or subjects.dtype.kind not in ('U', 'S')):
+        raise ValueError('absence shares and subjects must be aligned nonempty 1-D arrays '
+                         'with string subject identities')
+    if not np.isfinite(shares).all() or np.any((shares < 0) | (shares > 1)):
+        raise ValueError('absence shares must be finite values in [0, 1]')
+    subjects = subjects.astype(str)
+    if np.any(subjects == ''):
+        raise ValueError('absence share subject identities must be nonempty')
+    patients, inverse = np.unique(subjects, return_inverse=True)
+    sums = np.bincount(inverse, weights=shares, minlength=len(patients))
+    counts = np.bincount(inverse, minlength=len(patients))
+    return float(shares.mean()), float((sums / counts).mean())
+
+
+def assert_absence_share_replay(result, *, shares_path=None, logits_path=None) -> None:
+    """Validate an optional shares proof, never generating or repairing evidence.
+
+    Accepts a ScreenResult or its JSON dict. Legacy results without proof/new
+    aggregates remain readable without opening arrays. A present proof requires
+    complete v2 metadata, a matching FILE hash, aligned identities with hashed
+    logits, and exact reproduction of both aggregates and the legacy row alias.
+    Explicit path overrides are external I/O mappings for relocated immutable
+    outputs; embedded provenance and hashes are never rewritten. This is a replay
+    check, not a plan-mode operation (plan/help must not call array readers).
+    """
+    if isinstance(result, ScreenResult):
+        result = asdict(result)
+    if not isinstance(result, dict):
+        raise ValueError('screen result must be a ScreenResult or JSON dict')
+    version = result.get('absence_share_aggregation_version', ABSENCE_AGGREGATION_LEGACY)
+    if version not in (ABSENCE_AGGREGATION_LEGACY, ABSENCE_AGGREGATION_VERSION):
+        raise ValueError('unknown absence share aggregation version')
+    fields = ('absence_share_row_mean', 'absence_share_patient_mean',
+              'shares_path', 'shares_sha256')
+    if all(result.get(key) is None for key in fields):
+        if version == ABSENCE_AGGREGATION_LEGACY:
+            return None
+        if result.get('arm') in ('A', 'B') and result.get('absence_share_mean') is None:
+            return None
+        raise ValueError('new absence share result lacks its shares proof and aggregates')
+    if version != ABSENCE_AGGREGATION_VERSION or any(result.get(key) is None for key in fields):
+        raise ValueError('incomplete absence share proof or aggregation metadata')
+    proof_path = Path(shares_path if shares_path is not None else result['shares_path'])
+    digest = result['shares_sha256']
+    if (not isinstance(digest, str) or len(digest) != 64
+            or any(c not in '0123456789abcdef' for c in digest)):
+        raise ValueError('shares_sha256 must be a lowercase SHA-256 hex digest')
+    if not proof_path.is_file() or _file_sha256(proof_path) != digest:
+        raise ValueError('shares proof file missing or shares_sha256 differs')
+    with np.load(proof_path, allow_pickle=False) as saved:
+        if set(saved.files) != {'absence_share', 'subjects', 'sample_ids'}:
+            raise ValueError('shares proof keys differ from the absence proof contract')
+        shares, subjects, ids = (saved[key].copy()
+                                for key in ('absence_share', 'subjects', 'sample_ids'))
+    if shares.dtype != np.float64:
+        raise ValueError('shares proof must preserve the float64 per-visit absence shares')
+    row_mean, patient_mean = absence_share_means(shares, subjects)
+    if (ids.shape != shares.shape or ids.dtype.kind not in ('U', 'S')
+            or len(shares) != result.get('row_count') or np.any(ids.astype(str) == '')
+            or len(np.unique(ids)) != len(ids)):
+        raise ValueError('shares proof row count or sample identities differ')
+    for key, expected in (('absence_share_mean', row_mean),
+                          ('absence_share_row_mean', row_mean),
+                          ('absence_share_patient_mean', patient_mean)):
+        if result.get(key) != expected:
+            raise ValueError(f'{key} differs from the shares proof aggregation')
+    source_path = logits_path if logits_path is not None else result.get('logits_path')
+    if source_path is None:
+        raise ValueError('shares replay requires the bound logits path')
+    with np.load(source_path, allow_pickle=False) as saved:
+        logits = saved['logits']
+        if (logits.dtype != np.float32 or logits.ndim != 2 or logits.shape[0] != len(shares)
+                or not np.isfinite(logits).all()
+                or not np.array_equal(subjects, saved['subjects'])
+                or not np.array_equal(ids, saved['sample_ids'])):
+            raise ValueError('shares proof identities differ from the bound logits rows')
+        if hashlib.sha256(np.ascontiguousarray(logits).tobytes()).hexdigest() != result.get('logits_sha256'):
+            raise ValueError('shares replay logits differ from the bound logits hash')
+    return None
+
+
+def load_screen_result(path, *, shares_path=None, logits_path=None) -> ScreenResult:
+    """Read historical/new JSON and validate any shares proof, read-only.
+
+    For relocated files, callers explicitly supply mapped array paths; do not edit
+    historical JSON. A historical row mean alone cannot reproduce a patient mean.
+    """
+    result = ScreenResult(**_load_json(path, 'screen_result.json'))
+    assert_absence_share_replay(result, shares_path=shares_path, logits_path=logits_path)
+    return result
 
 
 def screen_record_sha256(record) -> str:
@@ -914,8 +1032,11 @@ def score_screen(checkpoint, record, encoder, *, output_dir=None, model_factory=
     from the freeze record; a binding/result with validation or test traces; an encoder
     fold other than `'screen'`; a screen record whose fold, row count, preprocessing hash or
     id hash disagree with the encoder ids or the checkpoint binding. Writes raw float32
-    `logits.npz` and `proba.npz` (both hashed) plus `screen_result.json` into
-    `<stage_dir>/screen/` (or `output_dir`), never overwriting.
+    `logits.npz` and `proba.npz` (both hashed), plus a file-hashed `shares.npz`
+    for absence-active arm C and `screen_result.json`, into `<stage_dir>/screen/`
+    (or `output_dir`), never overwriting. New absence results explicitly carry
+    the visit mean, equal-patient mean and aggregation version; the legacy mean
+    remains a visit mean. No decisive metric or decision rule changes.
     """
     import torch
     from torch_geometric.loader import DataLoader
@@ -1004,11 +1125,22 @@ def score_screen(checkpoint, record, encoder, *, output_dir=None, model_factory=
     macro_f1 = weighted_macro_f1(y, logits.argmax(1), num_classes=binding['num_classes'])
     subjects_array = np.asarray(subjects).astype(str)
     ids_array = np.asarray(sample_ids).astype(str)
+    share_array = np.concatenate(shares).astype(np.float64, copy=False) if shares else None
+    row_mean, patient_mean = (absence_share_means(share_array, subjects_array)
+                              if share_array is not None else (None, None))
+    if stage.arm == 'C' and share_array is None:
+        raise ValueError('absence-active screen result requires per-visit shares')
     out.mkdir(parents=True, exist_ok=False)
     logits_path, proba_path = out / 'logits.npz', out / 'proba.npz'
     np.savez_compressed(logits_path, logits=logits, y=y, subjects=subjects_array, sample_ids=ids_array)
     np.savez_compressed(proba_path, proba=proba, y=y, subjects=subjects_array, sample_ids=ids_array)
-    share = float(np.mean(np.concatenate(shares))) if shares else None
+    shares_path, shares_hash = None, None
+    if share_array is not None:
+        shares_path = out / 'shares.npz'
+        with shares_path.open('xb') as stream:
+            np.savez_compressed(stream, absence_share=share_array,
+                                subjects=subjects_array, sample_ids=ids_array)
+        shares_hash = _file_sha256(shares_path)
     result_record = ScreenResult(
         arm=stage.arm, seed=stage.seed, k=stage.k,
         checkpoint_sha256=_file_sha256(checkpoint_path), binding_sha256=_file_sha256(binding_path),
@@ -1017,6 +1149,11 @@ def score_screen(checkpoint, record, encoder, *, output_dir=None, model_factory=
         logits_sha256=hashlib.sha256(np.ascontiguousarray(logits).tobytes()).hexdigest(),
         proba_path=str(proba_path),
         proba_sha256=hashlib.sha256(np.ascontiguousarray(proba).tobytes()).hexdigest(),
-        absence_share_mean=share)
+        absence_share_mean=row_mean, absence_share_row_mean=row_mean,
+        absence_share_patient_mean=patient_mean,
+        absence_share_aggregation_version=ABSENCE_AGGREGATION_VERSION,
+        shares_path=None if shares_path is None else str(shares_path),
+        shares_sha256=shares_hash)
+    assert_absence_share_replay(result_record)
     _write_new_json(out / 'screen_result.json', asdict(result_record))
     return result_record
