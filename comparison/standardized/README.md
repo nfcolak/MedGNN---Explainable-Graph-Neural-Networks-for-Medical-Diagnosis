@@ -1,4 +1,4 @@
-> **Historical.** This runbook documents the retained star/cooccur 30-class tooling, which evaluated the held-out test fold before the no-test-fold rule. It is frozen legacy, not the current task. See [clinical_graph_v2/README.md](clinical_graph_v2/README.md).
+> Frozen historical runbook: the star/cooccur 30-class runtime, dependent tests and exporter have been retired; commands below are archival examples, not active instructions, and must not be run. Historical results and source snapshots remain protected, without a reproduction claim. `build_explanation_cohort.py` remains only as a frozen synthetic-fixture helper, not a current command; heldout access stays forbidden. See [clinical_graph_v2/README.md](clinical_graph_v2/README.md) and [cleanup record](../../docs/max6-top10-cleanup.md).
 
 # Standardized ProtGNN / GSAT / GraphCare benchmark
 
