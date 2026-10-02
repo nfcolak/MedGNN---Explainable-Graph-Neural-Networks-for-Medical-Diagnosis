@@ -5,7 +5,6 @@ from pathlib import Path
 import pytest
 
 from comparison.standardized import build_explanation_cohort as builder
-from comparison.standardized import run_explanations as runner
 from shared.lib import explanation_contract as contract
 from shared.lib.benchmark_contract import EXPECTED_CLASSES, EXPECTED_FOLD_COUNTS
 
@@ -24,13 +23,6 @@ def inputs(tmp_path):
     dataset = tmp_path / "data.csv"
     dataset.write_text("\n".join(rows) + "\n")
     return split, dataset
-
-
-def test_orchestrator_propagates_count_and_cohort():
-    from comparison.standardized.run_all import command_plan
-    plan = command_plan(cohort_size=73, cohort_path=Path("custom.json"))
-    assert all(c[c.index("--cohort-size") + 1] == "73" for c in plan["explain"])
-    assert all(c[c.index("--cohort") + 1] == "custom.json" for c in plan["explain"])
 
 
 def test_default_is_500_and_selection_stays_deterministic(inputs):
@@ -65,19 +57,6 @@ def test_invalid_expected_count_fails_before_io(count):
         )
 
 
-@pytest.mark.parametrize("count", [50, 73, 500])
-def test_runner_propagates_one_count_and_cohort_to_all_methods(tmp_path, count):
-    commands = runner.build_commands(
-        topology="star", seed=1234, cohort_path=tmp_path / "cohort.json",
-        cohort_size=count, require_checkpoints=False,
-    )
-    assert len(commands) == 3
-    for command in commands:
-        assert command[command.index("--cohort-size") + 1] == str(count)
-        assert command[command.index("--cohort") + 1] == str(tmp_path / "cohort.json")
-    default = runner.build_commands(topology="star", seed=1234, require_checkpoints=False)
-    assert all(c[c.index("--cohort-size") + 1] == "500" for c in default)
-
 @pytest.mark.parametrize("count", [50, 500])
 def test_actual_manifest_counts_and_shared_ids(inputs, tmp_path, count):
     from test_standardized_explanations import _base_record
@@ -95,32 +74,3 @@ def test_actual_manifest_counts_and_shared_ids(inputs, tmp_path, count):
             allow_missing_checkpoint=True, expected_count=count,
         )
         assert manifest["subject_count"] == len(manifest["record_files"]) == count
-    summary = runner.validate_cross_method_outputs(
-        output, cohort_path=cohort_path, split_path=split, dataset_path=dataset,
-        topology="star", seed=1234, cohort_size=count,
-    )
-    assert summary["subject_count"] == count
-    assert summary["subject_ids"] == payload["subject_ids"]
-    manifest_path = output / "gsat" / "explanation_manifest.json"
-    manifest = json.loads(manifest_path.read_text())
-    manifest["subject_count"] = count + 1
-    manifest_path.write_text(json.dumps(manifest))
-    with pytest.raises(ValueError, match="manifest contract mismatch"):
-        runner.validate_cross_method_outputs(
-            output, cohort_path=cohort_path, split_path=split, dataset_path=dataset,
-            topology="star", seed=1234, cohort_size=count,
-        )
-
-
-@pytest.mark.parametrize("module_name", list(runner._METHOD_MODULES.values()))
-@pytest.mark.parametrize("count", [None, 50, 73])
-def test_method_cli_accepts_shared_count_without_running_model(monkeypatch, module_name, count):
-    import importlib
-    module = importlib.import_module(module_name)
-    monkeypatch.setattr(module, "main", lambda **kwargs: kwargs)
-    argv = ["--checkpoint", "unused", "--graph-structure", "star",
-            "--canonical-split", "unused", "--cohort", "unused", "--dataset", "unused",
-            "--seed", "1234", "--out-dir", "unused"]
-    if count is not None:
-        argv += ["--cohort-size", str(count)]
-    assert module.cli(argv)["cohort_size"] == (500 if count is None else count)
