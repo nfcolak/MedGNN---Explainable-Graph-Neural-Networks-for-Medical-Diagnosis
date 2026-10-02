@@ -1,184 +1,87 @@
 # Self-Explainable Graph Neural Networks for Medical Diagnosis
 
-The current task is the **max6 / train-derived Top-10 clinical task**: patients
-with at most 6 total visits, the 10 most frequent diagnoses by TRAIN-fold
-frequency, multi-visit clinical graphs, and validation-only model selection.
-Start with the [clinical_graph_v2 runbook](comparison/standardized/clinical_graph_v2/README.md).
-The 30-class native reproduction below is a preserved, separate reference; its
-scores are not comparable with this task. ADR-007 and ADR-008 are proposed, not accepted.
+The active task is the **max6 / train-derived Top-10 clinical task** on MIMIC-IV
+ED patient graphs: patients with at most 6 total visits, the 10 most frequent
+diagnoses by TRAIN-fold frequency, multi-visit clinical graphs, and
+validation-only model selection. The held-out fold is never loaded.
+
+All current methods and plugins are kept: ProtGNN, GSAT, GraphCare (native
+clinical adapter), GCHM-PNA v2/v3, the XGBoost tabular control, CEI-GNN
+(v1/v2/v3) and the GMT / GPS / label-attention / token-fusion / virtual-node
+plugins. They share one artifact, class set, split and seed.
+
+ADR-007 and ADR-008 are proposed, not accepted or enabled.
 
 ## Start here
 
 - [Current runbook: clinical_graph_v2](comparison/standardized/clinical_graph_v2/README.md)
-
-## Preserved 30-class native reference (not comparable)
-
-The preserved native comparison uses **one exact native ProtGNN/GSAT input**:
-ProtGNN, GSAT, GraphCare, and PNA (plain or medication–complaint interaction).
-All consume the same 74,511 ordered patient stars, 30 ordered labels, canonical
-split, and **331 native feature slots**, including the original **132 hub fields**.
-GraphCare has an explicit continuous hub encoder before BAT message passing.
-
-This is a **source-snapshot reproduction**, not a temporally clean early-diagnosis
-benchmark. Native history, visit counts, stay-wide vitals/labs and their upstream
-limitations are retained—not silently replaced by the earlier 127-field enrichment.
-See the [exact-input contract and verification](docs/native-identical-input-v1.md).
-
-### Commands
-
-Run from the repository root. The launcher selects the main Python interpreter
-for ProtGNN/GSAT/PNA and `.venv-graphcare/bin/python` for GraphCare.
-
-```bash
-# Instantiates every model with the full cohort; creates no run output.
-python3 -m comparison.standardized.train_identical \
-  --output comparison/standardized/native_runs/full_v1 --dry-run
-
-# Full-data training, ONLY when intentionally requested (not run during wiring).
-python3 -m comparison.standardized.train_identical \
-  --output comparison/standardized/native_runs/full_v1 \
-  --epochs 30 --seed 1234 --batch-size 128 --loss ce --execute
-
-# Explicitly bounded integration check through the SAME production path.
-python3 -m comparison.standardized.train_identical \
-  --output comparison/standardized/native_runs/my_wiring_check \
-  --epochs 2 --limit 16 --batch-size 8 --execute
-```
-
-`--resume --execute` restores the epoch-committed optimizer/RNG state; `--replay
---execute` reloads the selected checkpoint and verifies exact saved validation
-logits. Use the same scientific arguments when resuming/replaying. No test loader
-is used for selection. `--loss native` declares method-native class weighting;
-`--loss ce` and `--loss sqrt_inverse` provide shared classification-loss policies
-without removing prototype or information-bottleneck auxiliary losses.
-
-Older historical reproduction commands (`run_all`, `run_benchmark`, `run_common_input`,
-`pna_benchmark`, and `enriched_input_v1`) are **not defaults for any current task**.
-Their inputs/results/checkpoints remain unchanged and cannot be mixed with this
-version. The [historical runbook](comparison/standardized/README.md) documents
-those older runs; their three-method topology parity did not establish equal hub
-payloads. The native entrypoint rejects any other artifact fingerprint.
-
-## More links
-
+  (build, train, audits, output contracts)
 - [Repository map and output ownership](STRUCTURE.md)
-- [CEI-GNN v3 delivery report (aggregate results, provenance, open limits)](docs/cei-v3-delivery-2026-10-01.md)
-- [Exact verification evidence and remaining limitations (historical tooling verification)](docs/usability-verification.md)
-- [Browser graph viewer](visualizer/README.md)
-- [Working-tree cleanup and reversible restoration](docs/cleanup-working-tree.md)
-- [Raw data workflow (legacy caveats)](docs/RUN_WITH_OWN_DATA.md)
+- [CEI-GNN v3 delivery report](docs/cei-v3-delivery-2026-10-01.md)
+- [Max6/Top-10 cleanup and frozen-legacy policy](docs/max6-top10-cleanup.md)
+- [Optional browser graph viewer](visualizer/README.md)
 
-## Project Structure
+Real preprocessing, cache builds and training need explicit user approval and a
+new, unoccupied output directory. Tests run only in an explicitly opened testing
+phase.
 
-```text
-.
-├── data/                     Shared raw + processed data (merged_ed.csv)
-├── shared/                   Shared code and standardized contracts
-│   ├── data_prep/            MIMIC-IV-ED -> merged_ed.csv (merge_ed.py + standardizers)
-│   └── lib/                  Split / metrics / config base (identical across methods)
-├── protgnn_analysis/         Intra-patient ProtGNN
-│   ├── config.py             Hyperparameters
-│   ├── load_dataset.py       IntraPatientHeteroDataset + graph builders
-│   ├── models/               GCN / GAT / GIN + GnnNets
-│   ├── my_mcts.py            Prototype subgraph projection (MCTS)
-│   ├── explainability/       GraphXAI wrappers
-│   ├── train.py              Train + explain entry point
-│   ├── scripts/              eval / summarize / confusion / hpo / ...
-│   └── outputs/              Checkpoints, runs, results
-├── graphcare_analysis/       GraphCare (KG + BAT-GNN); model vendored upstream
-│   ├── config.py  adapter.py  build_kg.py  run.py
-│   └── outputs/
-├── gsat_analysis/            GSAT on shared patient graphs
-├── gchm_analysis/            GCHM / GCHM-PNA models
-├── pna_analysis/             Opt-in interaction PNA
-├── event_graph_analysis/     Event-graph analysis
-├── comparison/standardized/  Native reference CLI, historical tooling, explanations, summary
-│   └── clinical_graph_v2/    Current max6 / Top-10 task (current)
-├── tests/                    Maintained contract, fixture and model smoke tests
-├── visualizer/               React/TypeScript graph viewer
-├── baselines/                Exploratory tabular baseline (XGBoost / HistGB)
-├── external/                 External research code, including GraphXAI
-└── docs/                     Operating runbooks, current evidence, cleanup manifest
-```
+## Preserved rebuild chain
+
+These files stay in place, with unchanged paths, because the current task still
+depends on them:
+
+- `comparison/canonical_split.json` (fixed class order and subject folds; never regenerate)
+- `comparison/standardized/icd_mapping.py`
+- `comparison/standardized/clinical_graph_v2/` (all methods, plugins, CEI, audits)
+- `comparison/standardized/event_graph_v1/` (`schema`, `first_lab`, `ingest`, `graph`, `knowledge_seed.csv`)
+- `comparison/standardized/enriched_input_v1/spec.py`
+- `comparison/standardized/event_graph_gchm_xgb_v1/` (`labels`, `local_labels_v2`)
+- `comparison/standardized/gchm_v2_protocol/` (optional, frozen; does not enable ADR-008)
+- `shared/lib/` and `shared/data_prep/`; `shared/data_prep/merge_ed.py` is
+  hash-pinned by `local_labels_v2.py` and must stay byte-identical
+- local data/evidence (not all tracked in Git): the max6 inputs under
+  `comparison/standardized/event_inputs/`,
+  `comparison/standardized/native_inputs/protgsat_snapshot_v1/contract.json`,
+  the historical `binding_manifest.json`, and all result directories with their
+  `source_snapshot` copies and binding/manifest files
+
+Top-10 selection still starts from the original fixed class order, so those
+class-order and label records are required even though they carry a "30-class"
+or "native" name. Max6/Top-10 is a different task from the 30-class legacy
+benchmark; scores are not comparable.
+
+## Frozen-legacy policy
+
+The old 30-class native/star/cooccur model code, the tests tied to it and the
+legacy ProtGNN graph exporter are retired together (see
+[the cleanup record](docs/max6-top10-cleanup.md)). Their original source is
+recoverable from the Git refs and local archives listed there; it is not part
+of the active runtime. Historical result and evidence directories are kept in
+place. Keeping a result does not mean it can be reproduced: a historical run is
+reproducible only if its source hashes were verified against a ref, snapshot or
+archive, and byte-exact reproduction of some max6 sidecars is not demonstrated.
+Old docs that name retired commands describe history; do not run those commands.
 
 ## Requirements
-
-For a reproducible setup with local MIMIC ED files, use:
 
 ```bash
 conda env create -f environment.yml
 conda activate protgnn-mimic
 ```
 
-or:
+or `python3 -m venv .venv` and `pip install -r requirements-lock.txt`.
+`requirements.txt` has flexible ranges; the lock file and `environment.yml` are
+pinned. GraphXAI stays under `external/GraphXAI-main/` (used by the CEI
+explanation path). The clinical GraphCare adapter is native code in
+`clinical_graph_v2/methods/graphcare.py` and does not need the separate
+`.venv-graphcare/`; that environment and `external/GraphCare/` are retained
+legacy dependencies and are left in place.
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements-lock.txt
-```
+## More links
 
-`requirements.txt` contains flexible version ranges. `requirements-lock.txt`
-and `environment.yml` contain pinned versions for collaboration.
-
-GraphXAI is kept as external research code under `external/GraphXAI-main/`. The training scripts add this folder to Python's import path automatically.
-
-See `docs/RUN_WITH_OWN_DATA.md` for the full data placement and rerun workflow.
-
-## Legacy / exploratory usage
-
-The commands below are historical method-specific workflows. They may train
-models or generate caches, and do not use the current native identical-input
-artifact. For the current task use the clinical_graph_v2 runbook; for the native reference use `train_identical` above.
-
-All commands run from the repo root with the repo root on `PYTHONPATH`
-(so the `protgnn_analysis` / `graphcare_analysis` / `shared` packages resolve).
-
-### ProtGNN (legacy 30-class)
-
-Configuration lives in `protgnn_analysis/config.py`.
-
-Run the main train-and-explain workflow:
-
-```bash
-PYTHONPATH=.:external/GraphXAI-main python3 protgnn_analysis/train.py --explain_n 10 --no_prot
-```
-
-Run with prototype learning enabled:
-
-```bash
-PYTHONPATH=.:external/GraphXAI-main python3 protgnn_analysis/train.py --explain_n 100
-```
-
-### GraphCare (legacy 30-class)
-
-Clone the upstream model first (see `external/GraphCare/README.md`), then:
-
-```bash
-PYTHONPATH=.:external/GraphCare python3 graphcare_analysis/run.py
-```
-
-When prototypes are enabled, each enriched explanation JSON includes
-`prototype_evidence` with the nearest learned prototypes, prototype class, distance,
-activation, and contribution to the predicted class.
-
-Run hyperparameter optimization:
-
-```bash
-PYTHONPATH=.:external/GraphXAI-main python3 protgnn_analysis/scripts/hpo_disease.py --n_trials 50 --max_epochs 80
-```
-
-Generate English clinical-language explanations from the latest GraphXAI outputs:
-
-```bash
-PYTHONPATH=.:external/GraphXAI-main python3 protgnn_analysis/scripts/generate_clinical_explanations.py --limit 5
-```
-
-Clinical explanation files include patient-level GraphXAI signals, similar-patient
-context, and prototype evidence when the latest run used prototype learning.
-
-Legacy generated artifacts are written under each method's `outputs/` folder.
-Standardized results belong under `comparison/standardized/results/`.
+- [Exact-input 30-class reference (historical)](docs/native-identical-input-v1.md)
+- [Raw data workflow (legacy caveats)](docs/RUN_WITH_OWN_DATA.md)
+- [Earlier working-tree cleanup](docs/cleanup-working-tree.md)
 
 ## Reference
 

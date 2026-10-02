@@ -8,7 +8,7 @@ Self-explainable GNN diagnosis benchmark on MIMIC-IV ED patient graphs: ProtGNN,
 |---|---|
 | Language | Python (system `python3`; repo recommends 3.10/3.11) |
 | ML | PyTorch 2.2–2.8, PyTorch Geometric 2.5–2.6, XGBoost 2.x, scikit-learn |
-| GraphCare runtime | separate `.venv-graphcare/` — never merge into the main env |
+| Legacy GraphCare runtime | `.venv-graphcare/` is retained legacy; never merge into the main env or change it. The current clinical GraphCare adapter (`clinical_graph_v2/methods/graphcare.py`) is native code and does not use it |
 | Viewer | `visualizer/` (React/TypeScript/Vite) |
 
 ## Non-negotiable rules
@@ -16,13 +16,15 @@ Self-explainable GNN diagnosis benchmark on MIMIC-IV ED patient graphs: ProtGNN,
 | Rule | Why / source |
 |---|---|
 | NEVER load or evaluate the held-out test fold; select checkpoints on validation macro-F1 only (or on the ADR-008 dev split only when the user explicitly selects that proposed protocol). | `.claude/context/adr-002.md` |
-| NEVER write/run tests unless the user explicitly opens a "testing phase". Parse-only checks are fine. | `.claude/context/adr-005.md` |
+| NEVER write/run tests unless the user explicitly opens a "testing phase". Parse-only checks are fine. The user-approved source/test archival does NOT authorize running tests. | `.claude/context/adr-005.md` |
 | NEVER start real preprocessing, cache builds or training without explicit user approval. Use `--dry-run` / plan modes. | `STRUCTURE.md` |
 | NEVER overwrite a filled output/artifact directory; write to a new path. Runners refuse by design. | `comparison/standardized/clinical_graph_v2/README.md` |
 | NEVER upgrade historical graphs by editing metadata; rebuild into a new path. | `.claude/context/adr-004.md` |
 | NEVER regenerate `comparison/canonical_split.json`. | `STRUCTURE.md` |
 | Compared methods MUST share artifact, class set, train/validation sample-ID hashes, preprocessing contract and seed. | `.claude/context/adr-006.md` |
 | Do not relocate `data/`, `external/` or `docs-vault/` as a cleanup side effect. | `STRUCTURE.md` |
+| Keep `shared/data_prep/merge_ed.py` and `clinical_graph_v2/**` byte-identical (hash-pinned). Do not run or fix `merge_ed.py`. | `docs/max6-top10-cleanup.md` |
+| Do not delete held data/results/source snapshots; do not push (history holds patient-derived payloads). | `docs/max6-top10-cleanup.md` |
 | Report results with task identity (cohort, class set, sample size, seed). Single-seed gaps are not method superiority. | `.claude/context/adr-006.md` |
 
 ## Current comparison contract (max6 / Top-10)
@@ -30,25 +32,24 @@ Self-explainable GNN diagnosis benchmark on MIMIC-IV ED patient graphs: ProtGNN,
 - Patients with more than 6 total visits are excluded.
 - Classes: the 10 most frequent diagnoses by TRAIN-fold frequency; other labels are dropped, never merged into `other`.
 - Sample comparison: the same 10,000 train IDs (seed `1234`) and the full 4,254-row validation fold.
-- Results from this task are NOT comparable with the older 30-class native benchmark (331-slot star input).
-- Full details: `.claude/context/adr-006.md`. Proposed, not accepted: `adr-007.md` (bidirectional edges, GCHM-PNA v2) and `adr-008.md` (dev-selected equal-budget protocol).
+- Results from this task are NOT comparable with the retired 30-class native benchmark (331-slot star input). Its code is frozen legacy, retired with its tests and exporter; see `docs/max6-top10-cleanup.md`. Top-10 selection still needs the original class order in `comparison/canonical_split.json`.
+- Full details: `.claude/context/adr-006.md`. Proposed, not accepted: `adr-007.md` (bidirectional edges, GCHM-PNA v2) and `adr-008.md` (dev-selected equal-budget protocol; not enabled).
 
 ## Where things live
 
 | Area | Path | Context doc |
 |---|---|---|
 | Multi-visit clinical graph v2/v3 + method adapters | `comparison/standardized/clinical_graph_v2/` (`methods/`) | `clinical-graph-v3.md`, `adr-003.md`, `adr-004.md` |
-| GCHM / GCHM-PNA v2 | `gchm_analysis/`, `clinical_graph_v2/gchm_v2.py`, `comparison/standardized/gchm_v2_protocol/` | `gchm.md` |
-| ProtGNN | `protgnn_analysis/`, `clinical_graph_v2/methods/protgnn.py` | `protgnn.md` |
-| GSAT | `gsat_analysis/`, `clinical_graph_v2/methods/gsat.py` | `gsat.md` |
-| GraphCare | `graphcare_analysis/`, `clinical_graph_v2/methods/graphcare.py` | `graphcare.md` |
+| GCHM / GCHM-PNA v2 | `clinical_graph_v2/gchm_v2.py`, `comparison/standardized/gchm_v2_protocol/` | `gchm.md` |
+| ProtGNN | `clinical_graph_v2/methods/protgnn.py` | `protgnn.md` |
+| GSAT | `clinical_graph_v2/methods/gsat.py` | `gsat.md` |
+| GraphCare | `clinical_graph_v2/methods/graphcare.py` (native adapter) | `graphcare.md` |
 | XGBoost control | `comparison/standardized/xgboost_native_baseline.py`, `clinical_graph_v2/tabular_control.py` | `xgboost.md` |
-| Native identical-input benchmark (30-class) | `comparison/standardized/train_identical.py` | `native-benchmark.md`, `adr-001.md` |
-| Interaction PNA (opt-in) | `pna_analysis/` | `pna.md` |
+| Kept label/input chain | `comparison/standardized/{icd_mapping.py,event_graph_v1/,enriched_input_v1/spec.py,event_graph_gchm_xgb_v1/{labels,local_labels_v2}.py}` | `docs/max6-top10-cleanup.md` |
 | Shared contracts, split, data prep | `shared/lib/`, `shared/data_prep/`, `comparison/canonical_split.json` | `shared.md` |
-| Legacy 30-class trainers (frozen) | `protgnn_analysis/train.py`, `gsat_analysis/train.py`, `graphcare_analysis/run.py`, `comparison/standardized/run_all.py`, `run_benchmark.py`, `summarize.py` | Frozen legacy code: evaluates the test fold and may write into existing dirs; do not run for new work. |
-| Tests | `tests/` | `tests.md` |
-| Vendored third-party code | `external/` (keep upstream layout) | `external.md` |
+| Retired legacy (frozen) | former 30-class method dirs, native/star/cooccur runners, dependent tests, legacy exporter | Recoverable from Git refs/archives listed in `docs/max6-top10-cleanup.md`; some old folders remain for protected outputs. Never run for new work (test-fold access). |
+| Tests | `tests/` (only what the retirement manifest left) | `tests.md` |
+| Vendored third-party code | `external/` (keep upstream layout; GraphXAI used by CEI, GraphCare legacy) | `external.md` |
 
 Context docs are in `.claude/context/`. They are read-only links to the ProjectOS vault. Read the relevant one before changing a subsystem.
 
@@ -56,7 +57,6 @@ Context docs are in `.claude/context/`. They are read-only links to the ProjectO
 
 ```bash
 # Read-only plans / wiring
-python3 -m comparison.standardized.train_identical --output comparison/standardized/native_runs/<new_dir> --dry-run
 python3 -m comparison.standardized.clinical_graph_v2.mechanism_check        # training-free mechanism checks
 python3 -m comparison.standardized.gchm_v2_protocol.protocol               # plan + ETA only
 python3 -m comparison.standardized.gchm_v2_protocol.protocol --status
@@ -72,7 +72,7 @@ Training commands (`clinical_graph_v2.train`, `tabular_control`, `--execute` mod
 - New run outputs go to a new, dated directory under `comparison/standardized/` (existing examples: `clinical_runs_v3_*_YYYYMMDD`).
 - Every run writes `binding.json` / `result.json` with hashes. Never claim equal compute from equal epochs or similar parameter counts.
 - Method-native CLI options are namespaced (`--protgnn-*`, `--gsat-*`, `--graphcare-*`). `--conv` is valid only with `--method clinical_gnn`.
-- Use `.venv-graphcare/bin/python` for GraphCare. `train_identical` selects it automatically; for other entry points, check the runner.
+- The clinical GraphCare adapter runs in the main environment; `.venv-graphcare/` is for retained legacy code only.
 
 ## Project memory
 
