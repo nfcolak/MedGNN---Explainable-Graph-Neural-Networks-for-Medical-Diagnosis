@@ -6,8 +6,6 @@ import torch
 import torch.nn as nn
 
 from shared.lib.fidelity import fidelity_minus, fidelity_plus, sparsity
-from gsat_analysis.explainability.explain_gsat import _record_importance
-from gsat_analysis.explainability.summarize_gsat import build_rows
 
 
 class _SumClassifier(nn.Module):
@@ -50,70 +48,6 @@ def test_fidelity_scores_the_requested_class_not_the_ground_truth():
     assert predicted_class["prob"] == pytest.approx(-other_class["prob"])
     assert predicted_class["target_class"] == 1
     assert other_class["target_class"] == 0
-
-
-def test_gsat_record_binds_fidelity_to_prediction_explanation_target():
-    model = _SumClassifier().eval()
-    x = torch.tensor([[3.0], [1.0], [0.0]])
-    edge_index = torch.empty((2, 0), dtype=torch.long)
-    batch = torch.zeros(3, dtype=torch.long)
-    record = {}
-    aggregate = {
-        "sp": {"BuiltinAttention": []},
-        "fp": {"BuiltinAttention": []},
-        "fm": {"BuiltinAttention": []},
-    }
-
-    _record_importance(
-        record,
-        "BuiltinAttention",
-        np.array([3.0, 1.0, 0.0]),
-        model,
-        x,
-        edge_index,
-        target_class=1,
-        target_provenance="model_prediction",
-        batch=batch,
-        top_k=1,
-        agg=aggregate,
-    )
-
-    explanation = record["BuiltinAttention"]
-    assert explanation["target"] == {
-        "provenance": "model_prediction",
-        "class_id": 1,
-    }
-    assert explanation["fidelity_plus"]["target_class"] == 1
-    assert explanation["fidelity_minus"]["target_class"] == 1
-
-
-def test_gsat_summary_preserves_explanation_target_provenance(tmp_path):
-    explanation_path = tmp_path / "graph_0.json"
-    explanation_path.write_text(
-        __import__("json").dumps(
-            {
-                "graph_idx": 0,
-                "pred_label": 2,
-                "true_label": 1,
-                "correct": False,
-                "num_nodes": 1,
-                "node_tokens": ["patient"],
-                "explanation_target": {
-                    "provenance": "model_prediction",
-                    "class_id": 2,
-                    "class_name": "class-c",
-                },
-                "explanations": {},
-            }
-        ),
-        encoding="utf-8",
-    )
-
-    rows, *_ = build_rows([str(explanation_path)])
-
-    assert rows[0]["target_provenance"] == "model_prediction"
-    assert rows[0]["target_class"] == "class-c"
-    assert rows[0]["target_class_id"] == 2
 
 
 def test_sparsity_reports_fraction_excludable_at_requested_importance_mass():

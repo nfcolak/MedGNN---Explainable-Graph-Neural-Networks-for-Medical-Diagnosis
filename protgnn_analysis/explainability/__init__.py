@@ -1,2 +1,0 @@
-"""Explainability integrations for ProtGNN."""
-
