@@ -23,8 +23,9 @@ Self-explainable GNN diagnosis benchmark on MIMIC-IV ED patient graphs: ProtGNN,
 | NEVER regenerate `comparison/canonical_split.json`. | `STRUCTURE.md` |
 | Compared methods MUST share artifact, class set, train/validation sample-ID hashes, preprocessing contract and seed. | `.claude/context/adr-006.md` |
 | Do not relocate `data/`, `external/` or `docs-vault/` as a cleanup side effect. | `STRUCTURE.md` |
-| Keep `shared/data_prep/merge_ed.py` and `clinical_graph_v2/**` byte-identical (hash-pinned). Do not run or fix `merge_ed.py`. | `docs/max6-top10-cleanup.md` |
-| Do not delete held data/results/source snapshots; do not push (history holds patient-derived payloads). | `docs/max6-top10-cleanup.md` |
+| Preserve the permanent historical SHA256 guard for `shared/data_prep/merge_ed.py`; never silently rewrite its pinned bytes or provenance. Do not import, run or fix it during cleanup; any correction requires a separately authorized, versioned production job. | `docs/max6-top10-cleanup.md` |
+| FOR THIS 2026-10-02 cleanup only: keep `clinical_graph_v2/**`, `shared/**`, retained rebuild sources and the canonical split byte-identical; work locally, with no push. This is not a permanent ban on separately authorized future development. | `docs/max6-top10-cleanup.md` |
+| Do not delete held data/results/source snapshots. Publication requires a separate privacy decision: historical Git contains patient-derived payloads. | `docs/max6-top10-cleanup.md` |
 | Report results with task identity (cohort, class set, sample size, seed). Single-seed gaps are not method superiority. | `.claude/context/adr-006.md` |
 
 ## Current comparison contract (max6 / Top-10)
@@ -44,7 +45,7 @@ Self-explainable GNN diagnosis benchmark on MIMIC-IV ED patient graphs: ProtGNN,
 | ProtGNN | `clinical_graph_v2/methods/protgnn.py` | `protgnn.md` |
 | GSAT | `clinical_graph_v2/methods/gsat.py` | `gsat.md` |
 | GraphCare | `clinical_graph_v2/methods/graphcare.py` (native adapter) | `graphcare.md` |
-| XGBoost control | `comparison/standardized/xgboost_native_baseline.py`, `clinical_graph_v2/tabular_control.py` | `xgboost.md` |
+| XGBoost control | `clinical_graph_v2/tabular_control.py` | `xgboost.md` |
 | Kept label/input chain | `comparison/standardized/{icd_mapping.py,event_graph_v1/,enriched_input_v1/spec.py,event_graph_gchm_xgb_v1/{labels,local_labels_v2}.py}` | `docs/max6-top10-cleanup.md` |
 | Shared contracts, split, data prep | `shared/lib/`, `shared/data_prep/`, `comparison/canonical_split.json` | `shared.md` |
 | Retired legacy (frozen) | former 30-class method dirs, native/star/cooccur runners, dependent tests, legacy exporter | Recoverable from Git refs/archives listed in `docs/max6-top10-cleanup.md`; some old folders remain for protected outputs. Never run for new work (test-fold access). |
