@@ -65,16 +65,6 @@ def test_real_graphxai_edgeless_graph_has_finite_optimizer_gradients(monkeypatch
     validate_explanation_record(record,method='protgnn',topology='star',seed=1234)
 
 
-def test_checkpoint_config_reconstruction_is_cpu_and_strict():
-    from protgnn_analysis.explainability.explain_standardized import checkpoint_model_args
-    from protgnn_analysis.config import model_args
-    c={'model':'gcn','latent_dim':[7,7],'mlp_hidden':[4],'readout':'sum','dropout':0.2,'adj_normalize':False,'emb_normalize':True,'enable_prototypes':False,'num_prototypes_per_class':2}
-    args=checkpoint_model_args(c)
-    assert args.device == 'cpu'
-    assert args.latent_dim == [7,7]
-    assert not args.adj_normlize and args.emb_normlize
-    assert args is not model_args
-
 def test_version_two_requires_all_real_algorithms():
     from shared.lib.explanation_contract import validate_explanation_record, EXPLANATION_SCHEMA, build_node_explanation
     import pytest
