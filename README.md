@@ -61,6 +61,11 @@ place. Keeping a result does not mean it can be reproduced: a historical run is
 reproducible only if its source hashes were verified against a ref, snapshot or
 archive, and byte-exact reproduction of some max6 sidecars is not demonstrated.
 Old docs that name retired commands describe history; do not run those commands.
+`comparison/standardized/build_explanation_cohort.py` is retained byte-identical
+only as a frozen synthetic-fixture helper for shared cohort assertions, not as a
+current command. HOLD `performance_diagnosis/` and `zero_concept_verification/`
+checks depend on archived legacy runtime; their sources/results stay untouched
+and are not active suite entrypoints.
 
 ## Requirements
 

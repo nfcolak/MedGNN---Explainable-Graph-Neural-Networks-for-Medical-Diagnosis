@@ -17,7 +17,8 @@ task; its inputs and scores are not interchangeable with the active one.
 | `comparison/standardized/enriched_input_v1/spec.py` | Kept input spec (plus the package marker it needs). |
 | `comparison/standardized/event_graph_gchm_xgb_v1/` | Kept label contract: `__init__`, `labels`, `local_labels_v2`. |
 | `comparison/standardized/gchm_v2_protocol/` | Optional, frozen protocol. Does not enable ADR-008. |
-| `comparison/standardized/xgboost_native_baseline.py` | XGBoost control entry referenced by the runbook. |
+| `comparison/standardized/clinical_graph_v2/tabular_control.py` | Current XGBoost control. The native 30-class baseline is retired. |
+| `comparison/standardized/build_explanation_cohort.py` | Frozen synthetic-fixture helper retained for shared cohort assertions; not a current command or permission to access heldout data. |
 | `shared/lib/`, `shared/data_prep/` | Shared contracts, split, metrics, data prep. `merge_ed.py` is hash-pinned: keep byte-identical, do not run or fix it. |
 | `visualizer/` | Optional React/TypeScript/Vite viewer for already-exported graph JSON. No supported export command is current. |
 | `external/` | Third-party code. GraphXAI is used by the CEI explanation path; GraphCare is retained legacy. Keep upstream layout. |
@@ -48,8 +49,9 @@ untracked or gitignored locally, so a clean checkout may not contain them.
   `source_snapshot`, binding, result and manifest files.
 - `comparison/standardized/native_runs/` and other historical scientific
   outputs. Preserved, not verified reproducible.
-- `performance_diagnosis/` and `zero_concept_verification/`: contain runnable
-  verification sources; held without an explicit scope decision.
+- `performance_diagnosis/` and `zero_concept_verification/`: HOLD historical
+  verification sources/results, dependent on archived legacy runtime. They stay
+  untouched and are not active suite entrypoints; execution is not authorized.
 - Legacy worktrees with unsaved changes or separate results.
 
 Old root folders (for example the former method directories) may still exist

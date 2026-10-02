@@ -1,3 +1,5 @@
+> Frozen historical runbook: the legacy GraphCare runtime and its tests have been retired. Commands and file layouts below describe archived source, not current entrypoints; do not run them. Protected outputs and the isolated legacy environment remain in place. For current max6/Top-10 work use `comparison/standardized/clinical_graph_v2/methods/graphcare.py` and the clinical runbook. See [cleanup record](../docs/max6-top10-cleanup.md).
+
 # GraphCare analysis (Method B)
 
 Legacy single-visit / 30-class path; the current adapter is `comparison/standardized/clinical_graph_v2/methods/graphcare.py`.
