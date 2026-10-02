@@ -84,3 +84,10 @@ docs/cleanup-sections-*.json
 .ipynb_checkpoints/
 visualizer/public/graphs/dataset/
 visualizer/public/graphs/dataset_summary.json
+
+# Private generated legacy/viewer evidence remains local during source retirement.
+/visualizer/public/graphs/manifest.json
+/protgnn_analysis/outputs/results/clinical_explanations/graphxai_summary.md
+/protgnn_analysis/outputs/results/clinical_explanations/summary.md
+/protgnn_analysis/outputs/results/clinical_explanations/summary.xlsx
+/protgnn_analysis/outputs/results/clinical_explanations/summary_comma.csv
