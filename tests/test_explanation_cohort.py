@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from comparisons.all.build_explanation_cohort import (
+from comparison.all.build_explanation_cohort import (
     build_artifact,
     select_subjects,
 )

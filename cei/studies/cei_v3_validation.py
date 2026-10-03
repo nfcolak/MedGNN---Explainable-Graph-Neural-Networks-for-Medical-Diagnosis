@@ -22,7 +22,7 @@ import numpy as np
 from . import cei_pilot as pilot
 from . import cei_v3_screen as screen
 from . import cei_v3_study as study
-from comparisons.cei_vs_protgnn import cei_v3_vs_protgnn as comparison
+from comparison.cei_vs_protgnn import cei_v3_vs_protgnn as comparison
 from core import train
 from core.contracts import code_source_hashes, sample_ids_sha256
 from .cei_v3_ext.validation_scoring import (
