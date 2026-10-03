@@ -47,11 +47,9 @@ from pathlib import Path
 
 import numpy as np
 
-from core.paths import PACKAGE_ROOT, REPO_ROOT
+from core.paths import REPO_ROOT
 
 ROOT = REPO_ROOT
-PACKAGE = 'core'
-PACKAGE_DIR = PACKAGE_ROOT
 ARTIFACT = 'comparison/standardized/event_inputs/clinical_graph_v3_membership_max6_20260923'
 TARGETS = ('comparison/standardized/event_inputs/'
            'first_recorded_lab_all_visits_v2_targets_local_v2_max6/targets.csv')
@@ -140,8 +138,8 @@ def finite(value):
 
 
 def source_hashes():
-    from core.contracts import recursive_source_hashes
-    return recursive_source_hashes(PACKAGE_ROOT)
+    from core.contracts import code_source_hashes
+    return code_source_hashes()
 
 
 def pid_alive(pid):
@@ -271,7 +269,7 @@ def command(root, spec):
               '--edge-direction', config['edge_direction']]
     out = str(root / spec['name'])
     if arm == 'xgboost':
-        argv = [sys.executable, '-m', PACKAGE + '.methods.xgboost.tabular_control', '--out', out, *shared,
+        argv = [sys.executable, '-m', 'xgboost_control.tabular_control', '--out', out, *shared,
                 '--rounds', str(scale['xgb_rounds']),
                 '--round-step', str(min(SETTINGS['xgb_round_step'], scale['xgb_rounds'])),
                 '--max-depth', str(config['max_depth']),
@@ -279,7 +277,7 @@ def command(root, spec):
         if spec.get('match'):
             argv += ['--match-run', str(root / spec['match'])]
         return argv
-    argv = [sys.executable, '-m', PACKAGE + '.core.train', '--output', out, *shared,
+    argv = [sys.executable, '-m', 'core.train', '--output', out, *shared,
             '--epochs', str(scale['epochs']), '--device', 'cpu']
     if arm in ('gchm_v2', 'gchm_v1'):
         argv += ['--method', 'clinical_gnn', '--conv', 'gchm_v2' if arm == 'gchm_v2' else 'gchm']
@@ -539,9 +537,9 @@ def preflight(root, ledger, args):
     record = ledger.state.get('preflight') or {}
     if record.get('passed') and record.get('source_code_sha256') == digest:
         return
-    checks = [('mechanism_check', [sys.executable, '-m', PACKAGE + '.core.mechanism_check']),
+    checks = [('mechanism_check', [sys.executable, '-m', 'core.mechanism_check']),
               ('incumbent_identity',
-               [sys.executable, '-m', PACKAGE + '.methods.gchm_pna.protocol.identity_snapshot',
+               [sys.executable, '-m', 'gchm_pna.protocol.identity_snapshot',
                 '--compare', str(IDENTITY_BEFORE)])]
     for name, argv in checks:
         log = root / 'logs' / f'preflight__{name}.log'

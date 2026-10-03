@@ -18,7 +18,7 @@ from pathlib import Path
 import shutil
 
 from . import INFORMATIVE_RELATIONS, NODE_KINDS, SCHEMA_VERSION, STRUCTURAL_RELATIONS
-from .paths import PACKAGE_ROOT
+from .paths import REPO_ROOT
 from .diagnosis import DiagnosisIndex, load_icd_map
 from .graph import (LOGIC_CONTRACT_VERSION, assumed_timing,
                     build_graph_with_visit_membership, lab_availability,
@@ -357,7 +357,7 @@ def run(args):
     elif v1_manifest['status'] != 'completed' or not (inherited / 'graphs.jsonl').is_file():
         raise ValueError('Inherited artifact needs completed graphs or verified index_ready metadata')
 
-    code = {str(p.resolve()): p.resolve() for p in (PACKAGE_ROOT / 'core').glob('*.py')}
+    code = {str(p.resolve()): p.resolve() for p in (REPO_ROOT / 'core').glob('*.py')}
     shared_icd_code = Path(icd_mapping.__file__).resolve()
     code[str(shared_icd_code)] = shared_icd_code
     sources = {

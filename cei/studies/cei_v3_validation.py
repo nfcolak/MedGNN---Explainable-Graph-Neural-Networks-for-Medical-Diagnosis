@@ -24,8 +24,7 @@ from . import cei_v3_screen as screen
 from . import cei_v3_study as study
 from comparisons.cei_vs_protgnn import cei_v3_vs_protgnn as comparison
 from core import train
-from core.contracts import recursive_source_hashes, sample_ids_sha256
-from core.paths import PACKAGE_ROOT
+from core.contracts import code_source_hashes, sample_ids_sha256
 from .cei_v3_ext.validation_scoring import (
     APPROVAL_FILENAME, approval_record_sha256, validate_approval_record,
     write_approval_record,
@@ -159,7 +158,7 @@ def preflight(root):
     equal('complete validation coverage', set(ids), expected_ids)
     equal('expected validation row count', len(ids), 4254)
     ids_hash = sample_ids_sha256(ids)
-    source = recursive_source_hashes(PACKAGE_ROOT)
+    source = code_source_hashes()
     bindings, checkpoints = {}, {}
     reference = read(V3_ROOT / 'A_seed1234/binding.json')
     for arm, seed, directory in stages():
@@ -370,7 +369,7 @@ def execute(root):
                                        if decision['v3_beats_control'] else
                                        f'{treatment} benefit over {control} not demonstrated on this validation fold'))
             decisions[f'{treatment}_vs_{control}'] = decision
-        equal('source unchanged', recursive_source_hashes(PACKAGE_ROOT), source)
+        equal('source unchanged', code_source_hashes(), source)
     finally:
         after = snapshot_inputs()
         unchanged = after == before

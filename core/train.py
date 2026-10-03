@@ -50,12 +50,11 @@ from torch_geometric.loader import DataLoader
 
 from .contracts import (VISIT_MEMBERSHIP_CONTRACT_VERSION, VISIT_MEMBERSHIP_FILENAME,
                         iter_graphs_with_membership, sample_ids_sha256,
-                        recursive_source_hashes,
+                        code_source_hashes,
                         validate_artifact_manifest, validate_control_configuration,
                         verify_graph_file, verify_target_binding,
                         verify_visit_membership_file)
 from .registry import CORE_METHODS, METHOD_REGISTRY, ClinicalMethodAdapter, build_method
-from .paths import PACKAGE_ROOT
 from gchm_pna.gchm_v2 import AGGREGATIONS, GCHMv2, READOUTS
 from gchm_pna.gchm_v3 import GCHMv3
 from gchm_pna.gchm_v3 import READOUTS as V3_READOUTS
@@ -760,7 +759,7 @@ def run(args):
                          architecture.get('active_parameter_count', parameter_count)))
     early_stop_start = (early_stopping_start_epoch(args.method, model)
                         if isinstance(model, ClinicalMethodAdapter) else 0)
-    source_code = recursive_source_hashes(PACKAGE_ROOT)
+    source_code = code_source_hashes()
     native_defaults = method_defaults(args.method, args.conv)
     if selection_fold == 'dev':
         selection = ('best dev macro_f1 on a patient-disjoint split of unused TRAIN '

@@ -29,10 +29,9 @@ from torch_geometric.nn import MessagePassing
 from .cei_graphxai import ClinicalGraphXAIWrapper, _batch_of, EXPLANATION_BOUNDARIES
 from . import cei_v3_screen as screen
 from . import cei_v3_study as study
-from core.contracts import recursive_source_hashes, sample_ids_sha256
+from core.contracts import code_source_hashes, sample_ids_sha256
 from core.registry import build_method
 from core.schema import sha256
-from core.paths import PACKAGE_ROOT
 from shared.lib.explanation_contract import build_node_explanation
 
 from . import cei_v3_paths as io_paths
@@ -306,7 +305,7 @@ def preflight(limit):
     for sid in ids:
         if targets[sid][1] != 'train' or sid in train_ids or sid in dev_ids or targets[sid][2] in excluded:
             raise ValueError('Requested explanation patient is not unused TRAIN screen-only')
-    source = recursive_source_hashes(PACKAGE_ROOT)
+    source = code_source_hashes()
     manifest_stages = []
     identity_keys = ('artifact_graphs_sha256', 'artifact_visit_membership_sha256', 'targets_sha256',
                      'target_binding_sha256', 'kept_label_indices', 'label_order', 'sample_seed',

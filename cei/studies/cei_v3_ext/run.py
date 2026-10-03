@@ -18,13 +18,13 @@ from dataclasses import asdict, replace
 from pathlib import Path
 
 from .. import cei_v3_study as core
-from core.contracts import recursive_source_hashes
+from core.contracts import code_source_hashes
 from . import study
 from .arm_guards import EXTENSION_ARMS, arm_of_run_config, assert_extension_binding
 from ..cei_v3_paths import PathMap, check_output, resolve as resolve_paths
 from .io import digest, read_json
 
-from core.paths import PACKAGE_ROOT, REPO_ROOT
+from core.paths import REPO_ROOT
 
 MODULE = 'cei.studies.cei_v3_ext.run'
 SMOKE_BUDGET = (256, 128, 2)
@@ -171,7 +171,7 @@ def execution_identity(args, frozen):
     verify_visit_membership_file(artifact, manifest)
     labels = read_json(args.canonical)['classes']
     target_binding = verify_target_binding(manifest, args.targets, labels)
-    source = recursive_source_hashes(PACKAGE_ROOT)
+    source = code_source_hashes()
     return dict(output_root=str(Path(args.output_root).resolve()),
                 core_root=str(Path(args.core_root).resolve()), execute_mode=args.execute,
                 artifact_graphs_sha256=manifest['graphs_sha256'],
@@ -265,7 +265,7 @@ class Journal:
 
 def train_stage(stage, args, frozen, controls, smoke=False):
     """Actual process timing and wait4 peak RSS; refuse limits while child runs."""
-    if recursive_source_hashes(PACKAGE_ROOT) != args._expected_source:
+    if code_source_hashes() != args._expected_source:
         raise ValueError('source drift since execution identity capture')
     out = Path(stage.output)
     logs = Path(args.output_root) / 'logs'
@@ -318,7 +318,7 @@ def train_stage(stage, args, frozen, controls, smoke=False):
     binding = read_json(out / 'binding.json')
     result = read_json(out / 'result.json')
     core.check_stage_result(out, binding, result)
-    if binding['source_code'] != args._expected_source or recursive_source_hashes(PACKAGE_ROOT) != args._expected_source:
+    if binding['source_code'] != args._expected_source or code_source_hashes() != args._expected_source:
         raise ValueError('runner source binding drift')
     control_inputs = read_json(controls['directories'][stage.seed] / 'binding.json')
     for key in ('artifact_graphs_sha256', 'artifact_visit_membership_sha256', 'targets_sha256'):

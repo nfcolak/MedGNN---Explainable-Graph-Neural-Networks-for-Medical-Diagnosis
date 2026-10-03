@@ -23,7 +23,7 @@ from shared.lib.explanation_contract import COHORT_SIZE
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SPLIT_PATH = PROJECT_ROOT / "comparison" / "canonical_split.json"
 DEFAULT_DATASET_PATH = PROJECT_ROOT / "data" / "merged_ed.csv"
-DEFAULT_OUTPUT_PATH = Path(__file__).with_name("explanation_subjects.json")
+DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "comparison" / "standardized" / "explanation_subjects.json"
 SCHEMA = "medgnn.explanation_cohort"
 SCHEMA_VERSION = 1
 TEST_FOLD = 2

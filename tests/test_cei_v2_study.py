@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-MODULE_PATH = Path(__file__).parents[1] / "comparison/standardized/clinical_graph_v2/methods/cei/studies/cei_v2_study.py"
+MODULE_PATH = Path(__file__).parents[1] / "cei/studies/cei_v2_study.py"
 
 
 def _module():
@@ -31,7 +31,6 @@ def _inputs(tmp_path):
 @lru_cache(maxsize=None)
 def _source(mode, seed, budget):
     from core import train
-    from core.paths import PACKAGE_ROOT
     from core.registry import build_method
     from core.tensorize import PAYLOAD_WIDTH
 
@@ -382,8 +381,7 @@ def test_replay_reconstructs_v2_model_and_rejects_tampering(tmp_path, monkeypatc
     import torch
     from torch_geometric.loader import DataLoader
     from core import train
-    from core.paths import PACKAGE_ROOT
-    from core.contracts import recursive_source_hashes, sample_ids_sha256
+    from core.contracts import code_source_hashes, sample_ids_sha256
     from core.registry import build_method
     from core.schema import sha256
     from core.tensorize import (
@@ -452,7 +450,7 @@ def test_replay_reconstructs_v2_model_and_rejects_tampering(tmp_path, monkeypatc
         "artifact_visit_membership_file": "visit_membership.jsonl",
         "artifact_visit_membership_sha256": sha256(artifact / "visit_membership.jsonl"),
         "targets_path": str(targets_path), "targets_sha256": sha256(targets_path),
-        "source_code": recursive_source_hashes(PACKAGE_ROOT),
+        "source_code": code_source_hashes(),
         "preprocessing_sha256": sha256(output / "preprocessing.json"),
         "kept_label_indices": [0, 1], "token_min_count": 1, "dropped_relations": [],
         "rewired_relations": [], "min_prior_visits": 0,
@@ -596,7 +594,6 @@ def test_preflight_reads_train_only_and_refuses_existing_output(tmp_path, monkey
     module = _module()
     assert hasattr(module, "preflight"), "pair study preflight is missing"
     from core import train
-    from core.paths import PACKAGE_ROOT
     from tests.test_cei_gnn_v2_core import _graph
 
     rows = [_graph(seed=seed) for seed in range(6)]
@@ -688,7 +685,6 @@ def test_smoke_journal_eta_uses_measured_smoke_seconds(tmp_path, monkeypatch):
 def test_analysis_secondary_results_are_explicitly_non_decisive(tmp_path, monkeypatch):
     module = _module()
     from core import train
-    from core.paths import PACKAGE_ROOT
     import numpy as np
 
     arms = {name: np.asarray([[0.9, 0.1], [0.2, 0.8]]) for name in module.FULL_STAGE_NAMES}
@@ -720,7 +716,6 @@ def test_analysis_secondary_results_are_explicitly_non_decisive(tmp_path, monkey
 def test_analysis_per_class_rows_include_false_positive_counts(tmp_path, monkeypatch):
     module = _module()
     from core import train
-    from core.paths import PACKAGE_ROOT
     import numpy as np
 
     arms = {name: np.asarray([[0.8, 0.2], [0.7, 0.3], [0.1, 0.9]])
@@ -749,7 +744,6 @@ def test_analysis_per_class_rows_include_false_positive_counts(tmp_path, monkeyp
 def test_analysis_uses_validated_result_seconds(tmp_path, monkeypatch):
     module = _module()
     from core import train
-    from core.paths import PACKAGE_ROOT
     import numpy as np
 
     arms = {name: np.asarray([[0.9, 0.1], [0.1, 0.9]]) for name in module.FULL_STAGE_NAMES}
@@ -775,7 +769,6 @@ def test_analysis_uses_validated_result_seconds(tmp_path, monkeypatch):
 def test_product_minus_off_comparison_is_explicitly_non_decisive(tmp_path, monkeypatch):
     module = _module()
     from core import train
-    from core.paths import PACKAGE_ROOT
     import numpy as np
 
     arms = {name: np.asarray([[0.9, 0.1], [0.1, 0.9]]) for name in module.FULL_STAGE_NAMES}
@@ -1131,7 +1124,6 @@ def _run_synthetic_analysis(module, tmp_path, monkeypatch, *, point=None, counts
                             histories=None, replay_counts=None):
     import numpy as np
     from core import train
-    from core.paths import PACKAGE_ROOT
 
     arms = {name: np.asarray([[0.8, 0.2], [0.2, 0.8], [0.8, 0.2], [0.2, 0.8]])
             for name in module.FULL_STAGE_NAMES}

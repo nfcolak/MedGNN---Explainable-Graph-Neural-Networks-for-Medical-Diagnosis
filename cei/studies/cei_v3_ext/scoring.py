@@ -8,9 +8,8 @@ from pathlib import Path
 import numpy as np
 
 from .. import cei_v3_study as core
-from core.contracts import sample_ids_sha256, VISIT_MEMBERSHIP_FILENAME, recursive_source_hashes
+from core.contracts import sample_ids_sha256, VISIT_MEMBERSHIP_FILENAME, code_source_hashes
 from core.tensorize import encode_graph, load_preprocessing
-from core.paths import PACKAGE_ROOT
 from .arm_guards import assert_extension_binding
 from .io import digest, read_json, selected_graphs
 from .study import comorbid_share, comorbid_nonempty
@@ -22,7 +21,7 @@ def array_digest(values):
 
 def mapped_model(binding, checkpoint, path_map):
     """Map only the state open, retaining original config for replay comparisons."""
-    current_source = recursive_source_hashes(PACKAGE_ROOT)
+    current_source = code_source_hashes()
     protected = ('tensorize.py', 'contracts.py', 'schema.py', 'cei_v3_absence.py', 'cei_v3_ple.py',
                  'core/tensorize.py', 'core/contracts.py', 'core/schema.py',
                  'studies/cei/cei_v3_absence.py', 'studies/cei/cei_v3_ple.py')
@@ -206,7 +205,7 @@ def score_extension(directory, output, record, reference, frozen, controls,
         comorbid_shares_path=str(output / 'comorbid_shares.npz'),
         comorbid_shares_sha256=digest(output / 'comorbid_shares.npz'),
         training_source_code=binding['source_code'],
-        scorer_source_code=recursive_source_hashes(PACKAGE_ROOT),
+        scorer_source_code=code_source_hashes(),
         control_binding_sha256=controls['control_binding_sha256'],
         interpretation='exploratory reuse of an already inspected screen; not prospective confirmation',
         validation_evaluated=False, test_evaluated=False)

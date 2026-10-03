@@ -6,7 +6,7 @@ import json
 import sys
 from pathlib import Path
 
-MODULE_PATH = Path(__file__).parents[1] / "comparison/standardized/clinical_graph_v2/methods/cei/studies/cei_v2_study.py"
+MODULE_PATH = Path(__file__).parents[1] / "cei/studies/cei_v2_study.py"
 
 
 def _module():

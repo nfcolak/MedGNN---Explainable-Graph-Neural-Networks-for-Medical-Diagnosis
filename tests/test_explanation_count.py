@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from comparison.standardized import build_explanation_cohort as builder
+from comparisons.all import build_explanation_cohort as builder
 from shared.lib import explanation_contract as contract
 from shared.lib.benchmark_contract import EXPECTED_CLASSES, EXPECTED_FOLD_COUNTS
 

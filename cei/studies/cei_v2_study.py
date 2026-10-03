@@ -18,7 +18,6 @@ from pathlib import Path
 import numpy as np
 
 from . import cei_pilot as pilot
-from core.paths import PACKAGE_ROOT
 
 STUDY_METHOD = "cei_gnn_v2"
 MODES = ("product", "additive", "off")
@@ -306,13 +305,13 @@ def replay_v2_stage(output_dir, binding, result, *, persist=True):
     from types import SimpleNamespace
     from torch_geometric.loader import DataLoader
     from core import train
-    from core.contracts import recursive_source_hashes, sample_ids_sha256
+    from core.contracts import code_source_hashes, sample_ids_sha256
     from core.registry import build_method
     from core.schema import sha256
     from core.tensorize import preprocessing_state
     from ..cei_gnn_v2 import within_visit_pairs
 
-    source = recursive_source_hashes(PACKAGE_ROOT)
+    source = code_source_hashes()
     if source != binding.get("source_code"):
         raise ValueError("replay source code differs from run binding")
     artifact = Path(binding["artifact"])

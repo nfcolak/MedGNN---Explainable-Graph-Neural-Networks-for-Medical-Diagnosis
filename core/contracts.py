@@ -11,6 +11,7 @@ from collections.abc import Iterator
 from itertools import islice, zip_longest
 from pathlib import Path
 
+from .paths import CODE_ROOTS, REPO_ROOT
 from .schema import sha256
 
 LOGIC_CONTRACT_VERSION = 'clinical_graph_logic_v2'
@@ -35,6 +36,13 @@ def recursive_source_hashes(package_root):
     if not files:
         raise ValueError('Source binding is empty')
     return {path.relative_to(package_root).as_posix(): sha256(path) for path in files}
+
+
+def code_source_hashes():
+    """Hash every Python source under each code root, keyed `root/relative/path.py`."""
+    return {f'{root}/{rel}': digest
+            for root in CODE_ROOTS
+            for rel, digest in recursive_source_hashes(REPO_ROOT / root).items()}
 
 
 def validate_artifact_manifest(manifest):

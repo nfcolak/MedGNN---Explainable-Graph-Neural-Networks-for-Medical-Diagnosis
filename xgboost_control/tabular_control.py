@@ -14,7 +14,6 @@ import numpy as np
 import xgboost as xgb
 
 from core import NODE_KINDS
-from core.paths import PACKAGE_ROOT
 from core.contracts import (VISIT_MEMBERSHIP_CONTRACT_VERSION, VISIT_MEMBERSHIP_FILENAME,
                         iter_graphs_with_membership)
 from core.tensorize import (ALL_RELATIONS, PREPROCESSING_VERSION, encode_graph,
@@ -220,7 +219,7 @@ def main():
     a = p.parse_args()
 
     t0 = time.monotonic()
-    from core.contracts import (recursive_source_hashes, sample_ids_sha256,
+    from core.contracts import (code_source_hashes, sample_ids_sha256,
                             validate_artifact_manifest, validate_control_configuration,
                             verify_graph_file, verify_target_binding,
                             verify_visit_membership_file)
@@ -307,7 +306,7 @@ def main():
         for key, value in expected.items():
             if b.get(key) != value:
                 problems.append(f'{key} differs')
-        source_code = recursive_source_hashes(PACKAGE_ROOT)
+        source_code = code_source_hashes()
         if b.get('source_code') != source_code:
             problems.append('source_code differs')
         peer_state = json.loads((Path(a.match_run) / 'preprocessing.json').read_text())
@@ -405,7 +404,7 @@ def main():
                'artifact': str(artifact.resolve()),
                'temporal_clean': manifest['temporal_clean'],
                'temporal_limitations': manifest.get('limitations', []),
-               'source_code': recursive_source_hashes(PACKAGE_ROOT),
+               'source_code': code_source_hashes(),
                'label_order': [labels[i] for i in kept] if kept is not None else labels,
                'selection': selection,
                'rounds': a.rounds, 'test_evaluated': False,

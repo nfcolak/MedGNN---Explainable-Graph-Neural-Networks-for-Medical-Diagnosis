@@ -28,12 +28,11 @@ from cei.studies import cei_v3_validation as validation
 from ..cei_vs_protgnn import cei_v3_vs_protgnn as comparison
 from core import contracts, tensorize, train
 from xgboost_control import tabular_control as tabular
-from core.paths import PACKAGE_ROOT
 from cei.studies.cei_v3_ext.validation_scoring import (
     APPROVAL_FILENAME, approval_record_sha256, validate_approval_record,
     write_approval_record,
 )
-from core.contracts import recursive_source_hashes, sample_ids_sha256
+from core.contracts import code_source_hashes, sample_ids_sha256
 from core.schema import sha256
 
 from cei.studies import cei_v3_paths as io_paths
@@ -186,7 +185,7 @@ def preflight(root):
         capture_output=True).returncode, 0)
     install_io_guards()
     reference = read(V3_ROOT / 'A_seed1234/binding.json')
-    source = recursive_source_hashes(PACKAGE_ROOT)
+    source = code_source_hashes()
     for key, digest in reference['source_code'].items():
         equal(f'unchanged shared source {key}', source.get(key), digest)
     frozen = read(V3_ROOT / 'k_selection.json')
@@ -459,7 +458,7 @@ def execute(root):
     # Branch labels are not scientific identity: preflight above binds historical
     # scientific source, immutable input bytes, K, folds and sample hashes.
     equal('source unchanged after identity preflight',
-          recursive_source_hashes(PACKAGE_ROOT), source)
+          code_source_hashes(), source)
     equal('clean committed tree', subprocess.check_output(['git', 'status', '--porcelain=v1'], cwd=REPO, text=True), '')
     revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=REPO, text=True).strip()
     root.mkdir(parents=True, exist_ok=False)
@@ -506,7 +505,7 @@ def execute(root):
                                if decision['v3_beats_control'] else
                                f'{treatment} benefit over X not demonstrated on {fold}'))
                 decisions[fold][f'{treatment}_vs_X'] = decision
-        equal('scientific source unchanged', recursive_source_hashes(PACKAGE_ROOT), source)
+        equal('scientific source unchanged', code_source_hashes(), source)
     finally:
         after = snapshot_inputs()
         unchanged = after == before

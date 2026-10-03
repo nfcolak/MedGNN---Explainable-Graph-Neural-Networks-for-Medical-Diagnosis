@@ -1,5 +1,5 @@
-"""Stable roots for the clinical_graph_v2 package (source binding and repo-relative paths)."""
+"""Stable roots for the repository (source binding and repo-relative paths)."""
 from pathlib import Path
 
-PACKAGE_ROOT = Path(__file__).resolve().parent
-REPO_ROOT = PACKAGE_ROOT.parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[1]
+CODE_ROOTS = ('core', 'protgnn', 'cei', 'gsat', 'graphcare', 'gchm_pna', 'xgboost_control', 'comparisons')

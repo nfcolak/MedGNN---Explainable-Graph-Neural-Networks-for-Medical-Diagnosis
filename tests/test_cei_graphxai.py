@@ -5,10 +5,9 @@ import pytest
 import torch
 from torch_geometric.data import Data
 from torch_geometric.nn import MessagePassing
-from core.paths import PACKAGE_ROOT
 
 
-MODULE_PATH = Path(__file__).resolve().parents[1] / "comparison/standardized/clinical_graph_v2/methods/cei/studies/cei_graphxai.py"
+MODULE_PATH = Path(__file__).resolve().parents[1] / "cei/studies/cei_graphxai.py"
 
 
 def graph_fixture():
@@ -130,7 +129,7 @@ def test_explain_graph_runs_real_algorithms_and_cleans_mask_state():
 
 def test_binding_hashes_use_runner_package_relative_source_manifest(tmp_path):
     implementation = module()
-    from core.contracts import recursive_source_hashes
+    from core.contracts import code_source_hashes
     import inspect
     assert "package_root" in inspect.signature(implementation.binding_hashes).parameters
     artifacts = []
@@ -139,10 +138,10 @@ def test_binding_hashes_use_runner_package_relative_source_manifest(tmp_path):
         path.write_bytes(name.encode())
         artifacts.append(path)
     result = implementation.binding_hashes(
-        package_root=PACKAGE_ROOT, graph_path=artifacts[0],
+        graph_path=artifacts[0],
         membership_path=artifacts[1], checkpoint_path=artifacts[2], cohort_ids=["synthetic-1"],
     )
-    expected = recursive_source_hashes(PACKAGE_ROOT)
+    expected = code_source_hashes()
     assert result["source_sha256"] == expected
     assert all(not Path(key).is_absolute() for key in result["source_sha256"])
 
@@ -250,13 +249,13 @@ def test_reconstruction_replays_candidate_and_product_off_state_dicts(tmp_path):
         config = adapter.run_config()
         checkpoint = tmp_path / f"cei-{enabled}.pt"
         torch.save(adapter.state_dict(), checkpoint)
-        from core.contracts import recursive_source_hashes
+        from core.contracts import code_source_hashes
         import hashlib
         from pathlib import Path
         binding = {
             "method": "cei_gnn", "adaptation_version": config["adaptation_version"],
             "method_config": config,
-            "source_code": recursive_source_hashes(PACKAGE_ROOT),
+            "source_code": code_source_hashes(),
             "vocabulary_size": 8, "node_dim": 3, "edge_dim": 2, "num_classes": 3,
             "hidden": runner_args.hidden, "layers": runner_args.layers,
             "dropout": runner_args.dropout,
@@ -360,7 +359,7 @@ def test_export_clean_integrated_record_derives_file_hashes(tmp_path):
         path.write_bytes(("synthetic-" + key).encode())
         files[key] = path
     hashes = implementation.binding_hashes(
-        package_root=PACKAGE_ROOT, graph_path=files["graph"],
+        graph_path=files["graph"],
         membership_path=files["membership"], checkpoint_path=files["checkpoint"], cohort_ids=ids,
     )
     binding = {
@@ -422,7 +421,7 @@ def test_export_rejects_graph_membership_or_seed_not_bound_to_runner(
         path.write_bytes(("bound-" + key).encode())
         files[key] = path
     hashes = implementation.binding_hashes(
-        package_root=PACKAGE_ROOT, graph_path=files["graph"],
+        graph_path=files["graph"],
         membership_path=files["membership"], checkpoint_path=files["checkpoint"],
         cohort_ids=ids,
     )

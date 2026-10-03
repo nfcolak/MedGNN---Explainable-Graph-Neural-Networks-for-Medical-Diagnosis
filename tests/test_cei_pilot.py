@@ -9,7 +9,7 @@ from core.paths import REPO_ROOT
 
 import pytest
 
-MODULE_PATH = (Path(__file__).parents[1] / "comparison/standardized/clinical_graph_v2/methods/cei/studies/cei_pilot.py")
+MODULE_PATH = (Path(__file__).parents[1] / "cei/studies/cei_pilot.py")
 
 
 def _module():
@@ -27,7 +27,6 @@ import copy
 @lru_cache(maxsize=None)
 def _source_method_config(method, use_interactions=True):
     from core import train
-    from core.paths import PACKAGE_ROOT
     from core.registry import build_method
     from core.tensorize import PAYLOAD_WIDTH
 
@@ -441,16 +440,16 @@ def test_execution_source_snapshot_hashes_its_own_worktree_and_runner_package(tm
     module = _module()
     assert hasattr(module, "_capture_executable_sources"), (
         "executor must snapshot the actual worktree executable source map")
-    package = tmp_path / "comparison/standardized/clinical_graph_v2"
-    plugin = package / "methods/cei/plugin_cei_gnn.py"
-    own_file = package / "methods/cei/studies/cei_pilot.py"
+    package = tmp_path
+    plugin = package / "cei/plugin_cei_gnn.py"
+    own_file = package / "cei/studies/cei_pilot.py"
     plugin.parent.mkdir(parents=True)
     own_file.parent.mkdir(parents=True)
     plugin.write_text("plugin-v1")
     own_file.write_text("pilot-v1")
     snapshot_before = module._capture_executable_sources(tmp_path)
-    assert "methods/cei/studies/cei_pilot.py" in snapshot_before["clinical_source_hashes"]
-    assert "methods/cei/plugin_cei_gnn.py" in snapshot_before["clinical_source_hashes"]
+    assert "cei/studies/cei_pilot.py" in snapshot_before["clinical_source_hashes"]
+    assert "cei/plugin_cei_gnn.py" in snapshot_before["clinical_source_hashes"]
 
     plugin.write_text("plugin-v2")
     snapshot_after = module._capture_executable_sources(tmp_path)
@@ -459,7 +458,7 @@ def test_execution_source_snapshot_hashes_its_own_worktree_and_runner_package(tm
 
     binding = {"source_code": dict(snapshot_after["clinical_source_hashes"])}
     assert module._assert_runner_source_binding(snapshot_after, binding)
-    binding["source_code"]["methods/cei/plugin_cei_gnn.py"] = "0" * 64
+    binding["source_code"]["cei/plugin_cei_gnn.py"] = "0" * 64
     with pytest.raises(ValueError, match="runner source|source binding"):
         module._assert_runner_source_binding(snapshot_after, binding)
 
@@ -492,8 +491,7 @@ def test_replay_stage_reconstructs_real_model_and_rejects_tampered_artifacts(tmp
     from torch_geometric.data import Data
     from torch_geometric.loader import DataLoader
     from core import train
-    from core.paths import PACKAGE_ROOT
-    from core.contracts import recursive_source_hashes, sample_ids_sha256
+    from core.contracts import code_source_hashes, sample_ids_sha256
     from core.registry import build_method
     from core.schema import sha256
     from core.tensorize import (
@@ -560,7 +558,7 @@ def test_replay_stage_reconstructs_real_model_and_rejects_tampered_artifacts(tmp
         "artifact_visit_membership_file": "visit_membership.jsonl",
         "artifact_visit_membership_sha256": sha256(artifact / "visit_membership.jsonl"),
         "targets_path": str(targets_path), "targets_sha256": sha256(targets_path),
-        "source_code": recursive_source_hashes(PACKAGE_ROOT),
+        "source_code": code_source_hashes(),
         "preprocessing_sha256": sha256(output / "preprocessing.json"),
         "top_k_labels": 10, "kept_label_indices": [0, 1], "edges": "all",
         "train_limit": 10000, "token_min_count": 1, "seed": 1234,

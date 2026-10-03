@@ -17,7 +17,7 @@ import json
 from pathlib import Path
 
 from .cei_v3_preserve import MANIFEST, SCHEMA, digest, load_manifest
-from core.paths import PACKAGE_ROOT, REPO_ROOT
+from core.paths import CODE_ROOTS, REPO_ROOT
 
 REPO = REPO_ROOT
 DEFAULT_RESULTS = REPO / 'comparison/standardized/clinical_runs_preserved_20261001'
@@ -203,8 +203,8 @@ def metadata_plan(paths, root, *, include_protgnn=True, include_validation=False
         raise ValueError('Frozen K selection hash differs from historical decision')
     states = set()
     bindings = 0
-    source = {path.relative_to(PACKAGE_ROOT).as_posix(): digest(path)
-              for path in PACKAGE_ROOT.rglob('*.py') if '__pycache__' not in path.parts}
+    source = {path.relative_to(REPO_ROOT).as_posix(): digest(path)
+              for root in CODE_ROOTS for path in (REPO_ROOT / root).rglob('*.py') if '__pycache__' not in path.parts}
     source_gaps = set()
     for arm in ('A', 'B', 'C', 'P') if include_protgnn else ('A', 'B', 'C'):
         for seed in (1234, 2025, 7):

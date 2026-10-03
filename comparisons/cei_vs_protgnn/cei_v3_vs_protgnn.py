@@ -25,10 +25,9 @@ from cei.studies import cei_pilot as pilot
 from cei.studies import cei_v3_screen as screen
 from cei.studies import cei_v3_study as study
 from core import train
-from core.contracts import recursive_source_hashes, sample_ids_sha256
+from core.contracts import code_source_hashes, sample_ids_sha256
 from core.registry import build_method
 from core.schema import sha256
-from core.paths import PACKAGE_ROOT
 
 from cei.studies import cei_v3_paths as io_paths
 
@@ -293,7 +292,7 @@ def execute(root, planned):
     reference = read(V3_ROOT / 'A_seed1234/binding.json')
     identity(read(PILOT_ROOT / 'binding.json'), reference, 'pilot preflight')
     record, frozen, old_decision, targets, ids = frozen_inputs(reference)
-    source = recursive_source_hashes(PACKAGE_ROOT)
+    source = code_source_hashes()
     # All shared scientific source bytes must match the completed v3 revision;
     # the new driver is an additional file, not a silent historical-code repair.
     for key, value in reference['source_code'].items():
@@ -355,7 +354,7 @@ def execute(root, planned):
                                     if primary['v3_beats_control'] else 'CEI-GNN v3 C benefit over ProtGNN not demonstrated on this frozen screen')
             secondary.update(decisive=False, statement='secondary CEI-GNN v3 A versus ProtGNN; not an input to the primary C versus P decision')
             require_equal('v3 output root unchanged', snapshot_v3(), journal['v3_snapshot'])
-            require_equal('source unchanged after execution', recursive_source_hashes(PACKAGE_ROOT), source)
+            require_equal('source unchanged after execution', code_source_hashes(), source)
             pilot_dev = read(PILOT_ROOT / 'result.json')['dev_metrics']['macro_f1']
             report = {'status': 'completed', 'scope': 'v3_vs_protgnn_frozen_screen',
                       'git_revision': journal['git_revision'], 'output_root': str(root), 'k_selected': 4,

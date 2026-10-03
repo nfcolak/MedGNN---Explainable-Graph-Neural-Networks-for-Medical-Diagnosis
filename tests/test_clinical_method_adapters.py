@@ -13,7 +13,7 @@ import torch.nn as nn
 from torch_geometric.data import Batch
 
 from core import aggregate, paths, train
-from core.contracts import recursive_source_hashes
+from core.contracts import code_source_hashes
 from core.registry import build_method
 from gsat import _ClinicalGINLayer
 from core.tensorize import (
@@ -377,12 +377,12 @@ def test_cli_defaults_reject_adapter_conv_and_bind_recursive_method_sources(tmp_
         train.normalize_method_args(incompatible_native, parser)
     assert not (tmp_path / "output").exists()
 
-    sources = recursive_source_hashes(paths.PACKAGE_ROOT)
+    sources = code_source_hashes()
     for required in (
-        "methods/base.py",
-        "methods/protgnn/adapter.py",
-        "methods/gsat/adapter.py",
-        "methods/graphcare/adapter.py",
+        "core/method_base.py",
+        "protgnn/adapter.py",
+        "gsat/adapter.py",
+        "graphcare/adapter.py",
     ):
         assert required in sources
         assert len(sources[required]) == 64

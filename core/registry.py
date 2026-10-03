@@ -41,16 +41,17 @@ def register_plugins(modules, base_registry) -> dict:
     return registry
 
 
+METHOD_FOLDERS = ("cei", "gchm_pna", "graphcare", "gsat", "protgnn", "xgboost_control")
+
+
 def _discover_plugins():
-    """Discover plugins inside method packages, never top-level compatibility shims."""
+    """Discover `plugin_*.py` modules inside the method folders only."""
     modules = []
-    for method in sorted(pkgutil.iter_modules(__path__), key=lambda info: info.name):
-        if not method.ispkg:
-            continue
-        package = importlib.import_module(f"{__name__}.{method.name}")
+    for method in METHOD_FOLDERS:
+        package = importlib.import_module(method)
         for plugin in sorted(pkgutil.iter_modules(package.__path__), key=lambda info: info.name):
             if plugin.name.startswith("plugin_"):
-                modules.append(importlib.import_module(f"{__name__}.{method.name}.{plugin.name}"))
+                modules.append(importlib.import_module(f"{method}.{plugin.name}"))
     return register_plugins(modules, base_registry={})
 
 

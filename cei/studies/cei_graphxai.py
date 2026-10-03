@@ -7,7 +7,6 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from core.paths import PACKAGE_ROOT
 from typing import Any, Mapping, Sequence
 
 import torch
@@ -122,9 +121,9 @@ def _unique_ids(values, label):
     return ids
 
 
-def binding_hashes(*, package_root, graph_path, membership_path, checkpoint_path, cohort_ids):
+def binding_hashes(*, graph_path, membership_path, checkpoint_path, cohort_ids):
     """Compute runner-compatible provenance hashes from source and artifact files."""
-    from core.contracts import recursive_source_hashes
+    from core.contracts import code_source_hashes
 
     def file_hash(path):
         digest = hashlib.sha256()
@@ -133,7 +132,7 @@ def binding_hashes(*, package_root, graph_path, membership_path, checkpoint_path
                 digest.update(chunk)
         return digest.hexdigest()
 
-    source = recursive_source_hashes(package_root)
+    source = code_source_hashes()
     cohort_digest = hashlib.sha256(json.dumps(list(cohort_ids), separators=(",", ":")).encode()).hexdigest()
     return {
         "source_sha256": source,
@@ -191,9 +190,9 @@ def reconstruct_adapter(binding: Mapping[str, Any], checkpoint_path, *, expected
         raise ValueError("unsupported CEI interaction rank")
     if effective.get("use_interactions") not in (True, False) or dims["layers"] != 1:
         raise ValueError("unsupported CEI effective settings or architecture depth")
-    from core.contracts import recursive_source_hashes
+    from core.contracts import code_source_hashes
     source_binding = binding.get("source_code")
-    current_sources = recursive_source_hashes(PACKAGE_ROOT)
+    current_sources = code_source_hashes()
     if not isinstance(source_binding, Mapping) or dict(source_binding) != current_sources:
         raise ValueError("source binding differs from current package-relative source hashes")
     expected_checkpoint_sha256 = str(expected_checkpoint_sha256)
@@ -356,7 +355,7 @@ def export_explanations(
                 or any(char not in "0123456789abcdef" for char in expected_checkpoint_sha256)):
             raise ValueError("export requires an explicit lowercase checkpoint SHA-256")
         derived = binding_hashes(
-            package_root=PACKAGE_ROOT, graph_path=graph_path,
+            graph_path=graph_path,
             membership_path=membership_path, checkpoint_path=checkpoint_path, cohort_ids=sample_ids,
         )
         if dict(binding.get("source_code", {})) != derived["source_sha256"]:

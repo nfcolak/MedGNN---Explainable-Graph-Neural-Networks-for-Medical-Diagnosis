@@ -13,8 +13,8 @@ import pytest
 import torch
 import torch.nn as nn
 
-from core import registry, train
-from core import method_base
+from core import registry as methods, train
+from core import method_base as base
 
 
 CORE = {"graphcare", "gsat", "protgnn"}

@@ -11,12 +11,13 @@ import json
 import math
 import os
 from pathlib import Path
-from core.paths import PACKAGE_ROOT
 import subprocess
 import sys
 from dataclasses import asdict, dataclass
 
 import numpy as np
+
+from core.paths import CODE_ROOTS
 
 
 @dataclass(frozen=True)
@@ -556,12 +557,12 @@ def replay_stage(output_dir, binding, result):
     from torch_geometric.loader import DataLoader
     from types import SimpleNamespace
     from core import train
-    from core.contracts import recursive_source_hashes, sample_ids_sha256
+    from core.contracts import code_source_hashes, sample_ids_sha256
     from core.registry import build_method
     from core.schema import sha256
     from core.tensorize import preprocessing_state
 
-    source = recursive_source_hashes(PACKAGE_ROOT)
+    source = code_source_hashes()
     if source != binding.get("source_code"):
         raise ValueError("replay source code differs from run binding")
     artifact = Path(binding["artifact"])
