@@ -50,7 +50,7 @@ def _discover_plugins():
         package = importlib.import_module(f"{__name__}.{method.name}")
         for plugin in sorted(pkgutil.iter_modules(package.__path__), key=lambda info: info.name):
             if plugin.name.startswith("plugin_"):
-                modules.append(importlib.import_module(f"{package.__name__}.{plugin.name}"))
+                modules.append(importlib.import_module(f"{__name__}.{method.name}.{plugin.name}"))
     return register_plugins(modules, base_registry={})
 
 

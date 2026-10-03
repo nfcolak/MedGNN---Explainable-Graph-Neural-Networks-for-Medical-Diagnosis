@@ -1,8 +1,8 @@
 """GSAT clinical method implementation."""
-from . import adapter as _adapter
-from .adapter import *
+import sys
+from . import adapter as _module
 
-
-def __getattr__(name):
-    """Preserve legacy module attributes while keeping the package's own path."""
-    return getattr(_adapter, name)
+# The old module name now names a package; preserve discovery while aliasing it.
+_module.__path__ = __path__
+setattr(_module, 'adapter', _module)
+sys.modules[__name__] = _module

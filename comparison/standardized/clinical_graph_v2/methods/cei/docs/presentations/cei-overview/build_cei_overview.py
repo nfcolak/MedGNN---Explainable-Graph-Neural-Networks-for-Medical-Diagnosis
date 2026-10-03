@@ -2,10 +2,10 @@
 """Build the 3-slide CEI-GNN overview deck and the standalone clinical-graph diagram.
 
 Docs-only builder: no patient data, no model code, no training. All numbers are
-copied from docs/cei-v3-evidence-2026-10-01.json (aggregate-only).
+copied from methods/cei/docs/cei-v3-evidence-2026-10-01.json (aggregate-only).
 
 Usage (from anywhere):
-    python3 docs/presentations/cei-overview/build_cei_overview.py
+    python3 comparison/standardized/clinical_graph_v2/methods/cei/docs/presentations/cei-overview/build_cei_overview.py
 Outputs next to this script:
     assets/clinical-graph.svg        standalone vector diagram (+ legend, caveats)
     cei-overview.pptx                editable 3-slide deck

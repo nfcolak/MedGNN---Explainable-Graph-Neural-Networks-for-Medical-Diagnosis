@@ -7,7 +7,7 @@ from torch_geometric.data import Data
 from torch_geometric.nn import MessagePassing
 
 
-MODULE_PATH = Path(__file__).resolve().parents[1] / "comparison/standardized/clinical_graph_v2/studies/cei/cei_graphxai.py"
+MODULE_PATH = Path(__file__).resolve().parents[1] / "comparison/standardized/clinical_graph_v2/methods/cei/studies/cei_graphxai.py"
 
 
 def graph_fixture():
@@ -62,10 +62,7 @@ class SyntheticAdapter(torch.nn.Module):
 def module():
     if not MODULE_PATH.is_file():
         pytest.fail("clinical dev-only GraphXAI wrapper absent")
-    spec = importlib.util.spec_from_file_location("comparison.standardized.clinical_graph_v2.studies.cei.cei_graphxai_under_test", MODULE_PATH)
-    loaded = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(loaded)
-    return loaded
+    return importlib.import_module("comparison.standardized.clinical_graph_v2.methods.cei.studies.cei_graphxai")
 
 
 def test_wrapper_preserves_numeric_and_embedding_channels_as_predictor_inputs():

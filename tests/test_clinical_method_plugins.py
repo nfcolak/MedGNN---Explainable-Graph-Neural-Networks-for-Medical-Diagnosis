@@ -17,7 +17,7 @@ from comparison.standardized.clinical_graph_v2 import methods, train
 from comparison.standardized.clinical_graph_v2.methods import base
 
 
-CORE = {"graphcare", "gsat", "protgnn", "protonode"}
+CORE = {"graphcare", "gsat", "protgnn"}
 
 
 def require(module, name):
