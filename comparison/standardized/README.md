@@ -1,4 +1,4 @@
-> Frozen historical runbook: the star/cooccur 30-class runtime, dependent tests and exporter have been retired; commands below are archival examples, not active instructions, and must not be run. Historical results and source snapshots remain protected, without a reproduction claim. `build_explanation_cohort.py` remains only as a frozen synthetic-fixture helper, not a current command; heldout access stays forbidden. See [clinical_graph_v2/README.md](clinical_graph_v2/README.md) and [cleanup record](../../docs/max6-top10-cleanup.md).
+> Frozen historical runbook: the star/cooccur 30-class runtime, dependent tests and exporter have been retired; commands below are archival examples, not active instructions, and must not be run. Historical results and source snapshots remain protected, without a reproduction claim. `build_explanation_cohort.py` remains only as a frozen synthetic-fixture helper, not a current command; heldout access stays forbidden. The code and outputs this runbook refers to (`protgnn_analysis/`, `graphcare_analysis/`, `benchmark_config.json`, `results/`, `native_runs/`, `.venv-graphcare/`) were archived on 2026-10-03 to `/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/repo-archive-20261003/` and deleted from the tree (also in Git history). See [clinical_graph_v2/README.md](clinical_graph_v2/README.md) and [cleanup record](../../docs/max6-top10-cleanup.md).
 
 # Standardized ProtGNN / GSAT / GraphCare benchmark
 
@@ -6,7 +6,7 @@ This directory owns the retained historical matrix: three methods × two common
 topologies (`star`, `cooccur`) × three seeds (`1234`, `1235`, `1236`) = 18
 runs. All commands below are run from the repository root.
 
-The scientific contract is fixed by `benchmark_config.json` and
+The scientific contract is fixed by the archived `benchmark_config.json` and
 `comparison/canonical_split.json`: `data/merged_ed.csv`, 30-class `disease_1`,
 59,607/7,448/7,456 train/validation/test subjects, highest validation macro-F1
 checkpoint selection, and the six shared test metrics. Standardized
@@ -225,7 +225,7 @@ parity evidence.
 Each cell is isolated at
 `comparison/standardized/results/<method>/<topology>/seed_<seed>/` and receives
 a `run_manifest.json`. The GraphCare cells use the interpreter configured in
-`benchmark_config.json` (`.venv-graphcare/bin/python3`). Do not treat dry-run or
+the archived `benchmark_config.json` (`.venv-graphcare/bin/python3`, also archived/removed). Do not treat dry-run or
 smoke evidence as benchmark metrics.
 
 ## 6. Interruption and resume policy

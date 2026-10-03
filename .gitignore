@@ -5,11 +5,8 @@
 **/*.pth
 data/*.csv
 **/__pycache__/
-.venv-graphcare/
 .DS_Store
 
-# Vendored GraphCare (third-party clone; legacy, see comparison/standardized/graphcare_analysis/README.md)
-external/GraphCare/
 # GraphXAI bundled extras (not part of this work)
 external/GraphXAI-main/data/
 external/GraphXAI-main/formal/
@@ -38,26 +35,18 @@ data.zip
 comparison/standardized/common_input_*/
 comparison/standardized/data_quality_balance_*/
 comparison/standardized/enriched_inputs/
-comparison/standardized/enriched_runs/
 comparison/standardized/event_inputs/
-comparison/standardized/event_training/
 comparison/standardized/graphxai_*/
 comparison/standardized/graphxai_execution_*/
 comparison/standardized/native_evidence/
 comparison/standardized/native_inputs/
-comparison/standardized/native_runs/
-comparison/standardized/performance_diagnosis/
 comparison/standardized/performance_review_*/
 comparison/standardized/pna_experiments/
 comparison/standardized/production_cache_*/
 comparison/standardized/results/
-comparison/standardized/zero_concept_verification/
 comparison/standardized/graphxai_current_run.txt
 
-# Trained model binaries: the reports/ JSON keeps every metric, per-class table and
-# bootstrap interval, so results stay auditable without shipping ~0.5 GB of weights.
-comparison/standardized/matched_gchm_xgb_v1/runs/
-comparison/standardized/matched_gchm_xgb_v1/smoke/
+# Trained model binaries
 **/*.ubj
 **/*.npz
 
@@ -67,7 +56,6 @@ comparison/standardized/clinical_runs*/
 docs/cleanup-retired-experiments-*.json
 docs/cleanup-sections-*.json
 .pytest_cache/
-.superpowers/
 
 # Generated artifacts (never commit)
 *.log
@@ -75,9 +63,3 @@ docs/cleanup-sections-*.json
 *.pkl
 *.pyc
 .ipynb_checkpoints/
-
-# Private generated legacy evidence remains local during source retirement.
-/protgnn_analysis/outputs/results/clinical_explanations/graphxai_summary.md
-/protgnn_analysis/outputs/results/clinical_explanations/summary.md
-/protgnn_analysis/outputs/results/clinical_explanations/summary.xlsx
-/protgnn_analysis/outputs/results/clinical_explanations/summary_comma.csv

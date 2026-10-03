@@ -32,4 +32,3 @@ Result directories are not moved. Names only:
 
 - `comparison/standardized/clinical_runs_v3_adapters_sample10k_max6_top10_20260924/xgboost_seed1234` (shared run)
 - `comparison/standardized/clinical_runs_v3_full_top10_20260924/xgb_control_seed1234` (shared run)
-- `comparison/standardized/matched_gchm_xgb_v1/` (shared run with GCHM)
