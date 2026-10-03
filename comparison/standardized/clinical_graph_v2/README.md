@@ -28,7 +28,7 @@ gerçek-kenar kontrolüne** karşı kullanılmalıdır. `--rewire-relation` bu n
 `--no-edge-payload` gerektirir. Takas yapılamayan graflar değişmeden kalabilir.
 Tek bir skor farkı, grafın gereksizliğini veya nedensel faydasını kanıtlamaz.
 
-> CEI-GNN v3 study results (screen/validation/GraphXAI, aggregate only, with provenance): [`docs/cei-v3-delivery-2026-10-01.md`](../../../docs/cei-v3-delivery-2026-10-01.md).
+> CEI-GNN v3 study results (screen/validation/GraphXAI, aggregate only, with provenance): [`methods/cei/docs/cei-v3-delivery-2026-10-01.md`](methods/cei/docs/cei-v3-delivery-2026-10-01.md).
 
 ## Package layout / where things are
 
@@ -36,47 +36,56 @@ Tek bir skor farkı, grafın gereksizliğini veya nedensel faydasını kanıtlam
 clinical_graph_v2/
   __init__.py                 shared schema, node-kind and relation constants
   paths.py                    stable PACKAGE_ROOT and REPO_ROOT
-  core/
+  core/                       shared code only
     contracts.py, schema.py   artifact/data contracts and schema helpers
     graph.py, build.py        graph construction and producer
     store.py, diagnosis.py    source indices and diagnosis history
     tensorize.py, rewiring.py input encoding and relation controls
-    model.py, gchm_v2.py,
-    gchm_v3.py                shared ClinicalGNN and GCHM implementations
+    model.py                  shared ClinicalGNN
     train.py                  shared method runner and evaluation
     aggregate.py, stratify.py result aggregation and subgroup analysis
     audit.py,
-    relation_information.py  graph information / reconstructibility audits
+    relation_information.py   graph information / reconstructibility audits
     repair_metadata.py        guarded inherited-index metadata repair
     mechanism_check.py        training-free mechanism checks
-  methods/                    adapters, method networks and plugin registry
-    plugin_<name>.py          auto-discovered REGISTER plugins
-  controls/
-    tabular_control.py        XGBoost under the shared comparison contract
-  studies/
-    cei/                      CEI pilot, v2/v3 study and analysis modules
-      cei_v3_ext/             CEI extensions, runners and scoring helpers
+  methods/
+    __init__.py, base.py      registry, plugin discovery (plugin_*.py inside method folders only)
+    protgnn/                  adapter.py, README.md, docs/
+    cei/                      cei_gnn*.py, plugin_cei_gnn*.py, studies/ (+ studies/cei_v3_ext/), README.md, docs/
+    gsat/                     adapter.py, README.md, docs/
+    graphcare/                adapter.py, README.md, docs/
+    gchm_pna/                 gchm_v2.py, gchm_v3.py, protocol/, README.md, docs/
+    xgboost/                  tabular_control.py, README.md, docs/
   <old module>.py             compatibility shims, not implementation files
   cei_v3_ext/                 compatibility package and submodule shims
 ```
 
+Each method folder's `README.md` says what the method is, how to run it, and where
+its reports (`docs/`) and result directories are. The challenger methods (GMT, GPS,
+label-attention, token-fusion, virtual-node, ProtoNode) were deleted; recover them
+from commit `aad56003`.
+
 Use the implementation paths in new imports and commands. Old imports and old
 `python3 -m comparison.standardized.clinical_graph_v2.<module>` commands remain
 compatible through the root shims (including the old `cei_v3_ext` package).
-`comparison/standardized/gchm_v2_protocol/` remains a separate protocol package.
+`comparison/standardized/gchm_v2_protocol/` is a compatibility package; the protocol code lives in `methods/gchm_pna/protocol/`.
 Source bindings cover the whole package via `paths.PACKAGE_ROOT`; build's producer
 code binding covers `core/*.py` plus its explicitly listed source files. Historical
 source hashes do not match the restructured sources; guards remain fail-closed.
 
 ### Adding things
 
-- New method: add `methods/plugin_<name>.py` with `REGISTER`; plugins are
-  auto-discovered. See the existing plugins and `methods/__init__.py` for the
-  adapter registration contract.
-- New study: add a subpackage `studies/<name>/`, use `paths.PACKAGE_ROOT` for source
-  binding, and choose a new dated output directory. For example, a study module
-  imports `PACKAGE_ROOT` with `from ...paths import PACKAGE_ROOT`.
-- New control: add `controls/<name>.py`, reusing `core` contracts and encoding.
+- New method: add a folder `methods/<name>/` with `__init__.py` (one-line docstring),
+  `adapter.py` or `plugin_<name>.py` with `REGISTER` (plugins are auto-discovered
+  inside method folders only; see `methods/__init__.py` for the adapter registration
+  contract), its `studies/`, `docs/` and a `README.md` (what it is, code files, run
+  commands, reports, where results are).
+- New study: add a module or subpackage under the owning method's `studies/`, use
+  `paths.PACKAGE_ROOT` for source binding, and choose a new dated output directory.
+  For example, a study module under `methods/<name>/studies/` imports
+  `PACKAGE_ROOT` with `from ....paths import PACKAGE_ROOT`.
+- New control: add it as its own method folder (like `methods/xgboost/`), reusing
+  `core` contracts and encoding.
 
 This layout does not authorize execution: preprocessing, graph/cache builds,
 training and held-out evaluation still require their separate approvals. Never
@@ -433,7 +442,7 @@ python3 -m comparison.standardized.clinical_graph_v2.core.train \
   --hidden 128 --epochs 12 --seed 1234 --execute
 
 # tablo kontrolu (XGBoost, ayni artefakt)
-python3 -m comparison.standardized.clinical_graph_v2.controls.tabular_control \
+python3 -m comparison.standardized.clinical_graph_v2.methods.xgboost.tabular_control \
   --artifact comparison/standardized/event_inputs/clinical_graph_logic_v2_max6 \
   --targets comparison/standardized/event_inputs/first_recorded_lab_all_visits_v2_targets_logic_v2_max6/targets.csv \
   --out comparison/standardized/clinical_runs_logic_v2_max6/xgb_control
@@ -466,7 +475,7 @@ Ayrıca düğümlerin %71'i en fazla bir mesaj alıyor, bu yüzden v1'in 12 PNA 
 - `--edge-direction bidirectional`: geri dönüşü üretilmeyen 9 ilişkiye tipli ters kenar
   (`rev:*`) ekler; ileri blok ve düğüm tensörleri bayt-eşit kalır. Varsayılan `forward`
   tarihsel kodlamadır. Tüm arm'lar ve XGBoost aynı bayrağı kullanabilir.
-- `--conv gchm_v2` (`gchm_v2.py`): hub durumu + ilişki tipiyle çarpımsal kapı,
+- `--conv gchm_v2` (`methods/gchm_pna/gchm_v2.py`): hub durumu + ilişki tipiyle çarpımsal kapı,
   kompakt PNA (4d→d, öğrenilen ölçekleyiciler), hub-okuma. Her parçanın ablasyon
   anahtarı var: `--modulation additive`, `--aggregation sum`, `--no-hub-gate`,
   `--readout pool`. Varsayılan genişlik 92 → ProtGNN'in 399.884 parametresinin altında.
@@ -477,20 +486,20 @@ Ayrıca düğümlerin %71'i en fazla bir mesaj alıyor, bu yüzden v1'in 12 PNA 
 Eşit bütçeli protokol (varsayılan kuru koşu; yazmak için `--execute` gerekir):
 
 ```bash
-python3 -m comparison.standardized.gchm_v2_protocol.protocol                     # plan + ETA
-python3 -m comparison.standardized.gchm_v2_protocol.protocol --stage pilot --execute
-python3 -m comparison.standardized.gchm_v2_protocol.protocol --execute           # tune→report
-python3 -m comparison.standardized.gchm_v2_protocol.protocol --status
+python3 -m comparison.standardized.clinical_graph_v2.methods.gchm_pna.protocol.protocol                     # plan + ETA
+python3 -m comparison.standardized.clinical_graph_v2.methods.gchm_pna.protocol.protocol --stage pilot --execute
+python3 -m comparison.standardized.clinical_graph_v2.methods.gchm_pna.protocol.protocol --execute           # tune→report
+python3 -m comparison.standardized.clinical_graph_v2.methods.gchm_pna.protocol.protocol --status
 ```
 
 Her arm'a aynı 6 deneme bütçesi, dev'de seçim, 3 seed final, v2 ablasyonları ve
 değişmemiş v1 referansı. Önceden kilitli kazanma kuralı: en yüksek ortalama **ve**
 ikinciye karşı hasta-bootstrap %95 aralığı sıfırın üstünde. Aksi durumda sonuç olduğu
-gibi raporlanır. Tasarım: `docs/superpowers/specs/2026-09-24-gchm-pna-v2-design.md`.
+gibi raporlanır. Tasarım: `methods/gchm_pna/docs/superpowers/specs/2026-09-24-gchm-pna-v2-design.md`.
 
 Status: experimental; no ADR exists.
 
-### GCHM-PNA v3 (`--conv gchm_v3`, `gchm_v3.py`)
+### GCHM-PNA v3 (`--conv gchm_v3`, `methods/gchm_pna/gchm_v3.py`)
 
 v2'nin encoder'ı ve hub-kapılı PNA katmanları olduğu gibi kullanılır (import edilir,
 kopyalanmaz). Değişen yalnız okuma tarafı:

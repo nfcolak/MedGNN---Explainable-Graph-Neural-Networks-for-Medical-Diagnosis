@@ -17,7 +17,7 @@ ADR-007 and ADR-008 are proposed, not accepted or enabled.
 - [Current runbook: clinical_graph_v2](comparison/standardized/clinical_graph_v2/README.md)
   (build, train, audits, output contracts)
 - [Repository map and output ownership](STRUCTURE.md)
-- [CEI-GNN v3 delivery report](docs/cei-v3-delivery-2026-10-01.md)
+- [CEI-GNN v3 delivery report](comparison/standardized/clinical_graph_v2/methods/cei/docs/cei-v3-delivery-2026-10-01.md)
 - [Max6/Top-10 cleanup and frozen-legacy policy](docs/max6-top10-cleanup.md)
 - [Structure cleanup 2026-10-03](docs/structure-cleanup-2026-10-03.md) (new package layout, shims, viewer retired)
 
@@ -33,15 +33,16 @@ depends on them:
 - `comparison/canonical_split.json` (fixed class order and subject folds; never regenerate)
 - `comparison/standardized/icd_mapping.py`
 - `comparison/standardized/clinical_graph_v2/` (all methods, plugins, CEI, audits). Layout since
-  2026-10-03: `core/` (build, train, audit, ...), `controls/` (XGBoost `tabular_control`),
-  `methods/` (adapters and plugins), `studies/cei/` (CEI-GNN studies), `paths.py`; shims
-  stay at every old module path. How to add a method, study or control:
+  2026-10-03: `core/` (shared build, train, audit, ...), `methods/<method>/` (one folder per
+  method: `protgnn`, `cei`, `gsat`, `graphcare`, `gchm_pna`, `xgboost`, each with code, studies,
+  `docs/` and a `README.md` pointing to its results), `paths.py`; shims stay at every old module
+  path. How to add a method, study or control:
   [clinical_graph_v2 README, "Adding things"](comparison/standardized/clinical_graph_v2/README.md).
   This package may change; the rest of this list stays byte-identical.
 - `comparison/standardized/event_graph_v1/` (`schema`, `first_lab`, `ingest`, `graph`, `knowledge_seed.csv`)
 - `comparison/standardized/enriched_input_v1/spec.py`
 - `comparison/standardized/event_graph_gchm_xgb_v1/` (`labels`, `local_labels_v2`)
-- `comparison/standardized/gchm_v2_protocol/` (optional, frozen; does not enable ADR-008)
+- `comparison/standardized/gchm_v2_protocol/` (compatibility shims plus its tracked `state/` JSON; code is now in `clinical_graph_v2/methods/gchm_pna/protocol/`; optional, does not enable ADR-008)
 - `shared/lib/` and `shared/data_prep/`; `shared/data_prep/merge_ed.py` is
   hash-pinned by `local_labels_v2.py` and must stay byte-identical
 - local data/evidence (not all tracked in Git): the max6 inputs under

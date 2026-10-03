@@ -12,5 +12,5 @@ Aggregate-only, docs-only. No patient data; the diagram is schematic.
 ## Provenance
 - Graph relations/directions: `comparison/standardized/clinical_graph_v2/graph.py` (docstring + `_link`); inverse/symmetric pairs and `rev:*`: `.../tensorize.py` lines 34-44; forward default `train.py` ~213-219, ~1046-1050; core study forward `cei_v3_run.py` ~210. Bidirectional mode only had a bounded train/dev smoke.
 - CEI decomposition: `.../methods/cei_gnn.py`, `cei_gnn_v2.py`, `cei_gnn_v3.py`.
-- Numbers and claims: `docs/cei-v3-delivery-2026-10-01.md`, `docs/cei-v3-evidence-2026-10-01.json`.
+- Numbers and claims: `comparison/standardized/clinical_graph_v2/methods/cei/docs/cei-v3-delivery-2026-10-01.md`, `comparison/standardized/clinical_graph_v2/methods/cei/docs/cei-v3-evidence-2026-10-01.json`.
 - Caveats: temporal availability is partly assumed (`temporal_clean=false`); not claimed leakage-free. v3 benefit over v2 not demonstrated; no winner claim.

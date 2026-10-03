@@ -10,7 +10,7 @@
 
 **Tech Stack:** Python 3.9 (system `python3`), torch 2.8.0, torch_geometric 2.6.1, numpy, scikit-learn, pytest 8.4.2.
 
-**Spec:** `docs/superpowers/specs/2026-09-28-cei-gnn-v2-within-visit-pairs-design.md`
+**Spec:** `comparison/standardized/clinical_graph_v2/methods/cei/docs/superpowers/specs/2026-09-28-cei-gnn-v2-within-visit-pairs-design.md`
 
 ## Global Constraints
 
@@ -35,7 +35,7 @@
 | Create `tests/test_cei_gnn_v2_core.py` | pair builder and network tests |
 | Create `tests/test_plugin_cei_gnn_v2.py` | adapter tests |
 | Create `tests/test_cei_v2_study.py` | study tests |
-| Create (Task 8) `docs/cei-gnn-v2-pairs-2026-09-28.md` | result report |
+| Create (Task 8) `comparison/standardized/clinical_graph_v2/methods/cei/docs/cei-gnn-v2-pairs-2026-09-28.md` | result report |
 
 ---
 
@@ -2212,7 +2212,7 @@ Do not start without an explicit user "yes" to the 9 full runs.
 
 **Files:**
 - Outputs under `comparison/standardized/clinical_runs_cei_v2_pairs_20260928/`
-- Create `docs/cei-gnn-v2-pairs-2026-09-28.md`
+- Create `comparison/standardized/clinical_graph_v2/methods/cei/docs/cei-gnn-v2-pairs-2026-09-28.md`
 
 - [ ] **Step 1: Run the 9 full stages**
 
@@ -2226,7 +2226,7 @@ Expected: `analysis.json` with `decision.interaction_useful` true or false.
 
 - [ ] **Step 3: Write the report**
 
-`docs/cei-gnn-v2-pairs-2026-09-28.md` contains:
+`comparison/standardized/clinical_graph_v2/methods/cei/docs/cei-gnn-v2-pairs-2026-09-28.md` contains:
 - the frozen contract (spec section 4)
 - per-seed dev macro-F1 table for 3 modes x 3 seeds, plus seed means
 - the three bootstrap comparisons with 95% intervals
