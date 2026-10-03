@@ -162,8 +162,8 @@ The present snapshot remains `temporal_clean=false` and `raw_to_model_train_only
 - [Class-scope aggregate evidence](pna-quality-evidence/class_scope.json): both models, K=30/20/15/10/5, unchanged-versus-restricted output diagnostics, coverage, K-plus-Other alternatives, per-class errors and input/prediction hashes. No subject-level rows.
 - [Checkpoint-gap aggregate evidence](pna-quality-evidence/checkpoint_gaps.json): four reconstructed checkpoints, all train/validation measurements, exact saved-validation replay, input/code bindings and protected-file checks. No optimizer updates or test graphs.
 - [PNA performance results](pna-performance-results.md).
-- [Model performance diagnosis](model-performance-diagnosis.md), especially sections 1–4 and 8: bundled-input LR comparisons, signatures, class imbalance and target/availability caveats.
-- [Performance improvement review](performance-improvement-review.md), sections 2 and 4: the 132 additional native hub channels and the prior LR input comparison.
+- [Model performance diagnosis](../../../../../../docs/model-performance-diagnosis.md), especially sections 1–4 and 8: bundled-input LR comparisons, signatures, class imbalance and target/availability caveats.
+- [Performance improvement review](../../../../../../docs/performance-improvement-review.md), sections 2 and 4: the 132 additional native hub channels and the prior LR input comparison.
 - `shared/data_prep/extract_ed_labs.py`: lab mappings and whole-stay aggregation.
 - `shared/data_prep/merge_ed.py`: initial vital fields, stay-wide vital summaries, history and cohort preparation.
 - `pna_analysis/model.py`: current concept-only encoder and interaction mechanism.
