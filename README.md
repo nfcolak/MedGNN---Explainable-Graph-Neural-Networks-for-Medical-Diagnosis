@@ -1,109 +1,56 @@
-# Self-Explainable Graph Neural Networks for Medical Diagnosis
+# Self-Explainable GNN Diagnosis on MIMIC-IV ED Patient Graphs
 
-The active task is the **max6 / train-derived Top-10 clinical task** on MIMIC-IV
-ED patient graphs: patients with at most 6 total visits, the 10 most frequent
-diagnoses by TRAIN-fold frequency, multi-visit clinical graphs, and
-validation-only model selection. The held-out fold is never loaded.
+This repository compares self-explainable graph neural networks for diagnosis
+prediction on multi-visit clinical graphs built from MIMIC-IV emergency-department
+data. The active task is the max6 cohort (patients with at most 6 total visits)
+with the 10 most frequent diagnoses by TRAIN-fold frequency as classes. All methods
+share one artifact, class set, patient-disjoint split and seed, and select
+checkpoints on validation only.
 
-All current methods and plugins are kept: ProtGNN, GSAT, GraphCare (native
-clinical adapter), GCHM-PNA v2/v3, the XGBoost tabular control, CEI-GNN
-(v1/v2/v3) and the GMT / GPS / label-attention / token-fusion / virtual-node
-plugins. They share one artifact, class set, split and seed.
+## Methods
 
-ADR-007 and ADR-008 are proposed, not accepted or enabled.
+Each method lives in `comparison/standardized/clinical_graph_v2/methods/<m>/`.
 
-## Start here
+| Method | Folder `<m>` | Role |
+|---|---|---|
+| ProtGNN | `protgnn` | prototype-based self-explaining GNN |
+| CEI-GNN | `cei` | evidence-interaction GNN (v1/v2/v3) and its studies |
+| GSAT | `gsat` | stochastic attention / information bottleneck |
+| GraphCare | `graphcare` | native clinical adapter, visit-conditioned attention |
+| GCHM-PNA | `gchm_pna` | hub-gated, relation-aware PNA (v2/v3) and protocol |
+| XGBoost | `xgboost` | tabular control |
 
-- [Current runbook: clinical_graph_v2](comparison/standardized/clinical_graph_v2/README.md)
-  (build, train, audits, output contracts)
-- [Repository map and output ownership](STRUCTURE.md)
-- [CEI-GNN v3 delivery report](comparison/standardized/clinical_graph_v2/methods/cei/docs/cei-v3-delivery-2026-10-01.md)
-- [Max6/Top-10 cleanup and frozen-legacy policy](docs/max6-top10-cleanup.md)
-- [Structure cleanup 2026-10-03](docs/structure-cleanup-2026-10-03.md) (new package layout, shims, viewer retired)
+## Code layout
 
-Real preprocessing, cache builds and training need explicit user approval and a
-new, unoccupied output directory. Tests run only in an explicitly opened testing
-phase.
+```text
+comparison/
+  canonical_split.json            fixed class order and subject folds (never regenerate)
+  standardized/
+    clinical_graph_v2/
+      core/                       shared build, train, audit, tensorize, model
+      methods/<m>/                adapter.py or plugin_<m>.py, studies/
+      paths.py                    PACKAGE_ROOT / REPO_ROOT
+      <old module>.py             compatibility shims
+    icd_mapping.py, event_graph_v1/, enriched_input_v1/spec.py,
+    event_graph_gchm_xgb_v1/      label chain (kept unchanged)
+shared/                           lib/ (contracts) and data_prep/
+tests/
+environment.yml                   sole dependency file
+external/                         vendored third-party code (GraphXAI)
+```
 
-## Preserved rebuild chain
-
-These files stay in place, with unchanged paths, because the current task still
-depends on them:
-
-- `comparison/canonical_split.json` (fixed class order and subject folds; never regenerate)
-- `comparison/standardized/icd_mapping.py`
-- `comparison/standardized/clinical_graph_v2/` (all methods, plugins, CEI, audits). Layout since
-  2026-10-03: `core/` (shared build, train, audit, ...), `methods/<method>/` (one folder per
-  method: `protgnn`, `cei`, `gsat`, `graphcare`, `gchm_pna`, `xgboost`, each with code, studies,
-  `docs/` and a `README.md` pointing to its results), `paths.py`; shims stay at every old module
-  path. How to add a method, study or control:
-  [clinical_graph_v2 README, "Adding things"](comparison/standardized/clinical_graph_v2/README.md).
-  This package may change; the rest of this list stays byte-identical.
-- `comparison/standardized/event_graph_v1/` (`schema`, `first_lab`, `ingest`, `graph`, `knowledge_seed.csv`)
-- `comparison/standardized/enriched_input_v1/spec.py`
-- `comparison/standardized/event_graph_gchm_xgb_v1/` (`labels`, `local_labels_v2`)
-- `comparison/standardized/gchm_v2_protocol/` (compatibility shims plus its tracked `state/` JSON; code is now in `clinical_graph_v2/methods/gchm_pna/protocol/`; optional, does not enable ADR-008)
-- `shared/lib/` and `shared/data_prep/`; `shared/data_prep/merge_ed.py` is
-  hash-pinned by `local_labels_v2.py` and must stay byte-identical
-- local data/evidence (not all tracked in Git): the max6 inputs under
-  `comparison/standardized/event_inputs/`,
-  `comparison/standardized/native_inputs/protgsat_snapshot_v1/contract.json`,
-  the historical `binding_manifest.json`, and all result directories with their
-  `source_snapshot` copies and binding/manifest files
-
-Top-10 selection still starts from the original fixed class order, so those
-class-order and label records are required even though they carry a "30-class"
-or "native" name. Max6/Top-10 is a different task from the 30-class legacy
-benchmark; scores are not comparable.
-
-## Frozen-legacy policy
-
-The old 30-class native/star/cooccur model code, the tests tied to it and the
-legacy ProtGNN graph exporter are retired together (see
-[the cleanup record](docs/max6-top10-cleanup.md)). Their original source is
-recoverable from the Git refs and local archives listed there; it is not part
-of the active runtime. Current result and evidence directories are kept in
-place; retired ones are archived (below). Keeping a result does not mean it can be reproduced: a historical run is
-reproducible only if its source hashes were verified against a ref, snapshot or
-archive, and byte-exact reproduction of some max6 sidecars is not demonstrated.
-Old docs that name retired commands describe history; do not run those commands.
-`comparison/standardized/build_explanation_cohort.py` is retained byte-identical
-only as a frozen synthetic-fixture helper for shared cohort assertions, not as a
-current command. The retired legacy experiments (`protgnn_analysis/`,
-`graphcare_analysis/`, the matched/representative GCHM studies, native runs,
-`performance_diagnosis/`, `zero_concept_verification/`, the viewer and other
-old inputs and run dirs) were archived on 2026-10-03 to
-`/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/repo-archive-20261003/` (hash-verified tars) and
-removed from the tree; the code is also in Git history. See
-[the third-pass record](docs/structure-cleanup-2026-10-03.md).
-
-## Requirements
+## Setup
 
 ```bash
 conda env create -f environment.yml
 conda activate protgnn-mimic
 ```
 
-`environment.yml` is the sole dependency file. GraphXAI stays under
-`external/GraphXAI-main/` (used by the CEI explanation path). The clinical
-GraphCare adapter is native code in
-`clinical_graph_v2/methods/graphcare/` and runs in the main environment.
+## Safety rules
 
-## More links
+- The held-out test fold is closed: never loaded, never evaluated.
+- No preprocessing, cache build or training without explicit approval.
+- Every run writes to a new, unoccupied output directory; filled ones are never reused.
+- Data is local and never committed.
 
-- [Exact-input 30-class reference (historical)](docs/native-identical-input-v1.md)
-- [Raw data workflow (legacy caveats)](docs/RUN_WITH_OWN_DATA.md)
-- [Earlier working-tree cleanup](docs/cleanup-working-tree.md)
-
-## Reference
-
-This work builds on the AAAI 2022 paper "ProtGNN: Towards Self-Explaining Graph Neural Networks".
-
-```bibtex
-@article{zhang2021protgnn,
-  title={ProtGNN: Towards Self-Explaining Graph Neural Networks},
-  author={Zhang, Zaixi and Liu, Qi and Wang, Hao and Lu, Chengqiang and Lee, Cheekong},
-  journal={arXiv preprint arXiv:2112.00911},
-  year={2021}
-}
-```
+Project notes, reports and decisions are kept outside this repository.

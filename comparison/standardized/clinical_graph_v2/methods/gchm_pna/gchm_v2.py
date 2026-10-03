@@ -1,7 +1,7 @@
 """GCHM-PNA v2: hub-gated, relation-aware, compact PNA over the typed clinical graph.
 
 Why a second version exists (measured on the frozen max6 artifact before any design;
-see methods/gchm_pna/docs/superpowers/specs/2026-09-24-gchm-pna-v2-design.md):
+see ProjectOS 10-Projects/medgnn/Reports/gchm_pna/superpowers/specs/2026-09-24-gchm-pna-v2-design.md):
 
 * The producer emits every visit->evidence relation in ONE direction, so under
   source->target message passing no complaint, vital or laboratory node reached the

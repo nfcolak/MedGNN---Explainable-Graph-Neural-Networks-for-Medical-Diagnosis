@@ -1,6 +1,6 @@
 """Clinical decision-point graph, version 2.
 
-Rebuilt from scratch after the v1 event-graph diagnosis (docs/new-input-diagnosis.md)
+Rebuilt from scratch after the v1 event-graph diagnosis (ProjectOS 10-Projects/medgnn/Reports/new-input-diagnosis.md)
 showed that every v1 edge was either membership bookkeeping (`contains_event`,
 `observes_concept`) or a time ordering of nodes that already carry their own
 timestamps. Measured consequence: the whole v1 topology added +0.009 macro-F1 over
