@@ -56,9 +56,9 @@ from .contracts import (VISIT_MEMBERSHIP_CONTRACT_VERSION, VISIT_MEMBERSHIP_FILE
                         verify_visit_membership_file)
 from ..methods import CORE_METHODS, METHOD_REGISTRY, ClinicalMethodAdapter, build_method
 from ..paths import PACKAGE_ROOT
-from .gchm_v2 import AGGREGATIONS, GCHMv2, READOUTS
-from .gchm_v3 import GCHMv3
-from .gchm_v3 import READOUTS as V3_READOUTS
+from ..methods.gchm_pna.gchm_v2 import AGGREGATIONS, GCHMv2, READOUTS
+from ..methods.gchm_pna.gchm_v3 import GCHMv3
+from ..methods.gchm_pna.gchm_v3 import READOUTS as V3_READOUTS
 from .model import ClinicalGNN
 from .schema import sha256
 from .rewiring import REWIRING_POLICY
@@ -76,9 +76,6 @@ METHOD_DEFAULTS = {
     'protgnn': dict(hidden=128, layers=3, dropout=0.51, lr=1.79e-3,
                     weight_decay=4.3e-5, batch_size=128, epochs=300,
                     patience=10, min_delta=0.005),
-    'protonode': dict(hidden=128, layers=3, dropout=0.51, lr=1.79e-3,
-                      weight_decay=4.3e-5, batch_size=128, epochs=300,
-                      patience=10, min_delta=0.005),
     'gsat': dict(hidden=128, layers=3, dropout=0.3, lr=1e-3,
                  weight_decay=0.0, batch_size=128, epochs=100,
                  patience=10, min_delta=0.005),
@@ -107,10 +104,6 @@ METHOD_NATIVE_ARGUMENTS = {
         'prototypes_per_class', 'cluster_weight', 'separation_weight', 'margin',
         'rollout', 'min_atoms', 'max_atoms', 'expand_atoms', 'c_puct',
     ),
-    'protonode': ('protonode_readout', 'protonode_no_wide', 'protonode_wide_l1',
-        'protonode_warm_epochs', 'protonode_proj_epochs', 'protonode_proj_interval',
-        'protonode_nearest_graphs', 'protonode_prototypes_per_class',
-        'protonode_cluster_weight', 'protonode_separation_weight', 'protonode_margin'),
     'gsat': (
         'gsat_temperature', 'gsat_info_loss_coef', 'gsat_init_r', 'gsat_final_r',
         'gsat_decay_interval', 'gsat_decay_r', 'gsat_extractor_dropout',
@@ -475,7 +468,7 @@ def build_dataset(artifact, targets, edge_mode, limit, token_min_count, seed,
     if train_dev_only:
         if min_prior_visits or not dev_ids:
             raise ValueError('train/dev-only requires an unfiltered patient-disjoint dev draw')
-        from ..studies.cei.cei_v3_ext.io import selected_graphs, selected_preprocessing
+        from ..methods.cei.studies.cei_v3_ext.io import selected_graphs, selected_preprocessing
         prep = selected_preprocessing(graphs_path, train_ids, token_min_count,
                                       membership_path=membership_path)
         rows = selected_graphs(graphs_path, membership_path, train_ids | set(dev_ids))
@@ -548,7 +541,7 @@ def evaluate(model, loader, device, *, epoch=0):
 
 def early_stopping_start_epoch(method, model):
     """Return the first zero-based epoch where patience may be consumed."""
-    if method in ('protgnn', 'protonode'):
+    if method == 'protgnn':
         return int(model.proj_epochs)
     start = getattr(model, 'early_stopping_start', None)
     if is_plugin(method) and callable(start):
@@ -560,7 +553,7 @@ def clip_gradients(method, model):
     """Method-native gradient clipping; prototype arms share ProtGNN's value clip."""
     if method == 'clinical_gnn':
         torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
-    elif method in ('protgnn', 'protonode'):
+    elif method == 'protgnn':
         torch.nn.utils.clip_grad_value_(model.parameters(), 2.0)
     elif is_plugin(method):
         value = getattr(model, 'grad_clip_value', None)
@@ -1122,19 +1115,6 @@ def parser():
     p.add_argument('--protgnn-max-atoms', dest='max_atoms', type=int)
     p.add_argument('--protgnn-expand-atoms', dest='expand_atoms', type=int)
     p.add_argument('--protgnn-c-puct', dest='c_puct', type=float)
-    p.add_argument('--protonode-warm-epochs', dest='protonode_warm_epochs', type=int)
-    p.add_argument('--protonode-proj-epochs', dest='protonode_proj_epochs', type=int)
-    p.add_argument('--protonode-proj-interval', dest='protonode_proj_interval', type=int)
-    p.add_argument('--protonode-nearest-graphs', dest='protonode_nearest_graphs', type=int)
-    p.add_argument('--protonode-prototypes-per-class', dest='protonode_prototypes_per_class', type=int)
-    p.add_argument('--protonode-cluster-weight', dest='protonode_cluster_weight', type=float)
-    p.add_argument('--protonode-separation-weight', dest='protonode_separation_weight', type=float)
-    p.add_argument('--protonode-margin', dest='protonode_margin', type=float)
-    p.add_argument('--protonode-readout', dest='protonode_readout',
-                   choices=['both', 'node_max', 'graph_mean'])
-    p.add_argument('--protonode-no-wide', dest='protonode_no_wide',
-                   action='store_const', const=True, default=None)
-    p.add_argument('--protonode-wide-l1', dest='protonode_wide_l1', type=float)
     p.add_argument('--gsat-temperature', type=float)
     p.add_argument('--gsat-info-loss-coef', type=float)
     p.add_argument('--gsat-init-r', type=float)
