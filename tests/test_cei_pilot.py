@@ -15,6 +15,8 @@ MODULE_PATH = (Path(__file__).parents[1] / "comparison/standardized/clinical_gra
 def _module():
     # Keep the RED failure an assertion about the missing behavior, not collection/import.
     assert MODULE_PATH.is_file(), "CEI pilot protocol module must implement the locked planner"
+    spec = importlib.util.find_spec("comparison.standardized.clinical_graph_v2.methods.cei.studies.cei_pilot")
+    assert spec and spec.loader
     return importlib.import_module("comparison.standardized.clinical_graph_v2.methods.cei.studies.cei_pilot")
 
 
