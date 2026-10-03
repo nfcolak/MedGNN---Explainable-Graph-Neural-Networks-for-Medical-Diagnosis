@@ -4,7 +4,7 @@
 
 **Measured and rejected.** The seed-1234 pilot was executed; the candidate lost
 0.0115 macro-F1 against the control. See
-`docs/gchm-concept-dropout-pilot-results.md` for the measured outcome. The
+`comparison/standardized/clinical_graph_v2/methods/gchm_pna/docs/gchm-concept-dropout-pilot-results.md` for the measured outcome. The
 existing GCHM-sqrt remains the incumbent and the code path below stays in the
 repository as a registered, inert method (`concept_dropout=0.0` for every other
 method, so nothing else is affected).
@@ -54,4 +54,4 @@ use their saved source snapshots for historical replay, not `--resume` under new
 
 ## Follow-up
 
-No further run is planned; the measured outcome is in `docs/gchm-concept-dropout-pilot-results.md`.
+No further run is planned; the measured outcome is in `comparison/standardized/clinical_graph_v2/methods/gchm_pna/docs/gchm-concept-dropout-pilot-results.md`.

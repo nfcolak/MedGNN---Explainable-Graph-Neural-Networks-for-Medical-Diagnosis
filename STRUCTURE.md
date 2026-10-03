@@ -10,14 +10,14 @@ task; its inputs and scores are not interchangeable with the active one.
 
 | Location | Role / maintenance boundary |
 |---|---|
-| `comparison/standardized/clinical_graph_v2/` | Multi-visit build, all method adapters and plugins, training, audits, tabular control, CEI studies. Subpackages: `core/` (contracts, schema, graph, build, store, tensorize, diagnosis, stratify, rewiring, relation_information, repair_metadata, model, gchm_v2, gchm_v3, train, aggregate, audit, mechanism_check), `controls/` (`tabular_control.py`), `methods/` (ProtGNN, GSAT, GraphCare, GCHM-PNA, CEI-GNN, GMT, GPS, label-attention, token-fusion, virtual-node), `studies/cei/` (CEI v1-v3 studies, `cei_v3_ext/`), `paths.py` (`PACKAGE_ROOT`, `REPO_ROOT`). Every old module path keeps a compatibility shim; see [docs/structure-cleanup-2026-10-03.md](docs/structure-cleanup-2026-10-03.md). To add a method, study or control, follow "Adding things" in its README. |
+| `comparison/standardized/clinical_graph_v2/` | Multi-visit build, training, audits and one folder per method. Subpackages: `core/` (shared: contracts, schema, graph, build, store, tensorize, diagnosis, stratify, rewiring, relation_information, repair_metadata, model, train, aggregate, audit, mechanism_check), `methods/` (`base.py`, plugin registry, and one folder per method with code, studies, `docs/` and `README.md`: `protgnn/`, `cei/` incl. `studies/` and `studies/cei_v3_ext/`, `gsat/`, `graphcare/`, `gchm_pna/` incl. `gchm_v2.py`, `gchm_v3.py`, `protocol/`, `xgboost/` incl. `tabular_control.py`), `paths.py` (`PACKAGE_ROOT`, `REPO_ROOT`). The GMT, GPS, label-attention, token-fusion, virtual-node and ProtoNode challengers were deleted (recoverable from `aad56003`). Every old module path keeps a compatibility shim; see [docs/structure-cleanup-2026-10-03.md](docs/structure-cleanup-2026-10-03.md). To add a method, study or control, follow "Adding things" in its README. |
 | `comparison/canonical_split.json` | Fixed class ordering and subject folds. Never regenerate. Top-10 selection depends on this original class order. |
 | `comparison/standardized/icd_mapping.py` | ICD mapping used by the label chain. |
 | `comparison/standardized/event_graph_v1/` | Kept files only: `__init__`, `schema`, `first_lab`, `ingest`, `graph`, `knowledge_seed.csv`. |
 | `comparison/standardized/enriched_input_v1/spec.py` | Kept input spec (plus the package marker it needs). |
 | `comparison/standardized/event_graph_gchm_xgb_v1/` | Kept label contract: `__init__`, `labels`, `local_labels_v2`. |
-| `comparison/standardized/gchm_v2_protocol/` | Optional, frozen protocol. Does not enable ADR-008. |
-| `comparison/standardized/clinical_graph_v2/controls/tabular_control.py` | Current XGBoost control. The native 30-class baseline is retired. |
+| `comparison/standardized/gchm_v2_protocol/` | Compatibility shims for the optional protocol (code in `clinical_graph_v2/methods/gchm_pna/protocol/`; tracked `state/` JSON stays here). Does not enable ADR-008. |
+| `comparison/standardized/clinical_graph_v2/methods/xgboost/tabular_control.py` | Current XGBoost control. The native 30-class baseline is retired. |
 | `comparison/standardized/build_explanation_cohort.py` | Frozen synthetic-fixture helper retained for shared cohort assertions; not a current command or permission to access heldout data. |
 | `shared/lib/`, `shared/data_prep/` | Shared contracts, split, metrics, data prep. `merge_ed.py` is hash-pinned: keep byte-identical, do not run or fix it. |
 | `external/` | Third-party code. GraphXAI is used by the CEI explanation path; GraphCare is retained legacy. Keep upstream layout. |
@@ -27,7 +27,7 @@ task; its inputs and scores are not interchangeable with the active one.
 | `.venv-graphcare/` | Existing isolated legacy GraphCare runtime. Not used by the clinical adapter; left in place. |
 | `.claude/`, `.git/` | Local agent state and version control; not scientific source. |
 
-Top-level package names are unchanged; there is no `src/` layout. Inside `clinical_graph_v2/` the modules moved into subpackages on 2026-10-03 (shims at the old paths).
+Top-level package names are unchanged; there is no `src/` layout. Inside `clinical_graph_v2/` the modules moved into subpackages on 2026-10-03 and into per-method folders in a second pass the same day (shims at the old paths).
 
 ## Data and evidence held in place
 

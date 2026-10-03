@@ -8,7 +8,7 @@
 
 **Tech Stack:** Existing Python 3.9 runtime, torch 2.8.0, torch-geometric 2.6.1, pytest 8.4.2, vendored GraphXAI. No new packages.
 
-**Spec:** `docs/superpowers/specs/2026-09-27-evidence-interaction-gnn-design.md` (written spec approved in session).
+**Spec:** `comparison/standardized/clinical_graph_v2/methods/cei/docs/superpowers/specs/2026-09-27-evidence-interaction-gnn-design.md` (written spec approved in session).
 
 ## Global Constraints
 
