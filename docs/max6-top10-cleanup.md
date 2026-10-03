@@ -5,6 +5,20 @@ ADR-007 and ADR-008 remain proposed and are not enabled. Integration is a local
 installation candidate; original-checkout installation is still pending the
 parent. Durable preservation passed its separate parent-verified gates; this
 candidate is not installable until the protected AGENTS.md write gate succeeds.
+(Historical wording from before installation; see the status below.)
+
+## Status: installed 2026-10-02 at c54be79a
+
+Installed 2026-10-02 at `c54be79a` on `cleanup/max6-top10-20261002-final`. Receipt:
+`/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/max6-cleanup-20261002/installation-receipt.json`. The original
+`.worktrees/_runs/med-clean-finish{,-pass}/...` run dirs were removed after
+installation; their durable copies are under
+`/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/max6-cleanup-20261002/med-clean-finish-pass/` (installed candidate) and
+`/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/max6-cleanup-20261002/med-clean-finish-blocked/` (earlier blocked
+attempt). Paths below were remapped accordingly. Paragraphs that say "pending",
+"will be recorded" or "BLOCKED" are historical, kept as written. Later
+changes: `docs/structure-cleanup-2026-10-03.md` (the clinical_graph_v2 freeze was
+lifted and the viewer retired on 2026-10-03).
 
 ## Decision and scope
 
@@ -39,8 +53,8 @@ are clean.
 | Immutable code manifest | `/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/max6-cleanup-20261002/med-clean-code/retirement_manifest.json` |
 | Verified code archive | `/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/max6-cleanup-20261002/med-clean-code/retired-source-and-mixed-tests.tar` |
 | Code static receipt | `/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/max6-cleanup-20261002/med-clean-code/static-validation.json` |
-| Final integration manifest | `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.worktrees/_runs/med-clean-finish/final-retirement-manifest.json` |
-| Integration static receipt | `/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.worktrees/_runs/med-clean-finish/integrated-static-validation.json` |
+| Final integration manifest | `/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/max6-cleanup-20261002/med-clean-finish-pass/final-retirement-manifest.json` |
+| Integration static receipt | `/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/max6-cleanup-20261002/med-clean-finish-pass/integrated-static-validation.json` |
 
 The code archive SHA256 is
 `077a24c674c7524317ca2886defc63d4b0c6d72f2e7e83ca248e9e9866da22b4`.
@@ -49,7 +63,7 @@ original versions of 7 adjusted mixed test files. The final manifest additionall
 archives `tests/test_performance_evidence.py`, for 25 retired tests in total.
 That test exclusively drove the already-absent frozen
 `performance_review_20260913/evidence.py`; it was archived without execution at
-`/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.worktrees/_runs/med-clean-finish/archived-originals/tests/test_performance_evidence.py`.
+`/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/max6-cleanup-20261002/med-clean-finish-pass/archived-originals/tests/test_performance_evidence.py`.
 Its SHA256 is `57bbfc60297b176ba48e9b0f8c7447a8ba3ff4332b2088f9f666030ecac73146`
 and Git blob SHA is `7da72be23642c46a0c02dbaf7dd493bfe4aaf5c8`.
 The code worker's archived manifest is immutable, not rewritten by integration.
@@ -116,7 +130,8 @@ result reports and scientific payloads are not rewritten.
 Former root package directories may remain as evidence-only shells because
 protected outputs live inside them. Do not claim whole directories are gone.
 The optional visualizer displays existing JSON only: its legacy exporter is
-retired and its frontend was not rebuilt for CEI.
+retired and its frontend was not rebuilt for CEI. (Update 2026-10-03: the whole
+`visualizer/` directory was retired; see `docs/structure-cleanup-2026-10-03.md`.)
 
 Held in place and untouched: all `data/`; max6 inputs and sidecars; all-visits
 labels and event index as lineage; `membership_full_20260923` (not a max6 input);
@@ -159,7 +174,7 @@ in the integrator run directory's `local-overlay/`, with original/prepared
 SHA256, relative path and mode in `local-overlay-manifest.json`. The parent must
 fail if originals changed, then transfer only those exact authored bytes after
 preservation gates and read back the exact destinations. Only Buffett backend
-and frontend launch entries are removed; the visualizer entry remains. Nothing
+and frontend launch entries are removed; the visualizer entry remained at that time. Nothing
 under `.claude` is tracked or recreated in the target worktree.
 
 The user explicitly authorized the AGENTS.md current-XGBoost and task-scoping
@@ -168,7 +183,9 @@ normal protected-write gate nevertheless timed out; no retry or bypass was
 attempted, and AGENTS.md remains unreconciled. The exact proposed correction is
 saved under this run as `proposed-agents-reconciliation.patch`, with the gate
 failure in `instruction-write-blocker.json`. This candidate is BLOCKED for
-installation even if its other static checks pass.
+installation even if its other static checks pass. (Historical: the blocked
+attempt is preserved in `med-clean-finish-blocked/`; the passing candidate was
+installed at c54be79a, and AGENTS.md carries the corrected text.)
 The corrected registry checker resolves ACTIVE tracked targets only in the
 candidate. Its only original-root exceptions are the two Gitignored historical
 preservation manifests (`docs/cleanup-sections-3-4-20260925-121538.json` and

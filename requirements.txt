@@ -18,10 +18,12 @@ networkx>=3.1,<3.4
 matplotlib>=3.7,<3.10
 tqdm>=4.66,<5
 
+xgboost>=2.0,<3
+psutil>=5.9  # clinical_graph_v2 CEI runner (process lookup fallback)
+
+# Legacy-only: no retained first-party code imports these any more (the ProtGNN
+# utility module that needed rdkit is retired). Kept because historical runs and
+# requirements-lock.txt used them.
 openpyxl>=3.1,<4
 optuna>=3.6,<5
-xgboost>=2.0,<3
-
-# Imported by the ProtGNN utility module. Required even if molecular datasets
-# are not the main experiment.
 rdkit>=2023.9,<2026

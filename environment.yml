@@ -14,7 +14,9 @@ dependencies:
       - networkx==3.2.1
       - matplotlib==3.9.4
       - tqdm==4.67.3
-      - optuna==4.8.0
       - xgboost==2.1.4
+      - psutil>=5.9
+      # legacy-only (no retained first-party imports; kept for historical runs)
+      - optuna==4.8.0
       - rdkit==2025.9.2
       - openpyxl==3.1.5
