@@ -16,7 +16,3 @@ dependencies:
       - tqdm==4.67.3
       - xgboost==2.1.4
       - psutil>=5.9
-      # legacy-only (no retained first-party imports; kept for historical runs)
-      - optuna==4.8.0
-      - rdkit==2025.9.2
-      - openpyxl==3.1.5
