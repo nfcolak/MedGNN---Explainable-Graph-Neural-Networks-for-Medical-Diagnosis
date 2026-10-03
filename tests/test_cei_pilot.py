@@ -5,6 +5,7 @@ import importlib.util
 import json
 from pathlib import Path
 from types import SimpleNamespace
+from comparison.standardized.clinical_graph_v2.paths import REPO_ROOT
 
 import pytest
 
@@ -307,7 +308,7 @@ def test_capture_bindings_detects_same_path_input_byte_drift(tmp_path, monkeypat
         "--targets", str(targets), "--canonical", str(canonical)], str(tmp_path / "out"),
         1234, (10000, 5000, 40), "candidate")
     def fake_git(command, **kwargs):
-        output = str(MODULE_PATH.parents[5]) + "\n" if "--show-toplevel" in command else "rev\n"
+        output = str(REPO_ROOT) + "\n" if "--show-toplevel" in command else "rev\n"
         return SimpleNamespace(stdout=output)
     monkeypatch.setattr(module.subprocess, "run", fake_git)
     before = module.capture_bindings(stage)
