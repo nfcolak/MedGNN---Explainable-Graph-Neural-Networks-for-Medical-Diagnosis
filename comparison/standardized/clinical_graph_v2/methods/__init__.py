@@ -9,16 +9,14 @@ import importlib
 import pkgutil
 
 from .base import ClinicalMethodAdapter, MethodOutput
-from .graphcare import GraphCareAdapter
-from .gsat import GSATAdapter
-from .protgnn import ProtGNNAdapter
-from .protonode import ProtoNodeAdapter
+from .graphcare.adapter import GraphCareAdapter
+from .gsat.adapter import GSATAdapter
+from .protgnn.adapter import ProtGNNAdapter
 
 METHOD_REGISTRY: dict[str, type[ClinicalMethodAdapter]] = {
     "graphcare": GraphCareAdapter,
     "gsat": GSATAdapter,
     "protgnn": ProtGNNAdapter,
-    "protonode": ProtoNodeAdapter,
 }
 CORE_METHODS = frozenset(METHOD_REGISTRY)
 
@@ -44,9 +42,15 @@ def register_plugins(modules, base_registry) -> dict:
 
 
 def _discover_plugins():
-    modules = [importlib.import_module(f"{__name__}.{info.name}")
-               for info in sorted(pkgutil.iter_modules(__path__), key=lambda i: i.name)
-               if info.name.startswith("plugin_")]
+    """Discover plugins inside method packages, never top-level compatibility shims."""
+    modules = []
+    for method in sorted(pkgutil.iter_modules(__path__), key=lambda info: info.name):
+        if not method.ispkg:
+            continue
+        package = importlib.import_module(f"{__name__}.{method.name}")
+        for plugin in sorted(pkgutil.iter_modules(package.__path__), key=lambda info: info.name):
+            if plugin.name.startswith("plugin_"):
+                modules.append(importlib.import_module(f"{package.__name__}.{plugin.name}"))
     return register_plugins(modules, base_registry={})
 
 
@@ -92,6 +96,5 @@ __all__ = [
     "GraphCareAdapter",
     "GSATAdapter",
     "ProtGNNAdapter",
-    "ProtoNodeAdapter",
     "build_method",
 ]
