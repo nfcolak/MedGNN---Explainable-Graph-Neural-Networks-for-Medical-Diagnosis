@@ -12,14 +12,14 @@ from argparse import Namespace
 import pytest
 import torch
 
-from comparison.standardized.clinical_graph_v2 import NODE_KINDS
-from comparison.standardized.clinical_graph_v2 import tensorize as tz
-from comparison.standardized.clinical_graph_v2.cei_v3_ext import arm_guards
-from comparison.standardized.clinical_graph_v2.contracts import (
+from core import NODE_KINDS
+from core import tensorize as tz
+from cei.studies.cei_v3_ext import arm_guards
+from core.contracts import (
     VISIT_MEMBERSHIP_CONTRACT_VERSION, VISIT_MEMBERSHIP_FILENAME)
-from comparison.standardized.clinical_graph_v2.methods import METHOD_REGISTRY
-from comparison.standardized.clinical_graph_v2.methods.base import parameter_count, read_clinical_batch
-from comparison.standardized.clinical_graph_v2.tensorize import (ALL_RELATIONS, PAYLOAD_WIDTH,
+from core.registry import METHOD_REGISTRY
+from core.method_base import parameter_count, read_clinical_batch
+from core.tensorize import (ALL_RELATIONS, PAYLOAD_WIDTH,
                                                                  REVERSE_RELATIONS)
 from tests.test_cei_gnn_v3_core import (CLASSES, EDGE_DIM, HIDDEN, K, NODE_DIM, NUM_TOKENS,
                                         TOKEN_DIM, TRIPLES, _graph, _randomise_gates, _run,
@@ -431,7 +431,7 @@ def test_e6a_adapter_widens_only_the_relation_tensors_and_records_the_arm(tmp_pa
 import copy  # noqa: E402
 import hashlib  # noqa: E402
 
-from comparison.standardized.clinical_graph_v2 import cei_v3_study as study  # noqa: E402
+from cei.studies import cei_v3_study as study  # noqa: E402
 
 FROZEN_K = 8
 PREP = 'b' * 64

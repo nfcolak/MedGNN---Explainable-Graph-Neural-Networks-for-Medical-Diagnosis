@@ -36,7 +36,7 @@ import torch.nn as nn
 from torch_geometric.utils import scatter
 from torch_geometric.utils import softmax as segment_softmax
 
-from ... import NODE_KINDS
+from core import NODE_KINDS
 from .gchm_v2 import HUB_KIND, HubGatedPNALayer, average_log_degree
 
 READOUTS = ('labelwise', 'pool')

@@ -18,15 +18,15 @@ from dataclasses import asdict, replace
 from pathlib import Path
 
 from .. import cei_v3_study as core
-from .....core.contracts import recursive_source_hashes
+from core.contracts import recursive_source_hashes
 from . import study
 from .arm_guards import EXTENSION_ARMS, arm_of_run_config, assert_extension_binding
 from ..cei_v3_paths import PathMap, check_output, resolve as resolve_paths
 from .io import digest, read_json
 
-from .....paths import PACKAGE_ROOT, REPO_ROOT
+from core.paths import PACKAGE_ROOT, REPO_ROOT
 
-MODULE = 'comparison.standardized.clinical_graph_v2.methods.cei.studies.cei_v3_ext.run'
+MODULE = 'cei.studies.cei_v3_ext.run'
 SMOKE_BUDGET = (256, 128, 2)
 EXPLORATORY = 'exploratory reuse of an already inspected screen; not prospective confirmation'
 
@@ -102,7 +102,7 @@ def plan(args, path_map):
     full = []
     for stage in extension:
         argv = list(stage.argv)
-        argv[argv.index('-m') + 1] = 'comparison.standardized.clinical_graph_v2.methods.cei.studies.cei_v3_ext.launch'
+        argv[argv.index('-m') + 1] = 'cei.studies.cei_v3_ext.launch'
         full.append(replace(stage, argv=tuple(argv) + ('--device', 'cpu', '--cpu-threads', str(args.threads))))
     smoke = []
     for arm in ('E2d', 'E6b', 'E6a', 'E2w'):
@@ -162,7 +162,7 @@ def control_bindings_from_root(core_root, frozen, path_map, args):
 
 def execution_identity(args, frozen):
     """Byte identity, not graph deserialization. Called only behind execute gates."""
-    from .....core.contracts import (verify_graph_file, verify_visit_membership_file,
+    from core.contracts import (verify_graph_file, verify_visit_membership_file,
                              validate_artifact_manifest, verify_target_binding)
     artifact = Path(args.artifact)
     manifest = read_json(artifact / 'manifest.json')
@@ -470,9 +470,9 @@ def execute(args, frozen, full, smoke, path_map):
 
 def execute_screen(args, frozen, stages, controls, path_map, journal):
     import numpy as np
-    from .....core import train
+    from core import train
     from .. import cei_v3_screen as screen
-    from .....core.contracts import sample_ids_sha256
+    from core.contracts import sample_ids_sha256
     from . import scoring
 
     root = Path(args.output_root)
@@ -524,7 +524,7 @@ def execute_screen(args, frozen, stages, controls, path_map, journal):
 def execute_offsets(args, frozen, controls, c_results, path_map, journal):
     """Ready-to-call O path, unreachable without explicit validation-fitting scope."""
     from .. import cei_v3_screen as screen
-    from .....core.contracts import VISIT_MEMBERSHIP_FILENAME, sample_ids_sha256
+    from core.contracts import VISIT_MEMBERSHIP_FILENAME, sample_ids_sha256
     from . import validation_scoring as vs, offsets, scoring
     approved = approval(args.o_approval, 'cei_v3_offset_validation_fit')
     vs.validate_approval_record(approved)

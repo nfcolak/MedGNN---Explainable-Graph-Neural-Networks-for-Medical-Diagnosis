@@ -29,10 +29,10 @@ from torch_geometric.nn import MessagePassing
 from .cei_graphxai import ClinicalGraphXAIWrapper, _batch_of, EXPLANATION_BOUNDARIES
 from . import cei_v3_screen as screen
 from . import cei_v3_study as study
-from ....core.contracts import recursive_source_hashes, sample_ids_sha256
-from ....methods import build_method
-from ....core.schema import sha256
-from ....paths import PACKAGE_ROOT
+from core.contracts import recursive_source_hashes, sample_ids_sha256
+from core.registry import build_method
+from core.schema import sha256
+from core.paths import PACKAGE_ROOT
 from shared.lib.explanation_contract import build_node_explanation
 
 from . import cei_v3_paths as io_paths
@@ -280,7 +280,7 @@ def explain_graph(adapter, graph, *, random_seed=2026):
 
 def preflight(limit):
     """Verify frozen screen membership, input/checkpoint identity, and train-only scope."""
-    from ....core import train
+    from core import train
     reference = read(stage_dir('C_K4', 1234) / 'binding.json')
     record = read(V3_ROOT / 'screen_record.json')
     equal('screen fold', record['fold'], 'screen')
@@ -557,7 +557,7 @@ def execute(root, limit, workers):
             while pending and len(active) < workers:
                 model, seed = pending.pop(0)
                 log = (root / f'{model}_seed{seed}.log').open('x')
-                command = [sys.executable, '-m', 'comparison.standardized.clinical_graph_v2.methods.cei.studies.cei_v3_graphxai',
+                command = [sys.executable, '-m', 'cei.studies.cei_v3_graphxai',
                            '--worker', '--output', str(root), '--model', model, '--seed', str(seed)] + \
                           (PATHS or io_paths.resolve()).cli_args()
                 process = subprocess.Popen(command, cwd=REPO, env=env, stdout=log, stderr=subprocess.STDOUT)

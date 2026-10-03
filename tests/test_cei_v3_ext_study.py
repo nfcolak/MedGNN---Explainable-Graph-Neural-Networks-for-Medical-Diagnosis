@@ -14,11 +14,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from comparison.standardized.clinical_graph_v2 import cei_v3_study as study
-from comparison.standardized.clinical_graph_v2.cei_v3_ext import arm_guards, offsets
-from comparison.standardized.clinical_graph_v2.cei_v3_ext import study as ext
+from cei.studies import cei_v3_study as study
+from cei.studies.cei_v3_ext import arm_guards, offsets
+from cei.studies.cei_v3_ext import study as ext
 
-TRAIN_PY = 'comparison.standardized.clinical_graph_v2.core.train'
+TRAIN_PY = 'core.train'
 SEEDS = (1234, 2025, 7)
 MANDATORY = (('--selection-fold', 'dev'), ('--dev-limit', '5000'), ('--final-eval', 'none'))
 
@@ -297,7 +297,8 @@ def test_extension_plan_refuses_occupied_extension_outputs_and_a_screen_scored_t
 
 def test_extension_plan_never_opens_inputs_or_executes(tmp_path, monkeypatch):
     import subprocess
-    from comparison.standardized.clinical_graph_v2 import cei_v3_screen, contracts, tensorize
+    from cei.studies import cei_v3_screen
+    from core import contracts, tensorize
     v3_plan, _ = _v3_plan(tmp_path)
 
     def forbidden(*args, **kwargs):
@@ -624,7 +625,8 @@ def _o_fixture(tmp_path):
 
 
 def test_offset_screen_rows_build_o_from_stored_logits_and_delta_without_inference(tmp_path, monkeypatch):
-    from comparison.standardized.clinical_graph_v2 import cei_v3_screen, contracts, tensorize
+    from cei.studies import cei_v3_screen
+    from core import contracts, tensorize
     approval, c_results, records, arrays = _o_fixture(tmp_path)
 
     def forbidden(*args, **kwargs):

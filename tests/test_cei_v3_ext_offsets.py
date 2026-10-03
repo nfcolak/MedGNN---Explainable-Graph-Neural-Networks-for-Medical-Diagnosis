@@ -15,11 +15,11 @@ import pytest
 import torch
 from torch_geometric.data import Data
 
-from comparison.standardized.clinical_graph_v2 import cei_v3_screen as screen
-from comparison.standardized.clinical_graph_v2 import cei_v3_study as study
-from comparison.standardized.clinical_graph_v2.cei_v3_ext import offsets
-from comparison.standardized.clinical_graph_v2.cei_v3_ext import validation_scoring as vs
-from comparison.standardized.clinical_graph_v2.contracts import sample_ids_sha256
+from cei.studies import cei_v3_screen as screen
+from cei.studies import cei_v3_study as study
+from cei.studies.cei_v3_ext import offsets
+from cei.studies.cei_v3_ext import validation_scoring as vs
+from core.contracts import sample_ids_sha256
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import test_cei_v3_study as u5  # noqa: E402  (U5 synthetic study fixtures; read-only reuse)
@@ -772,7 +772,7 @@ def test_offset_screen_refuses_unbound_or_mismatched_inputs(tmp_path, kind):
 
 
 def test_offset_screen_never_calls_a_fold_loader_or_the_model(tmp_path, monkeypatch):
-    from comparison.standardized.clinical_graph_v2 import contracts, tensorize
+    from core import contracts, tensorize
     fx = _frozen_offsets_and_c_screen(tmp_path, clear_margins=False)
 
     def forbidden(*args, **kwargs):

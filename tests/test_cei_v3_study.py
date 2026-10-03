@@ -14,9 +14,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from comparison.standardized.clinical_graph_v2 import cei_v3_study as study
+from cei.studies import cei_v3_study as study
 
-TRAIN_PY = 'comparison.standardized.clinical_graph_v2.core.train'
+TRAIN_PY = 'core.train'
 
 
 # ------------------------------------------------------------------ fixtures
@@ -374,9 +374,9 @@ def test_post_freeze_stage_k_must_match_the_frozen_k(tmp_path):
 
 # -------------------------------------------------------- step 2: k selection
 
-from comparison.standardized.clinical_graph_v2.cei_v3_absence import fit_universe  # noqa: E402
-from comparison.standardized.clinical_graph_v2.cei_v3_ple import fit_knots  # noqa: E402
-from comparison.standardized.clinical_graph_v2.methods import plugin_cei_gnn_v3 as plugin  # noqa: E402
+from cei.studies.cei_v3_absence import fit_universe  # noqa: E402
+from cei.studies.cei_v3_ple import fit_knots  # noqa: E402
+from cei import plugin_cei_gnn_v3 as plugin  # noqa: E402
 
 TOKENS = ['complaint:a', 'measurement:lab1', 'vital:hr', 'analyte:x', 'measurement:lab2']
 VOCAB = {token: i + 1 for i, token in enumerate(TOKENS)}
@@ -634,7 +634,7 @@ def test_k_selection_replay_passes_and_detects_every_drift(tmp_path):
 import torch  # noqa: E402
 from torch_geometric.data import Data  # noqa: E402
 
-from comparison.standardized.clinical_graph_v2 import cei_v2_study as v2  # noqa: E402
+from cei.studies import cei_v2_study as v2  # noqa: E402
 
 
 def _synthetic_rows(n=60, subjects=20, seed=0):

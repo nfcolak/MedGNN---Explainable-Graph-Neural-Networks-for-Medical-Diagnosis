@@ -10,12 +10,12 @@ import sys
 
 import pytest
 
-from comparison.standardized.clinical_graph_v2 import cei_v3_screen as screen
-from comparison.standardized.clinical_graph_v2 import tensorize as tz
-from comparison.standardized.clinical_graph_v2 import train
-from comparison.standardized.clinical_graph_v2.contracts import (
+from cei.studies import cei_v3_screen as screen
+from core import tensorize as tz
+from core import train
+from core.contracts import (
     VISIT_MEMBERSHIP_CONTRACT_VERSION, VISIT_MEMBERSHIP_FILENAME, sample_ids_sha256)
-from comparison.standardized.clinical_graph_v2.schema import sha256
+from core.schema import sha256
 
 # ------------------------------------------------------------------ fixtures
 

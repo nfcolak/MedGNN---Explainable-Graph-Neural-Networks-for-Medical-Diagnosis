@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 import json
 
-from comparison.standardized.clinical_graph_v2 import stratify
+from core import stratify
 
 
 def test_repeated_subjects_without_sample_ids_are_ambiguous():
@@ -53,7 +53,7 @@ def test_shape_cache_is_bound_to_graph_bytes_and_target_mapping(tmp_path):
 
 
 def test_cli_replays_history_filter_and_checks_control_visit_ids(tmp_path, monkeypatch, capsys):
-    from comparison.standardized.clinical_graph_v2.schema import sha256
+    from core.schema import sha256
     artifact, run, control = (tmp_path / n for n in ('artifact', 'run', 'control'))
     for path in (artifact, run, control):
         path.mkdir()

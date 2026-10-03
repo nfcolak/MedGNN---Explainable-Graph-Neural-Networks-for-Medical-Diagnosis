@@ -1,7 +1,7 @@
 def _fixture():
     import torch
     from torch_geometric.data import Data
-    from comparison.standardized.clinical_graph_v2.methods import METHOD_REGISTRY
+    from core.registry import METHOD_REGISTRY
 
     torch.manual_seed(20260927)
     adapter = METHOD_REGISTRY["cei_gnn"](
@@ -17,7 +17,7 @@ def _fixture():
 
 
 def test_cei_is_independent_registered_method():
-    from comparison.standardized.clinical_graph_v2.methods import METHOD_REGISTRY
+    from core.registry import METHOD_REGISTRY
 
     assert "cei_gnn" in METHOD_REGISTRY, "independent evidence-interaction method absent"
 
@@ -301,7 +301,7 @@ def test_constructor_rejects_unsupported_depth_unknown_options_and_cross_graph_e
     import pytest
     import torch
     from torch_geometric.data import Batch
-    from comparison.standardized.clinical_graph_v2.methods import METHOD_REGISTRY
+    from core.registry import METHOD_REGISTRY
 
     adapter_type = METHOD_REGISTRY["cei_gnn"]
     with pytest.raises(ValueError, match="layers=1"):
@@ -322,7 +322,7 @@ def test_constructor_rejects_unsupported_depth_unknown_options_and_cross_graph_e
 def test_product_off_is_same_capacity_control_and_interaction_changes_predictions():
     import torch
     from argparse import Namespace
-    from comparison.standardized.clinical_graph_v2.methods import METHOD_REGISTRY
+    from core.registry import METHOD_REGISTRY
 
     _, graph = _fixture()
     cls = METHOD_REGISTRY["cei_gnn"]
@@ -393,7 +393,7 @@ def test_float_category_and_index_dtypes_are_rejected_before_shared_casting():
 
 def test_invalid_vocabulary_indices_and_edge_payloads_are_rejected():
     import pytest
-    from comparison.standardized.clinical_graph_v2 import NODE_KINDS
+    from core import NODE_KINDS
 
     adapter, graph = _fixture()
     cases = (

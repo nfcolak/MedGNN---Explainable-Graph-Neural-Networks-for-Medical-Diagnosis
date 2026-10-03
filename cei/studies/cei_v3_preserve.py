@@ -15,7 +15,7 @@ import shutil
 import stat
 import subprocess
 
-from ....paths import REPO_ROOT
+from core.paths import REPO_ROOT
 
 REPO = REPO_ROOT
 NAMES = ('core', 'protgnn', 'validation', 'xgboost', 'graphxai')

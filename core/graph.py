@@ -36,7 +36,7 @@ Everything is bounded by the inherited cutoff; no node may be dated after it.
 from collections import defaultdict
 from itertools import combinations
 
-from .. import SCHEMA_VERSION
+from . import SCHEMA_VERSION
 from .contracts import VISIT_MEMBERSHIP_CONTRACT_VERSION
 from .schema import timestamp
 from comparison.standardized.icd_mapping import ICD_MAPPING_POLICY

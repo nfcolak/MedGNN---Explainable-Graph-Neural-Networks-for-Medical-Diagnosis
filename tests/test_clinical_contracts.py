@@ -1,6 +1,6 @@
 """Corrected clinical runs must not silently accept historical artifact contracts."""
 import pytest
-from comparison.standardized.clinical_graph_v2 import train
+from core import train
 
 
 def test_historical_artifact_is_rejected_before_a_corrected_run():
@@ -41,8 +41,8 @@ def test_target_loader_rejects_duplicate_visits_and_cross_fold_patients(tmp_path
 
 def test_target_binding_requires_same_cohort_and_label_order(tmp_path):
     import json
-    from comparison.standardized.clinical_graph_v2 import contracts
-    from comparison.standardized.clinical_graph_v2.schema import sha256
+    from core import contracts
+    from core.schema import sha256
     assert hasattr(contracts, 'verify_target_binding'), 'target lineage is not checked'
     target = tmp_path / 'targets.csv'
     target.write_text('sample_id,target,split,subject_id\na,0,train,p\n')

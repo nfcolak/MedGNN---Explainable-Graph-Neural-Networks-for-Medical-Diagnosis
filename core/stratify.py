@@ -17,7 +17,7 @@ Two rules make the answer trustworthy:
    evidence for graph structure, even when the GNN-minus-XGBoost gap is positive.
 
 Usage:
-    python3 -m comparison.standardized.clinical_graph_v2.stratify \\
+    python3 -m core.stratify \\
         --run comparison/standardized/clinical_runs_v3/main_seed1234 \\
         --control comparison/standardized/clinical_runs_v3/xgb_control
 """

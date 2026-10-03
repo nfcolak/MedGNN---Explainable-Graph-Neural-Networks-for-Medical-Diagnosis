@@ -11,9 +11,9 @@ import pytest
 import torch
 import torch.nn as nn
 
-from comparison.standardized.clinical_graph_v2 import NODE_KINDS
-from comparison.standardized.clinical_graph_v2.methods import cei_gnn_v3 as v3
-from comparison.standardized.clinical_graph_v2.methods.base import read_clinical_batch
+from core import NODE_KINDS
+from cei import cei_gnn_v3 as v3
+from core.method_base import read_clinical_batch
 from tests.test_cei_gnn_v3_core import (CLASSES, EDGE_DIM, HIDDEN, K, LAYOUT, NODE_DIM,
                                         NUM_TOKENS, PAIR_RANK, RELATIONS, TOKEN_DIM, TRIPLES,
                                         VOCAB, _graph, _knot_table, _metadata, _randomise_gates,
@@ -372,7 +372,7 @@ import sys  # noqa: E402
 import types  # noqa: E402
 from argparse import Namespace  # noqa: E402
 
-from comparison.standardized.clinical_graph_v2.tensorize import (ALL_RELATIONS, PAYLOAD_WIDTH,  # noqa: E402
+from core.tensorize import (ALL_RELATIONS, PAYLOAD_WIDTH,  # noqa: E402
                                                                  REVERSE_RELATIONS)
 from tests.test_cei_gnn_v3_core import _adapter, _write_state  # noqa: E402
 
@@ -382,7 +382,7 @@ E6A_SHAPES = dict(num_relations=BIDIRECTIONAL_RELATIONS, num_triples=2 * (TRIPLE
 E6A_CONTROL = {'num_relations': RELATIONS, 'num_triples': TRIPLES, 'edge_dim': EDGE_DIM}
 E6A_WIDENED = ('relation_embedding.weight', 'triple_embedding.weight',
                'edge_feature_projection.weight')
-X5_MODULE = 'comparison.standardized.clinical_graph_v2.methods.cei.studies.cei_v3_ext.comorbid_block'
+X5_MODULE = 'cei.studies.cei_v3_ext.comorbid_block'
 
 
 def _c_and_variants(seed=123, dropout=0.3):
@@ -494,7 +494,7 @@ def test_e6a_shaped_widening_renews_only_the_widened_tensors_from_their_generato
 
 def _bidirectional_adapter(tmp_path, *, hidden, num_triples=E6A_SHAPES['num_triples'],
                            edge_dim=BIDIRECTIONAL_RELATIONS + PAYLOAD_WIDTH, seed=1234, **options):
-    from comparison.standardized.clinical_graph_v2.methods import METHOD_REGISTRY
+    from core.registry import METHOD_REGISTRY
 
     state_path = _write_state(tmp_path)
     args = Namespace(method_options={'arm': 'C', 'v3_state': str(state_path), 'k': K, **options},

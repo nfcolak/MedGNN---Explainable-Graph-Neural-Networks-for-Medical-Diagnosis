@@ -22,16 +22,16 @@ import numpy as np
 from . import cei_pilot as pilot
 from . import cei_v3_screen as screen
 from . import cei_v3_study as study
-from . import cei_v3_vs_protgnn as comparison
-from ....core import train
-from ....core.contracts import recursive_source_hashes, sample_ids_sha256
-from ....paths import PACKAGE_ROOT
+from comparisons.cei_vs_protgnn import cei_v3_vs_protgnn as comparison
+from core import train
+from core.contracts import recursive_source_hashes, sample_ids_sha256
+from core.paths import PACKAGE_ROOT
 from .cei_v3_ext.validation_scoring import (
     APPROVAL_FILENAME, approval_record_sha256, validate_approval_record,
     write_approval_record,
 )
-from ....methods import build_method
-from ....core.schema import sha256
+from core.registry import build_method
+from core.schema import sha256
 
 from . import cei_v3_paths as io_paths
 

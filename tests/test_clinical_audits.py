@@ -7,8 +7,8 @@ import sys
 import tempfile
 import unittest
 
-from comparison.standardized.clinical_graph_v2 import audit
-from comparison.standardized.clinical_graph_v2.schema import timestamp
+from core import audit
+from core.schema import timestamp
 
 
 class TinyStore:
@@ -33,7 +33,7 @@ class TinyStore:
 
 
 def tiny_graph():
-    from comparison.standardized.clinical_graph_v2.graph import build_graph
+    from core.graph import build_graph
     return build_graph(TinyStore(), {'stay_id': '1', 'subject_id': '1',
                        'cutoff': timestamp('2020-01-03T01:00:00'),
                        'sample_id': 'synthetic', 'split': 'train'}, [], {'pain', 'fever'})
@@ -83,7 +83,7 @@ KNOWLEDGE = [{'source_token': 'lab:1', 'relation': 'measures',
 
 
 def history_graph(diagnoses=False, knowledge=False):
-    from comparison.standardized.clinical_graph_v2.graph import build_graph
+    from core.graph import build_graph
     return build_graph(HistoryStore(), {'stay_id': '1', 'subject_id': '1',
                        'cutoff': timestamp('2020-01-03T01:00:00'),
                        'sample_id': 'synthetic', 'split': 'train'},
@@ -93,7 +93,7 @@ def history_graph(diagnoses=False, knowledge=False):
 
 class GraphInformationTests(unittest.TestCase):
     def test_empty_node_view_cannot_pass_without_any_test(self):
-        from comparison.standardized.clinical_graph_v2 import relation_information as ri
+        from core import relation_information as ri
         result = ri.audit_graph({'nodes': [], 'edges': []})
         self.assertFalse(result['fully_verified_from_raw_node_view'])
 
@@ -117,7 +117,7 @@ class GraphInformationTests(unittest.TestCase):
                 altered = copy.deepcopy(graph)
                 edge = next(e for e in altered['edges'] if e['relation'] == 'baseline_of')
                 edge[field] = not edge[field] if field == 'comparable_units' else edge[field] + 1
-                from comparison.standardized.clinical_graph_v2 import relation_information as ri
+                from core import relation_information as ri
                 result = ri.audit_graph(altered)['relations']['baseline_of']
                 self.assertTrue(result['topology']['exact'])
                 self.assertFalse(result['full_exact'])
@@ -125,7 +125,7 @@ class GraphInformationTests(unittest.TestCase):
         self.assertTrue(ri.audit_graph(graph)['fully_verified_from_raw_node_view'])
 
     def test_duplicate_and_direction_are_not_discarded(self):
-        from comparison.standardized.clinical_graph_v2 import relation_information as ri
+        from core import relation_information as ri
         graph = tiny_graph()
         edge = next(e for e in graph['edges'] if e['relation'] == 'co_complaint')
         graph['edges'].append(copy.deepcopy(edge))
@@ -140,7 +140,7 @@ class GraphInformationTests(unittest.TestCase):
         self.assertEqual(result['topology']['unpredicted'], 1)
 
     def test_recurrence_recency_and_comorbidity_are_not_node_facts(self):
-        from comparison.standardized.clinical_graph_v2 import relation_information as ri
+        from core import relation_information as ri
         graph = history_graph(diagnoses=True)
         report = ri.audit_graph(graph)
         recurrence = report['relations']['recurrence_of']
@@ -161,7 +161,7 @@ class GraphInformationTests(unittest.TestCase):
         self.assertNotEqual(audit.informative_signature(graph), audit.informative_signature(changed))
 
     def test_external_knowledge_is_disclosed_and_provenance_checked(self):
-        from comparison.standardized.clinical_graph_v2 import relation_information as ri
+        from core import relation_information as ri
         graph = history_graph(knowledge=True)
         result = ri.audit_graph(graph)['relations']['medical:measures']
         self.assertFalse(result['topology']['tested'])
@@ -174,7 +174,7 @@ class GraphInformationTests(unittest.TestCase):
         self.assertFalse(ri.audit_graph(graph, knowledge=KNOWLEDGE)['relations']['medical:measures']['full_exact'])
 
     def test_unknown_fields_and_relations_are_counted_not_approved(self):
-        from comparison.standardized.clinical_graph_v2 import relation_information as ri
+        from core import relation_information as ri
         graph = tiny_graph()
         edge = next(e for e in graph['edges'] if e['relation'] == 'co_complaint')
         edge['unseen_payload'] = 3.0
@@ -187,7 +187,7 @@ class GraphInformationTests(unittest.TestCase):
 
 
     def test_missing_payload_is_distinct_from_verified_null(self):
-        from comparison.standardized.clinical_graph_v2 import relation_information as ri
+        from core import relation_information as ri
         graph = history_graph()
         edge = next(e for e in graph['edges'] if e['relation'] == 'baseline_of')
         del edge['delta']
@@ -200,7 +200,7 @@ class GraphInformationTests(unittest.TestCase):
         self.assertTrue(result['full_exact'])
 
     def test_recurrence_null_still_unverified_and_summary_counts_fields(self):
-        from comparison.standardized.clinical_graph_v2 import relation_information as ri
+        from core import relation_information as ri
         graph = history_graph(diagnoses=True)
         for edge in graph['edges']:
             if edge['relation'] == 'recurrence_of':
@@ -210,7 +210,7 @@ class GraphInformationTests(unittest.TestCase):
         self.assertEqual(summary['relations']['recurrence_of']['fields']['last_seen_hours']['tested_graphs'], 0)
 
     def test_cli_reports_actual_prefix_count_and_preserves_existing_output(self):
-        module = 'comparison.standardized.clinical_graph_v2.'
+        module = 'core.'
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / 'graphs.jsonl').write_text(json.dumps(tiny_graph()) + '\n' + json.dumps(history_graph()) + '\n')
@@ -246,7 +246,7 @@ def result_row(seed, score, **changes):
 
 class AggregationTests(unittest.TestCase):
     def test_active_capacity_is_disclosed_without_blocking_nomp_comparison(self):
-        from comparison.standardized.clinical_graph_v2 import aggregate
+        from core import aggregate
         rows = {'nomp_seed1': result_row(1, .2, message_passing=False, active_parameter_count=4),
                 'main_seed1': result_row(1, .3, active_parameter_count=12)}
         report = aggregate.aggregate_rows(rows)
@@ -257,7 +257,7 @@ class AggregationTests(unittest.TestCase):
         self.assertIn('active', aggregate.render_report(report))
 
     def test_rewiring_realization_counts_are_outcomes_not_cohort_or_treatment_policy(self):
-        from comparison.standardized.clinical_graph_v2 import aggregate
+        from core import aggregate
         rows = {f'rewired_seed{seed}': result_row(
             seed, .2, rewired_relations=['co_complaint'], rewiring_policy='bounded_null_v1',
             rewire_seed=seed, rewiring={'train': {'changed_edges': seed}})
@@ -269,7 +269,7 @@ class AggregationTests(unittest.TestCase):
                          {'train': {'changed_edges': 1}})
 
     def test_rewired_comparison_requires_payload_disabled_in_both_arms(self):
-        from comparison.standardized.clinical_graph_v2 import aggregate
+        from core import aggregate
         rows = {
             'nomp_seed1': result_row(1, .2, message_passing=False, edge_payload=True),
             'plain_seed1': result_row(1, .25, edge_payload=True),
@@ -290,7 +290,7 @@ class AggregationTests(unittest.TestCase):
                          'binding_matched_descriptive_only')
 
     def test_contradictory_class_universe_is_rejected(self):
-        from comparison.standardized.clinical_graph_v2 import aggregate
+        from core import aggregate
         with self.assertRaisesRegex(ValueError, 'class'):
             aggregate.aggregate_rows({'main_seed1': result_row(1, .2, num_classes=3)})
 
@@ -303,7 +303,7 @@ class AggregationTests(unittest.TestCase):
                 root = Path(directory) / name
                 root.mkdir()
                 (root / 'result.json').write_text(json.dumps(value))
-            command = [sys.executable, '-m', 'comparison.standardized.clinical_graph_v2.aggregate', directory]
+            command = [sys.executable, '-m', 'core.aggregate', directory]
             result = subprocess.run(command + ['--json'], capture_output=True, text=True, check=True)
             report = json.loads(result.stdout)
             self.assertEqual(report['n_runs'], 2)
@@ -314,14 +314,14 @@ class AggregationTests(unittest.TestCase):
             self.assertNotIn('EN IYI ARM', result.stdout)
 
     def test_filename_seed_is_not_a_saved_seed_binding(self):
-        from comparison.standardized.clinical_graph_v2 import aggregate
+        from core import aggregate
         row = result_row(1, .2)
         del row['binding']['seed']
         report = aggregate.aggregate_rows({'main_seed1': row, 'nomp_seed1': copy.deepcopy(row)})
         self.assertEqual(report['cohorts'][0]['comparisons'][0]['paired_seeds'], [])
 
     def test_matched_seed_deltas_not_global_noise_threshold(self):
-        from comparison.standardized.clinical_graph_v2 import aggregate
+        from core import aggregate
         rows = {'nomp_seed1': result_row(1, .2, message_passing=False),
                 'nomp_seed2': result_row(2, .2, message_passing=False),
                 'main_seed1': result_row(1, .3), 'main_seed2': result_row(2, .5),
@@ -342,7 +342,7 @@ class AggregationTests(unittest.TestCase):
         self.assertNotIn('winner', report)
 
     def test_incompatible_bindings_are_partitioned_even_with_same_arm_name(self):
-        from comparison.standardized.clinical_graph_v2 import aggregate
+        from core import aggregate
         cases = {'artifact_graphs_sha256': 'd' * 64, 'class_order': ['B', 'A'],
                  'preprocessing_schema_version': 'different', 'epochs': 4,
                  'source_code': {'train.py': 'e' * 64},
@@ -357,7 +357,7 @@ class AggregationTests(unittest.TestCase):
                 self.assertTrue(all(not c['comparisons'] for c in report['cohorts']))
 
     def test_missing_metadata_is_not_assumed_matched(self):
-        from comparison.standardized.clinical_graph_v2 import aggregate
+        from core import aggregate
         old = result_row(1, .2)
         for key in ['evaluation_version', 'logic_contract_version', 'preprocessing_schema_version']:
             del old['binding'][key]
@@ -370,7 +370,7 @@ class AggregationTests(unittest.TestCase):
         self.assertIn('preprocessing_schema_version_or_feature_hash', cohort['missing_bindings'])
 
     def test_single_seed_and_standalone_are_not_fake_replicates(self):
-        from comparison.standardized.clinical_graph_v2 import aggregate
+        from core import aggregate
         row = result_row(7, .6, conv='hgt')
         report = aggregate.aggregate_rows({'typed': row})
         stats = report['cohorts'][0]['arms']['typed']

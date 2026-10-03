@@ -8,7 +8,7 @@ from tests.test_cei_gnn_v2_core import EXPECTED_PAIRS, _graph
 
 
 def _registry():
-    from comparison.standardized.clinical_graph_v2.methods import METHOD_REGISTRY
+    from core.registry import METHOD_REGISTRY
 
     assert "cei_gnn_v2" in METHOD_REGISTRY, "cei_gnn_v2 plugin is not registered"
     return METHOD_REGISTRY
@@ -23,7 +23,7 @@ def _adapter(mode="product", rank=4, seed=11, **options):
 
 
 def test_plugin_uses_v1_runner_defaults_and_parses_runner_options():
-    from comparison.standardized.clinical_graph_v2 import train
+    from core import train
 
     registry = _registry()
     assert train.plugin_defaults("cei_gnn_v2") == registry["cei_gnn"].runner_defaults
@@ -66,7 +66,7 @@ def test_run_config_reports_inactive_pair_parameters_only_when_off():
 
 
 def test_forward_equals_continuous_core_and_graphxai_wrapper():
-    from comparison.standardized.clinical_graph_v2.cei_graphxai import ClinicalGraphXAIWrapper
+    from cei.studies.cei_graphxai import ClinicalGraphXAIWrapper
 
     adapter, graph = _adapter("product"), _graph()
     ordinary = adapter(graph, epoch=0).logits

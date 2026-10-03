@@ -17,8 +17,8 @@ import os
 from pathlib import Path
 import shutil
 
-from .. import INFORMATIVE_RELATIONS, NODE_KINDS, SCHEMA_VERSION, STRUCTURAL_RELATIONS
-from ..paths import PACKAGE_ROOT
+from . import INFORMATIVE_RELATIONS, NODE_KINDS, SCHEMA_VERSION, STRUCTURAL_RELATIONS
+from .paths import PACKAGE_ROOT
 from .diagnosis import DiagnosisIndex, load_icd_map
 from .graph import (LOGIC_CONTRACT_VERSION, assumed_timing,
                     build_graph_with_visit_membership, lab_availability,

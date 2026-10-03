@@ -12,7 +12,7 @@ from argparse import Namespace
 import torch
 
 from ...cei_gnn_v2 import KIND_PAIR_COUNT
-from .....core.tensorize import (ALL_RELATIONS, EDGE_DIRECTIONS, REVERSE_RELATIONS, REVERSIBLE_RELATIONS,
+from core.tensorize import (ALL_RELATIONS, EDGE_DIRECTIONS, REVERSE_RELATIONS, REVERSIBLE_RELATIONS,
                          relation_vocabulary)
 
 __all__ = ['CONTROL_ARM', 'EXTENSION_ARMS', 'ARM_DEFINITIONS', 'ARM_FIELDS',
@@ -186,7 +186,7 @@ def assert_size_arm_support(v3_state=None, *, layers=2) -> dict:
     otherwise it stops at the state requirement, which lies after the depth check, so a
     refusal naming `layers` is the only way the v3 adapter can report `False`.
     """
-    from .....methods import METHOD_REGISTRY
+    from core.registry import METHOD_REGISTRY
 
     dims = dict(num_tokens=2, node_dim=4, edge_dim=2, num_classes=2, hidden=8, dropout=0.0,
                 token_dim=2, num_triples=2)

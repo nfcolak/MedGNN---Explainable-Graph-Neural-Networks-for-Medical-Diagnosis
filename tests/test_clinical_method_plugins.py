@@ -13,8 +13,8 @@ import pytest
 import torch
 import torch.nn as nn
 
-from comparison.standardized.clinical_graph_v2 import methods, train
-from comparison.standardized.clinical_graph_v2.methods import base
+from core import registry, train
+from core import method_base
 
 
 CORE = {"graphcare", "gsat", "protgnn"}

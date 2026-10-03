@@ -5,7 +5,7 @@ import importlib.util
 import json
 from pathlib import Path
 from types import SimpleNamespace
-from comparison.standardized.clinical_graph_v2.paths import REPO_ROOT
+from core.paths import REPO_ROOT
 
 import pytest
 
@@ -15,9 +15,9 @@ MODULE_PATH = (Path(__file__).parents[1] / "comparison/standardized/clinical_gra
 def _module():
     # Keep the RED failure an assertion about the missing behavior, not collection/import.
     assert MODULE_PATH.is_file(), "CEI pilot protocol module must implement the locked planner"
-    spec = importlib.util.find_spec("comparison.standardized.clinical_graph_v2.methods.cei.studies.cei_pilot")
+    spec = importlib.util.find_spec("cei.studies.cei_pilot")
     assert spec and spec.loader
-    return importlib.import_module("comparison.standardized.clinical_graph_v2.methods.cei.studies.cei_pilot")
+    return importlib.import_module("cei.studies.cei_pilot")
 
 
 from functools import lru_cache
@@ -26,10 +26,10 @@ import copy
 
 @lru_cache(maxsize=None)
 def _source_method_config(method, use_interactions=True):
-    from comparison.standardized.clinical_graph_v2 import train
-    from comparison.standardized.clinical_graph_v2.paths import PACKAGE_ROOT
-    from comparison.standardized.clinical_graph_v2.methods import build_method
-    from comparison.standardized.clinical_graph_v2.tensorize import PAYLOAD_WIDTH
+    from core import train
+    from core.paths import PACKAGE_ROOT
+    from core.registry import build_method
+    from core.tensorize import PAYLOAD_WIDTH
 
     argv = ["--artifact", "<artifact>", "--targets", "<targets>", "--output", "<output>",
             "--method", method, "--train-limit", "10000", "--dev-limit", "5000",
@@ -491,12 +491,12 @@ def test_replay_stage_reconstructs_real_model_and_rejects_tampered_artifacts(tmp
     import torch
     from torch_geometric.data import Data
     from torch_geometric.loader import DataLoader
-    from comparison.standardized.clinical_graph_v2 import train
-    from comparison.standardized.clinical_graph_v2.paths import PACKAGE_ROOT
-    from comparison.standardized.clinical_graph_v2.contracts import recursive_source_hashes, sample_ids_sha256
-    from comparison.standardized.clinical_graph_v2.methods import build_method
-    from comparison.standardized.clinical_graph_v2.schema import sha256
-    from comparison.standardized.clinical_graph_v2.tensorize import (
+    from core import train
+    from core.paths import PACKAGE_ROOT
+    from core.contracts import recursive_source_hashes, sample_ids_sha256
+    from core.registry import build_method
+    from core.schema import sha256
+    from core.tensorize import (
         PAYLOAD_WIDTH, PREPROCESSING_VERSION, Scaler, Vocabulary, preprocessing_state)
 
     artifact = tmp_path / "artifact"

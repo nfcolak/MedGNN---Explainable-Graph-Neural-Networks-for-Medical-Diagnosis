@@ -16,7 +16,7 @@ import json
 import math
 from pathlib import Path
 
-from .. import INFORMATIVE_RELATIONS, STRUCTURAL_RELATIONS
+from . import INFORMATIVE_RELATIONS, STRUCTURAL_RELATIONS
 
 NODE_FIELDS = ('id', 'kind', 'token', 'scope', 'value', 'unit', 'time_hours',
                'prior_encounters')

@@ -27,11 +27,11 @@ from typing import Tuple
 
 import torch
 
-from ... import NODE_KINDS
+from core import NODE_KINDS
 from .studies.cei_v3_absence import Universe
 from .studies.cei_v3_ple import KnotTable
-from ...core.tensorize import relation_vocabulary
-from ..base import (ClinicalMethodAdapter, MethodOutput, diagnostic_float, method_option,
+from core.tensorize import relation_vocabulary
+from core.method_base import (ClinicalMethodAdapter, MethodOutput, diagnostic_float, method_option,
                    parameter_count, read_clinical_batch, relation_count,
                    reject_unknown_options)
 from .cei_gnn_v3 import ARMS, EvidenceNetworkV3

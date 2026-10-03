@@ -5,7 +5,7 @@ import pytest
 import torch
 from torch_geometric.data import Data
 from torch_geometric.nn import MessagePassing
-from comparison.standardized.clinical_graph_v2.paths import PACKAGE_ROOT
+from core.paths import PACKAGE_ROOT
 
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "comparison/standardized/clinical_graph_v2/methods/cei/studies/cei_graphxai.py"
@@ -63,7 +63,7 @@ class SyntheticAdapter(torch.nn.Module):
 def module():
     if not MODULE_PATH.is_file():
         pytest.fail("clinical dev-only GraphXAI wrapper absent")
-    return importlib.import_module("comparison.standardized.clinical_graph_v2.methods.cei.studies.cei_graphxai")
+    return importlib.import_module("cei.studies.cei_graphxai")
 
 
 def test_wrapper_preserves_numeric_and_embedding_channels_as_predictor_inputs():
@@ -130,7 +130,7 @@ def test_explain_graph_runs_real_algorithms_and_cleans_mask_state():
 
 def test_binding_hashes_use_runner_package_relative_source_manifest(tmp_path):
     implementation = module()
-    from comparison.standardized.clinical_graph_v2.contracts import recursive_source_hashes
+    from core.contracts import recursive_source_hashes
     import inspect
     assert "package_root" in inspect.signature(implementation.binding_hashes).parameters
     artifacts = []
@@ -149,7 +149,7 @@ def test_binding_hashes_use_runner_package_relative_source_manifest(tmp_path):
 
 def test_integrated_cei_runs_all_three_algorithms_with_edgeless_graph():
     from types import SimpleNamespace
-    from comparison.standardized.clinical_graph_v2.methods import METHOD_REGISTRY
+    from core.registry import METHOD_REGISTRY
 
     adapter = METHOD_REGISTRY["cei_gnn"](
         num_tokens=8, node_dim=3, edge_dim=2, num_classes=3, hidden=8,
@@ -218,8 +218,8 @@ def test_real_algorithms_support_one_node_edgeless_graph():
 
 def test_reconstruction_replays_candidate_and_product_off_state_dicts(tmp_path):
     implementation = module()
-    from comparison.standardized.clinical_graph_v2.methods import METHOD_REGISTRY
-    from comparison.standardized.clinical_graph_v2 import train
+    from core.registry import METHOD_REGISTRY
+    from core import train
     from torch_geometric.data import Data
 
     graph = Data(
@@ -250,7 +250,7 @@ def test_reconstruction_replays_candidate_and_product_off_state_dicts(tmp_path):
         config = adapter.run_config()
         checkpoint = tmp_path / f"cei-{enabled}.pt"
         torch.save(adapter.state_dict(), checkpoint)
-        from comparison.standardized.clinical_graph_v2.contracts import recursive_source_hashes
+        from core.contracts import recursive_source_hashes
         import hashlib
         from pathlib import Path
         binding = {

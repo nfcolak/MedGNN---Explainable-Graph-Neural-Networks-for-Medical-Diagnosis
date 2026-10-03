@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 import torch
 
-CORE = "comparison.standardized.clinical_graph_v2.methods.cei.cei_gnn_v2"
+CORE = "cei.cei_gnn_v2"
 EXPECTED_PAIRS = [(2, 3), (2, 4), (2, 6), (2, 7), (3, 4), (3, 6), (3, 7), (6, 7)]
 
 
@@ -23,7 +23,7 @@ def _v2():
 
 def _graph(scale=1.0, seed=7):
     """Two visits. Node 2 (complaint) and node 3 (measurement) belong to both."""
-    from comparison.standardized.clinical_graph_v2.tensorize import ClinicalGraphData
+    from core.tensorize import ClinicalGraphData
 
     generator = torch.Generator().manual_seed(seed)
     graph = ClinicalGraphData(
@@ -85,7 +85,7 @@ def test_pair_builder_rejects_malformed_membership():
 
 def test_adapter_rejects_cross_graph_and_out_of_range_visits_even_when_off():
     from torch_geometric.data import Batch
-    from comparison.standardized.clinical_graph_v2.methods import METHOD_REGISTRY
+    from core.registry import METHOD_REGISTRY
     from argparse import Namespace
 
     adapter = METHOD_REGISTRY["cei_gnn_v2"](
@@ -122,7 +122,7 @@ def test_kind_pair_index_is_symmetric_and_covers_six_unordered_pairs():
 
 
 def _reference_pairs(membership, node_type):
-    from comparison.standardized.clinical_graph_v2.methods.cei.cei_gnn_v2 import EVIDENCE_KIND_IDS
+    from cei.cei_gnn_v2 import EVIDENCE_KIND_IDS
 
     by_visit = {}
     for visit, node in membership.t().tolist():
@@ -151,7 +151,7 @@ def test_skewed_visit_pair_enumeration_is_bounded_and_exact():
     script = textwrap.dedent(r"""
         import json, resource, time
         import torch
-        from comparison.standardized.clinical_graph_v2.methods.cei.cei_gnn_v2 import within_visit_pairs
+        from cei.cei_gnn_v2 import within_visit_pairs
         import itertools
         wide, singles = 1000, 20000
         node_count = wide + singles
@@ -197,7 +197,7 @@ def _network(mode="product", seed=11):
 
 
 def _metadata(graph):
-    from comparison.standardized.clinical_graph_v2.methods.base import read_clinical_batch
+    from core.method_base import read_clinical_batch
 
     return read_clinical_batch(graph, method="test", node_dim=3, edge_dim=2, num_tokens=8,
                                num_triples=4, num_relations=15)
@@ -350,7 +350,7 @@ def test_pyg_mask_matches_direct_probability_mask_and_carries_gradient():
 
 
 def test_edgeless_pairless_graph_is_finite():
-    from comparison.standardized.clinical_graph_v2.tensorize import ClinicalGraphData
+    from core.tensorize import ClinicalGraphData
 
     graph = ClinicalGraphData(x=torch.ones((2, 3)), edge_index=torch.zeros((2, 0), dtype=torch.long),
                               edge_attr=torch.zeros((0, 2)))

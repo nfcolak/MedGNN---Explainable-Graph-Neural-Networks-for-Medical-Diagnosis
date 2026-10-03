@@ -16,7 +16,7 @@ MODULE_PATH = Path(__file__).parents[1] / "comparison/standardized/clinical_grap
 
 def _module():
     assert MODULE_PATH.is_file(), "CEI-GNN v2 study module must implement the locked planner"
-    return importlib.import_module("comparison.standardized.clinical_graph_v2.methods.cei.studies.cei_v2_study")
+    return importlib.import_module("cei.studies.cei_v2_study")
 
 
 def _inputs(tmp_path):
@@ -30,10 +30,10 @@ def _inputs(tmp_path):
 
 @lru_cache(maxsize=None)
 def _source(mode, seed, budget):
-    from comparison.standardized.clinical_graph_v2 import train
-    from comparison.standardized.clinical_graph_v2.paths import PACKAGE_ROOT
-    from comparison.standardized.clinical_graph_v2.methods import build_method
-    from comparison.standardized.clinical_graph_v2.tensorize import PAYLOAD_WIDTH
+    from core import train
+    from core.paths import PACKAGE_ROOT
+    from core.registry import build_method
+    from core.tensorize import PAYLOAD_WIDTH
 
     train_limit, dev_limit, epochs = budget
     parser = train.parser()
@@ -112,7 +112,7 @@ def test_smoke_plan_has_three_modes_and_full_argv_is_pinned(tmp_path):
                      for seed in (1234, 2025, 7) for mode in ("product", "additive", "off")]
     assert [(s.name, s.budget, s.seed, s.pair_mode) for s in stages[3:]] == expected_full
     literal_full_argv = [
-        "-m", "comparison.standardized.clinical_graph_v2.core.train", "--artifact", str(artifact),
+        "-m", "core.train", "--artifact", str(artifact),
         "--targets", str(targets), "--canonical", str(canonical), "--output", str(tmp_path / "runs" / "product_seed1234"),
         "--method", "cei_gnn_v2", "--train-limit", "10000", "--dev-limit", "5000",
         "--sample-seed", "1234", "--seed", "1234", "--top-k-labels", "10", "--edges", "all",
@@ -135,7 +135,7 @@ def test_smoke_plan_has_three_modes_and_full_argv_is_pinned(tmp_path):
     expected_full_argv = []
     for name, seed, mode in pinned_full_rows:
         expected_full_argv.append([
-            sys.executable, "-m", "comparison.standardized.clinical_graph_v2.core.train",
+            sys.executable, "-m", "core.train",
             "--artifact", str(artifact), "--targets", str(targets), "--canonical", str(canonical),
             "--output", str(tmp_path / "runs" / name), "--method", "cei_gnn_v2",
             "--train-limit", "10000", "--dev-limit", "5000", "--sample-seed", "1234",
@@ -381,12 +381,12 @@ def test_replay_reconstructs_v2_model_and_rejects_tampering(tmp_path, monkeypatc
     import numpy as np
     import torch
     from torch_geometric.loader import DataLoader
-    from comparison.standardized.clinical_graph_v2 import train
-    from comparison.standardized.clinical_graph_v2.paths import PACKAGE_ROOT
-    from comparison.standardized.clinical_graph_v2.contracts import recursive_source_hashes, sample_ids_sha256
-    from comparison.standardized.clinical_graph_v2.methods import build_method
-    from comparison.standardized.clinical_graph_v2.schema import sha256
-    from comparison.standardized.clinical_graph_v2.tensorize import (
+    from core import train
+    from core.paths import PACKAGE_ROOT
+    from core.contracts import recursive_source_hashes, sample_ids_sha256
+    from core.registry import build_method
+    from core.schema import sha256
+    from core.tensorize import (
         PAYLOAD_WIDTH, PREPROCESSING_VERSION, ClinicalGraphData, Scaler, Vocabulary,
         preprocessing_state)
 
@@ -595,8 +595,8 @@ def test_load_arm_predictions_requires_identical_dev_rows(tmp_path):
 def test_preflight_reads_train_only_and_refuses_existing_output(tmp_path, monkeypatch):
     module = _module()
     assert hasattr(module, "preflight"), "pair study preflight is missing"
-    from comparison.standardized.clinical_graph_v2 import train
-    from comparison.standardized.clinical_graph_v2.paths import PACKAGE_ROOT
+    from core import train
+    from core.paths import PACKAGE_ROOT
     from tests.test_cei_gnn_v2_core import _graph
 
     rows = [_graph(seed=seed) for seed in range(6)]
@@ -687,8 +687,8 @@ def test_smoke_journal_eta_uses_measured_smoke_seconds(tmp_path, monkeypatch):
 
 def test_analysis_secondary_results_are_explicitly_non_decisive(tmp_path, monkeypatch):
     module = _module()
-    from comparison.standardized.clinical_graph_v2 import train
-    from comparison.standardized.clinical_graph_v2.paths import PACKAGE_ROOT
+    from core import train
+    from core.paths import PACKAGE_ROOT
     import numpy as np
 
     arms = {name: np.asarray([[0.9, 0.1], [0.2, 0.8]]) for name in module.FULL_STAGE_NAMES}
@@ -719,8 +719,8 @@ def test_analysis_secondary_results_are_explicitly_non_decisive(tmp_path, monkey
 
 def test_analysis_per_class_rows_include_false_positive_counts(tmp_path, monkeypatch):
     module = _module()
-    from comparison.standardized.clinical_graph_v2 import train
-    from comparison.standardized.clinical_graph_v2.paths import PACKAGE_ROOT
+    from core import train
+    from core.paths import PACKAGE_ROOT
     import numpy as np
 
     arms = {name: np.asarray([[0.8, 0.2], [0.7, 0.3], [0.1, 0.9]])
@@ -748,8 +748,8 @@ def test_analysis_per_class_rows_include_false_positive_counts(tmp_path, monkeyp
 
 def test_analysis_uses_validated_result_seconds(tmp_path, monkeypatch):
     module = _module()
-    from comparison.standardized.clinical_graph_v2 import train
-    from comparison.standardized.clinical_graph_v2.paths import PACKAGE_ROOT
+    from core import train
+    from core.paths import PACKAGE_ROOT
     import numpy as np
 
     arms = {name: np.asarray([[0.9, 0.1], [0.1, 0.9]]) for name in module.FULL_STAGE_NAMES}
@@ -774,8 +774,8 @@ def test_analysis_uses_validated_result_seconds(tmp_path, monkeypatch):
 
 def test_product_minus_off_comparison_is_explicitly_non_decisive(tmp_path, monkeypatch):
     module = _module()
-    from comparison.standardized.clinical_graph_v2 import train
-    from comparison.standardized.clinical_graph_v2.paths import PACKAGE_ROOT
+    from core import train
+    from core.paths import PACKAGE_ROOT
     import numpy as np
 
     arms = {name: np.asarray([[0.9, 0.1], [0.1, 0.9]]) for name in module.FULL_STAGE_NAMES}
@@ -814,7 +814,7 @@ def test_module_entrypoint_prints_plan_without_execution(tmp_path):
 
     artifact, targets, canonical = _inputs(tmp_path)
     result = subprocess.run([
-        sys.executable, "-m", "comparison.standardized.clinical_graph_v2.cei_v2_study",
+        sys.executable, "-m", "cei.studies.cei_v2_study",
         "--artifact", str(artifact), "--targets", str(targets),
         "--canonical", str(canonical), "--output-root", str(tmp_path / "runs")],
         check=True, capture_output=True, text=True)
@@ -1130,8 +1130,8 @@ def test_print_only_smoke_verification_does_not_mutate_output_root(tmp_path, mon
 def _run_synthetic_analysis(module, tmp_path, monkeypatch, *, point=None, counts=None,
                             histories=None, replay_counts=None):
     import numpy as np
-    from comparison.standardized.clinical_graph_v2 import train
-    from comparison.standardized.clinical_graph_v2.paths import PACKAGE_ROOT
+    from core import train
+    from core.paths import PACKAGE_ROOT
 
     arms = {name: np.asarray([[0.8, 0.2], [0.2, 0.8], [0.8, 0.2], [0.2, 0.8]])
             for name in module.FULL_STAGE_NAMES}
@@ -1250,7 +1250,7 @@ def test_a10_r4_reports_parameters_notes_and_decide_is_invariant(tmp_path, monke
 def test_a10_r2_dev_pair_counts_and_analysis_replay_counts(tmp_path, monkeypatch):
     module = _module()
     import torch
-    from comparison.standardized.clinical_graph_v2.tensorize import ClinicalGraphData
+    from core.tensorize import ClinicalGraphData
 
     rows = []
     for members, types in (([0, 0, 0], [1, 2, 5]), ([0, 0, 1, 1], [1, 2, 1, 2])):

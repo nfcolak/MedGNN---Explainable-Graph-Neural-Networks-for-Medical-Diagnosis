@@ -54,11 +54,11 @@ from .contracts import (VISIT_MEMBERSHIP_CONTRACT_VERSION, VISIT_MEMBERSHIP_FILE
                         validate_artifact_manifest, validate_control_configuration,
                         verify_graph_file, verify_target_binding,
                         verify_visit_membership_file)
-from ..methods import CORE_METHODS, METHOD_REGISTRY, ClinicalMethodAdapter, build_method
-from ..paths import PACKAGE_ROOT
-from ..methods.gchm_pna.gchm_v2 import AGGREGATIONS, GCHMv2, READOUTS
-from ..methods.gchm_pna.gchm_v3 import GCHMv3
-from ..methods.gchm_pna.gchm_v3 import READOUTS as V3_READOUTS
+from .registry import CORE_METHODS, METHOD_REGISTRY, ClinicalMethodAdapter, build_method
+from .paths import PACKAGE_ROOT
+from gchm_pna.gchm_v2 import AGGREGATIONS, GCHMv2, READOUTS
+from gchm_pna.gchm_v3 import GCHMv3
+from gchm_pna.gchm_v3 import READOUTS as V3_READOUTS
 from .model import ClinicalGNN
 from .schema import sha256
 from .rewiring import REWIRING_POLICY
@@ -468,7 +468,7 @@ def build_dataset(artifact, targets, edge_mode, limit, token_min_count, seed,
     if train_dev_only:
         if min_prior_visits or not dev_ids:
             raise ValueError('train/dev-only requires an unfiltered patient-disjoint dev draw')
-        from ..methods.cei.studies.cei_v3_ext.io import selected_graphs, selected_preprocessing
+        from cei.studies.cei_v3_ext.io import selected_graphs, selected_preprocessing
         prep = selected_preprocessing(graphs_path, train_ids, token_min_count,
                                       membership_path=membership_path)
         rows = selected_graphs(graphs_path, membership_path, train_ids | set(dev_ids))

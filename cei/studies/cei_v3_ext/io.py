@@ -104,7 +104,7 @@ _SAMPLE_ID = re.compile(r'"sample_id"\s*:\s*("(?:[^"\\]|\\.)*")')
 
 
 def selected_graphs(graphs_path, membership_path, wanted, limit=None):
-    from .....core.contracts import validate_visit_membership_record
+    from core.contracts import validate_visit_membership_record
 
     wanted = set(wanted)
     seen, found = set(), set()
@@ -139,7 +139,7 @@ def selected_preprocessing(graphs_path, train_ids, token_min_count=20, *, member
 
     No module monkeypatch, temporary graph artifact or duplicated fitting policy.
     """
-    from .....core import tensorize
+    from core import tensorize
 
     function = tensorize.fit_preprocessing
     scope = dict(function.__globals__)
@@ -154,9 +154,9 @@ def selected_preprocessing(graphs_path, train_ids, token_min_count=20, *, member
 def smoke_fit_inputs(artifact, targets_path, train_limit=256):
     """Same state inputs/transform as U5, using strictly selected TRAIN reads."""
     import numpy as np
-    from .....core import train, tensorize
+    from core import train, tensorize
     from .. import cei_v3_study as study
-    from .....core.contracts import VISIT_MEMBERSHIP_FILENAME
+    from core.contracts import VISIT_MEMBERSHIP_FILENAME
 
     targets, _, _ = train.select_top_labels(train.load_targets(targets_path), 10)
     ids = train.sample_train_ids(targets, train_limit, study.SAMPLE_SEED)

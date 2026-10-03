@@ -7,7 +7,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from ....paths import PACKAGE_ROOT
+from core.paths import PACKAGE_ROOT
 from typing import Any, Mapping, Sequence
 
 import torch
@@ -124,7 +124,7 @@ def _unique_ids(values, label):
 
 def binding_hashes(*, package_root, graph_path, membership_path, checkpoint_path, cohort_ids):
     """Compute runner-compatible provenance hashes from source and artifact files."""
-    from ....core.contracts import recursive_source_hashes
+    from core.contracts import recursive_source_hashes
 
     def file_hash(path):
         digest = hashlib.sha256()
@@ -191,7 +191,7 @@ def reconstruct_adapter(binding: Mapping[str, Any], checkpoint_path, *, expected
         raise ValueError("unsupported CEI interaction rank")
     if effective.get("use_interactions") not in (True, False) or dims["layers"] != 1:
         raise ValueError("unsupported CEI effective settings or architecture depth")
-    from ....core.contracts import recursive_source_hashes
+    from core.contracts import recursive_source_hashes
     source_binding = binding.get("source_code")
     current_sources = recursive_source_hashes(PACKAGE_ROOT)
     if not isinstance(source_binding, Mapping) or dict(source_binding) != current_sources:

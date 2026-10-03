@@ -21,22 +21,22 @@ import time
 
 import numpy as np
 
-from . import cei_pilot as pilot
-from . import cei_v3_screen as screen
-from . import cei_v3_study as study
-from . import cei_v3_validation as validation
-from . import cei_v3_vs_protgnn as comparison
-from ....core import contracts, tensorize, train
-from ....methods.xgboost import tabular_control as tabular
-from ....paths import PACKAGE_ROOT
-from .cei_v3_ext.validation_scoring import (
+from cei.studies import cei_pilot as pilot
+from cei.studies import cei_v3_screen as screen
+from cei.studies import cei_v3_study as study
+from cei.studies import cei_v3_validation as validation
+from ..cei_vs_protgnn import cei_v3_vs_protgnn as comparison
+from core import contracts, tensorize, train
+from xgboost_control import tabular_control as tabular
+from core.paths import PACKAGE_ROOT
+from cei.studies.cei_v3_ext.validation_scoring import (
     APPROVAL_FILENAME, approval_record_sha256, validate_approval_record,
     write_approval_record,
 )
-from ....core.contracts import recursive_source_hashes, sample_ids_sha256
-from ....core.schema import sha256
+from core.contracts import recursive_source_hashes, sample_ids_sha256
+from core.schema import sha256
 
-from . import cei_v3_paths as io_paths
+from cei.studies import cei_v3_paths as io_paths
 
 REPO = io_paths.REPO
 V3_ROOT = io_paths.DEFAULT_RESULTS / 'core'

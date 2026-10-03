@@ -15,11 +15,11 @@ from typing import Optional
 
 import torch
 
-from ....core.contracts import (VISIT_MEMBERSHIP_FILENAME, iter_graphs_with_membership,
+from core.contracts import (VISIT_MEMBERSHIP_FILENAME, iter_graphs_with_membership,
                         sample_ids_sha256)
-from ....core.schema import sha256
-from ....core.tensorize import encode_graph, load_preprocessing
-from ....core.train import load_targets, select_top_labels
+from core.schema import sha256
+from core.tensorize import encode_graph, load_preprocessing
+from core.train import load_targets, select_top_labels
 
 SCREEN_FOLD_NAME = 'screen'
 SELECTOR_VERSION = 'cei_v3_screen_selector_v1'

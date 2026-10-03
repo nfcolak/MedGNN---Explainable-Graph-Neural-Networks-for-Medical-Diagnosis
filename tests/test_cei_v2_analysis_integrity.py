@@ -114,7 +114,7 @@ def test_analysis_fails_if_history_disappears_after_validation(tmp_path, monkeyp
     import numpy as np
 
     study = _study_tests()._module()
-    from comparison.standardized.clinical_graph_v2 import train
+    from core import train
 
     names = study.FULL_STAGE_NAMES
     bindings = {}
@@ -153,7 +153,7 @@ def test_decision_is_invariant_to_pair_count_and_curve_reporting(tmp_path, monke
     import numpy as np
 
     study = _study_tests()._module()
-    from comparison.standardized.clinical_graph_v2 import train
+    from core import train
 
     names = study.FULL_STAGE_NAMES
     arms = {name: np.asarray([[0.9, 0.1], [0.1, 0.9]]) for name in names}
@@ -198,7 +198,7 @@ def test_replay_counts_fill_analysis_bands_without_expanding_proof(tmp_path, mon
     import numpy as np
 
     study = _study_tests()._module()
-    from comparison.standardized.clinical_graph_v2 import train
+    from core import train
 
     names = study.FULL_STAGE_NAMES
     counts = [0, 1, 180, 1045]

@@ -10,7 +10,7 @@ MODULE_PATH = Path(__file__).parents[1] / "comparison/standardized/clinical_grap
 
 
 def _module():
-    return importlib.import_module("comparison.standardized.clinical_graph_v2.methods.cei.studies.cei_v2_study")
+    return importlib.import_module("cei.studies.cei_v2_study")
 
 
 def test_completed_study_validation_selects_only_nine_full_stages(tmp_path, monkeypatch):

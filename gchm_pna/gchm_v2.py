@@ -32,8 +32,8 @@ import torch
 import torch.nn as nn
 from torch_geometric.utils import scatter
 
-from ... import NODE_KINDS
-from ...core.tensorize import PAYLOAD_WIDTH
+from core import NODE_KINDS
+from core.tensorize import PAYLOAD_WIDTH
 
 HUB_KIND = NODE_KINDS.index('visit')
 MODULATIONS = ('multiplicative', 'additive')

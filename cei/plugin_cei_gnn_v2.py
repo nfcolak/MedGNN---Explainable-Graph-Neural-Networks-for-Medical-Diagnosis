@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import torch
 
-from ... import NODE_KINDS
-from ..base import (ClinicalMethodAdapter, MethodOutput, diagnostic_float, method_option,
+from core import NODE_KINDS
+from core.method_base import (ClinicalMethodAdapter, MethodOutput, diagnostic_float, method_option,
                    parameter_count, read_clinical_batch, relation_count,
                    reject_unknown_options)
 from .cei_gnn_v2 import PAIR_MODES, PairEvidenceNetwork

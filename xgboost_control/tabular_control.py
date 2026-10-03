@@ -13,11 +13,11 @@ from pathlib import Path
 import numpy as np
 import xgboost as xgb
 
-from ... import NODE_KINDS
-from ...paths import PACKAGE_ROOT
-from ...core.contracts import (VISIT_MEMBERSHIP_CONTRACT_VERSION, VISIT_MEMBERSHIP_FILENAME,
+from core import NODE_KINDS
+from core.paths import PACKAGE_ROOT
+from core.contracts import (VISIT_MEMBERSHIP_CONTRACT_VERSION, VISIT_MEMBERSHIP_FILENAME,
                         iter_graphs_with_membership)
-from ...core.tensorize import (ALL_RELATIONS, PREPROCESSING_VERSION, encode_graph,
+from core.tensorize import (ALL_RELATIONS, PREPROCESSING_VERSION, encode_graph,
                         fit_preprocessing, node_feature_layout,
                         preprocessing_state, relation_vocabulary, triple_count)
 
@@ -28,7 +28,7 @@ XGB_DEFAULTS = {'max_depth': 6, 'learning_rate': 0.1}
 
 
 def load_targets(path):
-    from ...core.train import load_targets as shared_load_targets
+    from core.train import load_targets as shared_load_targets
     return shared_load_targets(path)
 
 
@@ -220,13 +220,13 @@ def main():
     a = p.parse_args()
 
     t0 = time.monotonic()
-    from ...core.contracts import (recursive_source_hashes, sample_ids_sha256,
+    from core.contracts import (recursive_source_hashes, sample_ids_sha256,
                             validate_artifact_manifest, validate_control_configuration,
                             verify_graph_file, verify_target_binding,
                             verify_visit_membership_file)
-    from ...core.schema import sha256
-    from ...core.rewiring import REWIRING_POLICY
-    from ...core.train import (DEV_POLICY, EVALUATION_VERSION, class_weights, metrics,
+    from core.schema import sha256
+    from core.rewiring import REWIRING_POLICY
+    from core.train import (DEV_POLICY, EVALUATION_VERSION, class_weights, metrics,
                         patient_equal_metrics, sample_train_ids, select_dev_ids)
     out = Path(a.out)
     if out.exists():

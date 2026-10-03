@@ -17,7 +17,7 @@ import json
 from pathlib import Path
 
 from .cei_v3_preserve import MANIFEST, SCHEMA, digest, load_manifest
-from ....paths import PACKAGE_ROOT, REPO_ROOT
+from core.paths import PACKAGE_ROOT, REPO_ROOT
 
 REPO = REPO_ROOT
 DEFAULT_RESULTS = REPO / 'comparison/standardized/clinical_runs_preserved_20261001'

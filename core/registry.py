@@ -8,10 +8,10 @@ from __future__ import annotations
 import importlib
 import pkgutil
 
-from .base import ClinicalMethodAdapter, MethodOutput
-from .graphcare.adapter import GraphCareAdapter
-from .gsat.adapter import GSATAdapter
-from .protgnn.adapter import ProtGNNAdapter
+from .method_base import ClinicalMethodAdapter, MethodOutput
+from graphcare.adapter import GraphCareAdapter
+from gsat.adapter import GSATAdapter
+from protgnn.adapter import ProtGNNAdapter
 
 METHOD_REGISTRY: dict[str, type[ClinicalMethodAdapter]] = {
     "graphcare": GraphCareAdapter,

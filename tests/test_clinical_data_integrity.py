@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from comparison.standardized.clinical_graph_v2.diagnosis import DiagnosisIndex, load_icd_map, normalize
+from core.diagnosis import DiagnosisIndex, load_icd_map, normalize
 
 
 def write_csv(path, fields, records):
@@ -73,7 +73,7 @@ def test_recurrence_counts_unique_encounters_not_diagnosis_rows(tmp_path):
 
 
 def make_clinical_store(tmp_path):
-    from comparison.standardized.clinical_graph_v2.store import ClinicalStore
+    from core.store import ClinicalStore
     events = tmp_path / 'events.sqlite'
     db = sqlite3.connect(events)
     db.executescript('''
@@ -106,8 +106,8 @@ def make_clinical_store(tmp_path):
 
 def test_graph_temporal_claims_and_unique_history(tmp_path):
     from datetime import datetime
-    from comparison.standardized.clinical_graph_v2.graph import build_graph
-    from comparison.standardized.clinical_graph_v2.build import verify_artifact
+    from core.graph import build_graph
+    from core.build import verify_artifact
     store = make_clinical_store(tmp_path)
     diagnoses = make_diagnoses(tmp_path)
     sample = dict(sample_id='sample', subject_id='1', stay_id='12', split='train',
@@ -180,7 +180,7 @@ def event_artifact(root, subjects):
     db.commit()
     db.close()
     write_csv(root / 'cohort.csv', ['sample_id', 'subject_id', 'stay_id', 'cutoff', 'split'], cohort)
-    from comparison.standardized.clinical_graph_v2.schema import sha256
+    from core.schema import sha256
     manifest = {'schema_version': 'event_graph_v1', 'status': 'completed',
                 'cohort_sha256': 'stale-cohort', 'event_index_sha256': 'stale-index',
                 'cohort_policy': {'samples': 999}, 'counts': {'graphs': 999},
@@ -202,7 +202,7 @@ def snapshot_tree(root):
 
 
 def test_metadata_repair_separates_hardlinks_without_mutating_data(tmp_path):
-    from comparison.standardized.clinical_graph_v2 import repair_metadata
+    from core import repair_metadata
     full = event_artifact(tmp_path / 'full', ['1', '2'])
     filtered = event_artifact(tmp_path / 'max6', ['2'])
     for name in ('manifest.json', 'prepared_index.json', 'delivery_report.json', 'verification.json'):
@@ -246,7 +246,7 @@ def test_metadata_repair_separates_hardlinks_without_mutating_data(tmp_path):
 
 @pytest.mark.parametrize('fault', ['graph', 'cutoff', 'missing_stay', 'canonical', 'wal', 'symlink', 'pending', 'lock'])
 def test_metadata_repair_fails_closed_without_changing_inputs(tmp_path, fault):
-    from comparison.standardized.clinical_graph_v2 import repair_metadata
+    from core import repair_metadata
     root = event_artifact(tmp_path / 'artifact', ['1', '2'])
     if fault == 'graph':
         (root / 'graphs.jsonl').write_bytes(b'IMMUTABLE EXISTING GRAPH\n')
@@ -276,7 +276,7 @@ def test_metadata_repair_fails_closed_without_changing_inputs(tmp_path, fault):
 
 
 def test_metadata_requires_offline_and_explicit_filter_source(tmp_path):
-    from comparison.standardized.clinical_graph_v2 import repair_metadata
+    from core import repair_metadata
     root = event_artifact(tmp_path / 'artifact', ['2'])
     before = snapshot_tree(tmp_path)
     with pytest.raises(ValueError, match='offline'):
@@ -287,7 +287,7 @@ def test_metadata_requires_offline_and_explicit_filter_source(tmp_path):
 
 
 def test_metadata_conflicting_backup_is_never_overwritten(tmp_path):
-    from comparison.standardized.clinical_graph_v2 import repair_metadata
+    from core import repair_metadata
     root = event_artifact(tmp_path / 'artifact', ['1', '2'])
     backup = root / 'metadata_backups'
     backup.mkdir()
@@ -303,7 +303,7 @@ def test_metadata_conflicting_backup_is_never_overwritten(tmp_path):
 
 
 def test_interrupted_metadata_apply_is_not_certified(tmp_path, monkeypatch):
-    from comparison.standardized.clinical_graph_v2 import repair_metadata
+    from core import repair_metadata
     root = event_artifact(tmp_path / 'artifact', ['1', '2'])
     before = snapshot_tree(root)
     replace = os.replace
@@ -328,7 +328,7 @@ def test_interrupted_metadata_apply_is_not_certified(tmp_path, monkeypatch):
 
 def test_new_producer_accepts_verified_index_and_marks_assumptions(tmp_path):
     from argparse import Namespace
-    from comparison.standardized.clinical_graph_v2 import build, repair_metadata
+    from core import build, repair_metadata
     inherited = event_artifact(tmp_path / 'inherited', ['1', '2'])
     repair_metadata.repair(inherited, execute=True, offline=True)
     raw = tmp_path / 'raw'
@@ -363,8 +363,8 @@ def test_new_producer_accepts_verified_index_and_marks_assumptions(tmp_path):
 
 
 def test_target_builder_explicit_graph_root_preserves_class_order(tmp_path, monkeypatch):
-    from comparison.standardized.clinical_graph_v2 import repair_metadata
-    from comparison.standardized.clinical_graph_v2.schema import sha256
+    from core import repair_metadata
+    from core.schema import sha256
     from comparison.standardized.event_graph_gchm_xgb_v1 import local_labels_v2 as targets, labels as label_helpers
     graph_root = event_artifact(tmp_path / 'selected-graph', ['1', '2'])
     repair_metadata.repair(graph_root, execute=True, offline=True)
@@ -416,7 +416,7 @@ def test_target_builder_explicit_graph_root_preserves_class_order(tmp_path, monk
 
 
 def test_metadata_does_not_mistake_filtered_index_for_full(tmp_path):
-    from comparison.standardized.clinical_graph_v2 import repair_metadata
+    from core import repair_metadata
     filtered = event_artifact(tmp_path / 'max6', ['2'])
     before = snapshot_tree(tmp_path)
     with pytest.raises(ValueError, match='canonical subject'):
@@ -425,7 +425,7 @@ def test_metadata_does_not_mistake_filtered_index_for_full(tmp_path):
 
 
 def test_metadata_refuses_an_active_producer_state(tmp_path):
-    from comparison.standardized.clinical_graph_v2 import repair_metadata
+    from core import repair_metadata
     root = event_artifact(tmp_path / 'artifact', ['1', '2'])
     path = root / 'manifest.json'
     manifest = json.loads(path.read_text())
@@ -440,7 +440,7 @@ def test_metadata_refuses_an_active_producer_state(tmp_path):
 @pytest.mark.parametrize('fault', ['clean_claim', 'old_logic', 'triage_verified', 'recurrence_rows'])
 def test_graph_readback_rejects_temporal_or_history_laundering(tmp_path, fault):
     from datetime import datetime
-    from comparison.standardized.clinical_graph_v2 import build, graph as producer
+    from core import build, graph as producer
     store = make_clinical_store(tmp_path)
     diagnoses = make_diagnoses(tmp_path)
     sample = dict(sample_id='sample', subject_id='1', stay_id='12', split='train',
@@ -466,7 +466,7 @@ def test_metadata_cli_preview_apply_and_idempotency(tmp_path):
     import subprocess
     import sys
     root = event_artifact(tmp_path / 'artifact', ['1', '2'])
-    command = [sys.executable, '-m', 'comparison.standardized.clinical_graph_v2.repair_metadata',
+    command = [sys.executable, '-m', 'core.repair_metadata',
                '--artifact', str(root)]
     before = snapshot_tree(tmp_path)
     preview = subprocess.run(command, check=True, capture_output=True, text=True)
@@ -483,7 +483,7 @@ def test_metadata_cli_preview_apply_and_idempotency(tmp_path):
 def test_first_lab_resume_honors_metadata_lock(tmp_path, monkeypatch):
     from argparse import Namespace
     from comparison.standardized.event_graph_v1 import first_lab
-    from comparison.standardized.clinical_graph_v2.repair_metadata import artifact_lock
+    from core.repair_metadata import artifact_lock
     root = event_artifact(tmp_path / 'artifact', ['1', '2'])
     called = []
     monkeypatch.setattr(first_lab, '_run', lambda args: called.append(args))

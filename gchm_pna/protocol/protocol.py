@@ -22,10 +22,10 @@ Win rule (frozen in protocol_lock.json before the first real run): see WIN_RULE.
 The test fold is never loaded by any stage.
 
 Usage (repository root):
-  python3 -m comparison.standardized.gchm_v2_protocol.protocol                 # dry run
-  python3 -m comparison.standardized.gchm_v2_protocol.protocol --stage pilot --execute
-  python3 -m comparison.standardized.gchm_v2_protocol.protocol --execute       # all stages
-  python3 -m comparison.standardized.gchm_v2_protocol.protocol --status
+  python3 -m gchm_pna.protocol.protocol                 # dry run
+  python3 -m gchm_pna.protocol.protocol --stage pilot --execute
+  python3 -m gchm_pna.protocol.protocol --execute       # all stages
+  python3 -m gchm_pna.protocol.protocol --status
 """
 from __future__ import annotations
 
@@ -47,10 +47,10 @@ from pathlib import Path
 
 import numpy as np
 
-from ....paths import PACKAGE_ROOT, REPO_ROOT
+from core.paths import PACKAGE_ROOT, REPO_ROOT
 
 ROOT = REPO_ROOT
-PACKAGE = 'comparison.standardized.clinical_graph_v2'
+PACKAGE = 'core'
 PACKAGE_DIR = PACKAGE_ROOT
 ARTIFACT = 'comparison/standardized/event_inputs/clinical_graph_v3_membership_max6_20260923'
 TARGETS = ('comparison/standardized/event_inputs/'
@@ -140,7 +140,7 @@ def finite(value):
 
 
 def source_hashes():
-    from ....core.contracts import recursive_source_hashes
+    from core.contracts import recursive_source_hashes
     return recursive_source_hashes(PACKAGE_ROOT)
 
 

@@ -18,7 +18,7 @@ from pathlib import Path
 import numpy as np
 
 from . import cei_pilot as pilot
-from ....paths import PACKAGE_ROOT
+from core.paths import PACKAGE_ROOT
 
 STUDY_METHOD = "cei_gnn_v2"
 MODES = ("product", "additive", "off")
@@ -58,7 +58,7 @@ def stage_specs():
 def _stage(name, artifact, targets, canonical, output, budget, seed, mode):
     train_limit, dev_limit, epochs = budget
     argv = [
-        sys.executable, "-m", "comparison.standardized.clinical_graph_v2.core.train",
+        sys.executable, "-m", "core.train",
         "--artifact", str(artifact), "--targets", str(targets),
         "--canonical", str(canonical), "--output", str(output),
         "--method", STUDY_METHOD,
@@ -136,8 +136,8 @@ def validate_v2_method_config(binding):
     for key, field in top_level.items():
         if binding.get(field) is None or architecture[key] != binding[field]:
             raise ValueError(f"runner binding {field} differs from method architecture")
-    from ....core import train
-    from ....methods import build_method
+    from core import train
+    from core.registry import build_method
 
     parser = train.parser()
     args = train.normalize_method_args(parser.parse_args([
@@ -305,11 +305,11 @@ def replay_v2_stage(output_dir, binding, result, *, persist=True):
     import torch
     from types import SimpleNamespace
     from torch_geometric.loader import DataLoader
-    from ....core import train
-    from ....core.contracts import recursive_source_hashes, sample_ids_sha256
-    from ....methods import build_method
-    from ....core.schema import sha256
-    from ....core.tensorize import preprocessing_state
+    from core import train
+    from core.contracts import recursive_source_hashes, sample_ids_sha256
+    from core.registry import build_method
+    from core.schema import sha256
+    from core.tensorize import preprocessing_state
     from ..cei_gnn_v2 import within_visit_pairs
 
     source = recursive_source_hashes(PACKAGE_ROOT)
@@ -594,7 +594,7 @@ def step_time_ratio(rows, prep, *, batches=5):
     from types import SimpleNamespace
     import torch
     from torch_geometric.loader import DataLoader
-    from ....methods import build_method
+    from core.registry import build_method
 
     def build(method, options):
         torch.manual_seed(1234)
@@ -623,7 +623,7 @@ def preflight(*, artifact, targets, output_json):
     output = Path(output_json)
     if output.exists():
         raise FileExistsError(f"Refusing occupied preflight output {output}")
-    from ....core import train
+    from core import train
 
     parser = train.parser()
     args = train.normalize_method_args(parser.parse_args([
@@ -859,7 +859,7 @@ def analyze(output_root, output_json, *, pair_counts=None):
                                     "dev rows reloaded by replay (structural count, no scoring)"
                                     if pair_counts is not None else
                                     "pair counts unavailable in real runs; no dev graph reload")}
-    from ....core import train
+    from core import train
     secondary = {}
     results = {name: pilot._load_json(Path(output_root) / name / "result.json", "result.json")
                for name in bindings}

@@ -16,14 +16,14 @@ MODULE_PATH = Path(__file__).parents[1] / "comparison/standardized/clinical_grap
 
 def _module():
     assert MODULE_PATH.is_file(), "CEI-GNN v2 study module must exist"
-    return importlib.import_module("comparison.standardized.clinical_graph_v2.methods.cei.studies.cei_v2_study")
+    return importlib.import_module("cei.studies.cei_v2_study")
 
 
 @lru_cache(maxsize=None)
 def _source(mode, seed):
-    from comparison.standardized.clinical_graph_v2 import train
-    from comparison.standardized.clinical_graph_v2.methods import build_method
-    from comparison.standardized.clinical_graph_v2.tensorize import PAYLOAD_WIDTH
+    from core import train
+    from core.registry import build_method
+    from core.tensorize import PAYLOAD_WIDTH
 
     parser = train.parser()
     args = train.normalize_method_args(parser.parse_args([

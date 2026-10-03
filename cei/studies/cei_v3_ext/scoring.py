@@ -8,9 +8,9 @@ from pathlib import Path
 import numpy as np
 
 from .. import cei_v3_study as core
-from .....core.contracts import sample_ids_sha256, VISIT_MEMBERSHIP_FILENAME, recursive_source_hashes
-from .....core.tensorize import encode_graph, load_preprocessing
-from .....paths import PACKAGE_ROOT
+from core.contracts import sample_ids_sha256, VISIT_MEMBERSHIP_FILENAME, recursive_source_hashes
+from core.tensorize import encode_graph, load_preprocessing
+from core.paths import PACKAGE_ROOT
 from .arm_guards import assert_extension_binding
 from .io import digest, read_json, selected_graphs
 from .study import comorbid_share, comorbid_nonempty

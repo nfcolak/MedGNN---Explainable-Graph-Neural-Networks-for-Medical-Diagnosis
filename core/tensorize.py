@@ -25,7 +25,7 @@ import numpy as np
 import torch
 from torch_geometric.data import Data
 
-from .. import INFORMATIVE_RELATIONS, NODE_KINDS, STRUCTURAL_RELATIONS
+from . import INFORMATIVE_RELATIONS, NODE_KINDS, STRUCTURAL_RELATIONS
 from .contracts import iter_graphs_with_membership, validate_visit_membership_record
 
 ALL_RELATIONS = tuple(STRUCTURAL_RELATIONS) + tuple(INFORMATIVE_RELATIONS)

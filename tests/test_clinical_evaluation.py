@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score
 
-from comparison.standardized.clinical_graph_v2 import train
+from core import train
 
 
 def test_patient_equal_keeps_each_visit_target():

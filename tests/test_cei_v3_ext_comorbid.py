@@ -9,10 +9,10 @@ from __future__ import annotations
 import pytest
 import torch
 
-from comparison.standardized.clinical_graph_v2 import NODE_KINDS
-from comparison.standardized.clinical_graph_v2.cei_v3_ext import comorbid_block as cb
-from comparison.standardized.clinical_graph_v2.methods import cei_gnn_v3 as v3
-from comparison.standardized.clinical_graph_v2.tensorize import ALL_RELATIONS
+from core import NODE_KINDS
+from cei.studies.cei_v3_ext import comorbid_block as cb
+from cei import cei_gnn_v3 as v3
+from core.tensorize import ALL_RELATIONS
 from tests.test_cei_gnn_v3_core import (CLASSES, EDGE_DIM, HIDDEN, KIND, VOCAB, _graph,
                                         _randomise_gates, _run, _share_weights)
 from tests.test_cei_gnn_v3_hooks import _network, _rebuild

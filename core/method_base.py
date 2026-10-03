@@ -14,8 +14,8 @@ from dataclasses import dataclass
 import torch
 import torch.nn as nn
 
-from .. import INFORMATIVE_RELATIONS, NODE_KINDS, STRUCTURAL_RELATIONS
-from ..core.tensorize import relation_vocabulary
+from . import INFORMATIVE_RELATIONS, NODE_KINDS, STRUCTURAL_RELATIONS
+from .tensorize import relation_vocabulary
 
 # Relation ids of the historical forward edge view. A bidirectional run appends typed
 # reverse relations after these ids; adapters size their relation tables from the

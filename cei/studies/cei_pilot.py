@@ -11,7 +11,7 @@ import json
 import math
 import os
 from pathlib import Path
-from ....paths import PACKAGE_ROOT
+from core.paths import PACKAGE_ROOT
 import subprocess
 import sys
 from dataclasses import asdict, dataclass
@@ -89,7 +89,7 @@ def _stage(name, method, artifact, targets, canonical, out, budget, treatment,
            *, product_off=False):
     train_limit, dev_limit, epochs = budget
     argv = [
-        sys.executable, "-m", "comparison.standardized.clinical_graph_v2.core.train",
+        sys.executable, "-m", "core.train",
         "--artifact", str(artifact), "--targets", str(targets),
         "--canonical", str(canonical), "--output", str(out),
         "--method", method,
@@ -290,7 +290,7 @@ def _validate_method_config(binding):
             raise ValueError("CEI use_interactions must be the sole boolean treatment")
         argv.extend(["--method-option", f"use_interactions={'true' if effective['use_interactions'] else 'false'}"])
 
-    from ....core import train
+    from core import train
     parser = train.parser()
     args = parser.parse_args(argv)
     args = train.normalize_method_args(args, parser)
@@ -300,7 +300,7 @@ def _validate_method_config(binding):
         raise ValueError("method architecture differs from source runner dimensions")
     args.num_relations = architecture["num_relations"]
     args.num_triples = architecture["num_triples"]
-    from ....methods import build_method
+    from core.registry import build_method
     model = build_method(
         method, num_tokens=architecture["num_tokens"], node_dim=architecture["node_dim"],
         edge_dim=architecture["edge_dim"], num_classes=architecture["num_classes"],
@@ -555,11 +555,11 @@ def replay_stage(output_dir, binding, result):
     import torch
     from torch_geometric.loader import DataLoader
     from types import SimpleNamespace
-    from ....core import train
-    from ....core.contracts import recursive_source_hashes, sample_ids_sha256
-    from ....methods import build_method
-    from ....core.schema import sha256
-    from ....core.tensorize import preprocessing_state
+    from core import train
+    from core.contracts import recursive_source_hashes, sample_ids_sha256
+    from core.registry import build_method
+    from core.schema import sha256
+    from core.tensorize import preprocessing_state
 
     source = recursive_source_hashes(PACKAGE_ROOT)
     if source != binding.get("source_code"):

@@ -21,16 +21,16 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from . import cei_pilot as pilot
-from . import cei_v3_screen as screen
-from . import cei_v3_study as study
-from ....core import train
-from ....core.contracts import recursive_source_hashes, sample_ids_sha256
-from ....methods import build_method
-from ....core.schema import sha256
-from ....paths import PACKAGE_ROOT
+from cei.studies import cei_pilot as pilot
+from cei.studies import cei_v3_screen as screen
+from cei.studies import cei_v3_study as study
+from core import train
+from core.contracts import recursive_source_hashes, sample_ids_sha256
+from core.registry import build_method
+from core.schema import sha256
+from core.paths import PACKAGE_ROOT
 
-from . import cei_v3_paths as io_paths
+from cei.studies import cei_v3_paths as io_paths
 
 REPO = io_paths.REPO
 MAIN = REPO  # Compatibility alias; configured explicitly before CLI use.

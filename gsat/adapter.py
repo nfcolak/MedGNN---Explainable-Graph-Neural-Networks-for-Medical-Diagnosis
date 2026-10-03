@@ -14,9 +14,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import InstanceNorm
 
-from ... import NODE_KINDS
-from ...core.tensorize import PAYLOAD_WIDTH
-from ..base import (
+from core import NODE_KINDS
+from core.tensorize import PAYLOAD_WIDTH
+from core.method_base import (
     ClinicalMethodAdapter,
     MethodOutput,
     diagnostic_float,

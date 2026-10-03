@@ -10,7 +10,7 @@ import pytest
 import torch
 from torch_geometric.data import Batch
 
-from comparison.standardized.clinical_graph_v2.contracts import (
+from core.contracts import (
     LOGIC_CONTRACT_VERSION,
     VISIT_MEMBERSHIP_CONTRACT_VERSION,
     VISIT_MEMBERSHIP_FILENAME,
@@ -19,10 +19,10 @@ from comparison.standardized.clinical_graph_v2.contracts import (
     validate_visit_membership_record,
     verify_visit_membership_file,
 )
-from comparison.standardized.clinical_graph_v2.graph import build_graph_with_visit_membership
-from comparison.standardized.clinical_graph_v2.schema import sha256, timestamp
-from comparison.standardized.clinical_graph_v2.store import ClinicalStore
-from comparison.standardized.clinical_graph_v2.tensorize import (
+from core.graph import build_graph_with_visit_membership
+from core.schema import sha256, timestamp
+from core.store import ClinicalStore
+from core.tensorize import (
     ClinicalGraphData,
     load_preprocessing,
 )

@@ -20,7 +20,7 @@ import numpy as np
 
 from . import cei_pilot as pilot
 from . import cei_v3_study as study
-from ....core.schema import sha256
+from core.schema import sha256
 
 
 
@@ -163,8 +163,8 @@ def _run_stage(stage, config, frozen):
 
 def _screen_inputs(config, stages, frozen):
     from . import cei_v3_screen as screen
-    from ....core import train
-    from ....core.contracts import sample_ids_sha256
+    from core import train
+    from core.contracts import sample_ids_sha256
 
     reference = None
     for stage in stages:

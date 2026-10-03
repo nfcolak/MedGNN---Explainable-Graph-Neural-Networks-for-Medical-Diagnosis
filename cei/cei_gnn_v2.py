@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ... import NODE_KINDS
+from core import NODE_KINDS
 from .cei_gnn import EdgeEvidenceAggregator
 
 EVIDENCE_KINDS = ("complaint", "measurement", "vital")

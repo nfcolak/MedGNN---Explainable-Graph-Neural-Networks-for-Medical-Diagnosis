@@ -2,7 +2,7 @@
 import torch
 
 from test_cei_gnn_v2_core import _graph, _metadata
-from comparison.standardized.clinical_graph_v2.methods.cei_gnn_v2 import PairEvidenceNetwork
+from cei.cei_gnn_v2 import PairEvidenceNetwork
 
 
 def _networks():

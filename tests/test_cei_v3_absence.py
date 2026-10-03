@@ -10,8 +10,8 @@ import json
 import pytest
 import torch
 
-from comparison.standardized.clinical_graph_v2 import NODE_KINDS
-from comparison.standardized.clinical_graph_v2.cei_v3_absence import (
+from core import NODE_KINDS
+from cei.studies.cei_v3_absence import (
     ABSENCE_LABEL, Universe, fit_universe, index_visit_absence)
 
 MEASUREMENT, VITAL, COMPLAINT = (NODE_KINDS.index('measurement'), NODE_KINDS.index('vital'),

@@ -173,7 +173,7 @@ def _load_scored_validation(validation_dir, approval_path):
     Returns `(stage_dir, result, approval, approval_hash, logits, y, sample_ids, logits_hash)`.
     """
     from . import validation_scoring as vs
-    from .....core.contracts import sample_ids_sha256
+    from core.contracts import sample_ids_sha256
 
     validation_dir = Path(validation_dir)
     stage_dir = validation_dir.parent

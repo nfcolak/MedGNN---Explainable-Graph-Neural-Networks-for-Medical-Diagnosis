@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 import torch
 
-from comparison.standardized.clinical_graph_v2 import cei_v3_ple as ple
+from cei.studies import cei_v3_ple as ple
 
 
 def _f32(*values):

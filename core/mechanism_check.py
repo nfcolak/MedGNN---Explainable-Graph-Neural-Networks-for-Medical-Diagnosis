@@ -7,9 +7,9 @@ import sys
 
 import torch
 
-from ..methods.gchm_pna.gchm_v2 import DEFAULT_HIDDEN, HUB_KIND, GCHMv2, HubGatedPNALayer, average_log_degree
-from ..methods.gchm_pna.gchm_v3 import DEFAULT_HIDDEN as V3_DEFAULT_HIDDEN
-from ..methods.gchm_pna.gchm_v3 import GCHMv3
+from gchm_pna.gchm_v2 import DEFAULT_HIDDEN, HUB_KIND, GCHMv2, HubGatedPNALayer, average_log_degree
+from gchm_pna.gchm_v3 import DEFAULT_HIDDEN as V3_DEFAULT_HIDDEN
+from gchm_pna.gchm_v3 import GCHMv3
 from .model import (ClinicalGNN, EdgeConditionedLayer, GatedConceptHubLayer,
                     HeteroGraphTransformerLayer)
 from .tensorize import ALL_RELATIONS, PAYLOAD_WIDTH, relation_vocabulary

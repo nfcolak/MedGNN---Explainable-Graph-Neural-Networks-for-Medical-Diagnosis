@@ -14,15 +14,16 @@ import pytest
 import torch
 from torch_geometric.data import Batch
 
-from comparison.standardized.clinical_graph_v2 import aggregate, tabular_control, train
-from comparison.standardized.clinical_graph_v2 import tensorize as tz
-from comparison.standardized.clinical_graph_v2.contracts import (
+from core import aggregate, train
+from xgboost_control import tabular_control
+from core import tensorize as tz
+from core.contracts import (
     VISIT_MEMBERSHIP_CONTRACT_VERSION, VISIT_MEMBERSHIP_FILENAME)
-from comparison.standardized.clinical_graph_v2.gchm_v2 import GCHMv2, HUB_KIND
-from comparison.standardized.clinical_graph_v2.methods import build_method
-from comparison.standardized.clinical_graph_v2.methods.base import relation_count
-from comparison.standardized.clinical_graph_v2.schema import sha256
-from comparison.standardized.gchm_v2_protocol import protocol
+from gchm_pna.gchm_v2 import GCHMv2, HUB_KIND
+from core.registry import build_method
+from core.method_base import relation_count
+from core.schema import sha256
+from gchm_pna.protocol import protocol
 
 # ------------------------------------------------------------------ fixtures
 

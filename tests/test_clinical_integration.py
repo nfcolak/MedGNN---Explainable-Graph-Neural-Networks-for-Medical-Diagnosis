@@ -6,9 +6,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from comparison.standardized.clinical_graph_v2 import train, tabular_control
-from comparison.standardized.clinical_graph_v2.schema import sha256
-from comparison.standardized.clinical_graph_v2.tensorize import PREPROCESSING_VERSION
+from core import train
+from xgboost_control import tabular_control
+from core.schema import sha256
+from core.tensorize import PREPROCESSING_VERSION
 
 
 def tiny_artifact(tmp_path):

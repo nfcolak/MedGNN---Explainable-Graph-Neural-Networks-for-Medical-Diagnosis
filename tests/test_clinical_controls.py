@@ -7,11 +7,11 @@ from collections import Counter
 import pytest
 import torch
 
-from comparison.standardized.clinical_graph_v2.model import (
+from core.model import (
     ClinicalGNN, EdgeConditionedLayer, GatedConceptHubLayer,
     HeteroGraphTransformerLayer,
 )
-from comparison.standardized.clinical_graph_v2.tensorize import PAYLOAD_WIDTH
+from core.tensorize import PAYLOAD_WIDTH
 
 
 def _layer(arm, use_edge_payload):
@@ -62,7 +62,7 @@ def test_no_edge_payload_preserves_relations_and_ignores_only_numeric_tail(arm):
 
 
 def test_relation_diagnostic_exercises_full_message_not_just_first_linear(monkeypatch):
-    from comparison.standardized.clinical_graph_v2 import mechanism_check
+    from core import mechanism_check
 
     calls = []
     original = EdgeConditionedLayer.message
@@ -133,7 +133,7 @@ def _pairs(edges):
 
 
 def test_rewiring_preserves_per_node_typed_degrees_and_existing_multiplicity():
-    from comparison.standardized.clinical_graph_v2.rewiring import rewire_edges
+    from core.rewiring import rewire_edges
 
     nodes = ([{'id': f'm{i}', 'kind': 'measurement'} for i in range(5)]
              + [{'id': f'a{i}', 'kind': 'analyte'} for i in range(3)])
@@ -172,7 +172,7 @@ def _lab_edges():
 
 @pytest.mark.parametrize('mismatch', [None, 'token', 'unit', 'missing_unit', 'nonfinite_value'])
 def test_rewiring_recomputes_comparable_payload_and_clears_unverifiable_fields(mismatch):
-    from comparison.standardized.clinical_graph_v2.rewiring import rewire_edges
+    from core.rewiring import rewire_edges
 
     nodes = [_measurement('a', 1., -5.), _measurement('b', 9., -2.),
              _measurement('c', 7., -10.), _measurement('d', 13., -1.)]
@@ -208,7 +208,7 @@ def test_rewiring_recomputes_comparable_payload_and_clears_unverifiable_fields(m
 
 
 def test_rewiring_recurrence_uses_node_evidence_not_old_edge_claims():
-    from comparison.standardized.clinical_graph_v2.rewiring import rewire_edges
+    from core.rewiring import rewire_edges
 
     nodes = [{'id': 'd0', 'kind': 'diagnosis', 'prior_encounters': 2},
              {'id': 'd1', 'kind': 'diagnosis', 'prior_encounters': 4,
@@ -226,7 +226,7 @@ def test_rewiring_recurrence_uses_node_evidence_not_old_edge_claims():
 
 @pytest.mark.parametrize('shape', ['empty', 'single', 'star', 'clique', 'reciprocal'])
 def test_rewiring_constrained_topologies_are_explicit_noops(shape):
-    from comparison.standardized.clinical_graph_v2.rewiring import (
+    from core.rewiring import (
         REWIRING_POLICY, rewire_edges_with_summary,
     )
 
@@ -249,7 +249,7 @@ def test_rewiring_constrained_topologies_are_explicit_noops(shape):
 
 def test_rewiring_seeded_per_sample_without_touching_global_rng():
     import random
-    from comparison.standardized.clinical_graph_v2.rewiring import rewire_edges
+    from core.rewiring import rewire_edges
 
     nodes = ([{'id': f's{i}', 'kind': 'analyte'} for i in range(8)]
              + [{'id': f't{i}', 'kind': 'knowledge'} for i in range(8)])
@@ -277,7 +277,7 @@ def test_rewiring_seeded_per_sample_without_touching_global_rng():
 @pytest.mark.parametrize('seed', range(12))
 def test_rewiring_multigraph_invariants_and_summary(seed):
     import random
-    from comparison.standardized.clinical_graph_v2.rewiring import (
+    from core.rewiring import (
         rewire_edges, rewire_edges_with_summary,
     )
 
@@ -314,7 +314,7 @@ def test_rewiring_multigraph_invariants_and_summary(seed):
 
 @pytest.mark.parametrize('times', [(-10., -9., -2., -1.), (0., 0., 0., 0.), (None, -2., -5., None)])
 def test_rewiring_elapsed_time_never_reuses_old_rate_when_time_is_invalid(times):
-    from comparison.standardized.clinical_graph_v2.rewiring import rewire_edges
+    from core.rewiring import rewire_edges
 
     nodes = [_measurement(node, value, time) for node, value, time in zip('abcd', [1., 9., 7., 13.], times)]
     lookup = {n['id']: n for n in nodes}

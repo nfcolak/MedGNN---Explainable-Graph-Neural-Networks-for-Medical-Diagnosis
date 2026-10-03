@@ -19,7 +19,7 @@ import numpy as np
 
 from .. import cei_v3_screen as screen
 from .. import cei_v3_study as study
-from .....core.contracts import sample_ids_sha256
+from core.contracts import sample_ids_sha256
 from .offsets import METRIC_NAME, NUM_CLASSES, VALIDATION_FOLD, weighted_macro_f1
 
 VALIDATION_DIRNAME = 'validation'

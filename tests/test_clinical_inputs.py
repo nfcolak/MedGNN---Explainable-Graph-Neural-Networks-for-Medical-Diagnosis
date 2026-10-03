@@ -6,8 +6,8 @@ import numpy as np
 import pytest
 import torch
 
-from comparison.standardized.clinical_graph_v2 import NODE_KINDS
-from comparison.standardized.clinical_graph_v2 import tensorize as tz
+from core import NODE_KINDS
+from core import tensorize as tz
 
 
 def graph(sample_id, value=70.0, *, kind='vital', token='vital:heartrate',
@@ -142,7 +142,7 @@ def test_preprocessing_roundtrip_is_versioned_and_tensor_exact(tmp_path):
 
 
 def test_tabular_cannot_see_raw_values_or_coverage_hidden_from_gnn(tmp_path):
-    from comparison.standardized.clinical_graph_v2 import tabular_control as tb
+    from xgboost_control import tabular_control as tb
     rows = [graph(f't{i}', i + 1, age=50, gender='F') for i in range(24)]
     a, b = graph('va', 1000), graph('vb', 10000)
     b['coverage']['complaints'] = 999
@@ -160,7 +160,7 @@ def test_tabular_cannot_see_raw_values_or_coverage_hidden_from_gnn(tmp_path):
 
 def tabular_fixture(tmp_path):
     import csv
-    from comparison.standardized.clinical_graph_v2.schema import sha256
+    from core.schema import sha256
     rows = [graph(f's{i}', 60 + i, age=40 + i, gender='F' if i % 2 else 'M')
             for i in range(7)]
     fit(tmp_path, rows)
@@ -187,7 +187,7 @@ def tabular_fixture(tmp_path):
 
 def test_tabular_entrypoint_rejects_historical_manifest_before_fit(tmp_path, monkeypatch):
     import sys
-    from comparison.standardized.clinical_graph_v2 import tabular_control as tb
+    from xgboost_control import tabular_control as tb
     target = tabular_fixture(tmp_path)
     (tmp_path / 'manifest.json').write_text(json.dumps({'status': 'completed'}))
     monkeypatch.setattr(sys, 'argv', ['tabular', '--artifact', str(tmp_path),
@@ -200,8 +200,8 @@ def test_tabular_entrypoint_rejects_historical_manifest_before_fit(tmp_path, mon
 
 def test_tabular_one_round_fixture_saves_shared_state_and_visit_ids(tmp_path, monkeypatch):
     import sys
-    from comparison.standardized.clinical_graph_v2 import tabular_control as tb
-    from comparison.standardized.clinical_graph_v2 import train
+    from xgboost_control import tabular_control as tb
+    from core import train
     target = tabular_fixture(tmp_path)
     out = tmp_path / 'out'
     monkeypatch.setattr(sys, 'argv', ['tabular', '--artifact', str(tmp_path),
@@ -220,7 +220,7 @@ def test_tabular_one_round_fixture_saves_shared_state_and_visit_ids(tmp_path, mo
     assert binding['evaluation_version'] == train.EVALUATION_VERSION
     assert binding['input_contract_version'] == tz.PREPROCESSING_VERSION
     assert binding['targets_path'] == str(target.resolve())
-    from comparison.standardized.clinical_graph_v2.schema import sha256
+    from core.schema import sha256
     assert binding['target_binding_sha256'] == sha256(tmp_path / 'binding_manifest.json')
     assert binding['rewiring']['train']['changed_edges'] == 0
     assert binding['rewiring']['validation']['changed_graphs'] == 0
@@ -236,7 +236,7 @@ def test_rewire_adapter_delegates_without_implementing_a_second_policy(monkeypat
     import sys
     import types
     calls = []
-    module_name = 'comparison.standardized.clinical_graph_v2.core.rewiring'
+    module_name = 'core.rewiring'
     module = types.ModuleType(module_name)
     def rewire_edges(*args):
         calls.append(args)
@@ -272,7 +272,7 @@ def test_direct_legacy_prep_cannot_claim_new_encoding_version(tmp_path):
 
 def test_tabular_rejects_unbound_targets_before_training(tmp_path, monkeypatch):
     import sys
-    from comparison.standardized.clinical_graph_v2 import tabular_control as tb
+    from xgboost_control import tabular_control as tb
     target = tabular_fixture(tmp_path)
     binding_path = tmp_path / 'binding_manifest.json'
     binding = json.loads(binding_path.read_text())
@@ -303,8 +303,8 @@ def test_rewired_edge_count_uses_endpoint_multisets(tmp_path, monkeypatch, chang
 
 @pytest.mark.parametrize('limit,min_prior', [(None, 0), (6, 1)])
 def test_tabular_and_gnn_share_selected_training_fit(tmp_path, limit, min_prior):
-    from comparison.standardized.clinical_graph_v2 import tabular_control as tb
-    from comparison.standardized.clinical_graph_v2 import train
+    from xgboost_control import tabular_control as tb
+    from core import train
     rows = [graph(f's{i}', 20 + i, age=30 + i, gender='F' if i % 2 else 'M')
             for i in range(11)]
     for i, g in enumerate(rows):
@@ -335,7 +335,7 @@ def test_tabular_and_gnn_share_selected_training_fit(tmp_path, limit, min_prior)
 @pytest.mark.parametrize('conv', ['edge_conditioned', 'hgt', 'gchm'])
 def test_existing_gnn_consumes_new_context_width_without_architecture_changes(tmp_path, conv):
     from torch_geometric.data import Batch
-    from comparison.standardized.clinical_graph_v2.model import ClinicalGNN
+    from core.model import ClinicalGNN
     rows = [graph('t1', age=50, gender='F', race='A'),
             graph('t2', 100, age=75, gender='M', race='B')]
     prep = fit(tmp_path, rows)

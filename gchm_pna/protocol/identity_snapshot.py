@@ -7,8 +7,8 @@ Records, for the frozen sample10k/max6/top10 protocol with every new option OFF:
   * sha256 of each method's untrained state_dict at seed 1234.
 
 Usage:
-  python3 -m comparison.standardized.gchm_v2_protocol.identity_snapshot --out FILE
-  python3 -m comparison.standardized.gchm_v2_protocol.identity_snapshot --compare FILE
+  python3 -m gchm_pna.protocol.identity_snapshot --out FILE
+  python3 -m gchm_pna.protocol.identity_snapshot --compare FILE
 The compare mode recomputes everything under the current source tree and fails
 closed on any difference. It never trains and never loads the test fold.
 
@@ -28,7 +28,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from ....paths import REPO_ROOT
+from core.paths import REPO_ROOT
 
 ROOT = REPO_ROOT
 ARTIFACT = ROOT / 'comparison/standardized/event_inputs/clinical_graph_v3_membership_max6_20260923'
@@ -69,10 +69,10 @@ def _state_digest(model):
 
 def snapshot():
     """Return (record, context); the context lets compare mode reuse the encoded folds."""
-    from ....core import train as runner
-    from ... import build_method
-    from ....core.model import ClinicalGNN
-    from ....core.tensorize import (
+    from core import train as runner
+    from core.registry import build_method
+    from core.model import ClinicalGNN
+    from core.tensorize import (
         PAYLOAD_WIDTH, degree_histogram, preprocessing_state)
 
     targets = runner.load_targets(TARGETS)
@@ -124,8 +124,8 @@ def snapshot():
 
 def edge_view_invariants(runner, targets, forward_splits, forward_prep):
     """Premise and construction checks of the bidirectional edge view (no training)."""
-    from .... import NODE_KINDS
-    from ....core.tensorize import (
+    from core import NODE_KINDS
+    from core.tensorize import (
         ALL_RELATIONS, REVERSIBLE_RELATIONS, preprocessing_state, relation_vocabulary)
 
     splits, prep = runner.build_dataset(ARTIFACT, targets, 'all', 10000, 20, 1234,

@@ -112,7 +112,7 @@ def _load_json(path, label) -> dict:
 def _stage_argv(*, artifact, targets, canonical, output, seed, arm, k, v3_state) -> tuple:
     train_limit, dev_limit, epochs = FULL_BUDGET
     return (
-        sys.executable, '-m', 'comparison.standardized.clinical_graph_v2.core.train',
+        sys.executable, '-m', 'core.train',
         '--artifact', str(artifact), '--targets', str(targets),
         '--canonical', str(canonical), '--output', str(output),
         '--method', STUDY_METHOD,
@@ -402,10 +402,10 @@ def read_v3_fit_inputs(artifact, targets_path, *, train_limit=FULL_BUDGET[0],
     fallback, F14/F15) and (ii) the number of distinct graphs containing the identity (F10).
     Dev, screen, validation and test rows are never read as graphs.
     """
-    from ....core import train as train_module
-    from ....core.contracts import (
+    from core import train as train_module
+    from core.contracts import (
         VISIT_MEMBERSHIP_FILENAME, iter_graphs_with_membership)
-    from ....core.tensorize import (
+    from core.tensorize import (
         fit_preprocessing, node_token, preprocessing_state)
 
     artifact = Path(artifact)
@@ -997,7 +997,7 @@ def _default_model_factory(binding, checkpoint_path):
     """Rebuild the bound cei_gnn_v3 adapter and load its dev-selected checkpoint."""
     import torch
     from types import SimpleNamespace
-    from ....methods import build_method
+    from core.registry import build_method
 
     config = binding['method_config']
     architecture = config['architecture']

@@ -12,11 +12,11 @@ import torch
 import torch.nn as nn
 from torch_geometric.data import Batch
 
-from comparison.standardized.clinical_graph_v2 import aggregate, paths, train
-from comparison.standardized.clinical_graph_v2.contracts import recursive_source_hashes
-from comparison.standardized.clinical_graph_v2.methods import build_method
-from comparison.standardized.clinical_graph_v2.methods.gsat import _ClinicalGINLayer
-from comparison.standardized.clinical_graph_v2.tensorize import (
+from core import aggregate, paths, train
+from core.contracts import recursive_source_hashes
+from core.registry import build_method
+from gsat import _ClinicalGINLayer
+from core.tensorize import (
     ALL_RELATIONS,
     PAYLOAD_WIDTH,
     ClinicalGraphData,

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from types import FunctionType
 
-from .....core import train
+from core import train
 from .io import selected_graphs, selected_preprocessing
 
 

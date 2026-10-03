@@ -14,13 +14,13 @@ import numpy as np
 import pytest
 import torch
 
-from comparison.standardized.clinical_graph_v2 import NODE_KINDS
-from comparison.standardized.clinical_graph_v2.cei_v3_absence import fit_universe
-from comparison.standardized.clinical_graph_v2.cei_v3_ple import fit_knots
-from comparison.standardized.clinical_graph_v2.methods import cei_gnn_v3 as v3
-from comparison.standardized.clinical_graph_v2.methods.base import read_clinical_batch
-from comparison.standardized.clinical_graph_v2.methods.cei_gnn_v2 import PairEvidenceNetwork
-from comparison.standardized.clinical_graph_v2.tensorize import ClinicalGraphData
+from core import NODE_KINDS
+from cei.studies.cei_v3_absence import fit_universe
+from cei.studies.cei_v3_ple import fit_knots
+from cei import cei_gnn_v3 as v3
+from core.method_base import read_clinical_batch
+from cei.cei_gnn_v2 import PairEvidenceNetwork
+from core.tensorize import ClinicalGraphData
 
 # --------------------------------------------------------------------- fixtures
 # Vocabulary: index 0 = UNK. Kind ids by name, never literal.
@@ -392,7 +392,7 @@ def test_inactive_paths_produce_no_autograd_tensors(arm, ple_grad, absence_grad)
 
 
 def test_absence_label_uses_the_amended_wording():
-    from comparison.standardized.clinical_graph_v2.cei_v3_absence import ABSENCE_LABEL
+    from cei.studies.cei_v3_absence import ABSENCE_LABEL
 
     label = v3.absence_label('vital:hr')
     assert label == ABSENCE_LABEL.format(item='vital:hr')
@@ -410,7 +410,7 @@ def test_arm_c_requires_visit_graph_for_the_absence_block():
 
 from argparse import Namespace  # noqa: E402
 
-from comparison.standardized.clinical_graph_v2.methods import plugin_cei_gnn_v3 as plugin  # noqa: E402
+from cei import plugin_cei_gnn_v3 as plugin  # noqa: E402
 
 CLOSED_OPTIONS = frozenset(('arm', 'v3_state', 'k', 'encoder_depth', 'comorbid_block'))
 PREP_SHA = hashlib.sha256(b'synthetic preprocessing state').hexdigest()
@@ -441,7 +441,7 @@ def _write_state(tmp_path, document=None, name='K4.json'):
 
 def _adapter(tmp_path, arm='C', *, hidden=HIDDEN, layers=1, seed=1234, dropout=0.0,
              state_path=None, edge_direction=None, **options):
-    from comparison.standardized.clinical_graph_v2.methods import METHOD_REGISTRY
+    from core.registry import METHOD_REGISTRY
 
     assert 'cei_gnn_v3' in METHOD_REGISTRY, 'cei_gnn_v3 plugin is not registered'
     state_path = state_path or _write_state(tmp_path)
@@ -524,7 +524,7 @@ def test_state_loader_validates_schema_hashes_vocabulary_and_layout(tmp_path):
 
 
 def test_adapter_refuses_dimension_mismatch_and_missing_arm_or_seed(tmp_path):
-    from comparison.standardized.clinical_graph_v2.methods import METHOD_REGISTRY
+    from core.registry import METHOD_REGISTRY
 
     cls = METHOD_REGISTRY['cei_gnn_v3']
     path = _write_state(tmp_path)
@@ -553,7 +553,7 @@ def test_u3x_options_encoder_depth_accepted_and_invalid_values_refused(tmp_path,
     assert adapter.encoder_depth == 1 and adapter.comorbid_block == 0
     assert _adapter(tmp_path, encoder_depth=2).encoder_depth == 2
     assert _adapter(tmp_path, layers=2).encoder_depth == 2
-    monkeypatch.setitem(sys.modules, 'comparison.standardized.clinical_graph_v2.methods.cei.studies.cei_v3_ext.comorbid_block', None)
+    monkeypatch.setitem(sys.modules, 'cei.studies.cei_v3_ext.comorbid_block', None)
     with pytest.raises(ValueError, match='U3x'):
         _adapter(tmp_path, comorbid_block=1)
     with pytest.raises(ValueError, match='encoder_depth'):
@@ -617,7 +617,7 @@ def test_run_config_binds_arm_k_state_hash_and_extension_fields(tmp_path):
 
 def test_adapter_arm_a_loads_a_v2_adapter_state_dict_and_reproduces_its_output(tmp_path):
     from torch_geometric.data import Batch
-    from comparison.standardized.clinical_graph_v2.methods import METHOD_REGISTRY
+    from core.registry import METHOD_REGISTRY
 
     torch.manual_seed(2)
     v2_adapter = METHOD_REGISTRY['cei_gnn_v2'](
