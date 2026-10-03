@@ -23,7 +23,7 @@ task; its inputs and scores are not interchangeable with the active one.
 | `external/` | Third-party code. Only GraphXAI (`GraphXAI-main`) is kept; it is used by the CEI explanation path. Keep upstream layout. |
 | `docs/` | Runbooks, evidence and reports. Many describe retired or historical tooling. |
 | `docs-vault/` | Retained local navigation; project decisions live in ProjectOS. Do not relocate. |
-| `requirements.txt`, `requirements-lock.txt`, `environment.yml` | Main-Python dependencies. |
+| `environment.yml` | Main-Python dependencies. |
 | `.claude/`, `.git/` | Local agent state and version control; not scientific source. |
 
 Top-level package names are unchanged; there is no `src/` layout. Inside `clinical_graph_v2/` the modules moved into subpackages on 2026-10-03 and into per-method folders in a second pass the same day (shims at the old paths).

@@ -84,10 +84,9 @@ conda env create -f environment.yml
 conda activate protgnn-mimic
 ```
 
-or `python3 -m venv .venv` and `pip install -r requirements-lock.txt`.
-`requirements.txt` has flexible ranges; the lock file and `environment.yml` are
-pinned. GraphXAI stays under `external/GraphXAI-main/` (used by the CEI
-explanation path). The clinical GraphCare adapter is native code in
+`environment.yml` is the sole dependency file. GraphXAI stays under
+`external/GraphXAI-main/` (used by the CEI explanation path). The clinical
+GraphCare adapter is native code in
 `clinical_graph_v2/methods/graphcare/` and runs in the main environment.
 
 ## More links

@@ -37,19 +37,10 @@ conda env create -f environment.yml
 conda activate protgnn-mimic
 ```
 
-Alternative pip setup:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements-lock.txt
-```
-
-`requirements.txt` contains flexible version ranges. `requirements-lock.txt` and
-`environment.yml` contain the pinned environment used for the current working
-run. If PyTorch Geometric fails to install, install PyTorch first from the
-official PyTorch selector for your operating system, then rerun the dependency
-installation.
+`environment.yml` is the sole dependency file and contains the pinned
+environment used for the current working run. If PyTorch Geometric fails to
+install, install PyTorch first from the official PyTorch selector for your
+operating system, then rerun the dependency installation.
 
 Check the environment:
 
