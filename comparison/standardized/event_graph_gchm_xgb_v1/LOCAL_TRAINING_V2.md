@@ -1,3 +1,5 @@
+> Frozen historical runbook: the star/cooccur 30-class runtime, dependent tests and exporter have been retired; commands below are archival examples, not active instructions, and must not be run. Historical results and source snapshots remain protected, without a reproduction claim. `build_explanation_cohort.py` remains only as a frozen synthetic-fixture helper, not a current command; heldout access stays forbidden. See [clinical_graph_v2/README.md](clinical_graph_v2/README.md) and [cleanup record](../../docs/max6-top10-cleanup.md).
+
 # Local EventGCHM run v2
 
 This is one local EventGCHM adaptation run, not a baseline matrix or a performance claim. No VPS/SSH/upload. Existing `labels.py`, `runner.py`, baseline source edits, v1 target/features artifacts and immutable event input are not changed.

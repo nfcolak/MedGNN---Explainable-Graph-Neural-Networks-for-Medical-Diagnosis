@@ -1,3 +1,5 @@
+> Frozen historical runbook: the star/cooccur 30-class runtime, dependent tests and exporter have been retired; commands below are archival examples, not active instructions, and must not be run. Historical results and source snapshots remain protected, without a reproduction claim. `build_explanation_cohort.py` remains only as a frozen synthetic-fixture helper, not a current command; heldout access stays forbidden. See [clinical_graph_v2/README.md](clinical_graph_v2/README.md) and [cleanup record](../../docs/max6-top10-cleanup.md).
+
 # Event-graph GCHM/XGBoost comparison
 
 This comparison uses `comparison/standardized/event_inputs/first_recorded_lab_all_visits_v2` as the sole covariate source.

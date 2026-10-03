@@ -19,7 +19,7 @@ ADR-007 and ADR-008 are proposed, not accepted or enabled.
 - [Repository map and output ownership](STRUCTURE.md)
 - [CEI-GNN v3 delivery report](docs/cei-v3-delivery-2026-10-01.md)
 - [Max6/Top-10 cleanup and frozen-legacy policy](docs/max6-top10-cleanup.md)
-- [Optional browser graph viewer](visualizer/README.md)
+- [Structure cleanup 2026-10-03](docs/structure-cleanup-2026-10-03.md) (new package layout, shims, viewer retired)
 
 Real preprocessing, cache builds and training need explicit user approval and a
 new, unoccupied output directory. Tests run only in an explicitly opened testing
@@ -32,7 +32,12 @@ depends on them:
 
 - `comparison/canonical_split.json` (fixed class order and subject folds; never regenerate)
 - `comparison/standardized/icd_mapping.py`
-- `comparison/standardized/clinical_graph_v2/` (all methods, plugins, CEI, audits)
+- `comparison/standardized/clinical_graph_v2/` (all methods, plugins, CEI, audits). Layout since
+  2026-10-03: `core/` (build, train, audit, ...), `controls/` (XGBoost `tabular_control`),
+  `methods/` (adapters and plugins), `studies/cei/` (CEI-GNN studies), `paths.py`; shims
+  stay at every old module path. How to add a method, study or control:
+  [clinical_graph_v2 README, "Adding things"](comparison/standardized/clinical_graph_v2/README.md).
+  This package may change; the rest of this list stays byte-identical.
 - `comparison/standardized/event_graph_v1/` (`schema`, `first_lab`, `ingest`, `graph`, `knowledge_seed.csv`)
 - `comparison/standardized/enriched_input_v1/spec.py`
 - `comparison/standardized/event_graph_gchm_xgb_v1/` (`labels`, `local_labels_v2`)

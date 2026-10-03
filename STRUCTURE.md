@@ -10,17 +10,16 @@ task; its inputs and scores are not interchangeable with the active one.
 
 | Location | Role / maintenance boundary |
 |---|---|
-| `comparison/standardized/clinical_graph_v2/` | Multi-visit build, all method adapters and plugins (ProtGNN, GSAT, GraphCare, GCHM-PNA, CEI-GNN v1-v3, GMT, GPS, label-attention, token-fusion, virtual-node), training, audits, tabular control. |
+| `comparison/standardized/clinical_graph_v2/` | Multi-visit build, all method adapters and plugins, training, audits, tabular control, CEI studies. Subpackages: `core/` (contracts, schema, graph, build, store, tensorize, diagnosis, stratify, rewiring, relation_information, repair_metadata, model, gchm_v2, gchm_v3, train, aggregate, audit, mechanism_check), `controls/` (`tabular_control.py`), `methods/` (ProtGNN, GSAT, GraphCare, GCHM-PNA, CEI-GNN, GMT, GPS, label-attention, token-fusion, virtual-node), `studies/cei/` (CEI v1-v3 studies, `cei_v3_ext/`), `paths.py` (`PACKAGE_ROOT`, `REPO_ROOT`). Every old module path keeps a compatibility shim; see [docs/structure-cleanup-2026-10-03.md](docs/structure-cleanup-2026-10-03.md). To add a method, study or control, follow "Adding things" in its README. |
 | `comparison/canonical_split.json` | Fixed class ordering and subject folds. Never regenerate. Top-10 selection depends on this original class order. |
 | `comparison/standardized/icd_mapping.py` | ICD mapping used by the label chain. |
 | `comparison/standardized/event_graph_v1/` | Kept files only: `__init__`, `schema`, `first_lab`, `ingest`, `graph`, `knowledge_seed.csv`. |
 | `comparison/standardized/enriched_input_v1/spec.py` | Kept input spec (plus the package marker it needs). |
 | `comparison/standardized/event_graph_gchm_xgb_v1/` | Kept label contract: `__init__`, `labels`, `local_labels_v2`. |
 | `comparison/standardized/gchm_v2_protocol/` | Optional, frozen protocol. Does not enable ADR-008. |
-| `comparison/standardized/clinical_graph_v2/tabular_control.py` | Current XGBoost control. The native 30-class baseline is retired. |
+| `comparison/standardized/clinical_graph_v2/controls/tabular_control.py` | Current XGBoost control. The native 30-class baseline is retired. |
 | `comparison/standardized/build_explanation_cohort.py` | Frozen synthetic-fixture helper retained for shared cohort assertions; not a current command or permission to access heldout data. |
 | `shared/lib/`, `shared/data_prep/` | Shared contracts, split, metrics, data prep. `merge_ed.py` is hash-pinned: keep byte-identical, do not run or fix it. |
-| `visualizer/` | Optional React/TypeScript/Vite viewer for already-exported graph JSON. No supported export command is current. |
 | `external/` | Third-party code. GraphXAI is used by the CEI explanation path; GraphCare is retained legacy. Keep upstream layout. |
 | `docs/` | Runbooks, evidence and reports. Many describe retired or historical tooling. |
 | `docs-vault/` | Retained local navigation; project decisions live in ProjectOS. Do not relocate. |
@@ -28,7 +27,7 @@ task; its inputs and scores are not interchangeable with the active one.
 | `.venv-graphcare/` | Existing isolated legacy GraphCare runtime. Not used by the clinical adapter; left in place. |
 | `.claude/`, `.git/` | Local agent state and version control; not scientific source. |
 
-Package names and active paths are unchanged; there is no `src/` layout.
+Top-level package names are unchanged; there is no `src/` layout. Inside `clinical_graph_v2/` the modules moved into subpackages on 2026-10-03 (shims at the old paths).
 
 ## Data and evidence held in place
 
@@ -58,6 +57,20 @@ Old root folders (for example the former method directories) may still exist
 because protected outputs live inside them. Do not assume whole directories are
 gone; check the file manifest in the cleanup record.
 
+## Tracked historical artifacts (frozen, not runtime)
+
+Tracked in Git, but they describe retired or historical work. Do not run, move or edit them.
+
+| Path | What it is |
+|---|---|
+| `comparison/standardized/benchmark_config.json` | Config of the retired 30-class benchmark; names retired `protgnn_analysis.train`, `gsat_analysis.train`, `graphcare_analysis.run`. No Python consumer. |
+| `comparison/standardized/benchmark_results_summary.tsv` | Results summary of the 30-class benchmark. Different task; not comparable. |
+| `comparison/standardized/matched_gchm_xgb_v1/` | Four tracked report files of the matched GCHM/XGBoost study (runs/smoke are gitignored). |
+| `comparison/standardized/representative_eventgchm_v1/` | README only; runner retired. |
+| `comparison/protgnn_explained_subjects.json` | Subject list from an old ProtGNN explanation run; unreferenced. Patient-derived; do not publish. |
+| `protgnn_analysis/outputs/**`, `graphcare_analysis/outputs/**` | 236 tracked per-patient explanation files (~70 MB). Patient-derived; publication needs a privacy decision. |
+| `comparison/standardized/explanation_subjects.json` | Fixture used by `build_explanation_cohort.py` and retained tests. |
+
 ## Retired legacy code (frozen)
 
 The old 30-class native/star/cooccur model code, its dependent tests and the
@@ -80,5 +93,4 @@ directories that mention them are historical.
 - Use module form (`python3 -m package.module`) from the repository root.
 - Do not mass-move scientific code, symlinks, vendored dependencies or historical
   outputs to reduce root entries.
-- Open the viewer from `visualizer/` with `npm run dev`; it only displays graph
-  JSON that already exists.
+- The viewer (`visualizer/`) was retired on 2026-10-03; recover it with `git checkout c54be79a -- visualizer`.
