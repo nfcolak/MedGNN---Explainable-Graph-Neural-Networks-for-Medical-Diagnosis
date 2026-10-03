@@ -553,7 +553,7 @@ def test_u3x_options_encoder_depth_accepted_and_invalid_values_refused(tmp_path,
     assert adapter.encoder_depth == 1 and adapter.comorbid_block == 0
     assert _adapter(tmp_path, encoder_depth=2).encoder_depth == 2
     assert _adapter(tmp_path, layers=2).encoder_depth == 2
-    monkeypatch.setitem(sys.modules, 'comparison.standardized.clinical_graph_v2.cei_v3_ext.comorbid_block', None)
+    monkeypatch.setitem(sys.modules, 'comparison.standardized.clinical_graph_v2.studies.cei.cei_v3_ext.comorbid_block', None)
     with pytest.raises(ValueError, match='U3x'):
         _adapter(tmp_path, comorbid_block=1)
     with pytest.raises(ValueError, match='encoder_depth'):

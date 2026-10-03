@@ -7,7 +7,7 @@ from torch_geometric.data import Data
 from torch_geometric.nn import MessagePassing
 
 
-MODULE_PATH = Path(__file__).resolve().parents[1] / "comparison/standardized/clinical_graph_v2/cei_graphxai.py"
+MODULE_PATH = Path(__file__).resolve().parents[1] / "comparison/standardized/clinical_graph_v2/studies/cei/cei_graphxai.py"
 
 
 def graph_fixture():
@@ -62,7 +62,7 @@ class SyntheticAdapter(torch.nn.Module):
 def module():
     if not MODULE_PATH.is_file():
         pytest.fail("clinical dev-only GraphXAI wrapper absent")
-    spec = importlib.util.spec_from_file_location("cei_graphxai_under_test", MODULE_PATH)
+    spec = importlib.util.spec_from_file_location("comparison.standardized.clinical_graph_v2.studies.cei.cei_graphxai_under_test", MODULE_PATH)
     loaded = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(loaded)
     return loaded
@@ -141,10 +141,10 @@ def test_binding_hashes_use_runner_package_relative_source_manifest(tmp_path):
         path.write_bytes(name.encode())
         artifacts.append(path)
     result = implementation.binding_hashes(
-        package_root=MODULE_PATH.parent, graph_path=artifacts[0],
+        package_root=MODULE_PATH.parents[2], graph_path=artifacts[0],
         membership_path=artifacts[1], checkpoint_path=artifacts[2], cohort_ids=["synthetic-1"],
     )
-    expected = recursive_source_hashes(MODULE_PATH.parent)
+    expected = recursive_source_hashes(MODULE_PATH.parents[2])
     assert result["source_sha256"] == expected
     assert all(not Path(key).is_absolute() for key in result["source_sha256"])
 
@@ -258,7 +258,7 @@ def test_reconstruction_replays_candidate_and_product_off_state_dicts(tmp_path):
         binding = {
             "method": "cei_gnn", "adaptation_version": config["adaptation_version"],
             "method_config": config,
-            "source_code": recursive_source_hashes(MODULE_PATH.parents[0]),
+            "source_code": recursive_source_hashes(MODULE_PATH.parents[2]),
             "vocabulary_size": 8, "node_dim": 3, "edge_dim": 2, "num_classes": 3,
             "hidden": runner_args.hidden, "layers": runner_args.layers,
             "dropout": runner_args.dropout,
@@ -362,7 +362,7 @@ def test_export_clean_integrated_record_derives_file_hashes(tmp_path):
         path.write_bytes(("synthetic-" + key).encode())
         files[key] = path
     hashes = implementation.binding_hashes(
-        package_root=MODULE_PATH.parent, graph_path=files["graph"],
+        package_root=MODULE_PATH.parents[2], graph_path=files["graph"],
         membership_path=files["membership"], checkpoint_path=files["checkpoint"], cohort_ids=ids,
     )
     binding = {
@@ -424,7 +424,7 @@ def test_export_rejects_graph_membership_or_seed_not_bound_to_runner(
         path.write_bytes(("bound-" + key).encode())
         files[key] = path
     hashes = implementation.binding_hashes(
-        package_root=MODULE_PATH.parent, graph_path=files["graph"],
+        package_root=MODULE_PATH.parents[2], graph_path=files["graph"],
         membership_path=files["membership"], checkpoint_path=files["checkpoint"],
         cohort_ids=ids,
     )

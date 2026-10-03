@@ -16,7 +16,7 @@ import pytest
 
 from comparison.standardized.clinical_graph_v2 import cei_v3_study as study
 
-TRAIN_PY = 'comparison.standardized.clinical_graph_v2.train'
+TRAIN_PY = 'comparison.standardized.clinical_graph_v2.core.train'
 
 
 # ------------------------------------------------------------------ fixtures

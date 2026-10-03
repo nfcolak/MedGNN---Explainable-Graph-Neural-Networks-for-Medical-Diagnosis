@@ -6,11 +6,11 @@ import json
 import sys
 from pathlib import Path
 
-MODULE_PATH = Path(__file__).parents[1] / "comparison/standardized/clinical_graph_v2/cei_v2_study.py"
+MODULE_PATH = Path(__file__).parents[1] / "comparison/standardized/clinical_graph_v2/studies/cei/cei_v2_study.py"
 
 
 def _module():
-    spec = importlib.util.spec_from_file_location("cei_v2_study_smoke3_under_test", MODULE_PATH)
+    spec = importlib.util.spec_from_file_location("comparison.standardized.clinical_graph_v2.studies.cei.cei_v2_study_smoke3_under_test", MODULE_PATH)
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     try:

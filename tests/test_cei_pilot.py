@@ -8,13 +8,13 @@ from types import SimpleNamespace
 
 import pytest
 
-MODULE_PATH = (Path(__file__).parents[1] / "comparison/standardized/clinical_graph_v2/cei_pilot.py")
+MODULE_PATH = (Path(__file__).parents[1] / "comparison/standardized/clinical_graph_v2/studies/cei/cei_pilot.py")
 
 
 def _module():
     # Keep the RED failure an assertion about the missing behavior, not collection/import.
     assert MODULE_PATH.is_file(), "CEI pilot protocol module must implement the locked planner"
-    spec = importlib.util.spec_from_file_location("cei_pilot_under_test", MODULE_PATH)
+    spec = importlib.util.spec_from_file_location("comparison.standardized.clinical_graph_v2.studies.cei.cei_pilot_under_test", MODULE_PATH)
     module = importlib.util.module_from_spec(spec)
     assert spec and spec.loader
     import sys
@@ -33,6 +33,7 @@ import copy
 @lru_cache(maxsize=None)
 def _source_method_config(method, use_interactions=True):
     from comparison.standardized.clinical_graph_v2 import train
+    from comparison.standardized.clinical_graph_v2.paths import PACKAGE_ROOT
     from comparison.standardized.clinical_graph_v2.methods import build_method
     from comparison.standardized.clinical_graph_v2.tensorize import PAYLOAD_WIDTH
 
@@ -315,7 +316,7 @@ def test_capture_bindings_detects_same_path_input_byte_drift(tmp_path, monkeypat
         "--targets", str(targets), "--canonical", str(canonical)], str(tmp_path / "out"),
         1234, (10000, 5000, 40), "candidate")
     def fake_git(command, **kwargs):
-        output = str(MODULE_PATH.parents[3]) + "\n" if "--show-toplevel" in command else "rev\n"
+        output = str(MODULE_PATH.parents[5]) + "\n" if "--show-toplevel" in command else "rev\n"
         return SimpleNamespace(stdout=output)
     monkeypatch.setattr(module.subprocess, "run", fake_git)
     before = module.capture_bindings(stage)
@@ -448,12 +449,13 @@ def test_execution_source_snapshot_hashes_its_own_worktree_and_runner_package(tm
         "executor must snapshot the actual worktree executable source map")
     package = tmp_path / "comparison/standardized/clinical_graph_v2"
     plugin = package / "methods/plugin_cei_gnn.py"
-    own_file = package / "cei_pilot.py"
+    own_file = package / "studies/cei/cei_pilot.py"
     plugin.parent.mkdir(parents=True)
+    own_file.parent.mkdir(parents=True)
     plugin.write_text("plugin-v1")
     own_file.write_text("pilot-v1")
     snapshot_before = module._capture_executable_sources(tmp_path)
-    assert "cei_pilot.py" in snapshot_before["clinical_source_hashes"]
+    assert "studies/cei/cei_pilot.py" in snapshot_before["clinical_source_hashes"]
     assert "methods/plugin_cei_gnn.py" in snapshot_before["clinical_source_hashes"]
 
     plugin.write_text("plugin-v2")
@@ -496,6 +498,7 @@ def test_replay_stage_reconstructs_real_model_and_rejects_tampered_artifacts(tmp
     from torch_geometric.data import Data
     from torch_geometric.loader import DataLoader
     from comparison.standardized.clinical_graph_v2 import train
+    from comparison.standardized.clinical_graph_v2.paths import PACKAGE_ROOT
     from comparison.standardized.clinical_graph_v2.contracts import recursive_source_hashes, sample_ids_sha256
     from comparison.standardized.clinical_graph_v2.methods import build_method
     from comparison.standardized.clinical_graph_v2.schema import sha256
@@ -563,7 +566,7 @@ def test_replay_stage_reconstructs_real_model_and_rejects_tampered_artifacts(tmp
         "artifact_visit_membership_file": "visit_membership.jsonl",
         "artifact_visit_membership_sha256": sha256(artifact / "visit_membership.jsonl"),
         "targets_path": str(targets_path), "targets_sha256": sha256(targets_path),
-        "source_code": recursive_source_hashes(Path(train.__file__).parent),
+        "source_code": recursive_source_hashes(PACKAGE_ROOT),
         "preprocessing_sha256": sha256(output / "preprocessing.json"),
         "top_k_labels": 10, "kept_label_indices": [0, 1], "edges": "all",
         "train_limit": 10000, "token_min_count": 1, "seed": 1234,

@@ -382,7 +382,7 @@ E6A_SHAPES = dict(num_relations=BIDIRECTIONAL_RELATIONS, num_triples=2 * (TRIPLE
 E6A_CONTROL = {'num_relations': RELATIONS, 'num_triples': TRIPLES, 'edge_dim': EDGE_DIM}
 E6A_WIDENED = ('relation_embedding.weight', 'triple_embedding.weight',
                'edge_feature_projection.weight')
-X5_MODULE = 'comparison.standardized.clinical_graph_v2.cei_v3_ext.comorbid_block'
+X5_MODULE = 'comparison.standardized.clinical_graph_v2.studies.cei.cei_v3_ext.comorbid_block'
 
 
 def _c_and_variants(seed=123, dropout=0.3):

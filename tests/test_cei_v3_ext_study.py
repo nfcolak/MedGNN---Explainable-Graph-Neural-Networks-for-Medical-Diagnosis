@@ -18,7 +18,7 @@ from comparison.standardized.clinical_graph_v2 import cei_v3_study as study
 from comparison.standardized.clinical_graph_v2.cei_v3_ext import arm_guards, offsets
 from comparison.standardized.clinical_graph_v2.cei_v3_ext import study as ext
 
-TRAIN_PY = 'comparison.standardized.clinical_graph_v2.train'
+TRAIN_PY = 'comparison.standardized.clinical_graph_v2.core.train'
 SEEDS = (1234, 2025, 7)
 MANDATORY = (('--selection-fold', 'dev'), ('--dev-limit', '5000'), ('--final-eval', 'none'))
 
