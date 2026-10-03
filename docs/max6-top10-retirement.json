@@ -216,15 +216,16 @@
       "blob_sha": "7da72be23642c46a0c02dbaf7dd493bfe4aaf5c8",
       "git_mode": "100644",
       "size_bytes": 2381,
-      "archived_path": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.worktrees/_runs/med-clean-finish/archived-originals/tests/test_performance_evidence.py",
+      "archived_path": "/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/max6-cleanup-20261002/med-clean-finish-pass/archived-originals/tests/test_performance_evidence.py",
       "reason": "Exclusively frozen legacy evidence-driver tests; driver absent at delivery. User explicitly approved coordinated archival; not executed."
     },
-    "final_manifest": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.worktrees/_runs/med-clean-finish/final-retirement-manifest.json",
-    "integration_static_validation": "/Users/necatifurkancolak/AI-Workplace/Projects/current/MedGNN/.worktrees/_runs/med-clean-finish/integrated-static-validation.json",
+    "final_manifest": "/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/max6-cleanup-20261002/med-clean-finish-pass/final-retirement-manifest.json",
+    "integration_static_validation": "/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/max6-cleanup-20261002/med-clean-finish-pass/integrated-static-validation.json",
     "installation_receipt": {
       "path": "/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/max6-cleanup-20261002/installation-receipt.json",
-      "status": "To be recorded AFTER parent preservation gates and controlled final transfer; not verified here."
+      "status": "Installed 2026-10-02 at c54be79a; receipt recorded."
     },
+    "installed_status": "Installed 2026-10-02 at c54be79a. Earlier run dirs .worktrees/_runs/med-clean-finish{,-pass} were removed after installation; durable copies live under Artifacts/MedGNN/max6-cleanup-20261002/med-clean-finish-{pass,blocked}/. Pre-install wording in static_limits is historical.",
     "protection_manifest": "/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/max6-cleanup-20261002/med-clean-evidence/protection-manifest.json",
     "durable_preservation_preflight": "/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/max6-cleanup-20261002/med-clean-preserve/deployment-preflight.json",
     "durable_preservation_receipt_check": "/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/max6-cleanup-20261002/med-clean-preserve/receipt-check.json",
@@ -233,6 +234,6 @@
   "static_limits": [
     "No project imports, tests, pytest collection, training, data preparation, heldout access, environment install or frontend build/export.",
     "Frozen historical checks depend on archived runtime and are not active suite entrypoints.",
-    "Parent must verify original-checkout collision/preservation receipts and protected local bytes before and after installation."
+    "Historical (pre-install): parent must verify original-checkout collision/preservation receipts and protected local bytes before and after installation."
   ]
 }
