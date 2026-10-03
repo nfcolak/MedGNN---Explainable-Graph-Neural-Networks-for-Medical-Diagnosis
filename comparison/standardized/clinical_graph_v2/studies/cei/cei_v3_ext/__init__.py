@@ -1,1 +1,2 @@
-"""CEI-GNN v3 extension modules (EXT spec §9: X3 offsets, X5 comorbid block, X14 arm guards, X6 study)."""
+"""Compatibility package for methods.cei.studies.cei_v3_ext; retain local submodule shims."""
+from ....methods.cei.studies.cei_v3_ext import *

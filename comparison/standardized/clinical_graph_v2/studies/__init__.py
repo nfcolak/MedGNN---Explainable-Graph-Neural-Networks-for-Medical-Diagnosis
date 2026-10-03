@@ -1,1 +1,1 @@
-"""Clinical graph study packages."""
+"""Compatibility study packages holding only shims."""
