@@ -11,12 +11,12 @@ from pathlib import Path
 
 import pytest
 
-MODULE_PATH = Path(__file__).parents[1] / "comparison/standardized/clinical_graph_v2/cei_v2_study.py"
+MODULE_PATH = Path(__file__).parents[1] / "comparison/standardized/clinical_graph_v2/studies/cei/cei_v2_study.py"
 
 
 def _module():
     assert MODULE_PATH.is_file(), "CEI-GNN v2 study module must exist"
-    spec = importlib.util.spec_from_file_location("cei_v2_study_inactive_test", MODULE_PATH)
+    spec = importlib.util.spec_from_file_location("comparison.standardized.clinical_graph_v2.studies.cei.cei_v2_study_inactive_test", MODULE_PATH)
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     try:

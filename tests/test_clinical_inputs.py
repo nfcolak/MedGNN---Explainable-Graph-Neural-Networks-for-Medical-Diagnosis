@@ -236,7 +236,7 @@ def test_rewire_adapter_delegates_without_implementing_a_second_policy(monkeypat
     import sys
     import types
     calls = []
-    module_name = 'comparison.standardized.clinical_graph_v2.rewiring'
+    module_name = 'comparison.standardized.clinical_graph_v2.core.rewiring'
     module = types.ModuleType(module_name)
     def rewire_edges(*args):
         calls.append(args)

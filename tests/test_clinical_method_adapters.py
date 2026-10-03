@@ -12,7 +12,7 @@ import torch
 import torch.nn as nn
 from torch_geometric.data import Batch
 
-from comparison.standardized.clinical_graph_v2 import aggregate, train
+from comparison.standardized.clinical_graph_v2 import aggregate, paths, train
 from comparison.standardized.clinical_graph_v2.contracts import recursive_source_hashes
 from comparison.standardized.clinical_graph_v2.methods import build_method
 from comparison.standardized.clinical_graph_v2.methods.gsat import _ClinicalGINLayer
@@ -377,7 +377,7 @@ def test_cli_defaults_reject_adapter_conv_and_bind_recursive_method_sources(tmp_
         train.normalize_method_args(incompatible_native, parser)
     assert not (tmp_path / "output").exists()
 
-    sources = recursive_source_hashes(Path(train.__file__).parent)
+    sources = recursive_source_hashes(paths.PACKAGE_ROOT)
     for required in (
         "methods/base.py",
         "methods/protgnn.py",
