@@ -18,7 +18,7 @@ import torch.nn.functional as F
 from torch_geometric.data import Data
 
 from .. import NODE_KINDS
-from ..tensorize import PAYLOAD_WIDTH
+from ..core.tensorize import PAYLOAD_WIDTH
 from .base import ClinicalMethodAdapter, MethodOutput, relation_count
 
 

@@ -67,10 +67,10 @@ def _state_digest(model):
 
 def snapshot():
     """Return (record, context); the context lets compare mode reuse the encoded folds."""
-    from comparison.standardized.clinical_graph_v2 import train as runner
+    from comparison.standardized.clinical_graph_v2.core import train as runner
     from comparison.standardized.clinical_graph_v2.methods import build_method
-    from comparison.standardized.clinical_graph_v2.model import ClinicalGNN
-    from comparison.standardized.clinical_graph_v2.tensorize import (
+    from comparison.standardized.clinical_graph_v2.core.model import ClinicalGNN
+    from comparison.standardized.clinical_graph_v2.core.tensorize import (
         PAYLOAD_WIDTH, degree_histogram, preprocessing_state)
 
     targets = runner.load_targets(TARGETS)
@@ -123,7 +123,7 @@ def snapshot():
 def edge_view_invariants(runner, targets, forward_splits, forward_prep):
     """Premise and construction checks of the bidirectional edge view (no training)."""
     from comparison.standardized.clinical_graph_v2 import NODE_KINDS
-    from comparison.standardized.clinical_graph_v2.tensorize import (
+    from comparison.standardized.clinical_graph_v2.core.tensorize import (
         ALL_RELATIONS, REVERSIBLE_RELATIONS, preprocessing_state, relation_vocabulary)
 
     splits, prep = runner.build_dataset(ARTIFACT, targets, 'all', 10000, 20, 1234,
