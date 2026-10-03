@@ -27,8 +27,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .. import NODE_KINDS
-from ..cei_v3_absence import ABSENCE_LABEL, index_visit_absence
-from ..cei_v3_ple import ple_basis
+from ..studies.cei.cei_v3_absence import ABSENCE_LABEL, index_visit_absence
+from ..studies.cei.cei_v3_ple import ple_basis
 from .cei_gnn_v2 import PairEvidenceNetwork, kind_pair_index, within_visit_pairs
 
 ARMS = ('A', 'B', 'C')

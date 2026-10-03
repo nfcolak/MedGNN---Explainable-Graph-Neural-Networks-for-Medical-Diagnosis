@@ -16,7 +16,7 @@ import torch.nn.functional as F
 from torch_geometric.utils import scatter, softmax
 
 from .. import NODE_KINDS
-from ..tensorize import PAYLOAD_WIDTH
+from ..core.tensorize import PAYLOAD_WIDTH
 from .base import (
     ClinicalBatch,
     ClinicalMethodAdapter,
