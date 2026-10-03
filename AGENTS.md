@@ -41,14 +41,14 @@ Self-explainable GNN diagnosis benchmark on MIMIC-IV ED patient graphs: ProtGNN,
 |---|---|---|
 | Multi-visit clinical graph v2/v3 core (build, train, audit, schema constants, paths) | `core/` | `clinical-graph-v3.md`, `adr-003.md`, `adr-004.md` |
 | Shared method code (registry, base) | `core/registry.py`, `core/method_base.py` (plugins `plugin_*.py` are discovered only inside the method folders) | `clinical-graph-v3.md`, `adr-003.md` |
-| Source binding | `core/paths.py` (`REPO_ROOT`, `CODE_ROOTS`), `core/contracts.py` (`code_source_hashes()` over all code roots) | `adr-006.md` |
+| Source binding | `core/paths.py` (`REPO_ROOT`, `CODE_ROOTS`: method folders plus every `comparison/<dir>/` with `__init__.py`, never `comparison/standardized/`), `core/contracts.py` (`code_source_hashes()`) | `adr-006.md` |
 | ProtGNN | `protgnn/` (`adapter.py`) | `ProjectOS medgnn/Reference/method-protgnn.md` |
 | CEI-GNN | `cei/` (`cei_gnn*.py`, `plugin_cei_gnn*.py`, `studies/`, `studies/cei_v3_ext/`) | `ProjectOS medgnn/Reports/cei/cei-v3-delivery-2026-10-01.md` |
 | GSAT | `gsat/` (`adapter.py`) | `gsat.md` |
 | GraphCare | `graphcare/` (`adapter.py` native) | `graphcare.md` |
 | GCHM / GCHM-PNA v2 | `gchm_pna/` (`gchm_v2.py`, `gchm_v3.py`, `protocol/`; state data stays in `comparison/standardized/gchm_v2_protocol/state/`) | `gchm.md` |
 | XGBoost control | `xgboost_control/` (`tabular_control.py`; never name it `xgboost`, it would shadow the library) | `xgboost.md` |
-| Comparisons | `comparisons/all/` (all methods together), `comparisons/<a>_vs_<b>/` per pair (now `cei_vs_protgnn/`, `cei_vs_xgboost/`) | `adr-006.md` |
+| Comparisons (single folder) | `comparison/all/` (all methods together), `comparison/<a>_vs_<b>/` per pair (now `cei_vs_protgnn/`, `cei_vs_xgboost/`); `comparison/` and `comparison/standardized/` stay namespace packages (no `__init__.py`) | `adr-006.md` |
 | Inputs and run results (not moved) | `comparison/standardized/{event_inputs,native_inputs,clinical_runs_*}/`, `explanation_subjects.json` | `ProjectOS medgnn/Reference/clinical-graph-v2-runbook.md` |
 | Kept label/input chain | `comparison/standardized/{icd_mapping.py,event_graph_v1/,enriched_input_v1/spec.py,event_graph_gchm_xgb_v1/{labels,local_labels_v2}.py}` | `ProjectOS medgnn/Reports/max6-top10-cleanup.md` |
 | Shared contracts, split, data prep | `shared/lib/`, `shared/data_prep/`, `comparison/canonical_split.json` | `shared.md` |
@@ -77,7 +77,7 @@ Training commands (`core.train`, `xgboost_control.tabular_control`, `--execute` 
 - New run outputs go to a new, dated directory under `comparison/standardized/` (existing examples: `clinical_runs_v3_*_YYYYMMDD`).
 - Every run writes `binding.json` / `result.json` with hashes. Never claim equal compute from equal epochs or similar parameter counts.
 - Method-native CLI options are namespaced (`--protgnn-*`, `--gsat-*`, `--graphcare-*`). `--conv` is valid only with `--method clinical_gnn`.
-- Adding a method, study or comparison: a new method is a new top-level folder `<name>/` with `__init__.py`, `adapter.py` or `plugin_<name>.py` and `studies/`; add it to `METHOD_FOLDERS` in `core/registry.py` (plugin discovery) and to `CODE_ROOTS` in `core/paths.py` (source binding). A study lives under the owning method's `studies/` with a new dated output directory; a control is its own method folder. A cross-method comparison goes to `comparisons/all/` or a new `comparisons/<a>_vs_<b>/`. Shared code goes into `core/`. No README or docs in these folders.
+- Adding a method, study or comparison: a new method is a new top-level folder `<name>/` with `__init__.py`, `adapter.py` or `plugin_<name>.py` and `studies/`; add it to `METHOD_FOLDERS` in `core/registry.py` (plugin discovery) and to `_METHOD_ROOTS` in `core/paths.py` (source binding). A study lives under the owning method's `studies/` with a new dated output directory; a control is its own method folder. A cross-method comparison goes to `comparison/all/` or a new `comparison/<a>_vs_<b>/` with an `__init__.py` (bound automatically). Shared code goes into `core/`. No README or docs in these folders.
 
 ## Project memory
 
