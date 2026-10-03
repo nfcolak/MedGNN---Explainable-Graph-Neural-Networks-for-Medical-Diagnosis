@@ -1,2 +1,2 @@
-"""Compatibility package for studies.cei.cei_v3_ext; retain local submodule shims."""
-from ..studies.cei.cei_v3_ext import *
+"""Compatibility package for methods.cei.studies.cei_v3_ext; retain local submodule shims."""
+from ..methods.cei.studies.cei_v3_ext import *
