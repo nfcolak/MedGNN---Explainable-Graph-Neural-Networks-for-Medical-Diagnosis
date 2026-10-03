@@ -22,7 +22,7 @@ Self-explainable GNN diagnosis benchmark on MIMIC-IV ED patient graphs: ProtGNN,
 | Compared methods MUST share artifact, class set, train/validation sample-ID hashes, preprocessing contract and seed. | `.claude/context/adr-006.md` |
 | Do not relocate `data/` or `external/` as a cleanup side effect. | `ProjectOS medgnn/Reference/STRUCTURE.md` |
 | Preserve the permanent historical SHA256 guard for `shared/data_prep/merge_ed.py`; never silently rewrite its pinned bytes or provenance. Do not import, run or fix it during cleanup; any correction requires a separately authorized, versioned production job. | `ProjectOS medgnn/Reports/max6-top10-cleanup.md` |
-| `shared/**`, `comparison/canonical_split.json`, `shared/data_prep/merge_ed.py`, retained rebuild sources and `icd_mapping.py` stay byte-identical. `clinical_graph_v2/**` may change (restructured 2026-10-03); keep a compatibility shim at every old module path. Work locally; no push without approval. | `ProjectOS medgnn/Reports/max6-top10-cleanup.md`, `ProjectOS medgnn/Reports/structure-cleanup-2026-10-03.md` |
+| `shared/**`, `comparison/canonical_split.json`, `shared/data_prep/merge_ed.py`, retained rebuild sources and `icd_mapping.py` stay byte-identical. Code moved to top-level method folders on 2026-10-03 without compatibility shims; the only shim left is `comparison/standardized/clinical_graph_v2/repair_metadata.py` (two frozen label files import it). Historical run source bindings no longer match; new runs need new output dirs. Work locally; no push without approval. | `ProjectOS medgnn/Reports/max6-top10-cleanup.md`, `ProjectOS medgnn/Reports/structure-cleanup-2026-10-03.md` |
 | Do not delete held data/results/source snapshots. Publication requires a separate privacy decision: historical Git contains patient-derived payloads. | `ProjectOS medgnn/Reports/max6-top10-cleanup.md` |
 | Never keep notes in this repo (no `docs/`, READMEs, specs, reports, `STRUCTURE.md`); only `AGENTS.md` and `README.md`. Notes go to ProjectOS `10-Projects/medgnn/` (history, reports, reference) and Jev-Mem `Notes/MedGNN/` (current rules). | User rule 2026-10-03 |
 | Report results with task identity (cohort, class set, sample size, seed). Single-seed gaps are not method superiority. | `.claude/context/adr-006.md` |
@@ -39,14 +39,17 @@ Self-explainable GNN diagnosis benchmark on MIMIC-IV ED patient graphs: ProtGNN,
 
 | Area | Path | Context doc |
 |---|---|---|
-| Multi-visit clinical graph v2/v3 core (build, train, audit, ...) | `comparison/standardized/clinical_graph_v2/core/` (old paths are shims) | `clinical-graph-v3.md`, `adr-003.md`, `adr-004.md` |
-| Shared method code (registry, base) | `clinical_graph_v2/methods/__init__.py`, `methods/base.py` (plugins are discovered only inside method folders) | `clinical-graph-v3.md`, `adr-003.md` |
-| ProtGNN | `clinical_graph_v2/methods/protgnn/` (`adapter.py`) | `ProjectOS medgnn/Reference/method-protgnn.md` |
-| CEI-GNN | `clinical_graph_v2/methods/cei/` (`cei_gnn*.py`, `plugin_cei_gnn*.py`, `studies/`, `studies/cei_v3_ext/`) | `ProjectOS medgnn/Reports/cei/cei-v3-delivery-2026-10-01.md` |
-| GSAT | `clinical_graph_v2/methods/gsat/` (`adapter.py`) | `gsat.md` |
-| GraphCare | `clinical_graph_v2/methods/graphcare/` (`adapter.py` native) | `graphcare.md` |
-| GCHM / GCHM-PNA v2 | `clinical_graph_v2/methods/gchm_pna/` (`gchm_v2.py`, `gchm_v3.py`, `protocol/`; old `comparison/standardized/gchm_v2_protocol/` is a shim) | `gchm.md` |
-| XGBoost control | `clinical_graph_v2/methods/xgboost/` (`tabular_control.py`) | `xgboost.md` |
+| Multi-visit clinical graph v2/v3 core (build, train, audit, schema constants, paths) | `core/` | `clinical-graph-v3.md`, `adr-003.md`, `adr-004.md` |
+| Shared method code (registry, base) | `core/registry.py`, `core/method_base.py` (plugins `plugin_*.py` are discovered only inside the method folders) | `clinical-graph-v3.md`, `adr-003.md` |
+| Source binding | `core/paths.py` (`REPO_ROOT`, `CODE_ROOTS`), `core/contracts.py` (`code_source_hashes()` over all code roots) | `adr-006.md` |
+| ProtGNN | `protgnn/` (`adapter.py`) | `ProjectOS medgnn/Reference/method-protgnn.md` |
+| CEI-GNN | `cei/` (`cei_gnn*.py`, `plugin_cei_gnn*.py`, `studies/`, `studies/cei_v3_ext/`) | `ProjectOS medgnn/Reports/cei/cei-v3-delivery-2026-10-01.md` |
+| GSAT | `gsat/` (`adapter.py`) | `gsat.md` |
+| GraphCare | `graphcare/` (`adapter.py` native) | `graphcare.md` |
+| GCHM / GCHM-PNA v2 | `gchm_pna/` (`gchm_v2.py`, `gchm_v3.py`, `protocol/`; state data stays in `comparison/standardized/gchm_v2_protocol/state/`) | `gchm.md` |
+| XGBoost control | `xgboost_control/` (`tabular_control.py`; never name it `xgboost`, it would shadow the library) | `xgboost.md` |
+| Comparisons | `comparisons/all/` (all methods together), `comparisons/<a>_vs_<b>/` per pair (now `cei_vs_protgnn/`, `cei_vs_xgboost/`) | `adr-006.md` |
+| Inputs and run results (not moved) | `comparison/standardized/{event_inputs,native_inputs,clinical_runs_*}/`, `explanation_subjects.json` | `ProjectOS medgnn/Reference/clinical-graph-v2-runbook.md` |
 | Kept label/input chain | `comparison/standardized/{icd_mapping.py,event_graph_v1/,enriched_input_v1/spec.py,event_graph_gchm_xgb_v1/{labels,local_labels_v2}.py}` | `ProjectOS medgnn/Reports/max6-top10-cleanup.md` |
 | Shared contracts, split, data prep | `shared/lib/`, `shared/data_prep/`, `comparison/canonical_split.json` | `shared.md` |
 | Retired legacy (frozen) | former 30-class method dirs, native/star/cooccur runners, dependent tests, legacy exporter, `protgnn_analysis/`, `graphcare_analysis/`, old runs and viewer | Code and outputs are archived in `/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/repo-archive-20261003/` and in Git history; see `ProjectOS medgnn/Reports/max6-top10-cleanup.md`. Never run for new work (test-fold access). |
@@ -59,22 +62,22 @@ Context docs are in `.claude/context/`. They are read-only links to the ProjectO
 
 ```bash
 # Read-only plans / wiring
-python3 -m comparison.standardized.clinical_graph_v2.core.mechanism_check        # training-free mechanism checks
-python3 -m comparison.standardized.clinical_graph_v2.methods.gchm_pna.protocol.protocol   # plan + ETA only
-python3 -m comparison.standardized.clinical_graph_v2.methods.gchm_pna.protocol.protocol --status
+python3 -m core.mechanism_check                 # training-free mechanism checks
+python3 -m gchm_pna.protocol.protocol           # plan + ETA only
+python3 -m gchm_pna.protocol.protocol --status
 
 # Only inside an explicitly opened testing phase
 python3 -m pytest tests -q        # explicit path avoids vendored test collections
 ```
 
-Training commands (`clinical_graph_v2.core.train`, `methods.xgboost.tabular_control`, `--execute` modes) are listed in `ProjectOS medgnn/Reference/clinical-graph-v2-runbook.md`. Run them only after approval.
+Training commands (`core.train`, `xgboost_control.tabular_control`, `--execute` modes) are listed in `ProjectOS medgnn/Reference/clinical-graph-v2-runbook.md`. Run them only after approval.
 
 ## Conventions
 
 - New run outputs go to a new, dated directory under `comparison/standardized/` (existing examples: `clinical_runs_v3_*_YYYYMMDD`).
 - Every run writes `binding.json` / `result.json` with hashes. Never claim equal compute from equal epochs or similar parameter counts.
 - Method-native CLI options are namespaced (`--protgnn-*`, `--gsat-*`, `--graphcare-*`). `--conv` is valid only with `--method clinical_gnn`.
-- Adding a method, study or control: a new method is a new folder `methods/<name>/` under `comparison/standardized/clinical_graph_v2/` with `__init__.py`, `adapter.py` or `plugin_<name>.py` (plugins are auto-discovered inside method folders only) and `studies/`; a study lives under the owning method's `studies/` with a new dated output directory; a control is its own method folder. Shared code goes into `core/`; never into the old shim files. No README or docs in the method folder.
+- Adding a method, study or comparison: a new method is a new top-level folder `<name>/` with `__init__.py`, `adapter.py` or `plugin_<name>.py` and `studies/`; add it to `METHOD_FOLDERS` in `core/registry.py` (plugin discovery) and to `CODE_ROOTS` in `core/paths.py` (source binding). A study lives under the owning method's `studies/` with a new dated output directory; a control is its own method folder. A cross-method comparison goes to `comparisons/all/` or a new `comparisons/<a>_vs_<b>/`. Shared code goes into `core/`. No README or docs in these folders.
 
 ## Project memory
 
