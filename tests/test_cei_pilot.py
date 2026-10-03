@@ -8,22 +8,13 @@ from types import SimpleNamespace
 
 import pytest
 
-MODULE_PATH = (Path(__file__).parents[1] / "comparison/standardized/clinical_graph_v2/studies/cei/cei_pilot.py")
+MODULE_PATH = (Path(__file__).parents[1] / "comparison/standardized/clinical_graph_v2/methods/cei/studies/cei_pilot.py")
 
 
 def _module():
     # Keep the RED failure an assertion about the missing behavior, not collection/import.
     assert MODULE_PATH.is_file(), "CEI pilot protocol module must implement the locked planner"
-    spec = importlib.util.spec_from_file_location("comparison.standardized.clinical_graph_v2.studies.cei.cei_pilot_under_test", MODULE_PATH)
-    module = importlib.util.module_from_spec(spec)
-    assert spec and spec.loader
-    import sys
-    sys.modules[spec.name] = module
-    try:
-        spec.loader.exec_module(module)
-    finally:
-        sys.modules.pop(spec.name, None)
-    return module
+    return importlib.import_module("comparison.standardized.clinical_graph_v2.methods.cei.studies.cei_pilot")
 
 
 from functools import lru_cache
@@ -448,15 +439,15 @@ def test_execution_source_snapshot_hashes_its_own_worktree_and_runner_package(tm
     assert hasattr(module, "_capture_executable_sources"), (
         "executor must snapshot the actual worktree executable source map")
     package = tmp_path / "comparison/standardized/clinical_graph_v2"
-    plugin = package / "methods/plugin_cei_gnn.py"
-    own_file = package / "studies/cei/cei_pilot.py"
+    plugin = package / "methods/cei/plugin_cei_gnn.py"
+    own_file = package / "methods/cei/studies/cei_pilot.py"
     plugin.parent.mkdir(parents=True)
     own_file.parent.mkdir(parents=True)
     plugin.write_text("plugin-v1")
     own_file.write_text("pilot-v1")
     snapshot_before = module._capture_executable_sources(tmp_path)
-    assert "studies/cei/cei_pilot.py" in snapshot_before["clinical_source_hashes"]
-    assert "methods/plugin_cei_gnn.py" in snapshot_before["clinical_source_hashes"]
+    assert "methods/cei/studies/cei_pilot.py" in snapshot_before["clinical_source_hashes"]
+    assert "methods/cei/plugin_cei_gnn.py" in snapshot_before["clinical_source_hashes"]
 
     plugin.write_text("plugin-v2")
     snapshot_after = module._capture_executable_sources(tmp_path)
@@ -465,7 +456,7 @@ def test_execution_source_snapshot_hashes_its_own_worktree_and_runner_package(tm
 
     binding = {"source_code": dict(snapshot_after["clinical_source_hashes"])}
     assert module._assert_runner_source_binding(snapshot_after, binding)
-    binding["source_code"]["methods/plugin_cei_gnn.py"] = "0" * 64
+    binding["source_code"]["methods/cei/plugin_cei_gnn.py"] = "0" * 64
     with pytest.raises(ValueError, match="runner source|source binding"):
         module._assert_runner_source_binding(snapshot_after, binding)
 

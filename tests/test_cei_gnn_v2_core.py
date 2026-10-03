@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 import torch
 
-CORE = "comparison.standardized.clinical_graph_v2.methods.cei_gnn_v2"
+CORE = "comparison.standardized.clinical_graph_v2.methods.cei.cei_gnn_v2"
 EXPECTED_PAIRS = [(2, 3), (2, 4), (2, 6), (2, 7), (3, 4), (3, 6), (3, 7), (6, 7)]
 
 
@@ -122,7 +122,7 @@ def test_kind_pair_index_is_symmetric_and_covers_six_unordered_pairs():
 
 
 def _reference_pairs(membership, node_type):
-    from comparison.standardized.clinical_graph_v2.methods.cei_gnn_v2 import EVIDENCE_KIND_IDS
+    from comparison.standardized.clinical_graph_v2.methods.cei.cei_gnn_v2 import EVIDENCE_KIND_IDS
 
     by_visit = {}
     for visit, node in membership.t().tolist():
@@ -151,7 +151,7 @@ def test_skewed_visit_pair_enumeration_is_bounded_and_exact():
     script = textwrap.dedent(r"""
         import json, resource, time
         import torch
-        from comparison.standardized.clinical_graph_v2.methods.cei_gnn_v2 import within_visit_pairs
+        from comparison.standardized.clinical_graph_v2.methods.cei.cei_gnn_v2 import within_visit_pairs
         import itertools
         wide, singles = 1000, 20000
         node_count = wide + singles

@@ -380,9 +380,9 @@ def test_cli_defaults_reject_adapter_conv_and_bind_recursive_method_sources(tmp_
     sources = recursive_source_hashes(paths.PACKAGE_ROOT)
     for required in (
         "methods/base.py",
-        "methods/protgnn.py",
-        "methods/gsat.py",
-        "methods/graphcare.py",
+        "methods/protgnn/adapter.py",
+        "methods/gsat/adapter.py",
+        "methods/graphcare/adapter.py",
     ):
         assert required in sources
         assert len(sources[required]) == 64
