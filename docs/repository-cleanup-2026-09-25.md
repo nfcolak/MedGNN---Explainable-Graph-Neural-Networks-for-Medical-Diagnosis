@@ -60,7 +60,7 @@ outputs to an external archive, preserving original relative paths:
 The archive is not a standalone installation. Reproducing a historical run still
 requires its bound input, source version and environment. Reports such as
 `new-input-diagnosis.md`, `gchm-concept-dropout-pilot-results.md`, and
-`gchm-xgboost-matched-results.md` remain in `docs/`. The archived batch helper
+`gchm-xgboost-matched-results.md` remained in `docs/` then (since moved to `methods/gchm_pna/docs/` and `methods/xgboost/docs/`; see `structure-cleanup-2026-10-03.md`). The archived batch helper
 contains destructive retry commands; restoration is not authorization to run it.
 
 ## Intentionally retained

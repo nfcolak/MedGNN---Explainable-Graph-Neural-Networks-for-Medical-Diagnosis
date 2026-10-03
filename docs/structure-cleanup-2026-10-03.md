@@ -39,3 +39,42 @@ need new output directories; do not add bypasses for the old bindings.
 - `event_graph_v1/`, `event_graph_gchm_xgb_v1/{labels,local_labels_v2}.py`, `enriched_input_v1/spec.py`, `icd_mapping.py`.
 - `data/`, `external/`, `docs-vault/`, `.venv-graphcare/`, all result/output/`source_snapshot` directories.
 - Held-out fold stays closed; no training, preprocessing or cache builds without approval; tests only in an opened testing phase.
+
+## Method folders (2026-10-03, second pass)
+
+Every main method now has its own folder `clinical_graph_v2/methods/<method>/` with its code, studies,
+reports (`docs/`) and a `README.md` saying where its results are: `protgnn`, `cei`, `gsat`, `graphcare`,
+`gchm_pna`, `xgboost`. Shared code stays in `core/`, `methods/base.py`, `methods/__init__.py`, `paths.py`.
+`methods/__init__.py` discovers `plugin_*.py` only inside method subpackages. Every old module path keeps a
+compatibility shim (old package locations keep a plain `__init__.py` plus one shim per submodule).
+
+| Old | New |
+|---|---|
+| `methods/protgnn.py` | `methods/protgnn/adapter.py` |
+| `methods/gsat.py` | `methods/gsat/adapter.py` |
+| `methods/graphcare.py` | `methods/graphcare/adapter.py` |
+| `core/gchm_v2.py`, `core/gchm_v3.py` | `methods/gchm_pna/gchm_v2.py`, `gchm_v3.py` |
+| `comparison/standardized/gchm_v2_protocol/*.py` | `methods/gchm_pna/protocol/<same>.py` |
+| `controls/tabular_control.py` | `methods/xgboost/tabular_control.py` |
+| `methods/cei_gnn.py`, `cei_gnn_v2.py`, `cei_gnn_v3.py` | `methods/cei/<same>.py` |
+| `methods/plugin_cei_gnn.py`, `plugin_cei_gnn_v2.py`, `plugin_cei_gnn_v3.py` | `methods/cei/<same>.py` |
+| `studies/cei/*.py` (14 modules), `studies/cei/cei_v3_ext/` | `methods/cei/studies/<same>.py`, `methods/cei/studies/cei_v3_ext/` |
+
+Deleted challengers (code and tests, no shims): GMT, GPS, label-attention, token-fusion, virtual-node,
+ProtoNode (`methods/protonode.py`, `plugin_gmt.py`, `plugin_gps.py`, `plugin_labelattn.py`,
+`plugin_tokenfusion.py`, `plugin_vnode.py`; ProtoNode also left the core registry). Their result
+directories stay untouched. Recover the code from commit `aad56003`.
+
+Doc moves (`git mv`; paths relative to `clinical_graph_v2/methods/`):
+
+| Old | New |
+|---|---|
+| `docs/cei-*` (v3 delivery, v3 evidence/smoke JSON, v2 pair study) | `cei/docs/` |
+| `docs/presentations/cei-overview/` | `cei/docs/presentations/cei-overview/` |
+| `docs/superpowers/specs/*cei*`, `*evidence-interaction*`; `docs/superpowers/plans/*` (CEI plans) | `cei/docs/superpowers/{specs,plans}/` |
+| `docs/gchm-concept-dropout*.md`, `docs/pna-*.md`, `docs/pna-quality-evidence/` | `gchm_pna/docs/` |
+| `docs/superpowers/specs/2026-09-24-gchm-pna-v2-design.md` | `gchm_pna/docs/superpowers/specs/` |
+| `docs/gchm-xgboost-matched-results.md` | `xgboost/docs/` |
+
+Cross-method, cleanup, data/input and legacy docs stay in `docs/` (for example `graphxai-500-results.md`,
+`max6-top10-*`, `native-identical-input-v1.md`, `model-performance-diagnosis.md`).

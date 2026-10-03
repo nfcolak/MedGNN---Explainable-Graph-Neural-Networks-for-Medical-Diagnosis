@@ -188,4 +188,4 @@ Source-scoped limitations:
 
 Logical roots: core = `clinical_runs_cei_v3_20260930`; protgnn = `clinical_runs_cei_v3_vs_protgnn_20260930`; validation = `clinical_runs_cei_v3_validation_20260930`; xgboost = `clinical_runs_cei_v3_vs_xgboost_20260930_retry2`; graphxai = `cei_v3_graphxai_screen500_20260930`. Saved results are protected in the verified external archive; original worktree outputs are retained unchanged. Private immutable outputs embed their original absolute paths, which are mapped at I/O boundaries, not rewritten (hashes would break).
 
-Historical context: [`graphxai-500-results.md`](graphxai-500-results.md), [`cei-gnn-v2-pair-study-result-2026-09-29.md`](cei-gnn-v2-pair-study-result-2026-09-29.md).
+Historical context: [`graphxai-500-results.md`](../../../../../../docs/graphxai-500-results.md), [`cei-gnn-v2-pair-study-result-2026-09-29.md`](cei-gnn-v2-pair-study-result-2026-09-29.md).
