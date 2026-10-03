@@ -48,5 +48,4 @@ Result directories are not moved. Names only:
 
 - `comparison/standardized/clinical_runs_v3_adapters_sample10k_max6_top10_20260924/gchm_pna_seed1234` (shared run)
 - `comparison/standardized/clinical_runs_v3_full_top10_20260924/gchm_pna_seed1234` (shared run)
-- `comparison/standardized/matched_gchm_xgb_v1/` (shared run with XGBoost; reports tracked)
-- Historical 30-class PNA runs (`comparison/standardized/pna_experiments/`, `native_runs/`) are not comparable with the active task.
+- Historical 30-class PNA runs (`comparison/standardized/pna_experiments/`; `native_runs/` and `matched_gchm_xgb_v1/` are archived in Artifacts `repo-archive-20261003`) are not comparable with the active task.

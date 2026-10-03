@@ -2,7 +2,7 @@
 
 Native clinical adaptation of GraphCare: BAT-style messages, visit-conditioned
 alpha/beta attention and a joint readout; global nodes take a separate path and the
-direct numeric/context channel is kept. It does not use `.venv-graphcare/`.
+direct numeric/context channel is kept. It runs in the main environment.
 Native budget: hidden 128, 2 layers, dropout 0.3, Adam, 100 epochs.
 
 ## Code (in this folder)

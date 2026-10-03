@@ -78,3 +78,35 @@ Doc moves (`git mv`; paths relative to `clinical_graph_v2/methods/`):
 
 Cross-method, cleanup, data/input and legacy docs stay in `docs/` (for example `graphxai-500-results.md`,
 `max6-top10-*`, `native-identical-input-v1.md`, `model-performance-diagnosis.md`).
+
+## Root cleanup (2026-10-03, third pass)
+
+Decision (user, 2026-10-03): retired legacy experiments, unused old inputs, the old GraphCare runtime,
+old agent run dirs and the viewer leftovers are archived to
+`/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/repo-archive-20261003/`
+(hash-verified tars; `manifest.jsonl`) and deleted from the repo. Base `refactor/method-folders-20261003`
+(123a1b8b). No code reads the removed paths (only data literals in `tests/test_benchmark_runner.py` and frozen
+`shared/**` docstrings mention them).
+
+Archived and deleted, tracked (`git rm`):
+
+- `protgnn_analysis/`, `graphcare_analysis/`
+- `comparison/standardized/matched_gchm_xgb_v1/`, `comparison/standardized/representative_eventgchm_v1/`
+- `comparison/standardized/benchmark_config.json`, `comparison/standardized/benchmark_results_summary.tsv`
+- `comparison/protgnn_explained_subjects.json`
+
+Archived and deleted, untracked/ignored local copies:
+
+- `comparison/standardized/{native_runs,native_evidence,native_inputs/patient_knn_v1,results,enriched_inputs,enriched_runs,event_training,performance_diagnosis,zero_concept_verification,production_cache_20260913T154134,training.log,graphxai_current_run.txt}`
+- `comparison/standardized/event_inputs/{clinical_graph_v3_membership_full_20260923,first_recorded_lab_all_visits_v2_features_v1,first_recorded_lab_all_visits_v2_targets_v1,first_recorded_lab_all_visits_v2_targets_local_v2,v3_build.log}`
+- `.worktrees/_runs`, `.hermes`, `visualizer/`
+
+Deleted without archive: `.venv-graphcare/`, `external/GraphCare`, `.superpowers/`.
+
+Kept: `data/`, `external/GraphXAI-main`, `docs-vault/`, `event_inputs` max6 dirs and
+`first_recorded_lab_all_visits_v2`, `native_inputs/protgsat_snapshot_v1`, `clinical_runs_*`,
+`.worktrees/cei1001-smoke`, `.worktrees/cei-v3-delivery`.
+
+`.gitignore` lost the rules that only served deleted paths; `/data/`, `/.worktrees/`, `.hermes/` and rules for
+existing paths (`clinical_runs*`, `event_inputs`, `native_inputs`, `external/` GraphXAI extras) stay.
+Docs updated: README, STRUCTURE, `comparison/standardized/README.md`, `docs/max6-top10-cleanup.md`, method READMEs.

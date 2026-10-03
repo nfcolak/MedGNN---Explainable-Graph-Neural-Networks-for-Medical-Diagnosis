@@ -20,11 +20,10 @@ task; its inputs and scores are not interchangeable with the active one.
 | `comparison/standardized/clinical_graph_v2/methods/xgboost/tabular_control.py` | Current XGBoost control. The native 30-class baseline is retired. |
 | `comparison/standardized/build_explanation_cohort.py` | Frozen synthetic-fixture helper retained for shared cohort assertions; not a current command or permission to access heldout data. |
 | `shared/lib/`, `shared/data_prep/` | Shared contracts, split, metrics, data prep. `merge_ed.py` is hash-pinned: keep byte-identical, do not run or fix it. |
-| `external/` | Third-party code. GraphXAI is used by the CEI explanation path; GraphCare is retained legacy. Keep upstream layout. |
+| `external/` | Third-party code. Only GraphXAI (`GraphXAI-main`) is kept; it is used by the CEI explanation path. Keep upstream layout. |
 | `docs/` | Runbooks, evidence and reports. Many describe retired or historical tooling. |
 | `docs-vault/` | Retained local navigation; project decisions live in ProjectOS. Do not relocate. |
 | `requirements.txt`, `requirements-lock.txt`, `environment.yml` | Main-Python dependencies. |
-| `.venv-graphcare/` | Existing isolated legacy GraphCare runtime. Not used by the clinical adapter; left in place. |
 | `.claude/`, `.git/` | Local agent state and version control; not scientific source. |
 
 Top-level package names are unchanged; there is no `src/` layout. Inside `clinical_graph_v2/` the modules moved into subpackages on 2026-10-03 and into per-method folders in a second pass the same day (shims at the old paths).
@@ -46,30 +45,20 @@ untracked or gitignored locally, so a clean checkout may not contain them.
   required label contract.
 - Current max6/Top-10, challenger and CEI result directories with
   `source_snapshot`, binding, result and manifest files.
-- `comparison/standardized/native_runs/` and other historical scientific
-  outputs. Preserved, not verified reproducible.
-- `performance_diagnosis/` and `zero_concept_verification/`: HOLD historical
-  verification sources/results, dependent on archived legacy runtime. They stay
-  untouched and are not active suite entrypoints; execution is not authorized.
-- Legacy worktrees with unsaved changes or separate results.
+- `.worktrees/cei1001-smoke` and `.worktrees/cei-v3-delivery`.
 
-Old root folders (for example the former method directories) may still exist
-because protected outputs live inside them. Do not assume whole directories are
-gone; check the file manifest in the cleanup record.
+Archived on 2026-10-03 and removed from the tree (native runs/evidence,
+`performance_diagnosis/`, `zero_concept_verification/`, old event inputs, the
+viewer and the legacy method folders): see the archive note below.
 
-## Tracked historical artifacts (frozen, not runtime)
+## Tracked historical artifacts
 
-Tracked in Git, but they describe retired or historical work. Do not run, move or edit them.
-
-| Path | What it is |
-|---|---|
-| `comparison/standardized/benchmark_config.json` | Config of the retired 30-class benchmark; names retired `protgnn_analysis.train`, `gsat_analysis.train`, `graphcare_analysis.run`. No Python consumer. |
-| `comparison/standardized/benchmark_results_summary.tsv` | Results summary of the 30-class benchmark. Different task; not comparable. |
-| `comparison/standardized/matched_gchm_xgb_v1/` | Four tracked report files of the matched GCHM/XGBoost study (runs/smoke are gitignored). |
-| `comparison/standardized/representative_eventgchm_v1/` | README only; runner retired. |
-| `comparison/protgnn_explained_subjects.json` | Subject list from an old ProtGNN explanation run; unreferenced. Patient-derived; do not publish. |
-| `protgnn_analysis/outputs/**`, `graphcare_analysis/outputs/**` | 236 tracked per-patient explanation files (~70 MB). Patient-derived; publication needs a privacy decision. |
-| `comparison/standardized/explanation_subjects.json` | Fixture used by `build_explanation_cohort.py` and retained tests. |
+`comparison/standardized/explanation_subjects.json` is a fixture used by
+`build_explanation_cohort.py` and retained tests. The former tracked historical
+artifacts (30-class `benchmark_config.json` and results summary,
+`matched_gchm_xgb_v1/`, `representative_eventgchm_v1/`,
+`protgnn_explained_subjects.json`, `protgnn_analysis/` and `graphcare_analysis/`
+outputs) were removed on 2026-10-03; see below.
 
 ## Retired legacy code (frozen)
 
@@ -79,6 +68,13 @@ from the Git refs and verified local archives in
 [docs/max6-top10-cleanup.md](docs/max6-top10-cleanup.md). Retired entrypoints
 are not documented as commands. Docs under `docs/` and READMEs inside held
 directories that mention them are historical.
+
+Root cleanup 2026-10-03 (third pass): the retired legacy experiments, unused old
+inputs, the old GraphCare runtime, old agent run dirs and the viewer were
+archived to
+`/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/repo-archive-20261003/`
+(hash-verified tars, `manifest.jsonl`) and deleted from the repo. Tracked files
+remain in Git history. Details: [docs/structure-cleanup-2026-10-03.md](docs/structure-cleanup-2026-10-03.md).
 
 ## Rules for work in this repository
 
@@ -93,4 +89,4 @@ directories that mention them are historical.
 - Use module form (`python3 -m package.module`) from the repository root.
 - Do not mass-move scientific code, symlinks, vendored dependencies or historical
   outputs to reduce root entries.
-- The viewer (`visualizer/`) was retired on 2026-10-03; recover it with `git checkout c54be79a -- visualizer`.
+- The viewer (`visualizer/`) was retired on 2026-10-03; it is archived in the archive dir above, and recoverable with `git checkout c54be79a -- visualizer`.

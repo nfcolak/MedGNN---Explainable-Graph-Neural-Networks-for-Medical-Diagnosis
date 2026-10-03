@@ -62,16 +62,20 @@ The old 30-class native/star/cooccur model code, the tests tied to it and the
 legacy ProtGNN graph exporter are retired together (see
 [the cleanup record](docs/max6-top10-cleanup.md)). Their original source is
 recoverable from the Git refs and local archives listed there; it is not part
-of the active runtime. Historical result and evidence directories are kept in
-place. Keeping a result does not mean it can be reproduced: a historical run is
+of the active runtime. Current result and evidence directories are kept in
+place; retired ones are archived (below). Keeping a result does not mean it can be reproduced: a historical run is
 reproducible only if its source hashes were verified against a ref, snapshot or
 archive, and byte-exact reproduction of some max6 sidecars is not demonstrated.
 Old docs that name retired commands describe history; do not run those commands.
 `comparison/standardized/build_explanation_cohort.py` is retained byte-identical
 only as a frozen synthetic-fixture helper for shared cohort assertions, not as a
-current command. HOLD `performance_diagnosis/` and `zero_concept_verification/`
-checks depend on archived legacy runtime; their sources/results stay untouched
-and are not active suite entrypoints.
+current command. The retired legacy experiments (`protgnn_analysis/`,
+`graphcare_analysis/`, the matched/representative GCHM studies, native runs,
+`performance_diagnosis/`, `zero_concept_verification/`, the viewer and other
+old inputs and run dirs) were archived on 2026-10-03 to
+`/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/repo-archive-20261003/` (hash-verified tars) and
+removed from the tree; the code is also in Git history. See
+[the third-pass record](docs/structure-cleanup-2026-10-03.md).
 
 ## Requirements
 
@@ -84,9 +88,7 @@ or `python3 -m venv .venv` and `pip install -r requirements-lock.txt`.
 `requirements.txt` has flexible ranges; the lock file and `environment.yml` are
 pinned. GraphXAI stays under `external/GraphXAI-main/` (used by the CEI
 explanation path). The clinical GraphCare adapter is native code in
-`clinical_graph_v2/methods/graphcare.py` and does not need the separate
-`.venv-graphcare/`; that environment and `external/GraphCare/` are retained
-legacy dependencies and are left in place.
+`clinical_graph_v2/methods/graphcare/` and runs in the main environment.
 
 ## More links
 

@@ -30,7 +30,7 @@ and integration remain delegated.
 Approval does not authorize project imports, tests or pytest collection, real
 preprocessing, training, heldout access, scientific edits, deletion of data or
 results, relocation of `data/`, `external/` or `docs-vault/`, changes to
-`.venv-graphcare/`, or publishing patient material.
+`.venv-graphcare/` (since deleted, 2026-10-03), or publishing patient material.
 
 Byte-freeze and no-push instructions here apply FOR THIS cleanup operation.
 They do not prohibit future separately authorized scientific development.
@@ -137,12 +137,18 @@ Held in place and untouched: all `data/`; max6 inputs and sidecars; all-visits
 labels and event index as lineage; `membership_full_20260923` (not a max6 input);
 required native label contracts and historical binding manifests; current and
 historical results with every `source_snapshot`/binding/result/manifest;
-`external/GraphCare`, `.venv-graphcare/`, `external/GraphXAI-main`, `docs-vault/`
-and worktrees with unsaved changes or separate outputs.
+`external/GraphXAI-main`, `docs-vault/` and the `cei1001-smoke` and
+`cei-v3-delivery` worktrees. (Update 2026-10-03, third pass: `external/GraphCare`
+and `.venv-graphcare/` were deleted without archive.)
 
-HOLD `performance_diagnosis/` and `zero_concept_verification/` include historical
-verification sources/results that depend on archived legacy runtime. They are
-not active suite entrypoints and are not executed, edited or removed here.
+HOLD `performance_diagnosis/` and `zero_concept_verification/` included historical
+verification sources/results that depended on archived legacy runtime. They were
+not executed here. ARCHIVED 2026-10-03: they, `native_runs/`, `native_evidence/`,
+`protgnn_analysis/`, `graphcare_analysis/`, `matched_gchm_xgb_v1/` and the other
+held evidence that lived in these paths were moved to
+`/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/repo-archive-20261003/` (hash-verified tars,
+`manifest.jsonl`) and deleted from the repo; see
+`docs/structure-cleanup-2026-10-03.md`, section "Root cleanup (2026-10-03, third pass)".
 
 ## Provenance and static limits
 
