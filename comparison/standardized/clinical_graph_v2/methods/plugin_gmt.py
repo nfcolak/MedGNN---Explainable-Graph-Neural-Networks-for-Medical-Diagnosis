@@ -13,7 +13,7 @@ import torch.nn.functional as F
 from torch_geometric.utils import to_dense_batch
 
 from .. import NODE_KINDS
-from ..tensorize import PAYLOAD_WIDTH
+from ..core.tensorize import PAYLOAD_WIDTH
 from .base import (ClinicalMethodAdapter, MethodOutput, diagnostic_float, graph_mean,
                    method_option, parameter_count, read_clinical_batch,
                    reject_unknown_options, relation_count)

@@ -28,9 +28,9 @@ from typing import Tuple
 import torch
 
 from .. import NODE_KINDS
-from ..cei_v3_absence import Universe
-from ..cei_v3_ple import KnotTable
-from ..tensorize import relation_vocabulary
+from ..studies.cei.cei_v3_absence import Universe
+from ..studies.cei.cei_v3_ple import KnotTable
+from ..core.tensorize import relation_vocabulary
 from .base import (ClinicalMethodAdapter, MethodOutput, diagnostic_float, method_option,
                    parameter_count, read_clinical_batch, relation_count,
                    reject_unknown_options)
@@ -39,7 +39,7 @@ from .plugin_cei_gnn_v2 import _INDEX_FIELDS, _INTEGER_DTYPES
 
 KNOWN_OPTIONS = frozenset(("arm", "v3_state", "k", "encoder_depth", "comorbid_block"))
 # Unit X5 owns this module; the adapter imports it lazily for comorbid_block=1 only.
-COMORBID_BLOCK_MODULE = 'comparison.standardized.clinical_graph_v2.cei_v3_ext.comorbid_block'
+COMORBID_BLOCK_MODULE = '..studies.cei.cei_v3_ext.comorbid_block'
 STATE_VERSION = 'cei_v3_state_v1'
 STATE_FIELDS = ('version', 'K', 'knot_table', 'knot_table_sha256', 'universe',
                 'universe_sha256', 'vocabulary', 'preprocessing_sha256', 'node_feature_layout')
@@ -265,7 +265,7 @@ class EvidenceAdapterV3(ClinicalMethodAdapter):
     def _build_comorbid_block(self):
         """Lazily import X5's block builder; a clear error names X5 when it is absent."""
         try:
-            module = importlib.import_module(COMORBID_BLOCK_MODULE)
+            module = importlib.import_module(COMORBID_BLOCK_MODULE, __package__)
         except ImportError as error:
             raise ValueError(
                 f"comorbid_block=1 (U3x extra_blocks hook) needs unit X5: module "

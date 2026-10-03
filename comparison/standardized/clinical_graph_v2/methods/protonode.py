@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .. import NODE_KINDS
-from ..tensorize import PAYLOAD_WIDTH
+from ..core.tensorize import PAYLOAD_WIDTH
 from .base import (ClinicalMethodAdapter, MethodOutput, diagnostic_float, graph_mean,
                    method_setting, read_clinical_batch, relation_count)
 from .protgnn import _RelationPayloadLayer

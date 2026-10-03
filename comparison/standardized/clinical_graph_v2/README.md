@@ -30,6 +30,58 @@ Tek bir skor farkı, grafın gereksizliğini veya nedensel faydasını kanıtlam
 
 > CEI-GNN v3 study results (screen/validation/GraphXAI, aggregate only, with provenance): [`docs/cei-v3-delivery-2026-10-01.md`](../../../docs/cei-v3-delivery-2026-10-01.md).
 
+## Package layout / where things are
+
+```text
+clinical_graph_v2/
+  __init__.py                 shared schema, node-kind and relation constants
+  paths.py                    stable PACKAGE_ROOT and REPO_ROOT
+  core/
+    contracts.py, schema.py   artifact/data contracts and schema helpers
+    graph.py, build.py        graph construction and producer
+    store.py, diagnosis.py    source indices and diagnosis history
+    tensorize.py, rewiring.py input encoding and relation controls
+    model.py, gchm_v2.py,
+    gchm_v3.py                shared ClinicalGNN and GCHM implementations
+    train.py                  shared method runner and evaluation
+    aggregate.py, stratify.py result aggregation and subgroup analysis
+    audit.py,
+    relation_information.py  graph information / reconstructibility audits
+    repair_metadata.py        guarded inherited-index metadata repair
+    mechanism_check.py        training-free mechanism checks
+  methods/                    adapters, method networks and plugin registry
+    plugin_<name>.py          auto-discovered REGISTER plugins
+  controls/
+    tabular_control.py        XGBoost under the shared comparison contract
+  studies/
+    cei/                      CEI pilot, v2/v3 study and analysis modules
+      cei_v3_ext/             CEI extensions, runners and scoring helpers
+  <old module>.py             compatibility shims, not implementation files
+  cei_v3_ext/                 compatibility package and submodule shims
+```
+
+Use the implementation paths in new imports and commands. Old imports and old
+`python3 -m comparison.standardized.clinical_graph_v2.<module>` commands remain
+compatible through the root shims (including the old `cei_v3_ext` package).
+`comparison/standardized/gchm_v2_protocol/` remains a separate protocol package.
+Source bindings cover the whole package via `paths.PACKAGE_ROOT`; build's producer
+code binding covers `core/*.py` plus its explicitly listed source files. Historical
+source hashes do not match the restructured sources; guards remain fail-closed.
+
+### Adding things
+
+- New method: add `methods/plugin_<name>.py` with `REGISTER`; plugins are
+  auto-discovered. See the existing plugins and `methods/__init__.py` for the
+  adapter registration contract.
+- New study: add a subpackage `studies/<name>/`, use `paths.PACKAGE_ROOT` for source
+  binding, and choose a new dated output directory. For example, a study module
+  imports `PACKAGE_ROOT` with `from ...paths import PACKAGE_ROOT`.
+- New control: add `controls/<name>.py`, reusing `core` contracts and encoding.
+
+This layout does not authorize execution: preprocessing, graph/cache builds,
+training and held-out evaluation still require their separate approvals. Never
+reuse a filled output directory or bypass a source-binding guard.
+
 ## v3 yöntem adaptörleri — uygulama sözleşmesi
 
 Bu dal, aynı `clinical_inputs_v3` tensor girdisi üzerinde dört yöntem seçeneği
@@ -302,7 +354,7 @@ python3 -m comparison.standardized.event_graph_gchm_xgb_v1.local_labels_v2 \
 Adım 1'in `events.sqlite` + `cohort.csv`'sini devralır, 18 GB taramayı tekrarlamaz.
 
 ```bash
-python3 -m comparison.standardized.clinical_graph_v2.build \
+python3 -m comparison.standardized.clinical_graph_v2.core.build \
   --inherit-from comparison/standardized/event_inputs/first_recorded_lab_all_visits_v2_max6 \
   --raw-root "data/Original CSVs" \
   --canonical comparison/canonical_split.json \
@@ -352,10 +404,10 @@ mesajlaşma atlanırken kullanılmayan katmanlar etkin kapasiteye sayılmaz.
 
 ```bash
 # mekanizma kontrolleri (egitimsiz, saniyeler) -- once bunu kosun
-python3 -m comparison.standardized.clinical_graph_v2.mechanism_check
+python3 -m comparison.standardized.clinical_graph_v2.core.mechanism_check
 
 # ana kosu (~10 dk/seed, CPU)
-python3 -m comparison.standardized.clinical_graph_v2.train \
+python3 -m comparison.standardized.clinical_graph_v2.core.train \
   --artifact comparison/standardized/event_inputs/clinical_graph_logic_v2_max6 \
   --targets comparison/standardized/event_inputs/first_recorded_lab_all_visits_v2_targets_logic_v2_max6/targets.csv \
   --output comparison/standardized/clinical_runs_logic_v2_max6/main_seed1234 \
@@ -367,27 +419,27 @@ python3 -m comparison.standardized.clinical_graph_v2.train \
 #   --edges informative    yalniz informative iliskiler
 
 # HGT arm'i (WWW'20) -- tipli dikkat
-python3 -m comparison.standardized.clinical_graph_v2.train \
+python3 -m comparison.standardized.clinical_graph_v2.core.train \
   --artifact comparison/standardized/event_inputs/clinical_graph_logic_v2_max6 \
   --targets comparison/standardized/event_inputs/first_recorded_lab_all_visits_v2_targets_logic_v2_max6/targets.csv \
   --output comparison/standardized/clinical_runs_logic_v2_max6/hgt_seed1234 \
   --conv hgt --hidden 96 --heads 4 --epochs 12 --seed 1234 --execute
 
 # HGT ile KAPASITE-ESIT baseline (426.270'e karsi 422.014 param, %1 fark)
-python3 -m comparison.standardized.clinical_graph_v2.train \
+python3 -m comparison.standardized.clinical_graph_v2.core.train \
   --artifact comparison/standardized/event_inputs/clinical_graph_logic_v2_max6 \
   --targets comparison/standardized/event_inputs/first_recorded_lab_all_visits_v2_targets_logic_v2_max6/targets.csv \
   --output comparison/standardized/clinical_runs_logic_v2_max6/wide_seed1234 \
   --hidden 128 --epochs 12 --seed 1234 --execute
 
 # tablo kontrolu (XGBoost, ayni artefakt)
-python3 -m comparison.standardized.clinical_graph_v2.tabular_control \
+python3 -m comparison.standardized.clinical_graph_v2.controls.tabular_control \
   --artifact comparison/standardized/event_inputs/clinical_graph_logic_v2_max6 \
   --targets comparison/standardized/event_inputs/first_recorded_lab_all_visits_v2_targets_logic_v2_max6/targets.csv \
   --out comparison/standardized/clinical_runs_logic_v2_max6/xgb_control
 
 # sonuclari topla + seed yayilimini olc
-python3 comparison/standardized/clinical_graph_v2/aggregate.py
+python3 -m comparison.standardized.clinical_graph_v2.core.aggregate
 ```
 
 ### İsteğe bağlı — graf denetimi
@@ -395,7 +447,7 @@ python3 comparison/standardized/clinical_graph_v2/aggregate.py
 Grafın tablo görünümünden yeniden kurulup kurulamadığını ölçer:
 
 ```bash
-python3 -m comparison.standardized.clinical_graph_v2.audit \
+python3 -m comparison.standardized.clinical_graph_v2.core.audit \
   --artifact comparison/standardized/event_inputs/clinical_graph_logic_v2_max6
 ```
 
