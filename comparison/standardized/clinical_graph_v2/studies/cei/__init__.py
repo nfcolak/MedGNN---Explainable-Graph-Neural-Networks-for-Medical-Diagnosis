@@ -1,1 +1,1 @@
-"""Clinical evidence interaction studies."""
+"""Compatibility CEI study package holding only shims."""
