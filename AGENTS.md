@@ -13,7 +13,7 @@ Self-explainable GNN diagnosis benchmark on MIMIC-IV ED patient graphs: ProtGNN,
 
 | Rule | Why / source |
 |---|---|
-| NEVER load or evaluate the held-out test fold; select checkpoints on validation macro-F1 only (or on the ADR-008 dev split only when the user explicitly selects that proposed protocol; or on the patient-disjoint TRAIN dev split only for the CEI-GNN studies the user approved under accepted ADR-010 / ADR-013 / ADR-014, whose ADR-012 plan they supersede; never the held-out fold). | `.claude/context/adr-002.md` |
+| NEVER load or evaluate the held-out test fold. Default (user decision 2026-10-04, `fair_v1`): select checkpoints on the 5,000-row patient-disjoint TRAIN dev split and score validation once at the end; validation selection only as an explicit, recorded protocol override. | `.claude/context/adr-002.md`, Jev-Mem `MedGNN/fair-comparison-protocol` |
 | NEVER write/run tests unless the user explicitly opens a "testing phase". Parse-only checks are fine. The user-approved source/test archival does NOT authorize running tests. | `.claude/context/adr-005.md` |
 | NEVER start real preprocessing, cache builds or training without explicit user approval. Use `--dry-run` / plan modes. | `ProjectOS medgnn/Reference/STRUCTURE.md` |
 | NEVER overwrite a filled output/artifact directory; write to a new path. Runners refuse by design. | `ProjectOS medgnn/Reference/clinical-graph-v2-runbook.md` |
@@ -27,13 +27,14 @@ Self-explainable GNN diagnosis benchmark on MIMIC-IV ED patient graphs: ProtGNN,
 | Never keep notes in this repo (no `docs/`, READMEs, specs, reports, `STRUCTURE.md`); only `AGENTS.md` and `README.md`. Notes go to ProjectOS `10-Projects/medgnn/` (history, reports, reference) and Jev-Mem `Notes/MedGNN/` (current rules). | User rule 2026-10-03 |
 | Report results with task identity (cohort, class set, sample size, seed). Single-seed gaps are not method superiority. | `.claude/context/adr-006.md` |
 
-## Current comparison contract (max6 / Top-10)
+## Current comparison contract (fair_v1, the `core.train` default)
 
 - Patients with more than 6 total visits are excluded.
 - Classes: the 10 most frequent diagnoses by TRAIN-fold frequency; other labels are dropped, never merged into `other`.
-- Sample comparison: the same 10,000 train IDs (seed `1234`) and the full 4,254-row validation fold.
-- Results from this task are NOT comparable with the retired 30-class native benchmark (331-slot star input). Its code is frozen legacy, retired with its tests and exporter; see `ProjectOS medgnn/Reports/max6-top10-cleanup.md`. Top-10 selection still needs the original class order in `comparison/canonical_split.json`.
-- Full details: `.claude/context/adr-006.md`. Proposed, not accepted: `adr-007.md` (bidirectional edges, GCHM-PNA v2) and `adr-008.md` (dev-selected equal-budget protocol; not enabled).
+- Same 10,000 TRAIN ids (sample seed 1234); 5,000-row patient-disjoint dev split from unused TRAIN patients for checkpoint selection; full 4,254-row validation fold scored once at the end; sqrt-inverse class weights.
+- Same budget for every method: 40 epochs, no early stopping (patience 40). Seeds 1234, 2025, 7. Rank methods on dev; report validation mean ± SD and a patient-paired bootstrap (`comparison/top3/compare.py`, refuses runs with `protocol_overrides`).
+- Runs under another setting (e.g. the 2026-10-03 validation-selected, patience-10 runs) are not comparable and are never mixed into a comparison.
+- Not comparable with the retired 30-class native benchmark. Top-10 selection still needs the original class order in `comparison/canonical_split.json`.
 
 ## Where things live
 
