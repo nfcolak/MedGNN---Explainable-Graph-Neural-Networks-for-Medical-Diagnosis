@@ -28,6 +28,11 @@ Arms share a class and explicit flags; bypassed layers change active capacity:
                                          unused TRAIN patients (--dev-limit), after
                                          which validation is evaluated exactly once
 
+Fair protocol (default, `FAIR_PROTOCOL`): train sample 10000 / seed 1234, top-10 labels,
+sqrt_inverse weights, dev selection (5000 rows), one validation evaluation, 40 epochs,
+patience 40 for every method. Explicit values still win and are recorded in
+binding.json `protocol_overrides`.
+
 `--conv hgt` is not capacity-matched to the others by construction: typed projections
 cost parameters. `--hidden` is therefore reported alongside every result, and a fair
 HGT-vs-baseline claim needs a width-matched baseline run, not just this flag.
@@ -93,6 +98,15 @@ GCHM_V2_DEFAULTS = dict(hidden=92, layers=3, dropout=0.3, lr=1e-3,
 # v3 keeps v2's optimiser profile; hidden 88 keeps it below the frozen ProtGNN count
 # (mechanism_check.v3_parameters_below_protgnn: 391,448 < 399,884 bidirectional).
 GCHM_V3_DEFAULTS = dict(GCHM_V2_DEFAULTS, hidden=88)
+# User decision 2026-10-04: the CEI v3 study setting is the DEFAULT for every method so
+# models are compared fairly. It overrides each method's epochs/patience (min_delta and
+# all other hyper-parameters stay native). An explicit CLI value still wins but is
+# listed in binding.json `protocol_overrides`; comparison/top3/compare.py refuses runs
+# that carry overrides.
+PROTOCOL_NAME = 'fair_v1'
+FAIR_PROTOCOL = dict(train_limit=10000, sample_seed=1234, top_k_labels=10,
+                     weights='sqrt_inverse', selection_fold='dev', dev_limit=5000,
+                     final_eval='validation', epochs=40, patience=40)
 SELECTION_FOLDS = ('validation', 'dev')
 FINAL_EVALS = ('validation', 'none')
 DEV_POLICY = ('labelled TRAIN-fold rows whose patient has no row in the drawn training '
@@ -205,9 +219,20 @@ def normalize_method_args(args, parser=None):
         args.edge_dropout = 0.1 if edge_dropout is None else float(edge_dropout)
         if not 0.0 <= args.edge_dropout < 1.0:
             fail('--edge-dropout must be in [0, 1)')
-    for name, default in (('edge_direction', 'forward'), ('selection_fold', 'validation'),
-                          ('final_eval', 'validation'), ('dev_limit', None),
-                          ('sample_seed', None), ('no_hub_gate', False),
+    # Fair protocol: every protocol key the caller left unset takes the FAIR_PROTOCOL
+    # value; an explicit value wins and is reported as an override further below.
+    # `--selection-fold validation` without --dev-limit keeps dev_limit absent.
+    explicit = {name: getattr(args, name, None) for name in FAIR_PROTOCOL}
+    for name, value in FAIR_PROTOCOL.items():
+        if explicit[name] is not None:
+            continue
+        if name == 'dev_limit' and explicit['selection_fold'] == 'validation':
+            setattr(args, name, None)
+            continue
+        if name in ('epochs', 'patience'):
+            continue  # applied with the method profile below
+        setattr(args, name, value)
+    for name, default in (('edge_direction', 'forward'), ('no_hub_gate', False),
                           ('no_wide', False), ('no_jk', False), ('v3_readout', None),
                           ('edge_dropout', None)):
         if getattr(args, name, None) is None:
@@ -242,7 +267,7 @@ def normalize_method_args(args, parser=None):
     supplied = []
     for name, default in defaults.items():
         if getattr(args, name, None) is None:
-            setattr(args, name, default)
+            setattr(args, name, FAIR_PROTOCOL.get(name, default))
         else:
             supplied.append(name)
     for name, default in (
@@ -263,6 +288,9 @@ def normalize_method_args(args, parser=None):
     if args.min_delta is not None and args.min_delta < 0.0:
         raise ValueError('min-delta must be nonnegative when configured')
     args._common_overrides = sorted(set(supplied))
+    args.protocol_resolved = {name: getattr(args, name) for name in FAIR_PROTOCOL}
+    args.protocol_overrides = [name for name in FAIR_PROTOCOL
+                               if args.protocol_resolved[name] != FAIR_PROTOCOL[name]]
     args._method_overrides = sorted(set(method_overrides)
                                     | {'option:' + key for key in args.method_options})
     args._method_args_normalized = True
@@ -714,6 +742,9 @@ def run(args):
         'method_config': method_config,
         'method_native_defaults': method_config.get('native_defaults', native_defaults),
         'common_overrides': args._common_overrides,
+        'protocol': PROTOCOL_NAME,
+        'protocol_resolved': dict(args.protocol_resolved),
+        'protocol_overrides': list(args.protocol_overrides),
         'method_overrides': args._method_overrides,
         'artifact': str(artifact),
         'artifact_graphs_sha256': manifest['graphs_sha256'],
@@ -1023,7 +1054,7 @@ def parser():
                         'control. Constrained graphs may have no legal swaps.')
     p.add_argument('--heads', type=int, default=4)
     p.add_argument('--weights', choices=['none', 'sqrt_inverse', 'inverse'],
-                   default='sqrt_inverse')
+                   default=None)
     p.add_argument('--hidden', type=int, default=None)
     p.add_argument('--layers', type=int, default=None)
     p.add_argument('--token-dim', type=int, default=32)
@@ -1081,6 +1112,9 @@ def main():
             'conv': args.conv,
             'edge_direction': args.edge_direction,
             'selection_fold': args.selection_fold,
+            'protocol': PROTOCOL_NAME,
+            'protocol_resolved': args.protocol_resolved,
+            'protocol_overrides': args.protocol_overrides,
             'effective_defaults': {
                 name: getattr(args, name) for name in method_defaults(args.method, args.conv)
             },
