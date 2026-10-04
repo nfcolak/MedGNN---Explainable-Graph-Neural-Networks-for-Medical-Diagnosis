@@ -1,9 +1,9 @@
-/data/
+/data/raw/
 /.worktrees/
 **/processed_*/
 **/*.pt
 **/*.pth
-data/*.csv
+/data/*.csv
 **/__pycache__/
 .DS_Store
 
@@ -17,7 +17,7 @@ external/GraphXAI-main/img/
 external/GraphXAI-main/test_scripts/
 
 # New graph-structure caches (data/graphs/<structure>/<method>/)
-data/graphs/
+/data/graphs/
 
 # Obsidian docs-vault (per-machine state only)
 docs-vault/.obsidian/workspace*

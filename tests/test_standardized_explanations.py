@@ -22,7 +22,7 @@ from core.explain.explanation_contract import (
 ROOT = Path(__file__).resolve().parents[1]
 COHORT = ROOT / "comparison" / "standardized" / "explanation_subjects.json"
 SPLIT = ROOT / "comparison" / "canonical_split.json"
-DATASET = ROOT / "data" / "merged_ed.csv"
+DATASET = ROOT / "data" / "raw" / "merged_ed.csv"
 
 
 class _SumClassifier(nn.Module):

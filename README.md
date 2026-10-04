@@ -22,7 +22,8 @@ Each method lives in its own top-level folder.
 ## Code layout
 
 ```text
-data_pipeline/
+data/
+  raw/                           git-ignored raw MIMIC-IV ED files (never tracked)
   s1_clean/                      frozen raw ED CSV cleaning scripts (never run in cleanup)
   s2_events/                     events, cohort and metadata repair
   s3_labels/                     diagnosis labels and ICD mapping

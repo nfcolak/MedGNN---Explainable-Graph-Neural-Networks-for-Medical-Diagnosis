@@ -19,9 +19,9 @@ from core.contracts import (
     validate_visit_membership_record,
     verify_visit_membership_file,
 )
-from data_pipeline.s4_graph.graph import build_graph_with_visit_membership
+from data.s4_graph.graph import build_graph_with_visit_membership
 from core.schema import sha256, timestamp
-from data_pipeline.s4_graph.store import ClinicalStore
+from data.s4_graph.store import ClinicalStore
 from core.tensorize import (
     ClinicalGraphData,
     load_preprocessing,

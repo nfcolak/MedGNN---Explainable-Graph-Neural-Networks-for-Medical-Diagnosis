@@ -125,7 +125,7 @@ def _predict(nodes, relation, knowledge):
         for node in kinds['measurement']:
             emit(node['id'], analytes[node['token']])
     elif relation in ('baseline_of', 'trajectory_of'):
-        from data_pipeline.s4_graph.graph import _link
+        from data.s4_graph.graph import _link
         prior, index = defaultdict(list), defaultdict(list)
         for node in kinds['measurement']:
             if node['scope'] not in ('prior', 'index'):

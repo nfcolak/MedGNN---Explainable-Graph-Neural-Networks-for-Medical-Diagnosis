@@ -7,7 +7,7 @@ import math
 from pathlib import Path
 import re
 
-from data_pipeline.s2_events.enriched_spec import LAB_ITEMS
+from data.s2_events.enriched_spec import LAB_ITEMS
 
 LAB_IDS = {str(value) for value in LAB_ITEMS.values()}
 # Raw ED temperatures are Fahrenheit; conversion occurs exactly once at ingestion.

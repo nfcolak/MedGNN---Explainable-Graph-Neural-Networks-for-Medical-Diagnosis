@@ -48,7 +48,7 @@ import torch
 import torch.nn as nn
 from torch_geometric.loader import DataLoader
 
-from data_pipeline.s5_filter_split.selection import select_top_labels, sample_train_ids, select_dev_ids
+from data.s5_filter_split.selection import select_top_labels, sample_train_ids, select_dev_ids
 
 from .contracts import (VISIT_MEMBERSHIP_CONTRACT_VERSION, VISIT_MEMBERSHIP_FILENAME,
                         iter_graphs_with_membership, sample_ids_sha256,

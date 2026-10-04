@@ -8,8 +8,8 @@ claimed to be train-fitted. No clinical mapping is invented here.
 from pathlib import Path
 import json
 import pandas as pd
-from data_pipeline.s3_labels import icd_mapping
-from data_pipeline.s3_labels.icd_mapping import ICD_MAPPING_POLICY, load_icd_map, normalize_icd10
+from data.s3_labels import icd_mapping
+from data.s3_labels.icd_mapping import ICD_MAPPING_POLICY, load_icd_map, normalize_icd10
 from .labels import DEFAULT_GRAPH_ROOT, DEFAULT_RAW_ROOT, DEFAULT_LABELS, REPO, sha256, _load_labels, _load_disease_merges, _json_save
 
 
@@ -26,7 +26,7 @@ def build(output, graph_root=None):
     if output.exists():
         raise FileExistsError(output)
     graph_root = Path(graph_root if graph_root is not None else DEFAULT_GRAPH_ROOT).resolve()
-    from data_pipeline.s2_events.repair_metadata import LOCK, PENDING, validate_index_ready
+    from data.s2_events.repair_metadata import LOCK, PENDING, validate_index_ready
     if (graph_root / PENDING).exists() or (graph_root / LOCK).exists():
         raise ValueError('Graph/index metadata is locked or repair is incomplete')
     historical_path = DEFAULT_GRAPH_ROOT.parent / 'first_recorded_lab_all_visits_v2_targets_v1/binding_manifest.json'
@@ -34,7 +34,7 @@ def build(output, graph_root=None):
     source_hashes = {
         'raw_diagnosis_sha256': sha256(DEFAULT_RAW_ROOT / 'diagnosis.csv'),
         'icd_mapping_sha256': sha256(DEFAULT_RAW_ROOT / 'icd9_to_icd10_mapping.csv'),
-        'merge_policy_sha256': sha256(REPO / 'data_pipeline/s1_clean/merge_ed.py'),
+        'merge_policy_sha256': sha256(REPO / 'data/s1_clean/merge_ed.py'),
     }
     if any(historical[k] != v for k, v in source_hashes.items()):
         raise ValueError('Original ontology source changed; refuse new-outcome reconstruction')
