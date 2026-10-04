@@ -36,10 +36,10 @@ Everything is bounded by the inherited cutoff; no node may be dated after it.
 from collections import defaultdict
 from itertools import combinations
 
-from . import SCHEMA_VERSION
-from .contracts import VISIT_MEMBERSHIP_CONTRACT_VERSION
-from .schema import timestamp
-from comparison.standardized.icd_mapping import ICD_MAPPING_POLICY
+from core import SCHEMA_VERSION
+from core.contracts import VISIT_MEMBERSHIP_CONTRACT_VERSION
+from core.schema import timestamp
+from data_pipeline.s3_labels.icd_mapping import ICD_MAPPING_POLICY
 
 LOGIC_CONTRACT_VERSION = 'clinical_graph_logic_v2'
 

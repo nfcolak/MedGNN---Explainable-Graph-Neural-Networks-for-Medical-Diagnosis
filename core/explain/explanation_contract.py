@@ -16,8 +16,8 @@ from typing import Any, Iterable, Mapping, Sequence
 import numpy as np
 import torch
 
-from shared.lib.benchmark_contract import file_sha256, load_canonical_split
-from shared.lib.fidelity import (
+from core.explain.benchmark_contract import file_sha256, load_canonical_split
+from core.explain.fidelity import (
     NODE_TOP_K_FRACTION,
     NODE_TOP_K_POLICY,
     fidelity_minus,

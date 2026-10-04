@@ -12,7 +12,7 @@ import torch
 import torch_geometric
 from torch_geometric.nn import MessagePassing
 from torch_geometric.explain.algorithm.utils import set_masks, clear_masks
-from shared.lib.explanation_contract import build_node_explanation
+from core.explain.explanation_contract import build_node_explanation
 
 VENDOR = Path(__file__).resolve().parents[2] / 'external/GraphXAI-main'
 sys.path.insert(0, str(VENDOR))

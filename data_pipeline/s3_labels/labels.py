@@ -16,7 +16,7 @@ from typing import Any
 
 import pandas as pd
 
-REPO = Path(__file__).resolve().parents[3]
+REPO = Path(__file__).resolve().parents[2]
 DEFAULT_GRAPH_ROOT = REPO / "comparison/standardized/event_inputs/first_recorded_lab_all_visits_v2"
 DEFAULT_RAW_ROOT = REPO / "data/Original CSVs"
 DEFAULT_LABELS = REPO / "comparison/standardized/native_inputs/protgsat_snapshot_v1/contract.json"
@@ -48,7 +48,7 @@ def _load_labels(path: Path) -> list[str]:
 
 def _load_disease_merges() -> dict[str, str]:
     """Load the existing merge policy without executing the data-prep script."""
-    path = REPO / "shared/data_prep/merge_ed.py"
+    path = REPO / "data_pipeline/s1_clean/merge_ed.py"
     tree = ast.parse(path.read_text(), filename=str(path))
     for node in tree.body:
         if not isinstance(node, ast.Assign):
@@ -222,7 +222,7 @@ def build_binding(
         "cohort_sha256": manifest["cohort_sha256"],
         "raw_diagnosis_sha256": sha256(raw_root / "diagnosis.csv"),
         "icd_mapping_sha256": sha256(raw_root / "icd9_to_icd10_mapping.csv"),
-        "merge_policy_sha256": sha256(REPO / "shared/data_prep/merge_ed.py"),
+        "merge_policy_sha256": sha256(REPO / "data_pipeline/s1_clean/merge_ed.py"),
         "labels_path": str(labels_path),
         "labels": labels,
         "target_policy": "Existing disease_1 policy reproduced from diagnosis.csv by exact stay_id; only one final disease label per stay retained.",

@@ -22,7 +22,7 @@ import sqlite3
 import stat
 import uuid
 
-from .schema import identifier, read_cohort, timestamp
+from core.schema import identifier, read_cohort, timestamp
 
 REPAIR_VERSION = 'event_index_metadata_repair_v1'
 METADATA_NAMES = ('manifest.json', 'prepared_index.json', 'verification.json',

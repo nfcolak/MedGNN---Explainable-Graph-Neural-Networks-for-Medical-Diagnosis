@@ -743,11 +743,10 @@ def _write_journal(path, journal):
 def _capture_executable_sources(repo_root):
     """Hash executable source bytes rooted at the active repository worktree."""
     repo_root = Path(repo_root).resolve(strict=True)
-    package = repo_root / "comparison/standardized/clinical_graph_v2"
-    required = (package / "methods/cei/studies/cei_pilot.py", package / "methods/cei/plugin_cei_gnn.py")
+    required = (repo_root / "cei/studies/cei_pilot.py", repo_root / "cei/plugin_cei_gnn.py")
     if any(not path.is_file() for path in required):
         raise ValueError("active worktree is missing CEI runner or plugin source")
-    source_roots = (package, repo_root / "shared/lib", repo_root / "external")
+    source_roots = (repo_root / "core", repo_root / "cei", repo_root / "core/explain", repo_root / "external")
     source_hashes = {}
     for root in source_roots:
         if not root.exists():
@@ -756,10 +755,9 @@ def _capture_executable_sources(repo_root):
             if "__pycache__" not in path.parts and ".venv" not in path.parts:
                 source_hashes[path.relative_to(repo_root).as_posix()] = hashlib.sha256(
                     path.read_bytes()).hexdigest()
-    prefix = "comparison/standardized/clinical_graph_v2/"
-    clinical = {path[len(prefix):]: digest for path, digest in source_hashes.items()
-                if path.startswith(prefix)}
-    if not {"methods/cei/studies/cei_pilot.py", "methods/cei/plugin_cei_gnn.py"} <= set(clinical):
+    clinical = {path: digest for path, digest in source_hashes.items()
+                if path.startswith(("core/", "cei/"))}
+    if not {"cei/studies/cei_pilot.py", "cei/plugin_cei_gnn.py"} <= set(clinical):
         raise ValueError("executable source map omits the CEI runner or plugin")
     return {"source_hashes": source_hashes,
             "clinical_source_hashes": clinical,

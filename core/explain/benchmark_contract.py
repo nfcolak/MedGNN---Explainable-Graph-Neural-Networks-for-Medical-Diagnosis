@@ -7,7 +7,7 @@ from itertools import product
 from pathlib import Path
 from typing import Any, Dict, Iterable, Tuple
 
-from shared.lib.graph_structures import (
+from core.explain.graph_structures import (
     GRAPH_STRUCTURES,
     SUPPORTED_METHODS,
     resolve as resolve_structure,

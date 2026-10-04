@@ -16,7 +16,7 @@ import json
 import math
 from pathlib import Path
 
-from . import INFORMATIVE_RELATIONS, STRUCTURAL_RELATIONS
+from core import INFORMATIVE_RELATIONS, STRUCTURAL_RELATIONS
 
 NODE_FIELDS = ('id', 'kind', 'token', 'scope', 'value', 'unit', 'time_hours',
                'prior_encounters')
@@ -125,7 +125,7 @@ def _predict(nodes, relation, knowledge):
         for node in kinds['measurement']:
             emit(node['id'], analytes[node['token']])
     elif relation in ('baseline_of', 'trajectory_of'):
-        from .graph import _link
+        from data_pipeline.s4_graph.graph import _link
         prior, index = defaultdict(list), defaultdict(list)
         for node in kinds['measurement']:
             if node['scope'] not in ('prior', 'index'):

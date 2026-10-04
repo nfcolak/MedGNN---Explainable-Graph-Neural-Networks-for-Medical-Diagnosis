@@ -9,7 +9,7 @@ ingested here, into a separate v2-owned database that never mutates v1.
 from collections import Counter, defaultdict
 import sqlite3
 
-from .schema import (ARRIVAL_FIELDS, FORBIDDEN_EDSTAYS_FIELDS, TRIAGE_VITALS,
+from core.schema import (ARRIVAL_FIELDS, FORBIDDEN_EDSTAYS_FIELDS, TRIAGE_VITALS,
                      VITAL_RANGES, identifier, normalize_complaint, numeric, rows,
                      split_complaints, timestamp)
 

@@ -18,7 +18,7 @@ import subprocess
 from core.paths import REPO_ROOT
 
 REPO = REPO_ROOT
-NAMES = ('core', 'protgnn', 'validation', 'xgboost', 'graphxai')
+NAMES = ('core', 'protgnn', 'validation', 'graphxai')
 MANIFEST = 'preservation_manifest.json'
 SCHEMA = 'medgnn.cei_v3_preservation.v1'
 DEFAULT_ROOT = REPO / 'comparison/standardized/clinical_runs_preserved_20261001'

@@ -17,20 +17,20 @@ import os
 from pathlib import Path
 import shutil
 
-from . import INFORMATIVE_RELATIONS, NODE_KINDS, SCHEMA_VERSION, STRUCTURAL_RELATIONS
-from .paths import REPO_ROOT
-from .diagnosis import DiagnosisIndex, load_icd_map
-from .graph import (LOGIC_CONTRACT_VERSION, assumed_timing,
+from core import INFORMATIVE_RELATIONS, NODE_KINDS, SCHEMA_VERSION, STRUCTURAL_RELATIONS
+from core.paths import REPO_ROOT
+from data_pipeline.s4_graph.diagnosis import DiagnosisIndex, load_icd_map
+from data_pipeline.s4_graph.graph import (LOGIC_CONTRACT_VERSION, assumed_timing,
                     build_graph_with_visit_membership, lab_availability,
                     temporal_contract)
-from .contracts import (VISIT_MEMBERSHIP_CONTRACT_VERSION, VISIT_MEMBERSHIP_FILENAME,
+from core.contracts import (VISIT_MEMBERSHIP_CONTRACT_VERSION, VISIT_MEMBERSHIP_FILENAME,
                         validate_artifact_manifest, validate_visit_membership_record,
                         verify_visit_membership_file)
-from comparison.standardized import icd_mapping
-from comparison.standardized.icd_mapping import ICD_MAPPING_POLICY
-from .schema import (fit_complaint_vocabulary, read_cohort, read_knowledge,
+from data_pipeline.s3_labels import icd_mapping
+from data_pipeline.s3_labels.icd_mapping import ICD_MAPPING_POLICY
+from core.schema import (fit_complaint_vocabulary, read_cohort, read_knowledge,
                      save_json, sha256, timestamp)
-from .store import ClinicalStore, build_triage_index, complaint_counts
+from data_pipeline.s4_graph.store import ClinicalStore, build_triage_index, complaint_counts
 
 FOLDS = ('train', 'validation', 'test')
 
@@ -349,7 +349,7 @@ def run(args):
     root = args.output.resolve()
     inherited = args.inherit_from.resolve()
     v1_manifest = json.loads((inherited / 'manifest.json').read_text())
-    from .repair_metadata import LOCK, PENDING, validate_index_ready
+    from data_pipeline.s2_events.repair_metadata import LOCK, PENDING, validate_index_ready
     if (inherited / PENDING).exists() or (inherited / LOCK).exists():
         raise ValueError('Inherited metadata repair is incomplete or locked')
     if v1_manifest['status'] == 'index_ready':
@@ -357,7 +357,9 @@ def run(args):
     elif v1_manifest['status'] != 'completed' or not (inherited / 'graphs.jsonl').is_file():
         raise ValueError('Inherited artifact needs completed graphs or verified index_ready metadata')
 
-    code = {str(p.resolve()): p.resolve() for p in (REPO_ROOT / 'core').glob('*.py')}
+    code = {str(p.resolve()): p.resolve() for p in
+            (*(REPO_ROOT / 'data_pipeline/s4_graph').glob('*.py'),
+             REPO_ROOT / 'core/schema.py', REPO_ROOT / 'core/contracts.py')}
     shared_icd_code = Path(icd_mapping.__file__).resolve()
     code[str(shared_icd_code)] = shared_icd_code
     sources = {

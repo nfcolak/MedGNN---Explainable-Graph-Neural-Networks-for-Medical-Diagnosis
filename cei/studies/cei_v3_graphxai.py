@@ -32,7 +32,7 @@ from . import cei_v3_study as study
 from core.contracts import code_source_hashes, sample_ids_sha256
 from core.registry import build_method
 from core.schema import sha256
-from shared.lib.explanation_contract import build_node_explanation
+from core.explain.explanation_contract import build_node_explanation
 
 from . import cei_v3_paths as io_paths
 
@@ -240,7 +240,7 @@ def native_importance(adapter, graph, target):
 
 def explain_graph(adapter, graph, *, random_seed=2026):
     """All three shared GraphXAI algorithms, genuine native score, random baseline."""
-    from shared.lib.graphxai_standardized import explain_algorithms
+    from core.explain.graphxai_standardized import explain_algorithms
     is_cei = hasattr(adapter, 'network')
     wrapper = (CEIV3GraphXAIWrapper(adapter, graph) if is_cei
                else ProtGNNGraphXAIWrapper(adapter, graph)).eval()

@@ -19,9 +19,9 @@ use the shared, historical target producer's GEM row-selection policy.
 Approximate mappings are flagged on the node, never silently treated as exact.
 """
 from collections import defaultdict
-from comparison.standardized.icd_mapping import load_icd_map, normalize_icd10
+from data_pipeline.s3_labels.icd_mapping import load_icd_map, normalize_icd10
 
-from .schema import rows
+from core.schema import rows
 
 
 def normalize(version, code, mapping, approximate):

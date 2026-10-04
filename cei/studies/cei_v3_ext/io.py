@@ -38,7 +38,7 @@ class PathMap:
                 if document.get('status') != 'verified' or Path(manifest).name != 'preservation_manifest.json':
                     raise ValueError('incomplete preservation path-map manifest')
                 roots = document.get('roots', [])
-                if [row.get('name') for row in roots] != ['core', 'protgnn', 'validation', 'xgboost', 'graphxai']:
+                if [row.get('name') for row in roots] != ['core', 'protgnn', 'validation', 'graphxai']:
                     raise ValueError('preservation manifest has incomplete root inventory')
                 rows = []
                 total_bytes = total_files = 0

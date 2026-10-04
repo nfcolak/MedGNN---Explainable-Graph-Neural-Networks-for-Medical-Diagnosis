@@ -13,7 +13,7 @@ import math
 from pathlib import Path
 import re
 
-from comparison.standardized.event_graph_v1.schema import (  # reuse audited primitives
+from data_pipeline.s2_events.schema import (  # reuse audited primitives
     LAB_IDS, identifier, numeric, rows, sha256, timestamp,
 )
 

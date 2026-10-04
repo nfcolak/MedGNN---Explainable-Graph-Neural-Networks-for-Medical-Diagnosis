@@ -10,8 +10,8 @@ import json
 from pathlib import Path
 import statistics
 
-from . import INFORMATIVE_RELATIONS, STRUCTURAL_RELATIONS
-from .relation_information import (NODE_FIELDS, audit_graph, iter_graphs,
+from core import INFORMATIVE_RELATIONS, STRUCTURAL_RELATIONS
+from data_pipeline.s4_graph.relation_information import (NODE_FIELDS, audit_graph, iter_graphs,
                                    summarize_audits)
 
 

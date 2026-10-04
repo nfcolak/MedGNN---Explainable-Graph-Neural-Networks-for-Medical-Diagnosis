@@ -74,7 +74,7 @@ def explain_graph(adapter, graph, *, steps=32, epochs=50) -> dict:
     expected = adapter(graph, epoch=0).logits
     actual = wrapper(features, graph.edge_index, batch=_batch_of(graph))
     torch.testing.assert_close(actual, expected, rtol=0, atol=0)
-    from shared.lib.graphxai_standardized import explain_algorithms
+    from core.explain.graphxai_standardized import explain_algorithms
 
     try:
         result = explain_algorithms(

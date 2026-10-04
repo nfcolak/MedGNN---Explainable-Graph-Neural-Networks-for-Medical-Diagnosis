@@ -298,10 +298,10 @@ def _run(args):
     sources = {'canonical_split': args.canonical.resolve(), 'edstays': (args.raw_root / 'edstays.csv').resolve(),
                'labevents': (args.raw_root / 'labevents.csv').resolve(), 'knowledge': args.knowledge.resolve()}
     code = {str(p.resolve()): p.resolve() for p in Path(__file__).parent.glob('*.py')}
-    from comparison.standardized.clinical_graph_v2 import repair_metadata
+    from data_pipeline.s2_events import repair_metadata
     lock_source = Path(repair_metadata.__file__).resolve()
     code[str(lock_source)] = lock_source
-    from comparison.standardized.enriched_input_v1 import spec
+    from data_pipeline.s2_events import enriched_spec as spec
     code[str(Path(spec.__file__).resolve())] = Path(spec.__file__).resolve()
     if args.resume_prepared:
         manifest = json.loads((root / 'manifest.json').read_text())
@@ -425,7 +425,7 @@ def run(args):
     # Resuming is the only path that can write an existing artifact. Coordinate
     # with metadata repair, and never reuse a pending or metadata-only receipt.
     if args.resume_prepared:
-        from comparison.standardized.clinical_graph_v2.repair_metadata import artifact_lock
+        from data_pipeline.s2_events.repair_metadata import artifact_lock
         with artifact_lock(args.output):
             return _run(args)
     return _run(args)

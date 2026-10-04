@@ -2,7 +2,7 @@
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-_METHOD_ROOTS = ('core', 'protgnn', 'cei', 'gsat', 'graphcare', 'gchm_pna', 'xgboost_control')
+_METHOD_ROOTS = ('core', 'protgnn', 'cei', 'gsat', 'graphcare', 'gchm_pna')
 _COMPARISON_DIR = REPO_ROOT / 'comparison'
 
 
