@@ -5,7 +5,7 @@ import pytest
 import torch
 import torch.nn as nn
 
-from shared.lib.fidelity import fidelity_minus, fidelity_plus, sparsity
+from core.explain.fidelity import fidelity_minus, fidelity_plus, sparsity
 
 
 class _SumClassifier(nn.Module):

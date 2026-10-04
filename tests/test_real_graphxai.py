@@ -9,7 +9,7 @@ class Tiny(torch.nn.Module):
         return global_mean_pool(self.conv(x, edge_index), batch)
 
 def test_real_graphxai_algorithms_and_edge_gradient():
-    from shared.lib.graphxai_standardized import explain_algorithms
+    from core.explain.graphxai_standardized import explain_algorithms
     torch.manual_seed(1234)
     model = Tiny().eval()
     x = torch.tensor([[1., 2.], [3., 1.], [2., 4.]])
@@ -23,7 +23,7 @@ def test_real_graphxai_algorithms_and_edge_gradient():
     assert not model.conv.explain
 
 def test_zero_predictive_edge_gradient_is_valid_not_disconnected():
-    from shared.lib.graphxai_standardized import explain_algorithms
+    from core.explain.graphxai_standardized import explain_algorithms
     model = Tiny().eval()
     with torch.no_grad():
         model.conv.lin.weight.zero_()
@@ -37,7 +37,7 @@ def test_zero_predictive_edge_gradient_is_valid_not_disconnected():
 
 
 def test_real_graphxai_edgeless_graph_has_finite_optimizer_gradients(monkeypatch):
-    from shared.lib.graphxai_standardized import explain_algorithms
+    from core.explain.graphxai_standardized import explain_algorithms
     original_backward = torch.Tensor.backward
     def checked_backward(loss, *args, **kwargs):
         assert torch.isfinite(loss).all(), 'GNNExplainer objective must remain finite'
@@ -59,14 +59,14 @@ def test_real_graphxai_edgeless_graph_has_finite_optimizer_gradients(monkeypatch
     assert observed
     for value in result.values():
         assert len(value['node_explanation']['node_importance']) == 1
-    from shared.lib.explanation_contract import validate_explanation_record, EXPLANATION_SCHEMA
+    from core.explain.explanation_contract import validate_explanation_record, EXPLANATION_SCHEMA
     explanation = result['GradExplainer']['node_explanation']
     record=dict(schema=EXPLANATION_SCHEMA,schema_version=2,method='protgnn',subject_id='synthetic',topology='star',seed=1234,true_class_id=0,prediction_class_id=explanation['target']['class_id'],attribution_method='deterministic_input_x_gradient',node_explanation=explanation,graphxai=result)
     validate_explanation_record(record,method='protgnn',topology='star',seed=1234)
 
 
 def test_version_two_requires_all_real_algorithms():
-    from shared.lib.explanation_contract import validate_explanation_record, EXPLANATION_SCHEMA, build_node_explanation
+    from core.explain.explanation_contract import validate_explanation_record, EXPLANATION_SCHEMA, build_node_explanation
     import pytest
     model=Tiny().eval()
     x=torch.ones(3,2)

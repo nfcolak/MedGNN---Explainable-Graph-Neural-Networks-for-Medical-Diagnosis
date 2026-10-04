@@ -7,7 +7,7 @@ import sys
 import tempfile
 import unittest
 
-from core import audit
+from data_pipeline.s4_graph import audit
 from core.schema import timestamp
 
 
@@ -33,7 +33,7 @@ class TinyStore:
 
 
 def tiny_graph():
-    from core.graph import build_graph
+    from data_pipeline.s4_graph.graph import build_graph
     return build_graph(TinyStore(), {'stay_id': '1', 'subject_id': '1',
                        'cutoff': timestamp('2020-01-03T01:00:00'),
                        'sample_id': 'synthetic', 'split': 'train'}, [], {'pain', 'fever'})
@@ -83,7 +83,7 @@ KNOWLEDGE = [{'source_token': 'lab:1', 'relation': 'measures',
 
 
 def history_graph(diagnoses=False, knowledge=False):
-    from core.graph import build_graph
+    from data_pipeline.s4_graph.graph import build_graph
     return build_graph(HistoryStore(), {'stay_id': '1', 'subject_id': '1',
                        'cutoff': timestamp('2020-01-03T01:00:00'),
                        'sample_id': 'synthetic', 'split': 'train'},
@@ -93,7 +93,7 @@ def history_graph(diagnoses=False, knowledge=False):
 
 class GraphInformationTests(unittest.TestCase):
     def test_empty_node_view_cannot_pass_without_any_test(self):
-        from core import relation_information as ri
+        from data_pipeline.s4_graph import relation_information as ri
         result = ri.audit_graph({'nodes': [], 'edges': []})
         self.assertFalse(result['fully_verified_from_raw_node_view'])
 
@@ -117,7 +117,7 @@ class GraphInformationTests(unittest.TestCase):
                 altered = copy.deepcopy(graph)
                 edge = next(e for e in altered['edges'] if e['relation'] == 'baseline_of')
                 edge[field] = not edge[field] if field == 'comparable_units' else edge[field] + 1
-                from core import relation_information as ri
+                from data_pipeline.s4_graph import relation_information as ri
                 result = ri.audit_graph(altered)['relations']['baseline_of']
                 self.assertTrue(result['topology']['exact'])
                 self.assertFalse(result['full_exact'])
@@ -125,7 +125,7 @@ class GraphInformationTests(unittest.TestCase):
         self.assertTrue(ri.audit_graph(graph)['fully_verified_from_raw_node_view'])
 
     def test_duplicate_and_direction_are_not_discarded(self):
-        from core import relation_information as ri
+        from data_pipeline.s4_graph import relation_information as ri
         graph = tiny_graph()
         edge = next(e for e in graph['edges'] if e['relation'] == 'co_complaint')
         graph['edges'].append(copy.deepcopy(edge))
@@ -140,7 +140,7 @@ class GraphInformationTests(unittest.TestCase):
         self.assertEqual(result['topology']['unpredicted'], 1)
 
     def test_recurrence_recency_and_comorbidity_are_not_node_facts(self):
-        from core import relation_information as ri
+        from data_pipeline.s4_graph import relation_information as ri
         graph = history_graph(diagnoses=True)
         report = ri.audit_graph(graph)
         recurrence = report['relations']['recurrence_of']
@@ -161,7 +161,7 @@ class GraphInformationTests(unittest.TestCase):
         self.assertNotEqual(audit.informative_signature(graph), audit.informative_signature(changed))
 
     def test_external_knowledge_is_disclosed_and_provenance_checked(self):
-        from core import relation_information as ri
+        from data_pipeline.s4_graph import relation_information as ri
         graph = history_graph(knowledge=True)
         result = ri.audit_graph(graph)['relations']['medical:measures']
         self.assertFalse(result['topology']['tested'])
@@ -174,7 +174,7 @@ class GraphInformationTests(unittest.TestCase):
         self.assertFalse(ri.audit_graph(graph, knowledge=KNOWLEDGE)['relations']['medical:measures']['full_exact'])
 
     def test_unknown_fields_and_relations_are_counted_not_approved(self):
-        from core import relation_information as ri
+        from data_pipeline.s4_graph import relation_information as ri
         graph = tiny_graph()
         edge = next(e for e in graph['edges'] if e['relation'] == 'co_complaint')
         edge['unseen_payload'] = 3.0
@@ -187,7 +187,7 @@ class GraphInformationTests(unittest.TestCase):
 
 
     def test_missing_payload_is_distinct_from_verified_null(self):
-        from core import relation_information as ri
+        from data_pipeline.s4_graph import relation_information as ri
         graph = history_graph()
         edge = next(e for e in graph['edges'] if e['relation'] == 'baseline_of')
         del edge['delta']
@@ -200,7 +200,7 @@ class GraphInformationTests(unittest.TestCase):
         self.assertTrue(result['full_exact'])
 
     def test_recurrence_null_still_unverified_and_summary_counts_fields(self):
-        from core import relation_information as ri
+        from data_pipeline.s4_graph import relation_information as ri
         graph = history_graph(diagnoses=True)
         for edge in graph['edges']:
             if edge['relation'] == 'recurrence_of':

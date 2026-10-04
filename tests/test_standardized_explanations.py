@@ -8,7 +8,7 @@ import pytest
 import torch
 import torch.nn as nn
 
-from shared.lib.explanation_contract import (
+from core.explain.explanation_contract import (
     EXPLANATION_METRIC_KEYS,
     STANDARDIZED_METHODS,
     build_node_explanation,
@@ -39,34 +39,6 @@ def _write_payload(tmp_path, payload):
     path = tmp_path / "cohort.json"
     path.write_text(json.dumps(payload), encoding="utf-8")
     return path
-
-
-def test_load_explanation_cohort_consumes_valid_exact_50():
-    cohort = load_explanation_cohort(COHORT, split_path=SPLIT, dataset_path=DATASET, expected_count=50)
-
-    assert len(cohort.subject_ids) == len(set(cohort.subject_ids)) == 50
-    assert cohort.subject_ids == tuple(_cohort_payload()["subject_ids"])
-    assert cohort.classes == tuple(_cohort_payload()["class_counts"])
-
-
-def test_load_explanation_cohort_rejects_missing_test_id(tmp_path):
-    payload = _cohort_payload()
-    payload["subject_ids"][-1] = "not-a-canonical-test-subject"
-
-    with pytest.raises(ValueError, match="test fold"):
-        load_explanation_cohort(
-            _write_payload(tmp_path, payload), split_path=SPLIT, dataset_path=DATASET, expected_count=50
-        )
-
-
-def test_load_explanation_cohort_rejects_duplicate_id(tmp_path):
-    payload = _cohort_payload()
-    payload["subject_ids"][-1] = payload["subject_ids"][0]
-
-    with pytest.raises(ValueError, match="50 unique"):
-        load_explanation_cohort(
-            _write_payload(tmp_path, payload), split_path=SPLIT, dataset_path=DATASET, expected_count=50
-        )
 
 
 def test_shared_top_k_policy_resolves_identically_on_small_graphs():

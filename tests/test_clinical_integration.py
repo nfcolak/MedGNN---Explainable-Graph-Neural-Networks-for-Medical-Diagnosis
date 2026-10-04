@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 
 from core import train
-from xgboost_control import tabular_control
 from core.schema import sha256
 from core.tensorize import PREPROCESSING_VERSION
 
@@ -84,39 +83,3 @@ def test_tiny_training_records_corrected_contract_and_visit_ids(tmp_path, conv):
     result = json.loads((output / 'result.json').read_text())
     assert result['patient_equal']['visits'] == 2
     assert result['patient_equal']['weight_policy'] == 'inverse_evaluated_visits_per_patient'
-
-
-def test_tabular_cli_matches_tiny_gnn_contract(tmp_path, monkeypatch):
-    artifact, targets, canonical = tiny_artifact(tmp_path)
-    run, output = tmp_path / 'run', tmp_path / 'tabular'
-    train.run(args_for(artifact, targets, canonical, run))
-    monkeypatch.setattr('sys.argv', ['tabular', '--artifact', str(artifact), '--targets', str(targets),
-                                    '--canonical', str(canonical), '--out', str(output), '--rounds', '1',
-                                    '--seed', '7', '--token-min-count', '1', '--top-k-labels', '2',
-                                    '--weights', 'none', '--match-run', str(run)])
-    tabular_control.main()
-    binding = json.loads((output / 'binding.json').read_text())
-    peer = json.loads((run / 'binding.json').read_text())
-    for key in ('input_contract_version', 'preprocessing_schema_version', 'preprocessing_sha256',
-                'evaluation_version', 'label_order', 'targets_path', 'target_binding_sha256',
-                'artifact_graphs_sha256', 'counts', 'split_sample_ids_sha256'):
-        assert binding[key] == peer[key]
-    assert Path(binding['artifact']) == artifact
-    assert binding['source_code'] == peer['source_code']
-    assert json.loads((output / 'result.json').read_text())['status'] == 'completed'
-
-
-def test_tabular_match_run_rejects_different_source_binding(tmp_path, monkeypatch):
-    artifact, targets, canonical = tiny_artifact(tmp_path)
-    run = tmp_path / 'run'
-    train.run(args_for(artifact, targets, canonical, run))
-    peer_path = run / 'binding.json'
-    peer = json.loads(peer_path.read_text())
-    peer['source_code']['train.py'] = '0' * 64
-    peer_path.write_text(json.dumps(peer))
-    monkeypatch.setattr('sys.argv', ['tabular', '--artifact', str(artifact), '--targets', str(targets),
-                                    '--canonical', str(canonical), '--out', str(tmp_path / 'tabular'),
-                                    '--rounds', '1', '--seed', '7', '--token-min-count', '1',
-                                    '--top-k-labels', '2', '--weights', 'none', '--match-run', str(run)])
-    with pytest.raises(SystemExit, match='source_code differs'):
-        tabular_control.main()

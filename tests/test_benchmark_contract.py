@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from shared.lib.benchmark_contract import (
+from core.explain.benchmark_contract import (
     ALLOWED_SEEDS,
     EXPECTED_CLASSES,
     EXPECTED_FOLD_COUNTS,
@@ -17,7 +17,7 @@ from shared.lib.benchmark_contract import (
     load_canonical_split,
     validate_primary_matrix,
 )
-from shared.lib.graph_structures import (
+from core.explain.graph_structures import (
     GRAPH_STRUCTURES,
     SUPPORTED_METHODS,
     all_methods,

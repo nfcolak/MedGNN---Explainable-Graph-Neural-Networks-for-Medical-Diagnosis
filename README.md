@@ -9,7 +9,7 @@ checkpoints on validation only.
 
 ## Methods
 
-Each method lives in `comparison/standardized/clinical_graph_v2/methods/<m>/`.
+Each method lives in its own top-level folder.
 
 | Method | Folder `<m>` | Role |
 |---|---|---|
@@ -17,26 +17,29 @@ Each method lives in `comparison/standardized/clinical_graph_v2/methods/<m>/`.
 | CEI-GNN | `cei` | evidence-interaction GNN (v1/v2/v3) and its studies |
 | GSAT | `gsat` | stochastic attention / information bottleneck |
 | GraphCare | `graphcare` | native clinical adapter, visit-conditioned attention |
-| GCHM-PNA | `gchm_pna` | hub-gated, relation-aware PNA (v2/v3) and protocol |
-| XGBoost | `xgboost` | tabular control |
+| GCHM-PNA | `gchm_pna` | hub-gated, relation-aware PNA (v2/v3) |
 
 ## Code layout
 
 ```text
+data_pipeline/
+  s1_clean/                      frozen raw ED CSV cleaning scripts (never run in cleanup)
+  s2_events/                     events, cohort and metadata repair
+  s3_labels/                     diagnosis labels and ICD mapping
+  s4_graph/                      clinical graph build, storage and audit
+  s5_filter_split/               TRAIN Top-10 labels, 10k sampling and dev selection
+core/                            training engine, contracts, tensorization, model
+  explain/                       shared explanation contracts and GraphXAI integration
+protgnn/, gsat/, graphcare/, gchm_pna/, cei/
+                                 method implementations and their studies
 comparison/
-  canonical_split.json            fixed class order and subject folds (never regenerate)
-  standardized/
-    clinical_graph_v2/
-      core/                       shared build, train, audit, tensorize, model
-      methods/<m>/                adapter.py or plugin_<m>.py, studies/
-      paths.py                    PACKAGE_ROOT / REPO_ROOT
-      <old module>.py             compatibility shims
-    icd_mapping.py, event_graph_v1/, enriched_input_v1/spec.py,
-    event_graph_gchm_xgb_v1/      label chain (kept unchanged)
-shared/                           lib/ (contracts) and data_prep/
+  canonical_split.json           fixed class order and subject folds (never regenerate)
+  top3/                          top-three performance comparison package
+  standardized/                  local ignored inputs and results (not a code package)
+data/                            local raw inputs (not moved)
 tests/
-environment.yml                   sole dependency file
-external/                         vendored third-party code (GraphXAI)
+environment.yml                  sole dependency file
+external/                        vendored third-party code (GraphXAI)
 ```
 
 ## Setup

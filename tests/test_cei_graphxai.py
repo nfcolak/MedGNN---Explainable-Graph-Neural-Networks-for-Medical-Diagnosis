@@ -104,7 +104,7 @@ def test_wrapper_predictions_are_immutable_to_caller_metadata_mutation():
 
 def test_explain_graph_runs_real_algorithms_and_cleans_mask_state():
     implementation = module()
-    from shared.lib.graphxai_standardized import ALGORITHMS
+    from core.explain.graphxai_standardized import ALGORITHMS
 
     adapter, graph = SyntheticAdapter(), graph_fixture()
     objectives = []
@@ -484,7 +484,7 @@ def test_export_requires_binding_checked_frozen_dev_membership(tmp_path):
 
 def test_explainer_failure_is_representable_as_an_explicit_failed_record(monkeypatch):
     implementation = module()
-    import shared.lib.graphxai_standardized as graphxai
+    import core.explain.graphxai_standardized as graphxai
     adapter, graph = SyntheticAdapter(), graph_fixture()
 
     def fail_after_start(*args, **kwargs):
@@ -500,7 +500,7 @@ def test_explainer_failure_is_representable_as_an_explicit_failed_record(monkeyp
 
 def test_algorithm_status_failure_is_representable_as_failed_record(monkeypatch):
     implementation = module()
-    import shared.lib.graphxai_standardized as graphxai
+    import core.explain.graphxai_standardized as graphxai
     adapter, graph = SyntheticAdapter(), graph_fixture()
     monkeypatch.setattr(graphxai, "explain_algorithms", lambda *args, **kwargs: {
         name: {"status": "failed"} for name in implementation.REQUIRED_ALGORITHMS
