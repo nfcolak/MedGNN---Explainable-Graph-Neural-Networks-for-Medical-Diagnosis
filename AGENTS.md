@@ -1,13 +1,13 @@
 # MedGNN
 
-Self-explainable GNN diagnosis benchmark on MIMIC-IV ED patient graphs: ProtGNN, GSAT, GraphCare, GCHM-PNA, CEI-GNN and an XGBoost control, compared under fixed data contracts.
+Self-explainable GNN diagnosis benchmark on MIMIC-IV ED patient graphs: ProtGNN, GSAT, GraphCare, GCHM-PNA, and CEI-GNN, compared under fixed data contracts. XGBoost was removed on 2026-10-04.
 
 ## Tech stack
 
 | Item | Value |
 |---|---|
 | Language | Python (system `python3`; repo recommends 3.10/3.11) |
-| ML | PyTorch 2.2–2.8, PyTorch Geometric 2.5–2.6, XGBoost 2.x, scikit-learn |
+| ML | PyTorch 2.2–2.8, PyTorch Geometric 2.5–2.6, scikit-learn |
 
 ## Non-negotiable rules
 
@@ -21,8 +21,8 @@ Self-explainable GNN diagnosis benchmark on MIMIC-IV ED patient graphs: ProtGNN,
 | NEVER regenerate `comparison/canonical_split.json`. | `ProjectOS medgnn/Reference/STRUCTURE.md` |
 | Compared methods MUST share artifact, class set, train/validation sample-ID hashes, preprocessing contract and seed. | `.claude/context/adr-006.md` |
 | Do not relocate `data/` or `external/` as a cleanup side effect. | `ProjectOS medgnn/Reference/STRUCTURE.md` |
-| Preserve the permanent historical SHA256 guard for `shared/data_prep/merge_ed.py`; never silently rewrite its pinned bytes or provenance. Do not import, run or fix it during cleanup; any correction requires a separately authorized, versioned production job. | `ProjectOS medgnn/Reports/max6-top10-cleanup.md` |
-| `shared/**`, `comparison/canonical_split.json`, `shared/data_prep/merge_ed.py`, retained rebuild sources and `icd_mapping.py` stay byte-identical. Code moved to top-level method folders on 2026-10-03 without compatibility shims; the only shim left is `comparison/standardized/clinical_graph_v2/repair_metadata.py` (two frozen label files import it). Historical run source bindings no longer match; new runs need new output dirs. Work locally; no push without approval. | `ProjectOS medgnn/Reports/max6-top10-cleanup.md`, `ProjectOS medgnn/Reports/structure-cleanup-2026-10-03.md` |
+| Preserve the permanent historical SHA256 guard for `data_pipeline/s1_clean/merge_ed.py` (sha256 `94dc7a6b…`; checked by `data_pipeline/s3_labels/local_labels_v2.py`); never silently rewrite its pinned bytes or provenance. Never import or run `data_pipeline/s1_clean/*` (they preprocess at import); do not fix them during cleanup; any correction requires a separately authorized, versioned production job. | `ProjectOS medgnn/Reports/max6-top10-cleanup.md` |
+| Byte-identical: `data_pipeline/s1_clean/*`, `comparison/canonical_split.json`, `data_pipeline/s3_labels/icd_mapping.py`, `data_pipeline/s2_events/{enriched_spec,graph,ingest}.py`, `knowledge_seed.csv`. Layout moved on 2026-10-04 (no compatibility shims); historical run source bindings no longer match; new runs need new output dirs. `data_pipeline/` is not part of the run source binding. Work locally; no push without approval. | `ProjectOS medgnn/Reports/structure-cleanup-2026-10-03.md`, audit `/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/repo-archive-20261004/layout-audit.md` |
 | Do not delete held data/results/source snapshots. Publication requires a separate privacy decision: historical Git contains patient-derived payloads. | `ProjectOS medgnn/Reports/max6-top10-cleanup.md` |
 | Never keep notes in this repo (no `docs/`, READMEs, specs, reports, `STRUCTURE.md`); only `AGENTS.md` and `README.md`. Notes go to ProjectOS `10-Projects/medgnn/` (history, reports, reference) and Jev-Mem `Notes/MedGNN/` (current rules). | User rule 2026-10-03 |
 | Report results with task identity (cohort, class set, sample size, seed). Single-seed gaps are not method superiority. | `.claude/context/adr-006.md` |
@@ -39,20 +39,18 @@ Self-explainable GNN diagnosis benchmark on MIMIC-IV ED patient graphs: ProtGNN,
 
 | Area | Path | Context doc |
 |---|---|---|
-| Multi-visit clinical graph v2/v3 core (build, train, audit, schema constants, paths) | `core/` | `clinical-graph-v3.md`, `adr-003.md`, `adr-004.md` |
-| Shared method code (registry, base) | `core/registry.py`, `core/method_base.py` (plugins `plugin_*.py` are discovered only inside the method folders) | `clinical-graph-v3.md`, `adr-003.md` |
-| Source binding | `core/paths.py` (`REPO_ROOT`, `CODE_ROOTS`: method folders plus every `comparison/<dir>/` with `__init__.py`, never `comparison/standardized/`), `core/contracts.py` (`code_source_hashes()`) | `adr-006.md` |
+| Data pipeline (new data only, in stage order) | `data_pipeline/s1_clean/` (historical cleaning: merge_ed, standardizers; frozen) → `s2_events/` (event index + cohort `first_lab.py`, max6 verification `repair_metadata.py`) → `s3_labels/` (ICD mapping, `local_labels_v2.py` targets) → `s4_graph/` (`build.py` v3 graph) → `s5_filter_split/selection.py` (Top-10 TRAIN labels, 10k TRAIN sample seed 1234, dev draw; re-exported by `core.train`) | `clinical-graph-v3.md`, `adr-003.md`, `adr-004.md` |
+| Training engine | `core/` (`train.py`, `model.py`, `tensorize.py`, `contracts.py`, `aggregate.py`, `mechanism_check.py`, `schema.py`), explanation lib `core/explain/` (GraphXAI wrappers, fidelity) | `clinical-graph-v3.md` |
+| Shared method code (registry, base) | `core/registry.py` (`METHOD_FOLDERS`), `core/method_base.py` (plugins `plugin_*.py` are discovered only inside the method folders) | `adr-003.md` |
+| Source binding | `core/paths.py` (`REPO_ROOT`, `CODE_ROOTS`: method folders plus every `comparison/<dir>/` with `__init__.py`; never `data_pipeline/` or `comparison/standardized/`), `core/contracts.py` (`code_source_hashes()`) | `adr-006.md` |
 | ProtGNN | `protgnn/` (`adapter.py`) | `ProjectOS medgnn/Reference/method-protgnn.md` |
-| CEI-GNN | `cei/` (`cei_gnn*.py`, `plugin_cei_gnn*.py`, `studies/`, `studies/cei_v3_ext/`) | `ProjectOS medgnn/Reports/cei/cei-v3-delivery-2026-10-01.md` |
+| CEI-GNN | `cei/` (`cei_gnn*.py`, `plugin_cei_gnn*.py`, `studies/`, `studies/cei_v3_ext/`); v3 needs `--method-option arm=C k=4 v3_state=<K4.json fitted on the same TRAIN sample>` | `ProjectOS medgnn/Reports/cei/cei-v3-delivery-2026-10-01.md` |
 | GSAT | `gsat/` (`adapter.py`) | `gsat.md` |
 | GraphCare | `graphcare/` (`adapter.py` native) | `graphcare.md` |
-| GCHM / GCHM-PNA v2 | `gchm_pna/` (`gchm_v2.py`, `gchm_v3.py`, `protocol/`; state data stays in `comparison/standardized/gchm_v2_protocol/state/`) | `gchm.md` |
-| XGBoost control | `xgboost_control/` (`tabular_control.py`; never name it `xgboost`, it would shadow the library) | `xgboost.md` |
-| Comparisons (single folder) | `comparison/all/` (all methods together), `comparison/<a>_vs_<b>/` per pair (now `cei_vs_protgnn/`, `cei_vs_xgboost/`); `comparison/` and `comparison/standardized/` stay namespace packages (no `__init__.py`) | `adr-006.md` |
-| Inputs and run results (not moved) | `comparison/standardized/{event_inputs,native_inputs,clinical_runs_*}/`, `explanation_subjects.json` | `ProjectOS medgnn/Reference/clinical-graph-v2-runbook.md` |
-| Kept label/input chain | `comparison/standardized/{icd_mapping.py,event_graph_v1/,enriched_input_v1/spec.py,event_graph_gchm_xgb_v1/{labels,local_labels_v2}.py}` | `ProjectOS medgnn/Reports/max6-top10-cleanup.md` |
-| Shared contracts, split, data prep | `shared/lib/`, `shared/data_prep/`, `comparison/canonical_split.json` | `shared.md` |
-| Retired legacy (frozen) | former 30-class method dirs, native/star/cooccur runners, dependent tests, legacy exporter, `protgnn_analysis/`, `graphcare_analysis/`, old runs and viewer | Code and outputs are archived in `/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/repo-archive-20261003/` and in Git history; see `ProjectOS medgnn/Reports/max6-top10-cleanup.md`. Never run for new work (test-fold access). |
+| GCHM-PNA | `gchm_pna/` (`gchm_v2.py`, `gchm_v3.py`; trained as `--method clinical_gnn --conv gchm`) | `gchm.md` |
+| Comparison | `comparison/top3/compare.py` (top-3 by validation macro-F1: CEI-GNN v3, ProtGNN, GCHM-PNA; seeds 1234/2025/7; mean ± SD + patient-paired bootstrap); `comparison/` and `comparison/standardized/` stay namespace packages (no `__init__.py`) | `adr-006.md` |
+| Inputs and run results (git-ignored) | `comparison/standardized/event_inputs/` (max6 index, targets, v3 graph), `native_inputs/protgsat_snapshot_v1/contract.json` (class order for labels), `clinical_runs_*/` (runs; latest: `clinical_runs_v3_rerun_..._20261003`, `clinical_runs_v3_top3_seeds_..._20261004`, `clinical_runs_top3_comparison_20261004`) | `ProjectOS medgnn/Reference/clinical-graph-v2-runbook.md` |
+| Retired legacy (frozen) | former 30-class method dirs, native/star/cooccur runners, dependent tests, legacy exporter, `protgnn_analysis/`, `graphcare_analysis/`, old runs and viewer | Code and outputs are archived in `/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/repo-archive-20261003/` and `repo-archive-20261004/` (XGBoost, GCHM equal-budget protocol, old pair studies, explanation cohort, stratify, old runs) and in Git history; see `ProjectOS medgnn/Reports/max6-top10-cleanup.md`. Never run for new work (test-fold access). |
 | Tests | `tests/` (only what the retirement manifest left) | `tests.md` |
 | Vendored third-party code | `external/` (keep upstream layout; GraphXAI only, used by CEI) | `external.md` |
 
@@ -63,21 +61,21 @@ Context docs are in `.claude/context/`. They are read-only links to the ProjectO
 ```bash
 # Read-only plans / wiring
 python3 -m core.mechanism_check                 # training-free mechanism checks
-python3 -m gchm_pna.protocol.protocol           # plan + ETA only
-python3 -m gchm_pna.protocol.protocol --status
+python3 -m core.train --method protgnn ...       # without --execute: prints the plan only
+python3 -m comparison.top3.compare --run <dir> ... --out <new dir>   # reads finished runs only
 
 # Only inside an explicitly opened testing phase
 python3 -m pytest tests -q        # explicit path avoids vendored test collections
 ```
 
-Training commands (`core.train`, `xgboost_control.tabular_control`, `--execute` modes) are listed in `ProjectOS medgnn/Reference/clinical-graph-v2-runbook.md`. Run them only after approval.
+Training commands (`core.train` `--execute`; exact top-3 commands in `comparison/standardized/clinical_runs_v3_top3_seeds_*/train_top3.sh`) are listed in `ProjectOS medgnn/Reference/clinical-graph-v2-runbook.md`. Run them only after approval.
 
 ## Conventions
 
 - New run outputs go to a new, dated directory under `comparison/standardized/` (existing examples: `clinical_runs_v3_*_YYYYMMDD`).
 - Every run writes `binding.json` / `result.json` with hashes. Never claim equal compute from equal epochs or similar parameter counts.
 - Method-native CLI options are namespaced (`--protgnn-*`, `--gsat-*`, `--graphcare-*`). `--conv` is valid only with `--method clinical_gnn`.
-- Adding a method, study or comparison: a new method is a new top-level folder `<name>/` with `__init__.py`, `adapter.py` or `plugin_<name>.py` and `studies/`; add it to `METHOD_FOLDERS` in `core/registry.py` (plugin discovery) and to `_METHOD_ROOTS` in `core/paths.py` (source binding). A study lives under the owning method's `studies/` with a new dated output directory; a control is its own method folder. A cross-method comparison goes to `comparison/all/` or a new `comparison/<a>_vs_<b>/` with an `__init__.py` (bound automatically). Shared code goes into `core/`. No README or docs in these folders.
+- Adding a method, study or comparison: a new method is a new top-level folder `<name>/` with `__init__.py`, `adapter.py` or `plugin_<name>.py` and `studies/`; add it to `METHOD_FOLDERS` in `core/registry.py` (plugin discovery) and to `_METHOD_ROOTS` in `core/paths.py` (source binding). A study lives under the owning method's `studies/` with a new dated output directory; a new comparison is a new `comparison/<name>/` package with an `__init__.py` (bound automatically). Pipeline code goes into the matching `data_pipeline/sN_*/` stage. Shared code goes into `core/`. No README or docs in these folders.
 
 ## Project memory
 
