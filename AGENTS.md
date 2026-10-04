@@ -33,7 +33,7 @@ Self-explainable GNN diagnosis benchmark on MIMIC-IV ED patient graphs: ProtGNN,
 - Classes: the 10 most frequent diagnoses by TRAIN-fold frequency; other labels are dropped, never merged into `other`.
 - Same 10,000 TRAIN ids (sample seed 1234); 5,000-row patient-disjoint dev split from unused TRAIN patients for checkpoint selection; full 4,254-row validation fold scored once at the end; sqrt-inverse class weights.
 - Same budget for every method: 40 epochs, no early stopping (patience 40). Seeds 1234, 2025, 7. Rank methods on dev; report validation mean ± SD and a patient-paired bootstrap (`comparison/top3/compare.py`, refuses runs with `protocol_overrides`).
-- Runs under another setting (e.g. the 2026-10-03 validation-selected, patience-10 runs) are not comparable and are never mixed into a comparison.
+- Only fair_v1 runs are kept. Runs under any other setting are not comparable, are never mixed into a comparison and are deleted (user decision 2026-10-04; the 2026-10-03/04 validation-selected, patience-10 runs were deleted).
 - Not comparable with the retired 30-class native benchmark. Top-10 selection still needs the original class order in `comparison/canonical_split.json`.
 
 ## Where things live
@@ -50,7 +50,7 @@ Self-explainable GNN diagnosis benchmark on MIMIC-IV ED patient graphs: ProtGNN,
 | GraphCare | `graphcare/` (`adapter.py` native) | `graphcare.md` |
 | GCHM-PNA | `gchm_pna/` (`gchm_v2.py`, `gchm_v3.py`; trained as `--method clinical_gnn --conv gchm`) | `gchm.md` |
 | Comparison | `comparison/top3/compare.py` (top-3 by validation macro-F1: CEI-GNN v3, ProtGNN, GCHM-PNA; seeds 1234/2025/7; mean ± SD + patient-paired bootstrap); `comparison/` and `comparison/standardized/` stay namespace packages (no `__init__.py`) | `adr-006.md` |
-| Inputs and run results (git-ignored) | `comparison/standardized/event_inputs/` (max6 index, targets, v3 graph), `native_inputs/protgsat_snapshot_v1/contract.json` (class order for labels), `clinical_runs_*/` (runs; latest: `clinical_runs_v3_rerun_..._20261003`, `clinical_runs_v3_top3_seeds_..._20261004`, `clinical_runs_top3_comparison_20261004`) | `ProjectOS medgnn/Reference/clinical-graph-v2-runbook.md` |
+| Inputs and run results (git-ignored) | `comparison/standardized/event_inputs/` (max6 index, targets, v3 graph), `native_inputs/protgsat_snapshot_v1/contract.json` (class order for labels), `clinical_runs_fair_v1_*/` (runs; only fair_v1 runs are kept, incl. the CEI v3 state `cei_v3_state/v3_state/K4.json`) | `ProjectOS medgnn/Reference/clinical-graph-v2-runbook.md` |
 | Retired legacy (frozen) | former 30-class method dirs, native/star/cooccur runners, dependent tests, legacy exporter, `protgnn_analysis/`, `graphcare_analysis/`, old runs and viewer | Code and outputs are archived in `/Users/necatifurkancolak/AI-Workplace/Artifacts/MedGNN/repo-archive-20261003/` and `repo-archive-20261004/` (XGBoost, GCHM equal-budget protocol, old pair studies, explanation cohort, stratify, old runs) and in Git history; see `ProjectOS medgnn/Reports/max6-top10-cleanup.md`. Never run for new work (test-fold access). |
 | Tests | `tests/` (only what the retirement manifest left) | `tests.md` |
 | Vendored third-party code | `external/` (keep upstream layout; GraphXAI only, used by CEI) | `external.md` |
