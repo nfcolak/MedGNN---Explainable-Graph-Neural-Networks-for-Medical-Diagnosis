@@ -304,6 +304,22 @@ class GSATAdapter(ClinicalMethodAdapter):
             num_relations=self.num_relations,
         )
 
+    @torch.no_grad()
+    def explain(self, batch) -> torch.Tensor:
+        """GSAT's own inherent explanation: the deterministic per-node
+        attention probability (no Gumbel sampling noise -- forward() already
+        takes the eval-mode branch), from a fresh forward pass this call
+        performs. Follows the `.explain(batch) -> Tensor` convention that the
+        shared GraphXAI wrapper (core/explain/graphxai_wrapper.py) looks for."""
+        was_training = self.training
+        self.eval()
+        try:
+            self.forward(batch, epoch=0)
+            return self.last_node_attention
+        finally:
+            if was_training:
+                self.train()
+
     def r_for_epoch(self, epoch: int) -> float:
         epoch = epoch_index(epoch)
         return max(
@@ -325,7 +341,7 @@ class GSATAdapter(ClinicalMethodAdapter):
         source, target = edge_index
         return node_attention[source] * node_attention[target]
 
-    def forward(self, batch, *, epoch: int) -> MethodOutput:
+    def forward(self, batch, *, epoch: int, external_edge_mask=None) -> MethodOutput:
         epoch = epoch_index(epoch)
         clinical_batch = self._clinical_batch(batch)
         extractor_embeddings = self.predictor.get_emb(clinical_batch)
@@ -338,6 +354,22 @@ class GSATAdapter(ClinicalMethodAdapter):
             attention,
             clinical_batch.edge_index,
         )
+        # Post-hoc explainers (e.g. GraphXAI's GNNExplainer) have no PyG
+        # `MessagePassing` module to attach a mask to here (`_ClinicalGINLayer`
+        # aggregates by hand). `external_edge_mask` is the explicit substitute:
+        # it multiplies into the SAME channel GSAT's own attention already
+        # scales messages by, exactly once, so a post-hoc mask and GSAT's
+        # built-in attention compose rather than silently not applying at all.
+        # None (the trainer's only call shape) preserves prior behavior exactly.
+        self.last_node_attention = attention
+        self.last_edge_attention = edge_attention
+        if external_edge_mask is not None:
+            if (external_edge_mask.ndim != 1
+                    or external_edge_mask.numel() != edge_attention.numel()):
+                raise ValueError(
+                    "external_edge_mask must contain one value per edge"
+                )
+            edge_attention = edge_attention * external_edge_mask
         logits = self.predictor(clinical_batch, edge_attention=edge_attention)
 
         r = self.r_for_epoch(epoch)
@@ -347,8 +379,6 @@ class GSATAdapter(ClinicalMethodAdapter):
             + (1.0 - probability)
             * ((1.0 - probability) / (1.0 - r)).log()
         ).mean()
-        self.last_node_attention = attention
-        self.last_edge_attention = edge_attention
         diagnostics = {
             "auxiliary_loss": diagnostic_float(ib_loss, "GSAT"),
             "information_bottleneck": diagnostic_float(ib_loss, "GSAT"),

@@ -84,7 +84,7 @@ class _RelationPayloadLayer(nn.Module):
         self.norm = nn.LayerNorm(hidden)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, node_state, edge_index, edge_context):
+    def forward(self, node_state, edge_index, edge_context, edge_mask=None):
         node_count = node_state.size(0)
         if edge_index.numel() == 0:
             aggregate = torch.zeros_like(node_state)
@@ -92,10 +92,25 @@ class _RelationPayloadLayer(nn.Module):
             source, target = edge_index
             messages = self.message_mlp(torch.cat(
                 [node_state[source], node_state[target], edge_context], dim=-1))
+            # `edge_mask` (e.g. GraphXAI's GNNExplainer, via the `edge_mask`
+            # hook on the owning adapter's own forward) scales both the
+            # message numerator AND its degree-normalisation weight, exactly
+            # once -- not just the numerator -- so a masked-to-zero edge is
+            # truly removed from the mean rather than merely diluting it, and
+            # `edge_mask=None`/all-ones reproduces the original unweighted
+            # mean exactly (the default keeps every existing caller of this
+            # layer unchanged).
+            if edge_mask is not None:
+                if edge_mask.ndim != 1 or edge_mask.numel() != target.numel():
+                    raise ValueError("edge_mask must contain one value per edge")
+                weight = edge_mask.unsqueeze(-1)
+                messages = messages * weight
+            else:
+                weight = node_state.new_ones((target.numel(), 1))
             aggregate = torch.zeros_like(node_state)
             aggregate.index_add_(0, target, messages)
             degree = node_state.new_zeros((node_count, 1))
-            degree.index_add_(0, target, node_state.new_ones((target.numel(), 1)))
+            degree.index_add_(0, target, weight)
             aggregate = aggregate / degree.clamp_min_(1.0)
         update = self.update_mlp(torch.cat([node_state, aggregate], dim=-1))
         return self.norm(node_state + self.dropout(update))
@@ -216,7 +231,7 @@ class ProtGNNAdapter(ClinicalMethodAdapter):
             "candidate_graphs_by_class": {},
         }
 
-    def _node_and_graph_embeddings(self, batch):
+    def _node_and_graph_embeddings(self, batch, edge_mask=None):
         x = getattr(batch, "x", None)
         token = getattr(batch, "token", None)
         node_type = getattr(batch, "node_type", None)
@@ -272,7 +287,7 @@ class ProtGNNAdapter(ClinicalMethodAdapter):
                         + self.triple_embedding(edge_triple.long())
                         + self.edge_feature_projection(edge_attr))
         for layer in self.layers:
-            node_state = layer(node_state, edge_index.long(), edge_context)
+            node_state = layer(node_state, edge_index.long(), edge_context, edge_mask=edge_mask)
 
         batch_index = getattr(batch, "batch", None)
         if batch_index is None:
@@ -305,9 +320,11 @@ class ProtGNNAdapter(ClinicalMethodAdapter):
             raise FloatingPointError("ProtGNN produced a non-finite diagnostic")
         return result
 
-    def forward(self, batch, *, epoch: int) -> MethodOutput:
+    def forward(self, batch, *, epoch: int, external_edge_mask=None) -> MethodOutput:
         del epoch  # The shared epoch hook owns phase changes and projection.
-        _, graph_embedding, _ = self._node_and_graph_embeddings(batch)
+        _, graph_embedding, _ = self._node_and_graph_embeddings(
+            batch, edge_mask=external_edge_mask
+        )
         activations, distances = self._prototype_activations(graph_embedding)
         logits = self.prototype_classifier(activations)
 

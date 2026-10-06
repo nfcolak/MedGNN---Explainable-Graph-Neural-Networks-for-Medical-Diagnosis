@@ -82,6 +82,34 @@ def relation_vocabulary(edge_direction='forward'):
     raise ValueError(f'unknown edge_direction {edge_direction!r}')
 
 
+def reversible_edge_pairs(edge_relation) -> list[tuple[int, int]]:
+    """(forward_index, reverse_index) for every reverse edge `encode_graph`
+    appended under `edge_direction='bidirectional'` -- one pair per clinical
+    fact that is otherwise represented twice (GraphXAI improvement plan item
+    #5: "do not count reverse edges as separate evidence").
+
+    `encode_graph` appends reverse edges strictly after the forward block, in
+    the same relative order as their forward counterparts appear among the
+    kept forward edges (`reverse = [e for e in keep if e['relation'] in
+    REVERSIBLE_RELATIONS]`) -- so pairing is positional, not an endpoint
+    lookup: the k-th reversible forward edge (in increasing index order)
+    always pairs with the k-th reverse edge. Returns [] for a forward-only
+    edge view (no relation id reaches the reverse block at all)."""
+    ids = edge_relation.detach().cpu().tolist() if hasattr(edge_relation, 'detach') else list(edge_relation)
+    reverse = [i for i, r in enumerate(ids) if r >= len(ALL_RELATIONS)]
+    if not reverse:
+        return []
+    forward_reversible = [i for i, r in enumerate(ids)
+                          if r < len(ALL_RELATIONS) and ALL_RELATIONS[r] in REVERSIBLE_RELATIONS]
+    if len(forward_reversible) != len(reverse):
+        raise ValueError(
+            'reversible forward/reverse edge counts differ '
+            f'({len(forward_reversible)} vs {len(reverse)}); edge_relation does not '
+            'match a bidirectional encode_graph output'
+        )
+    return list(zip(forward_reversible, reverse))
+
+
 def triple_count(prep, edge_direction='forward'):
     """Meta-relation ids incl. index 0 for unseen; a reverse edge of fitted triple t
     gets id T + t, so the train-fitted forward state is reused, never refitted."""

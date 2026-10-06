@@ -112,7 +112,7 @@ class HubGatedPNALayer(nn.Module):
             return content * gate
         return content + gate
 
-    def forward(self, x, edge_index, edge_attr, edge_relation, hub_context):
+    def forward(self, x, edge_index, edge_attr, edge_relation, hub_context, edge_mask=None):
         source, target = edge_index
         payload = edge_attr
         if not self.use_edge_payload:
@@ -120,24 +120,60 @@ class HubGatedPNALayer(nn.Module):
             payload[:, -PAYLOAD_WIDTH:] = 0
         message = self.message(x[source], x[target], payload, edge_relation,
                                hub_context[target])
-        aggregated = self._aggregate(message, target, x.size(0))
+        aggregated = self._aggregate(message, target, x.size(0), edge_mask=edge_mask)
         update = self.update_mlp(torch.cat([x, aggregated], dim=-1))
         return self.norm(x + self.dropout(update))
 
-    def _aggregate(self, message, target, num_nodes):
+    def _aggregate(self, message, target, num_nodes, edge_mask=None):
+        # edge_mask (e.g. GraphXAI's GNNExplainer) needs a different treatment
+        # per statistic -- there's no single "multiply the message" rule that
+        # is correct for all four of PNA's aggregators:
+        #   - sum: scaling the message before summing is exact.
+        #   - mean/std: scatter's own reduce='mean' divides by the raw edge
+        #     count, which would dilute a masked-out edge toward the mean
+        #     instead of truly removing it, so the mean/square sums are
+        #     divided by the mask's own weighted count instead.
+        #   - min/max: a masked-out message (pushed toward 0 by a naive
+        #     multiply) is still a real candidate value and could win the
+        #     reduction outright. Instead each message is pushed toward a
+        #     saturating sentinel as its mask -> 0, continuously excluding it
+        #     from the extremum rather than leaving a zeroed value to compete.
+        # edge_mask=None/all-ones reproduces the original unweighted
+        # statistics exactly in every branch below (verified by tests).
+        if edge_mask is not None:
+            if edge_mask.ndim != 1 or edge_mask.numel() != message.size(0):
+                raise ValueError("edge_mask must contain one value per edge")
+            weight = edge_mask.unsqueeze(-1)
+        else:
+            weight = None
+
         if self.aggregation == 'sum':
-            return self.aggregate(scatter(message, target, 0, dim_size=num_nodes, reduce='sum'))
-        mean = scatter(message, target, 0, dim_size=num_nodes, reduce='mean')
-        minimum = scatter(message, target, 0, dim_size=num_nodes, reduce='min')
-        maximum = scatter(message, target, 0, dim_size=num_nodes, reduce='max')
-        square = scatter(message * message, target, 0, dim_size=num_nodes, reduce='mean')
+            summed_message = message * weight if weight is not None else message
+            return self.aggregate(
+                scatter(summed_message, target, 0, dim_size=num_nodes, reduce='sum')
+            )
+        if weight is None:
+            mean = scatter(message, target, 0, dim_size=num_nodes, reduce='mean')
+            minimum = scatter(message, target, 0, dim_size=num_nodes, reduce='min')
+            maximum = scatter(message, target, 0, dim_size=num_nodes, reduce='max')
+            square = scatter(message * message, target, 0, dim_size=num_nodes, reduce='mean')
+        else:
+            count = scatter(weight, target, 0, dim_size=num_nodes, reduce='sum').clamp_min(1e-8)
+            mean = scatter(message * weight, target, 0, dim_size=num_nodes, reduce='sum') / count
+            square = scatter(message * message * weight, target, 0, dim_size=num_nodes,
+                             reduce='sum') / count
+            sentinel = 1e4
+            minimum = scatter(message + (1.0 - weight) * sentinel, target, 0,
+                              dim_size=num_nodes, reduce='min')
+            maximum = scatter(message - (1.0 - weight) * sentinel, target, 0,
+                              dim_size=num_nodes, reduce='max')
         std = torch.sqrt(torch.relu(square - mean * mean) + 1e-5)
         projected = self.aggregate(torch.cat([mean, minimum, maximum, std], dim=-1))
         degree = torch.bincount(target, minlength=num_nodes).clamp(min=1).to(message.dtype)
         log_degree = torch.log(degree + 1.0).unsqueeze(-1)
-        weight = self.scaler_weight
-        scale = (weight[0] + weight[1] * (log_degree / self.avg_deg_log)
-                 + weight[2] * (self.avg_deg_log / log_degree))
+        scaler_weight = self.scaler_weight
+        scale = (scaler_weight[0] + scaler_weight[1] * (log_degree / self.avg_deg_log)
+                 + scaler_weight[2] * (self.avg_deg_log / log_degree))
         return projected * scale
 
 
@@ -188,7 +224,7 @@ class GCHMv2(nn.Module):
         """Index-visit hub state per graph; a graph without a hub gets zeros."""
         return scatter(h[hub_mask], batch[hub_mask], 0, dim_size=graph_count, reduce='mean')
 
-    def node_states(self, data):
+    def node_states(self, data, edge_mask=None):
         """Final node states, batch vector, hub mask and graph count of one batch."""
         h = self.encoder(torch.cat([data.x, self.token(data.token)], dim=-1))
         batch = getattr(data, 'batch', None)
@@ -204,11 +240,12 @@ class GCHMv2(nn.Module):
                                  'vocabulary; edge_direction differs from construction')
             for layer in self.layers:
                 hub = self.hub_state(h, batch, hub_mask, size)
-                h = layer(h, data.edge_index, data.edge_attr, relation, hub[batch])
+                h = layer(h, data.edge_index, data.edge_attr, relation, hub[batch],
+                         edge_mask=edge_mask)
         return h, batch, hub_mask, size
 
-    def forward(self, data):
-        h, batch, hub_mask, size = self.node_states(data)
+    def forward(self, data, edge_mask=None):
+        h, batch, hub_mask, size = self.node_states(data, edge_mask=edge_mask)
         pooled = [scatter(h, batch, 0, dim_size=size, reduce='sum'),
                   scatter(h, batch, 0, dim_size=size, reduce='mean')]
         if self.readout == 'hub':

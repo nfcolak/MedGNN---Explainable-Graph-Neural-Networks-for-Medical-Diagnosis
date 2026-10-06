@@ -64,13 +64,20 @@ class _BATLayer(nn.Module):
         self.update = nn.Linear(hidden, hidden)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, node_state, edge_index, edge_context, node_attention):
+    def forward(self, node_state, edge_index, edge_context, node_attention, edge_mask=None):
         aggregate = torch.zeros_like(node_state)
         if edge_index.numel():
             source, target = edge_index
             sender = node_state[source] * node_attention[source].unsqueeze(-1)
             relation = self.relation_gate(edge_context) * edge_context
             messages = F.relu(sender + relation)
+            # Plain sum, not a mean (no degree normaliser here, unlike
+            # _RelationPayloadLayer), so masking the message once is the
+            # whole story -- no denominator to keep consistent with it.
+            if edge_mask is not None:
+                if edge_mask.ndim != 1 or edge_mask.numel() != target.numel():
+                    raise ValueError("edge_mask must contain one value per edge")
+                messages = messages * edge_mask.unsqueeze(-1)
             aggregate.index_add_(0, target, messages)
         updated = self.update(aggregate + (1.0 + self.eps) * node_state)
         return F.relu(self.dropout(updated))
@@ -170,6 +177,7 @@ class GraphCareAdapter(ClinicalMethodAdapter):
         self.classifier = nn.Linear(3 * self.hidden, self.num_classes)
 
         self.last_alpha = None
+        self.last_node_attention = None
         self.last_beta = None
         self.last_visit_weight = None
         self.last_visit_state = None
@@ -350,7 +358,7 @@ class GraphCareAdapter(ClinicalMethodAdapter):
         )
         return alpha, beta, visit_weight, node_context, node_attention
 
-    def forward(self, batch, *, epoch: int) -> MethodOutput:
+    def forward(self, batch, *, epoch: int, external_edge_mask=None) -> MethodOutput:
         epoch_index(epoch)
         clinical_batch = self._clinical_batch(batch)
         visit_batch = self._visit_batch(batch, clinical_batch)
@@ -365,14 +373,34 @@ class GraphCareAdapter(ClinicalMethodAdapter):
             mask=direct_mask,
         )
 
+        if external_edge_mask is not None and (
+            external_edge_mask.ndim != 1
+            or external_edge_mask.numel() != clinical_batch.edge_index.size(1)
+        ):
+            raise ValueError(
+                "external_edge_mask must contain one value per edge of the "
+                "full (unfiltered) edge_index"
+            )
         if clinical_batch.edge_index.numel():
             source, target = clinical_batch.edge_index
             message_edge_mask = non_global_mask[source] & non_global_mask[target]
             message_edge_index = clinical_batch.edge_index[:, message_edge_mask]
             message_edge_context = edge_context[message_edge_mask]
+            # GraphCare's own message pass already excludes global-node edges
+            # (message_edge_mask, above); an external mask (e.g. GNNExplainer's)
+            # is expressed over the full, unfiltered edge_index like every other
+            # adapter's, so it must be subset identically before use here, or
+            # its values would land on the wrong edges once global-node edges
+            # are dropped. Direct/global readout paths below never see this
+            # mask -- same disclosed-boundary caveat as GPS/VNode.
+            filtered_edge_mask = (
+                external_edge_mask[message_edge_mask]
+                if external_edge_mask is not None else None
+            )
         else:
             message_edge_index = clinical_batch.edge_index
             message_edge_context = edge_context
+            filtered_edge_mask = None
 
         visit_state, nonempty = self._visit_states(node_state, visit_batch)
         alpha = node_state.new_empty((0,))
@@ -393,6 +421,7 @@ class GraphCareAdapter(ClinicalMethodAdapter):
                 message_edge_index,
                 message_edge_context,
                 node_attention,
+                edge_mask=filtered_edge_mask,
             )
 
         graph_state = graph_mean(
@@ -415,6 +444,13 @@ class GraphCareAdapter(ClinicalMethodAdapter):
         auxiliary_loss = logits.sum() * 0.0
 
         self.last_alpha = alpha
+        # alpha is indexed over only the direct (non-global, non-knowledge)
+        # attention pairs -- not one entry per node -- so it cannot be used
+        # as a node_importance array against the full node indexing (x,
+        # token, node_type) that fidelity/GraphXAI operate over. node_attention
+        # is alpha already scattered to one value per node (dim_size=
+        # node_state.size(0)), same convention as GSAT's last_node_attention.
+        self.last_node_attention = node_attention
         self.last_beta = beta
         self.last_visit_weight = visit_weight
         self.last_visit_state = visit_state

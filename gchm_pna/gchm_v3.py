@@ -117,7 +117,7 @@ class GCHMv3(nn.Module):
             edge_index, edge_attr, relation = edge_index[:, keep], edge_attr[keep], relation[keep]
         return edge_index, edge_attr, relation
 
-    def node_states(self, data):
+    def node_states(self, data, edge_mask=None):
         """Final (JK-combined) node states, batch vector, hub mask and graph count."""
         h = self.encoder(torch.cat([data.x, self.token(data.token)], dim=-1))
         h = self.input_norm(h + self.kind(data.node_type))
@@ -129,9 +129,18 @@ class GCHMv3(nn.Module):
         states = [h]
         if self.use_message_passing:
             edge_index, edge_attr, relation = self._edges(data)
+            if edge_mask is not None and edge_mask.numel() != edge_index.size(1):
+                raise ValueError(
+                    "edge_mask must contain one value per edge of the unmodified "
+                    "edge_index -- this model applies training-time edge_dropout "
+                    "before message passing, but that branch never runs in eval "
+                    "mode (the only mode a GraphXAI explainer uses), so the two "
+                    "never actually conflict in practice; this check only guards "
+                    "against a caller misusing eval()-only state."
+                )
             for layer in self.layers:
                 hub = self.hub_state(h, batch, hub_mask, size)
-                h = layer(h, edge_index, edge_attr, relation, hub[batch])
+                h = layer(h, edge_index, edge_attr, relation, hub[batch], edge_mask=edge_mask)
                 states.append(h)
         if self.jk:
             while len(states) < len(self.layers) + 1:  # NOMP: repeat the encoder state
@@ -154,8 +163,8 @@ class GCHMv3(nn.Module):
         votes = self.wide_token(data.token) + value * self.wide_value(data.token)
         return scatter(votes, batch, 0, dim_size=size, reduce='sum')
 
-    def forward(self, data):
-        h, batch, hub_mask, size = self.node_states(data)
+    def forward(self, data, edge_mask=None):
+        h, batch, hub_mask, size = self.node_states(data, edge_mask=edge_mask)
         pooled = torch.cat([scatter(h, batch, 0, dim_size=size, reduce='sum'),
                             scatter(h, batch, 0, dim_size=size, reduce='mean'),
                             self.hub_state(h, batch, hub_mask, size)], dim=-1)
