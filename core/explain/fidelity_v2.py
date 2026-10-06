@@ -43,6 +43,13 @@ import torch
 
 from core import NODE_KINDS
 
+INTERVENTION_CONTRACT_VERSION = 2
+INTERVENTION_CONTRACT = (
+    "evidence removal = x row zeroed + token set to the pad id + every incident edge masked to "
+    "zero; patient/visit/knowledge nodes are structural and never removed; deletion/insertion "
+    "curves reported with AUC over k/removable_count. Not comparable with fidelity v1 "
+    "(core/explain/fidelity.py, x-row-only removal)."
+)
 STRUCTURAL_NODE_KINDS = ("patient", "visit", "knowledge")
 STRUCTURAL_NODE_TYPE_IDS = tuple(NODE_KINDS.index(kind) for kind in STRUCTURAL_NODE_KINDS)
 PAD_TOKEN_ID = 0

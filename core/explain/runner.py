@@ -15,15 +15,12 @@ insertion AUC curves (item #4) -- a stricter, separate metric from the
 (those come from `core/explain/fidelity.py`, v1, x-row-only removal; do not
 compare the two).
 
-Cohort contract (deliberately NOT core/explain/explanation_contract.py's v1):
-v1 is locked to the canonical star-graph split, TEST_FOLD=2, and exactly 500
-subjects from a separately curated cohort file -- none of which exist for this
-pipeline. Rather than force a second, unrelated cohort file into existence,
-this runner treats "the validation fold, exactly as binding.json's own
-split_sample_ids_sha256 already hash-pins it" as the cohort, which is already
-a complete, independently reproducible contract. v1 itself is untouched by
-this file -- do not import from it in a way that could change its behaviour
-for the methods that already depend on it.
+Cohort contract: `explanation_contract_v2.py` (COHORT_SCHEMA_VERSION = 2), NOT
+explanation_contract.py's v1. v1 is locked to the canonical star-graph split,
+TEST_FOLD=2 and exactly 500 subjects, which conflicts with ADR-002. v2 explains
+the validation fold (or dev split) of ONE finished run, hash-pinned to that
+run's binding.json, and is written next to the records as cohort.json. v1 is
+untouched and is not imported here.
 
 Method coverage: gsat, protgnn, graphcare (the ClinicalMethodAdapter methods that
 accept `external_edge_mask`) plus GCHMv2/v3. Any other registered method (CEI-GNN
@@ -54,6 +51,7 @@ from torch_geometric.loader import DataLoader
 
 from core import train
 from core.contracts import recursive_source_hashes, sample_ids_sha256
+from core.explain.explanation_contract_v2 import build_cohort_v2, validate_cohort_v2
 from gchm_pna.gchm_v2 import GCHMv2
 from gchm_pna.gchm_v3 import GCHMv3
 from core.explain.graphxai_wrapper import ClinicalGraphXAIWrapper, GraphCareGraphXAIWrapper
@@ -334,12 +332,29 @@ def explain_subject(wrapper, data, *, method: str, conv: str | None,
 
     batch = _single_graph_batch(data)
     x = wrapper.set_context(batch)
+    # Plan item 2: passing only x and edge_index is explaining a different model
+    # unless the wrapper provably reproduces the real model on this very graph.
+    faithful, wrapper_max_diff = wrapper.verify(x, batch.edge_index)
+    if not faithful:
+        raise ValueError(
+            f"wrapper does not reproduce the model on sample {data.sample_id}: "
+            f"max |logit difference| = {wrapper_max_diff:.3g}"
+        )
     batch_index = torch.zeros(x.size(0), dtype=torch.long)
     graphxai = explain_algorithms(
         wrapper, x, batch.edge_index, batch=batch_index, steps=steps, epochs=epochs,
         reversible_edge_pairs=reversible_edge_pairs(batch.edge_relation),
         node_reduction='mean',
     )
+    for payload in graphxai.values():
+        if payload.get("status") == "success" and payload["provenance"].get(
+                "zero_predictive_edge_gradient"):
+            payload["status"] = "unsupported"
+            payload["unsupported_reason"] = (
+                "d logit / d edge_mask is exactly zero (or the graph has no edges): "
+                "the mask does not influence this prediction, so this is not an "
+                "explanation of it and is not reported as a result")
+            payload.pop("node_explanation", None)
     builtin_importance = None
     try:
         builtin_importance = [
@@ -391,10 +406,13 @@ def explain_subject(wrapper, data, *, method: str, conv: str | None,
         "subject_id": str(data.subject),
         "true_class_id": int(data.y.view(-1)[0].item()),
         "prediction_class_id": prediction,
+        "wrapper_verification": {"max_abs_logit_diff": wrapper_max_diff, "tolerance": 1e-5},
         "builtin_node_importance": builtin_importance,
         "builtin_available": builtin_importance is not None,
         "graphxai": graphxai,
         "fidelity_v2": fidelity_v2,
+        "fidelity_v2_intervention": {"version": fv2.INTERVENTION_CONTRACT_VERSION,
+                                      "definition": fv2.INTERVENTION_CONTRACT},
         "edge_attr_contribution": edge_attr_contribution,
     }
 
@@ -418,6 +436,12 @@ def run_explanations(run_dir, output_dir, *, max_subjects: int | None = None,
     subjects = splits["validation"]
     if max_subjects is not None:
         subjects = subjects[:max_subjects]
+    cohort = build_cohort_v2(
+        binding, fold="validation",
+        fold_sample_ids=[d.sample_id for d in splits["validation"]],
+        explained_sample_ids=[d.sample_id for d in subjects],
+    )
+    validate_cohort_v2(cohort, binding)
 
     wrapper = build_wrapper(binding, model)
     method, conv = binding["method"], binding.get("conv")
@@ -434,6 +458,7 @@ def run_explanations(run_dir, output_dir, *, max_subjects: int | None = None,
             failures.append({"sample_id": str(data.sample_id), "error": str(exc)})
 
     output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "cohort.json").write_text(json.dumps(cohort, indent=2) + "\n")
     record_files = []
     for record in records:
         filename = f"subject_{record['sample_id']}.json"
@@ -448,6 +473,9 @@ def run_explanations(run_dir, output_dir, *, max_subjects: int | None = None,
         "binding_preprocessing_sha256": binding["preprocessing_sha256"],
         "validation_sample_ids_sha256": binding["split_sample_ids_sha256"]["validation"],
         "replay_verified": True,
+        "cohort_schema_version": cohort["schema_version"],
+        "cohort_file": "cohort.json",
+        "cohort_is_full_fold": cohort["is_full_fold"],
         "requested_subject_count": len(subjects),
         "explained_count": len(records),
         "failed_count": len(failures),
