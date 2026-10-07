@@ -114,13 +114,6 @@ def test_refuses_to_write_into_an_occupied_output_directory(tmp_path):
         explain.run_explanations(run_dir, output, max_subjects=1, steps=2, epochs=3)
 
 
-def test_unsupported_conv_is_refused_clearly(tmp_path):
-    run_dir = train_one(tmp_path, "run_hgt", conv="hgt", heads=2)
-    output = tmp_path / "explanations_hgt"
-    with pytest.raises(NotImplementedError, match="not yet supported"):
-        explain.run_explanations(run_dir, output, max_subjects=1, steps=2, epochs=3)
-
-
 def test_replay_check_uses_the_trained_batch_size_not_a_hardcoded_default(tmp_path):
     """Regression for a real bug this session found running the real pipeline
     end to end: replay_check() used to default to a hardcoded batch_size

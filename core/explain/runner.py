@@ -23,13 +23,10 @@ run's binding.json, and is written next to the records as cohort.json. v1 is
 untouched and is not imported here.
 
 Method coverage: gsat, protgnn, graphcare (the ClinicalMethodAdapter methods that
-accept `external_edge_mask`) plus GCHMv2/v3. Any other registered method (CEI-GNN
+accept `external_edge_mask`), GCHMv2/v3, and the black-box baselines (clinical_gnn
+with --conv edge_conditioned | hgt | gchm, explained post hoc only). Any other registered method (CEI-GNN
 plugins: their forward has no `external_edge_mask`, and CEI has its own GraphXAI
 studies under cei/studies/) is refused with a clear message.
-clinical_gnn with --conv in (edge_conditioned, hgt, gchm) is refused with a
-clear message -- those three use a genuine torch_geometric.nn.MessagePassing
-layer, likely need no edge_mask hook at all, but that hasn't been verified,
-so this runner does not claim to support them yet.
 
 Output governance (plan item #10): every run writes to a new, empty, caller-
 chosen directory with its own manifest (checkpoint/preprocessing/split hashes,
@@ -54,15 +51,20 @@ from core.contracts import recursive_source_hashes, sample_ids_sha256
 from core.explain.explanation_contract_v2 import build_cohort_v2, validate_cohort_v2
 from gchm_pna.gchm_v2 import GCHMv2
 from gchm_pna.gchm_v3 import GCHMv3
-from core.explain.graphxai_wrapper import ClinicalGraphXAIWrapper, GraphCareGraphXAIWrapper
+from core.explain.graphxai_wrapper import (
+    ClinicalGNNGraphXAIWrapper, ClinicalGraphXAIWrapper, GraphCareGraphXAIWrapper,
+)
+from core.model import ClinicalGNN
 from core.registry import build_method
 from core.schema import sha256
-from core.tensorize import triple_count
+from core.tensorize import PAYLOAD_WIDTH, triple_count
 
 GRAPHXAI_METHODS = frozenset({"gsat", "protgnn", "graphcare"})
 RUNNER_SCHEMA = "medgnn.clinical_graph_v2_explanation_run"
 RUNNER_SCHEMA_VERSION = 1
-UNSUPPORTED_CLINICAL_GNN_CONVS = ("edge_conditioned", "hgt", "gchm")
+# Black-box baselines: ClinicalGNN over genuine MessagePassing layers, explained
+# post hoc with GNNExplainer through PyG's own mask hook (no model change).
+BLACK_BOX_CONVS = ("edge_conditioned", "hgt", "gchm")
 
 
 def proba_digest(proba) -> str:
@@ -170,14 +172,22 @@ def build_model(binding: dict[str, Any], state_dict: dict[str, torch.Tensor]):
     num_triples = binding["num_meta_relations"]
     hidden, layers = binding["hidden"], binding["layers"]
 
-    if method == "clinical_gnn" and conv in UNSUPPORTED_CLINICAL_GNN_CONVS:
-        raise NotImplementedError(
-            f"--conv {conv} is not yet supported by this runner. It is a genuine "
-            "torch_geometric.nn.MessagePassing layer (unlike gchm_v2/v3), so "
-            "GNNExplainer likely works on it with zero extra plumbing -- but "
-            "that has not actually been verified, so this runner does not "
-            "claim to support it."
+    if method == "clinical_gnn" and conv in BLACK_BOX_CONVS:
+        degree_histogram = state_dict.get("degree_histogram")
+        if conv == "gchm" and degree_histogram is None:
+            raise ValueError("checkpoint has no saved degree_histogram buffer")
+        model = ClinicalGNN(
+            num_tokens=num_tokens, node_dim=node_dim, edge_dim=edge_dim,
+            num_classes=num_classes, hidden=hidden, layers=layers, dropout=0.0,
+            token_dim=_infer_token_dim(state_dict, is_method_adapter=False),
+            use_edge_payload=binding.get("edge_payload", True),
+            use_message_passing=binding.get("message_passing", True),
+            conv=conv, num_triples=num_triples, payload_dim=PAYLOAD_WIDTH,
+            heads=binding.get("heads") or 4, degree_histogram=degree_histogram,
+            modulation=binding.get("modulation") or "multiplicative",
         )
+        model.load_state_dict(state_dict)
+        return model, False
 
     if method == "clinical_gnn" and conv in ("gchm_v2", "gchm_v3"):
         # Allowlisted, not blocklisted: `settings` also carries derived/
@@ -282,6 +292,8 @@ def build_wrapper(binding: dict[str, Any], model):
     )
     if method == "graphcare":
         return GraphCareGraphXAIWrapper(model, **kwargs)
+    if method == "clinical_gnn" and conv in BLACK_BOX_CONVS:
+        return ClinicalGNNGraphXAIWrapper(model, method=conv, **kwargs)
     if method == "clinical_gnn":
         return ClinicalGraphXAIWrapper(model, method=conv, is_method_adapter=False, **kwargs)
     return ClinicalGraphXAIWrapper(model, method=method, is_method_adapter=True, **kwargs)
@@ -346,6 +358,16 @@ def explain_subject(wrapper, data, *, method: str, conv: str | None,
         reversible_edge_pairs=reversible_edge_pairs(batch.edge_relation),
         node_reduction='mean',
     )
+    gnn = graphxai.get("GNNExplainer", {})
+    if gnn.get("status") == "failed" and str(gnn.get("error", "")).startswith(
+            "GNNExplainer edge mask gradient disconnected"):
+        # d logit / d edge_mask is None: the mask never reaches the output at all
+        # (e.g. a model with message passing switched off). Same verdict the plan
+        # asks for as an all-zero derivative: unsupported, not a failed run.
+        gnn["status"] = "unsupported"
+        gnn["unsupported_reason"] = (
+            "d logit / d edge_mask is None: the mask does not reach this model's "
+            "output, so GNNExplainer cannot explain it")
     for payload in graphxai.values():
         if payload.get("status") == "success" and payload["provenance"].get(
                 "zero_predictive_edge_gradient"):
@@ -398,9 +420,15 @@ def explain_subject(wrapper, data, *, method: str, conv: str | None,
     # not tied to any one explainer -- a source's success/failure above is
     # irrelevant here).
     try:
-        edge_attr_contribution = fv2.relation_vs_payload_contribution(
-            wrapper, x, batch.edge_index, batch.edge_attr, num_relation_columns, prediction,
-        )
+        if conv == "hgt":
+            edge_attr_contribution = {
+                "status": "not_applicable",
+                "reason": "hgt reads relation identity from edge_triple, not from edge_attr's "
+                          "relation one-hot, so zeroing that block would under-report it"}
+        else:
+            edge_attr_contribution = fv2.relation_vs_payload_contribution(
+                wrapper, x, batch.edge_index, batch.edge_attr, num_relation_columns, prediction,
+            )
     except Exception as exc:  # noqa: BLE001 - must not block the rest of the record
         edge_attr_contribution = {"status": "failed", "error": str(exc)}
 

@@ -47,7 +47,10 @@ import types
 import torch
 import torch.nn as nn
 
+from torch_geometric.explain.algorithm.utils import clear_masks, set_masks
+
 from core.method_base import ClinicalBatch, read_clinical_batch
+from core.tensorize import PAYLOAD_WIDTH
 
 # Methods whose adapter exposes .explain(batch) -> per-node tensor as its own
 # built-in node-importance readout: GSAT's deterministic attention, and ProtGNN's
@@ -107,9 +110,11 @@ class ClinicalGraphXAIWrapper(nn.Module):
             raise ValueError("token override must keep the shape set_context() was given")
         if edge_attr is not None and edge_attr.shape != ctx.edge_attr.shape:
             raise ValueError("edge_attr override must keep the shape set_context() was given")
+        used_edge_attr = ctx.edge_attr if edge_attr is None else edge_attr
         return types.SimpleNamespace(
             x=x, token=ctx.token if token is None else token, node_type=ctx.node_type,
-            edge_index=ctx.edge_index, edge_attr=ctx.edge_attr if edge_attr is None else edge_attr,
+            edge_index=ctx.edge_index, edge_attr=used_edge_attr,
+            edge_payload=used_edge_attr[:, -PAYLOAD_WIDTH:],
             edge_relation=ctx.edge_relation,
             edge_triple=ctx.edge_triple, batch=ctx.batch_index, num_graphs=ctx.graph_count,
         )
@@ -168,6 +173,52 @@ class ClinicalGraphXAIWrapper(nn.Module):
             if was_training:
                 self.adapter.train()
         return bool(torch.allclose(got, ref, atol=atol)), float((got - ref).abs().max().item())
+
+
+class ClinicalGNNGraphXAIWrapper(ClinicalGraphXAIWrapper):
+    """Black-box baselines: `ClinicalGNN` with conv in (edge_conditioned, hgt, gchm).
+
+    Their layers are genuine `torch_geometric.nn.MessagePassing` modules, so
+    GNNExplainer's learned mask reaches the messages through PyG's own
+    `set_masks` hook with no model change. Because of that this wrapper's
+    `forward` deliberately does NOT declare an `edge_mask` parameter: if it did,
+    CompatibleGNNExplainer would deliver the mask a second time through the
+    keyword and the mask would be applied twice per edge (plan item 3 requires
+    exactly once). An explicit removal mask from the fidelity code (an evicted
+    node's incident edges) arrives as a plain keyword and is installed through
+    the same PyG hook for that one call only.
+
+    Soft-mask caveat, as for every other model here: the mask multiplies each
+    message after it is computed. For HGT that is after the per-receiver softmax,
+    so masked-out edges do not renormalise the remaining attention weights, and
+    for GCHM's PNA-style aggregation a zeroed message still takes part in
+    min/max. A soft mask is not the same intervention as deleting the edge.
+    `hgt` also reads relation identity from `edge_triple`, not from `edge_attr`.
+    """
+
+    def __init__(self, adapter, *, method: str, node_dim: int, edge_dim: int,
+                 num_tokens: int, num_triples: int, num_relations: int):
+        super().__init__(adapter, method=method, node_dim=node_dim, edge_dim=edge_dim,
+                         num_tokens=num_tokens, num_triples=num_triples,
+                         num_relations=num_relations, is_method_adapter=False)
+
+    def forward(self, x, edge_index, batch=None, token_override=None,
+                edge_attr_override=None, **kwargs):
+        del batch
+        removal_mask = kwargs.pop("edge_mask", None)
+        view = self._batch_with(x, edge_index, token=token_override, edge_attr=edge_attr_override)
+        was_training = self.adapter.training
+        self.adapter.eval()
+        installed = removal_mask is not None
+        if installed:
+            set_masks(self.adapter, removal_mask, edge_index.long(), apply_sigmoid=False)
+        try:
+            return self.adapter(view)
+        finally:
+            if installed:
+                clear_masks(self.adapter)
+            if was_training:
+                self.adapter.train()
 
 
 class GraphCareGraphXAIWrapper(nn.Module):
