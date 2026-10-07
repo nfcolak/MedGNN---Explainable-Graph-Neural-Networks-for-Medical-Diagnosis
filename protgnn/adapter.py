@@ -540,6 +540,71 @@ class ProtGNNAdapter(ClinicalMethodAdapter):
                     best_state, best_score = coalition, rewards[coalition]
         return embeddings[best_state], best_score, best_state
 
+    @torch.no_grad()
+    def explain_detail(self, batch) -> dict:
+        """ProtGNN's own case-based explanation of one graph's prediction.
+
+        For the predicted class, take the prototype of that class that contributes
+        most to the predicted logit (classifier weight x activation), then run the
+        model's own deterministic MCTS (the same search used for prototype
+        projection) on this graph to find the connected subgraph whose re-encoded
+        embedding is closest to that prototype. No new scoring is introduced here.
+
+        This is a search for "which part of the patient looks most like the
+        prototype", not a proof that this part drove the logit; faithfulness of the
+        subgraph is exactly what fidelity measures. `subgraph_nodes` is empty when
+        no connected component has at least `min_atoms` nodes.
+        """
+        was_training = self.training
+        self.eval()
+        try:
+            node_state, graph_embedding, graph_index = self._node_and_graph_embeddings(batch)
+            if graph_embedding.size(0) != 1:
+                raise ValueError("ProtGNN's built-in explanation scores one graph at a time")
+            activations, distances = self._prototype_activations(graph_embedding)
+            logits = self.prototype_classifier(activations)
+            predicted = int(logits.argmax(dim=-1).item())
+            contributions = self.prototype_classifier.weight[predicted] * activations[0]
+            own = torch.nonzero(self.prototype_class_ids == predicted, as_tuple=False).view(-1)
+            prototype = int(own[contributions[own].argmax()].item())
+            candidate = self._projection_candidate(batch, 0, node_state, graph_index)
+            _, similarity, coalition = self._mcts_project(candidate, self.prototype_vectors[prototype])
+            return {
+                "kind": "prototype_mcts_subgraph",
+                "predicted_class": predicted,
+                "prototype_index": prototype,
+                "prototype_activation": float(activations[0, prototype].item()),
+                "prototype_distance": float(distances[0, prototype].item()),
+                "logit_contribution": float(contributions[prototype].item()),
+                "prototype_contributions": [float(v) for v in contributions.tolist()],
+                "subgraph_nodes": [int(n) for n in coalition],
+                "subgraph_similarity": float(similarity) if coalition else None,
+                "node_count": int(node_state.size(0)),
+                "prototypes_projected_onto_training_subgraphs":
+                    int(self.projection_summary["projected_prototypes"]),
+                "prototypes_unmatched": int(self.projection_summary["unmatched_prototypes"]),
+            }
+        finally:
+            if was_training:
+                self.train()
+
+    @torch.no_grad()
+    def explain(self, batch) -> torch.Tensor:
+        """Per-node built-in importance: 1 for nodes in ProtGNN's own prototype
+        subgraph, 0 elsewhere. Binary by nature (the model's explanation is a
+        subgraph, not a ranking), so only the first `len(subgraph)` removal steps
+        of a deletion curve are informative. Raises when the model found no
+        connected subgraph of at least `min_atoms` nodes, rather than returning
+        all zeros that a tie-break would turn into an arbitrary ranking."""
+        detail = self.explain_detail(batch)
+        if not detail["subgraph_nodes"]:
+            raise RuntimeError(
+                "ProtGNN found no connected subgraph of at least "
+                f"{self.min_atoms} nodes in this graph")
+        importance = torch.zeros(detail["node_count"])
+        importance[detail["subgraph_nodes"]] = 1.0
+        return importance
+
     def _project_from_training_loader(self, train_loader, epoch):
         if train_loader is None:
             raise ValueError("ProtGNN projection requires the training loader")

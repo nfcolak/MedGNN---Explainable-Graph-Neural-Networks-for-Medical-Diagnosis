@@ -146,3 +146,22 @@ def test_degree_normalised_reduction_is_opt_in_and_sum_stays_default():
 def test_unknown_node_reduction_is_rejected():
     with pytest.raises(ValueError, match="node_reduction"):
         _gnn_importance(node_reduction="median")
+
+
+def test_protgnn_runner_reports_the_models_own_subgraph_or_says_why_not(tmp_path):
+    run_dir = train_one(tmp_path, "run_protgnn_builtin", method="protgnn", conv=None)
+    out = tmp_path / "explanations_protgnn"
+    manifest = runner.run_explanations(run_dir, out, max_subjects=4, steps=2, epochs=3)
+    assert manifest["method"] == "protgnn" and manifest["failed_count"] == 0, manifest["failures"]
+    for name in manifest["record_files"]:
+        record = json.loads((out / name).read_text())
+        if record["builtin_available"]:
+            detail = record["builtin_detail"]
+            members = [i for i, v in enumerate(record["builtin_node_importance"]) if v == 1.0]
+            assert detail["kind"] == "prototype_mcts_subgraph"
+            assert members == detail["subgraph_nodes"]
+            assert detail["predicted_class"] == record["prediction_class_id"]
+            assert "fidelity_plus" in record["fidelity_v2"]["builtin"]
+        else:
+            assert record["builtin_unavailable_reason"]
+            assert record["builtin_detail"] is None

@@ -109,10 +109,77 @@ def test_builtin_node_importance_available_where_explain_exists(name):
     assert torch.isfinite(importance).all()
 
 
-@pytest.mark.parametrize("name", ["protgnn"])
-def test_builtin_node_importance_not_available_for_prototype_methods(name):
+def _connected(nodes, edge_index):
+    nodes = set(nodes)
+    adjacency = {n: set() for n in nodes}
+    for a, b in edge_index.t().tolist():
+        if a in nodes and b in nodes:
+            adjacency[a].add(b)
+            adjacency[b].add(a)
+    seen, stack = set(), [next(iter(nodes))]
+    while stack:
+        n = stack.pop()
+        if n not in seen:
+            seen.add(n)
+            stack.extend(adjacency[n] - seen)
+    return seen == nodes
+
+
+def test_protgnn_builtin_is_its_own_prototype_subgraph():
+    torch.manual_seed(43)
     graph = one_graph()
-    wrapper, x = wrap_generic(name, graph)
+    wrapper, x = wrap_generic("protgnn", graph)
+    importance = wrapper.builtin_node_importance(x, graph.edge_index)
+    detail = wrapper.builtin_detail()
+    adapter = wrapper.adapter
+
+    assert importance.shape[0] == graph.x.size(0)
+    assert set(importance.tolist()) <= {0.0, 1.0}
+    members = [int(i) for i in importance.nonzero().view(-1)]
+    assert members == detail["subgraph_nodes"]
+    assert adapter.min_atoms <= len(members) <= adapter.max_atoms
+    assert _connected(members, graph.edge_index)
+
+    with torch.no_grad():
+        assert detail["predicted_class"] == int(wrapper(x, graph.edge_index).argmax(-1))
+    # The prototype used belongs to the predicted class and is that class's
+    # most-contributing prototype -- the model's own choice, not ours.
+    own = [i for i in range(adapter.num_prototypes) if int(adapter.prototype_class_ids[i]) == detail["predicted_class"]]
+    assert detail["prototype_index"] in own
+    assert detail["prototype_index"] == max(own, key=lambda i: detail["prototype_contributions"][i])
+    assert detail["kind"] == "prototype_mcts_subgraph"
+
+
+def test_protgnn_builtin_is_deterministic_and_does_not_disturb_the_model():
+    torch.manual_seed(47)
+    graph = one_graph()
+    wrapper, x = wrap_generic("protgnn", graph)
+    before = wrapper(x, graph.edge_index).detach().clone()
+    first, second = wrapper.builtin_detail(), wrapper.builtin_detail()
+    assert first == second
+    assert torch.equal(wrapper(x, graph.edge_index), before)
+    assert not wrapper.adapter.training
+
+
+def test_protgnn_builtin_refuses_instead_of_inventing_when_no_subgraph_exists():
+    graph = one_graph()
+    model = build_adapter("protgnn", min_atoms=6, max_atoms=6)   # graph has only 5 nodes
+    wrapper, x = wrap_generic("protgnn", graph, model=model)
+    assert wrapper.builtin_detail()["subgraph_nodes"] == []
+    with pytest.raises(RuntimeError, match="no connected subgraph"):
+        wrapper.builtin_node_importance(x, graph.edge_index)
+
+
+def test_wrappers_without_a_builtin_still_refuse_clearly():
+    from core.explain.graphxai_wrapper import ClinicalGraphXAIWrapper
+
+    graph = one_graph()
+    wrapper = ClinicalGraphXAIWrapper(
+        build_adapter("gsat"), method="not_a_builtin_method", node_dim=NODE_DIM,
+        edge_dim=EDGE_DIM, num_tokens=NUM_TOKENS, num_triples=NUM_TRIPLES,
+        num_relations=NUM_RELATIONS,
+    )
+    x = wrapper.set_context(graph)
     with pytest.raises(NotImplementedError, match="no per-node built-in explanation"):
         wrapper.builtin_node_importance(x, graph.edge_index)
 

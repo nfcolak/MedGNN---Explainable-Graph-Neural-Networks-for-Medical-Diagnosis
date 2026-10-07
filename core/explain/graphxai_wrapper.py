@@ -50,10 +50,10 @@ import torch.nn as nn
 from core.method_base import ClinicalBatch, read_clinical_batch
 
 # Methods whose adapter exposes .explain(batch) -> per-node tensor as its own
-# built-in node-importance readout (GSAT's deterministic attention). protgnn's
-# prototype similarity is graph-level only -- builtin_node_importance raises
-# clearly for it rather than fabricating a per-node score.
-_SUPPORTS_BUILTIN_EXPLAIN = frozenset({"gsat"})
+# built-in node-importance readout: GSAT's deterministic attention, and ProtGNN's
+# own prototype subgraph (binary membership; the model's explanation is a
+# subgraph, not a ranking). Others raise rather than fabricating a score.
+_SUPPORTS_BUILTIN_EXPLAIN = frozenset({"gsat", "protgnn"})
 
 
 class ClinicalGraphXAIWrapper(nn.Module):
@@ -131,7 +131,7 @@ class ClinicalGraphXAIWrapper(nn.Module):
     @torch.no_grad()
     def builtin_node_importance(self, x, edge_index, batch=None):
         """Calls the adapter's own `.explain(batch)`, for the methods that
-        have one (GSAT). Always a fresh, unmasked pass -- never
+        have one (GSAT, ProtGNN). Always a fresh, unmasked pass -- never
         reuses state from a prior forward(edge_mask=...) probe."""
         del x, edge_index, batch
         if self._method not in _SUPPORTS_BUILTIN_EXPLAIN:
@@ -145,6 +145,13 @@ class ClinicalGraphXAIWrapper(nn.Module):
         finally:
             if was_training:
                 self.adapter.train()
+
+    @torch.no_grad()
+    def builtin_detail(self):
+        """The adapter's own structured explanation (e.g. ProtGNN's prototype,
+        its activation and the matching subgraph), or None if it has none."""
+        detail = getattr(self.adapter, "explain_detail", None)
+        return None if detail is None else detail(self._raw_context)
 
     @torch.no_grad()
     def verify(self, x, edge_index, batch=None, atol: float = 1e-5):

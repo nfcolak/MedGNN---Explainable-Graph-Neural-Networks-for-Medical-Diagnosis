@@ -355,13 +355,20 @@ def explain_subject(wrapper, data, *, method: str, conv: str | None,
                 "the mask does not influence this prediction, so this is not an "
                 "explanation of it and is not reported as a result")
             payload.pop("node_explanation", None)
-    builtin_importance = None
+    builtin_importance, builtin_unavailable = None, None
     try:
         builtin_importance = [
             float(v) for v in wrapper.builtin_node_importance(x, batch.edge_index)
         ]
     except NotImplementedError:
         pass
+    except RuntimeError as exc:
+        # The model itself produced no explanation for this graph (e.g. ProtGNN
+        # found no connected subgraph). Recorded, never turned into a fake one.
+        builtin_unavailable = str(exc)
+    builtin_detail = (wrapper.builtin_detail()
+                      if builtin_importance is not None and hasattr(wrapper, "builtin_detail")
+                      else None)
     with torch.no_grad():
         prediction = int(wrapper(x, batch.edge_index).argmax(-1).item())
 
@@ -409,6 +416,8 @@ def explain_subject(wrapper, data, *, method: str, conv: str | None,
         "wrapper_verification": {"max_abs_logit_diff": wrapper_max_diff, "tolerance": 1e-5},
         "builtin_node_importance": builtin_importance,
         "builtin_available": builtin_importance is not None,
+        "builtin_unavailable_reason": builtin_unavailable,
+        "builtin_detail": builtin_detail,
         "graphxai": graphxai,
         "fidelity_v2": fidelity_v2,
         "fidelity_v2_intervention": {"version": fv2.INTERVENTION_CONTRACT_VERSION,
