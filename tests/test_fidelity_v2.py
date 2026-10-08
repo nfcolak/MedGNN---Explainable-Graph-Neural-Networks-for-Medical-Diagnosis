@@ -82,13 +82,15 @@ def wrap_gchm(graph):
 WRAPPERS = {"gsat": wrap_gsat, "graphcare": wrap_graphcare, "gchm_v2": wrap_gchm}
 
 
-def test_removable_node_mask_excludes_structural_and_knowledge_kinds():
+def test_removable_node_mask_excludes_structural_and_concept_kinds():
     node_type = torch.arange(len(NODE_KINDS), dtype=torch.long)  # one of every kind
     removable = fv2.removable_node_mask(node_type)
-    for kind in ("patient", "visit", "knowledge"):
+    # patient/visit are scaffolding; knowledge and analyte are concept nodes, not facts
+    for kind in ("patient", "visit", "knowledge", "analyte"):
         assert not bool(removable[NODE_KINDS.index(kind)]), kind
-    for kind in ("complaint", "measurement", "analyte", "vital", "diagnosis"):
+    for kind in ("complaint", "measurement", "vital", "diagnosis"):
         assert bool(removable[NODE_KINDS.index(kind)]), kind
+    assert set(fv2.EVIDENCE_NODE_KINDS) == {"complaint", "measurement", "vital", "diagnosis"}
 
 
 @pytest.mark.parametrize("name", ["gsat", "graphcare", "gchm_v2"])
@@ -109,8 +111,9 @@ def test_fidelity_plus_and_minus_v2_are_finite_and_well_formed(name):
     for result in (plus, minus):
         assert math.isfinite(result["prob"])
         assert result["k"] >= 1
-        # 7 nodes, 2 structural (patient, visit) + 1 knowledge = 4 removable.
-        assert result["removable_node_count"] == 4
+        # 7 nodes: patient, visit, knowledge, analyte protected -> complaint,
+        # measurement, vital = 3 removable.
+        assert result["removable_node_count"] == 3
 
 
 @pytest.mark.parametrize("name", ["gsat", "graphcare", "gchm_v2"])
@@ -123,17 +126,30 @@ def test_structural_nodes_are_never_selected_even_with_maximal_importance(name):
     wrapper, x = WRAPPERS[name](graph)
     with torch.no_grad():
         target = int(wrapper(x, graph.edge_index).argmax(-1).item())
-    importance = torch.zeros(graph.x.size(0)).numpy().copy()
+    importance = torch.full((graph.x.size(0),), 1e-3).numpy().copy()
     importance[PATIENT_KIND] = 1e6  # node 0 IS kind 'patient' by construction above
     importance[VISIT_KIND] = 1e6    # node 1 IS kind 'visit'
 
-    # k = all 4 removable nodes: if structural nodes leaked into the ordering,
+    # k = all 3 removable nodes: if structural nodes leaked into the ordering,
     # they would be evicted first and the removable_node_count would be wrong.
     plus = fv2.fidelity_plus_v2(
-        wrapper, x, graph.token, graph.edge_index, graph.node_type, importance, target, k=4
+        wrapper, x, graph.token, graph.edge_index, graph.node_type, importance, target, k=3
     )
-    assert plus["removable_node_count"] == 4
-    assert plus["k"] == 4
+    assert plus["removable_node_count"] == 3
+    assert plus["k"] == 3
+
+
+@pytest.mark.parametrize("name", ["gsat", "graphcare", "gchm_v2"])
+def test_an_explanation_with_all_its_weight_on_protected_nodes_is_refused(name):
+    """Zero importance on every eligible node means the explanation names no
+    evidence. It is refused, not silently padded with tie-break nodes."""
+    graph = seven_node_graph()
+    wrapper, x = WRAPPERS[name](graph)
+    importance = torch.zeros(graph.x.size(0)).numpy().copy()
+    importance[PATIENT_KIND] = importance[VISIT_KIND] = 1e6
+    with pytest.raises(ValueError, match="no nonzero importance"):
+        fv2.fidelity_plus_v2(wrapper, x, graph.token, graph.edge_index, graph.node_type,
+                             importance, 0)
 
 
 @pytest.mark.parametrize("name", ["gsat", "graphcare", "gchm_v2"])

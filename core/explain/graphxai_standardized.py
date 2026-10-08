@@ -87,7 +87,7 @@ class CompatibleGNNExplainer(GNNExplainer):
         super()._clear_masks()
 
 def explain_algorithms(wrapper, x, edge_index, *, batch, steps=32, epochs=50,
-                       reversible_edge_pairs=None, node_reduction='sum'):
+                       reversible_edge_pairs=None, node_reduction='sum', target_class=None):
     if steps < 1 or epochs < 1:
         raise ValueError('positive explanation budgets required')
     # 'sum' is the historical reduction every existing caller (e.g. the CEI GraphXAI
@@ -98,6 +98,13 @@ def explain_algorithms(wrapper, x, edge_index, *, batch, steps=32, epochs=50,
     wrapper.eval()
     with torch.no_grad():
         label = wrapper(x, edge_index, batch=batch).argmax(-1)
+    # target_class=None explains the model's own prediction (every existing caller).
+    # An explicit class explains that class's logit instead -- e.g. the TRUE class of a
+    # misclassified patient. GNNExplainer cannot be redirected: the vendored optimiser
+    # hard-codes the model's predicted class as its target.
+    predicted_label = label
+    if target_class is not None:
+        label = torch.tensor([int(target_class)], device=label.device)
     # Attribute the predicted logit, rather than an unrelated training label.
     criterion = lambda logits, target: logits.gather(1, target.view(-1,1)).sum()
     aggregate = lambda values, dim: values.abs().sum(dim=dim)
@@ -109,13 +116,19 @@ def explain_algorithms(wrapper, x, edge_index, *, batch, steps=32, epochs=50,
         features = x.detach().clone()
         provenance = {'implementation':'vendored GraphXAI', 'source_sha256':hashes,
                       'torch':torch.__version__, 'pyg':torch_geometric.__version__,
-                      'target':'predicted_logit' if name != 'GNNExplainer' else 'predicted_class_log_probability',
+                      'target':('predicted_logit' if target_class is None else f'class_{int(target_class)}_logit')
+                               if name != 'GNNExplainer' else 'predicted_class_log_probability',
                       'steps':steps if name == 'IntegratedGradExplainer' else None,
                       'epochs':epochs if name == 'GNNExplainer' else None}
         # Isolated per algorithm: one algorithm's failure (e.g. GNNExplainer's
         # disconnected-gradient refusal above) must not discard the other two
         # algorithms' already-computed, perfectly valid results along with it.
         # Previously the whole function raised and returned nothing at all.
+        if name == 'GNNExplainer' and target_class is not None and int(label.item()) != int(predicted_label.item()):
+            result[name] = {'status': 'unsupported', 'provenance': provenance,
+                            'unsupported_reason': 'GNNExplainer always explains the model\'s own predicted '
+                                                  'class; it cannot be directed at another class'}
+            continue
         try:
             if name == 'GradExplainer':
                 exp = GradExplainer(wrapper, criterion).get_explanation_graph(features,edge_index,label,

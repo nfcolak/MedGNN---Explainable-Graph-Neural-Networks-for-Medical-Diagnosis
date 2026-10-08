@@ -541,7 +541,7 @@ class ProtGNNAdapter(ClinicalMethodAdapter):
         return embeddings[best_state], best_score, best_state
 
     @torch.no_grad()
-    def explain_detail(self, batch) -> dict:
+    def explain_detail(self, batch, target_class: int | None = None) -> dict:
         """ProtGNN's own case-based explanation of one graph's prediction.
 
         For the predicted class, take the prototype of that class that contributes
@@ -563,7 +563,8 @@ class ProtGNNAdapter(ClinicalMethodAdapter):
                 raise ValueError("ProtGNN's built-in explanation scores one graph at a time")
             activations, distances = self._prototype_activations(graph_embedding)
             logits = self.prototype_classifier(activations)
-            predicted = int(logits.argmax(dim=-1).item())
+            model_prediction = int(logits.argmax(dim=-1).item())
+            predicted = model_prediction if target_class is None else int(target_class)
             contributions = self.prototype_classifier.weight[predicted] * activations[0]
             own = torch.nonzero(self.prototype_class_ids == predicted, as_tuple=False).view(-1)
             prototype = int(own[contributions[own].argmax()].item())
@@ -571,7 +572,8 @@ class ProtGNNAdapter(ClinicalMethodAdapter):
             _, similarity, coalition = self._mcts_project(candidate, self.prototype_vectors[prototype])
             return {
                 "kind": "prototype_mcts_subgraph",
-                "predicted_class": predicted,
+                "predicted_class": model_prediction,
+                "explained_class": predicted,
                 "prototype_index": prototype,
                 "prototype_activation": float(activations[0, prototype].item()),
                 "prototype_distance": float(distances[0, prototype].item()),
@@ -589,14 +591,14 @@ class ProtGNNAdapter(ClinicalMethodAdapter):
                 self.train()
 
     @torch.no_grad()
-    def explain(self, batch) -> torch.Tensor:
+    def explain(self, batch, target_class: int | None = None) -> torch.Tensor:
         """Per-node built-in importance: 1 for nodes in ProtGNN's own prototype
         subgraph, 0 elsewhere. Binary by nature (the model's explanation is a
         subgraph, not a ranking), so only the first `len(subgraph)` removal steps
         of a deletion curve are informative. Raises when the model found no
         connected subgraph of at least `min_atoms` nodes, rather than returning
         all zeros that a tie-break would turn into an arbitrary ranking."""
-        detail = self.explain_detail(batch)
+        detail = self.explain_detail(batch, target_class)
         if not detail["subgraph_nodes"]:
             raise RuntimeError(
                 "ProtGNN found no connected subgraph of at least "

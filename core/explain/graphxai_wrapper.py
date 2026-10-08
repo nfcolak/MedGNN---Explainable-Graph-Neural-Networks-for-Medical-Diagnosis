@@ -42,6 +42,7 @@ convention): graph_count must be 1.
 """
 from __future__ import annotations
 
+import inspect
 import types
 
 import torch
@@ -134,10 +135,11 @@ class ClinicalGraphXAIWrapper(nn.Module):
                 self.adapter.train()
 
     @torch.no_grad()
-    def builtin_node_importance(self, x, edge_index, batch=None):
+    def builtin_node_importance(self, x, edge_index, batch=None, target_class=None):
         """Calls the adapter's own `.explain(batch)`, for the methods that
         have one (GSAT, ProtGNN). Always a fresh, unmasked pass -- never
-        reuses state from a prior forward(edge_mask=...) probe."""
+        reuses state from a prior forward(edge_mask=...) probe. `target_class` is
+        passed only to adapters whose explanation is class-specific (ProtGNN)."""
         del x, edge_index, batch
         if self._method not in _SUPPORTS_BUILTIN_EXPLAIN:
             raise NotImplementedError(
@@ -146,6 +148,9 @@ class ClinicalGraphXAIWrapper(nn.Module):
         was_training = self.adapter.training
         self.adapter.eval()
         try:
+            if target_class is not None and "target_class" in inspect.signature(
+                    self.adapter.explain).parameters:
+                return self.adapter.explain(self._raw_context, target_class).detach()
             return self.adapter.explain(self._raw_context).detach()
         finally:
             if was_training:
@@ -290,8 +295,9 @@ class GraphCareGraphXAIWrapper(nn.Module):
         return output.logits
 
     @torch.no_grad()
-    def builtin_node_importance(self, x, edge_index, batch=None):
-        """GraphCare's own node-conditioned attention, scattered to one value
+    def builtin_node_importance(self, x, edge_index, batch=None, target_class=None):
+        """GraphCare's own node-conditioned attention (class-independent, so
+        `target_class` is accepted for interface parity and ignored), scattered to one value
         per node (last_node_attention), from a fresh, unmasked forward pass
         this call performs. NOT last_alpha: that array is indexed over only
         the direct (non-global, non-knowledge) attention pairs, not one entry
