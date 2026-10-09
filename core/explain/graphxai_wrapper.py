@@ -50,6 +50,7 @@ import torch.nn as nn
 
 from torch_geometric.explain.algorithm.utils import clear_masks, set_masks
 
+from core.explain import gchm_builtin
 from core.method_base import ClinicalBatch, read_clinical_batch
 from core.tensorize import PAYLOAD_WIDTH
 
@@ -58,6 +59,10 @@ from core.tensorize import PAYLOAD_WIDTH
 # own prototype subgraph (binary membership; the model's explanation is a
 # subgraph, not a ranking). Others raise rather than fabricating a score.
 _SUPPORTS_BUILTIN_EXPLAIN = frozenset({"gsat", "protgnn"})
+# Models that are not ClinicalMethodAdapters and keep their code untouched: their built-in
+# explanation is read off their own computation by a function in core/explain/.
+# GCHM-PNA v3: node-additive label-wise + wide-vote accounting. v2 has neither path.
+_EXTERNAL_BUILTINS = {"gchm_v3": gchm_builtin.explain}
 
 
 class ClinicalGraphXAIWrapper(nn.Module):
@@ -81,6 +86,7 @@ class ClinicalGraphXAIWrapper(nn.Module):
         self._is_method_adapter = is_method_adapter
         self._context: ClinicalBatch | None = None
         self._raw_context = None
+        self._external_detail = None
 
     def set_context(self, batch) -> torch.Tensor:
         clinical_batch = read_clinical_batch(
@@ -95,6 +101,7 @@ class ClinicalGraphXAIWrapper(nn.Module):
             )
         self._context = clinical_batch
         self._raw_context = batch
+        self._external_detail = None
         return clinical_batch.x
 
     def _batch_with(self, x, edge_index, *, token=None, edge_attr=None):
@@ -141,6 +148,10 @@ class ClinicalGraphXAIWrapper(nn.Module):
         reuses state from a prior forward(edge_mask=...) probe. `target_class` is
         passed only to adapters whose explanation is class-specific (ProtGNN)."""
         del x, edge_index, batch
+        if self._method in _EXTERNAL_BUILTINS:
+            importance, self._external_detail = _EXTERNAL_BUILTINS[self._method](
+                self.adapter, self._raw_context, target_class)
+            return importance
         if self._method not in _SUPPORTS_BUILTIN_EXPLAIN:
             raise NotImplementedError(
                 f"{self._method} has no per-node built-in explanation in this adapter"
@@ -160,6 +171,8 @@ class ClinicalGraphXAIWrapper(nn.Module):
     def builtin_detail(self):
         """The adapter's own structured explanation (e.g. ProtGNN's prototype,
         its activation and the matching subgraph), or None if it has none."""
+        if self._external_detail is not None:
+            return self._external_detail
         detail = getattr(self.adapter, "explain_detail", None)
         return None if detail is None else detail(self._raw_context)
 
