@@ -1,0 +1,114 @@
+{
+  "graph_idx": 27,
+  "dataset_index": null,
+  "subject_id": 10039110,
+  "pred_label": 4,
+  "true_label": 4,
+  "correct": true,
+  "pred_class": "Anemia",
+  "true_class": "Anemia",
+  "num_nodes": 8,
+  "num_edges": 6,
+  "node_global_ids": [
+    1,
+    25,
+    89,
+    165,
+    174,
+    178,
+    205,
+    252
+  ],
+  "explanations": {
+    "GradExplainer": {
+      "node_importance": [
+        -0.0034537275787442923,
+        -0.0002954332157969475,
+        0.003204680047929287,
+        0.0007528431015089154,
+        0.00048296849126927555,
+        -8.969230111688375e-05,
+        0.0001394144055666402,
+        0.0007513180607929826
+      ],
+      "top_nodes": [
+        {
+          "index": 0,
+          "importance": -0.0034537275787442923
+        },
+        {
+          "index": 2,
+          "importance": 0.003204680047929287
+        },
+        {
+          "index": 3,
+          "importance": 0.0007528431015089154
+        },
+        {
+          "index": 7,
+          "importance": 0.0007513180607929826
+        }
+      ]
+    },
+    "IntegratedGradExplainer": {
+      "node_importance": [
+        0.0014462181134149432,
+        -0.0002911933115683496,
+        -0.001535801449790597,
+        -9.342929115518928e-05,
+        0.000321902654832229,
+        -0.005000099539756775,
+        0.00012405827874317765,
+        -8.479293319396675e-05
+      ],
+      "top_nodes": [
+        {
+          "index": 5,
+          "importance": -0.005000099539756775
+        },
+        {
+          "index": 2,
+          "importance": -0.001535801449790597
+        },
+        {
+          "index": 0,
+          "importance": 0.0014462181134149432
+        },
+        {
+          "index": 4,
+          "importance": 0.000321902654832229
+        }
+      ]
+    },
+    "GNNExplainer": {
+      "node_importance": [
+        1.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "top_nodes": [
+        {
+          "index": 7,
+          "importance": 1.0
+        },
+        {
+          "index": 6,
+          "importance": 1.0
+        },
+        {
+          "index": 5,
+          "importance": 1.0
+        },
+        {
+          "index": 2,
+          "importance": 1.0
+        }
+      ]
+    }
+  }
+}

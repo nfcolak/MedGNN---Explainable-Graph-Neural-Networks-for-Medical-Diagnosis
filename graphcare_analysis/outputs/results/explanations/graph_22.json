@@ -1,0 +1,102 @@
+{
+  "graph_idx": 22,
+  "dataset_index": null,
+  "subject_id": 10029429,
+  "pred_label": 13,
+  "true_label": 29,
+  "correct": false,
+  "pred_class": "Head injury",
+  "true_class": "Unspecified atrial fibrillation",
+  "num_nodes": 5,
+  "num_edges": 4,
+  "node_global_ids": [
+    165,
+    187,
+    233,
+    243,
+    249
+  ],
+  "explanations": {
+    "GradExplainer": {
+      "node_importance": [
+        0.7979915142059326,
+        -0.020489491522312164,
+        -0.04916813597083092,
+        0.055884797126054764,
+        -0.04313918203115463
+      ],
+      "top_nodes": [
+        {
+          "index": 0,
+          "importance": 0.7979915142059326
+        },
+        {
+          "index": 3,
+          "importance": 0.055884797126054764
+        },
+        {
+          "index": 2,
+          "importance": -0.04916813597083092
+        },
+        {
+          "index": 4,
+          "importance": -0.04313918203115463
+        }
+      ]
+    },
+    "IntegratedGradExplainer": {
+      "node_importance": [
+        -0.30747929215431213,
+        0.03459163010120392,
+        0.0371394157409668,
+        0.041696809232234955,
+        0.0488821305334568
+      ],
+      "top_nodes": [
+        {
+          "index": 0,
+          "importance": -0.30747929215431213
+        },
+        {
+          "index": 4,
+          "importance": 0.0488821305334568
+        },
+        {
+          "index": 3,
+          "importance": 0.041696809232234955
+        },
+        {
+          "index": 2,
+          "importance": 0.0371394157409668
+        }
+      ]
+    },
+    "GNNExplainer": {
+      "node_importance": [
+        1.0,
+        1.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "top_nodes": [
+        {
+          "index": 4,
+          "importance": 1.0
+        },
+        {
+          "index": 1,
+          "importance": 1.0
+        },
+        {
+          "index": 0,
+          "importance": 1.0
+        },
+        {
+          "index": 3,
+          "importance": 0.0
+        }
+      ]
+    }
+  }
+}
