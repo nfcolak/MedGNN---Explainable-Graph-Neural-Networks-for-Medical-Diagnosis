@@ -37,12 +37,21 @@ DEFAULT_TOLERANCE = 0.05
 DELTA_FLOOR = 1e-3
 
 
-def not_recorded_baseline(x: torch.Tensor, node_type: torch.Tensor,
-                          layout: Sequence[str]) -> torch.Tensor:
-    """The primary baseline: every node keeps its kind, loses what was recorded."""
-    if len(layout) != x.size(1):
+def not_recorded_baseline(x: torch.Tensor, node_type: torch.Tensor, layout: Sequence[str],
+                          *, numeric_width: int | None = None, zeroed_tail: int = 0,
+                          kept_tail: int = 0) -> torch.Tensor:
+    """The primary baseline: every node keeps its kind, loses what was recorded.
+
+    A model whose explained input is a composite row (CEI-GNN: numeric features, then
+    token vectors, then node-type vectors) passes the widths of the two tails: the token
+    block is zeroed (nothing recorded -> the pad embedding) and the type block is kept
+    (what the node IS). Plain models leave both at 0."""
+    numeric_width = len(layout) if numeric_width is None else numeric_width
+    if len(layout) != numeric_width or numeric_width + zeroed_tail + kept_tail != x.size(1):
         raise ValueError(f"layout has {len(layout)} names but x has {x.size(1)} columns")
     baseline = torch.zeros_like(x)
+    if kept_tail:
+        baseline[:, x.size(1) - kept_tail:] = x[:, x.size(1) - kept_tail:]
     patient = node_type.long() == PATIENT_KIND_ID
     for column, name in enumerate(layout):
         if name in NODE_KINDS:

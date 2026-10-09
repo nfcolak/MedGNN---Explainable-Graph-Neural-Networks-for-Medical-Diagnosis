@@ -82,9 +82,10 @@ def test_runner_writes_a_v2_cohort_and_records_its_version(tmp_path, trained):
     assert cohort["fold"] == "validation"
 
 
-def test_runner_refuses_cei_clearly(trained):
+def test_runner_refuses_the_older_cei_variants_clearly(trained):
+    """CEI-GNN v3 is bridged (tests/test_cei_bridge.py); his v1/v2 variants are not."""
     _, bundle, binding, _, _ = trained
-    other = dict(binding, method="cei_gnn_v3")
+    other = dict(binding, method="cei_gnn_v2")
     with pytest.raises(NotImplementedError, match="not supported by this runner"):
         runner.build_model(other, bundle.state_dict)
 

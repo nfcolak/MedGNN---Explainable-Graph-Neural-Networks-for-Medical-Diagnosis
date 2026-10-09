@@ -62,7 +62,7 @@ from core.registry import build_method
 from core.schema import sha256
 from core.tensorize import PAYLOAD_WIDTH, triple_count
 
-GRAPHXAI_METHODS = frozenset({"gsat", "protgnn", "graphcare"})
+GRAPHXAI_METHODS = frozenset({"gsat", "protgnn", "graphcare", "cei_gnn_v3"})
 RUNNER_SCHEMA = "medgnn.clinical_graph_v2_explanation_run"
 RUNNER_SCHEMA_VERSION = 1
 # Black-box baselines: ClinicalGNN over genuine MessagePassing layers, explained
@@ -84,7 +84,10 @@ class RunBundle:
     preprocessing: dict[str, Any] | None = None
 
 
-def load_run_bundle(run_dir) -> RunBundle:
+FOLD_BLOCK = {"validation": "selected_validation", "dev": "selected_dev"}
+
+
+def load_run_bundle(run_dir, fold: str = "validation") -> RunBundle:
     """Load and hash-verify binding.json/preprocessing.json/best.pt. Refuses
     to proceed on any mismatch -- this is the gate the plan's 'contract
     conflict' and 'replay check' items both exist to put in front of
@@ -104,18 +107,20 @@ def load_run_bundle(run_dir) -> RunBundle:
             "preprocessing_sha256 -- this run directory is not internally "
             "consistent; refusing to explain a possibly-mismatched model/data pair."
         )
-    if binding.get("selected_validation") is None:
+    if fold not in FOLD_BLOCK:
+        raise ValueError(f"fold must be one of {sorted(FOLD_BLOCK)}, not {fold!r}")
+    if binding.get(FOLD_BLOCK[fold]) is None:
         raise ValueError(
-            "binding.json has no selected_validation block (this run never "
-            "evaluated validation -- e.g. a --selection-fold dev run with "
-            "--final-eval none); nothing to replay or explain against."
+            f"binding.json has no {FOLD_BLOCK[fold]} block (this run never evaluated the "
+            f"{fold} fold -- e.g. a --selection-fold dev run with --final-eval none keeps "
+            "validation closed; try fold='dev'); nothing to replay or explain against."
         )
     state_dict = torch.load(ckpt_path, map_location="cpu")
     return RunBundle(run_dir=run_dir, binding=binding, state_dict=state_dict,
                      preprocessing=json.loads(prep_path.read_text()))
 
 
-def rebuild_validation_split(binding: dict[str, Any]):
+def rebuild_validation_split(binding: dict[str, Any], fold: str = "validation"):
     """Reconstruct train/validation(/dev) splits exactly as train.py built
     them, from binding.json's own recorded (already-resolved) arguments --
     not re-derived from a CLI invocation, so there is nothing left to guess."""
@@ -132,14 +137,14 @@ def rebuild_validation_split(binding: dict[str, Any]):
         dev_limit=binding.get("dev_limit"),
         sample_seed=binding.get("sample_seed"),
     )
-    if "validation" not in splits:
-        raise ValueError("rebuilt splits have no validation fold")
-    recorded = binding.get("split_sample_ids_sha256", {}).get("validation")
-    actual = sample_ids_sha256(d.sample_id for d in splits["validation"])
+    if fold not in splits:
+        raise ValueError(f"rebuilt splits have no {fold} fold")
+    recorded = binding.get("split_sample_ids_sha256", {}).get(fold)
+    actual = sample_ids_sha256(d.sample_id for d in splits[fold])
     if recorded != actual:
         raise ValueError(
-            "rebuilt validation split's sample-ID hash does not match "
-            "binding.json's split_sample_ids_sha256['validation'] -- the "
+            f"rebuilt {fold} split's sample-ID hash does not match "
+            f"binding.json's split_sample_ids_sha256[{fold!r}] -- the "
             "artifact, targets file, or build arguments have drifted since "
             "training; refusing to explain against a different split than "
             "the model was actually evaluated on."
@@ -152,6 +157,30 @@ def _infer_token_dim(state_dict: dict[str, torch.Tensor], *, is_method_adapter: 
     if key not in state_dict:
         raise ValueError(f"checkpoint has no {key!r} tensor to infer token_dim from")
     return int(state_dict[key].shape[1])
+
+
+def _build_cei(binding: dict[str, Any], state_dict: dict[str, torch.Tensor]):
+    """CEI-GNN v3 through the shared registry from its own recorded options (arm, k,
+    v3_state file, ...), then proven to be the recorded configuration: the rebuilt
+    adapter's run_config() must equal binding.json's method_config exactly."""
+    config = binding["method_config"]
+    arch = config["architecture"]
+    model = build_method(
+        "cei_gnn_v3", num_tokens=binding["vocabulary_size"], node_dim=binding["node_dim"],
+        edge_dim=binding["edge_dim"], num_classes=binding["num_classes"],
+        hidden=binding["hidden"], layers=binding["layers"], dropout=0.0,
+        token_dim=int(arch["token_dim"]), num_triples=binding["num_meta_relations"],
+        args=Namespace(edge_direction=binding["edge_direction"],
+                       method_options=dict(config["effective_settings"]),
+                       seed=binding.get("seed")),
+    )
+    model.load_state_dict(state_dict)
+    if model.run_config() != config:
+        raise ValueError(
+            "rebuilt CEI-GNN's configuration differs from binding.json's method_config "
+            "(check that the recorded v3_state file is the one on disk); refusing to "
+            "explain a model that cannot be shown to be the one that was trained")
+    return model
 
 
 def build_model(binding: dict[str, Any], state_dict: dict[str, torch.Tensor]):
@@ -229,6 +258,8 @@ def build_model(binding: dict[str, Any], state_dict: dict[str, torch.Tensor]):
             f"{sorted(GRAPHXAI_METHODS)} and clinical_gnn gchm_v2/gchm_v3); its adapter "
             "does not accept `external_edge_mask`, which GNNExplainer requires")
     architecture = binding["method_config"].get("architecture", {})
+    if method == "cei_gnn_v3":
+        return _build_cei(binding, state_dict), True
     token_dim = architecture.get("token_dim")
     if token_dim is None:
         token_dim = _infer_token_dim(state_dict, is_method_adapter=True)
@@ -245,7 +276,7 @@ def build_model(binding: dict[str, Any], state_dict: dict[str, torch.Tensor]):
 
 @torch.no_grad()
 def replay_check(model, splits, binding: dict[str, Any], *, is_method_adapter: bool,
-                 device="cpu", batch_size: int | None = None) -> None:
+                 device="cpu", batch_size: int | None = None, fold: str = "validation") -> None:
     """Refuse to proceed unless a fresh validation pass reproduces the exact
     recorded prediction hash. This is the one check that makes every other
     reconstruction assumption above verifiable rather than merely plausible:
@@ -265,7 +296,7 @@ def replay_check(model, splits, binding: dict[str, Any], *, is_method_adapter: b
     if batch_size is None:
         batch_size = binding.get("batch_size", 64)
     model = model.to(device).eval()
-    loader = DataLoader(splits["validation"], batch_size=batch_size)
+    loader = DataLoader(splits[fold], batch_size=batch_size)
     logits = []
     for batch in loader:
         batch = batch.to(device)
@@ -275,10 +306,10 @@ def replay_check(model, splits, binding: dict[str, Any], *, is_method_adapter: b
             logits.append(model(batch).cpu())
     proba = torch.softmax(torch.cat(logits), dim=1).numpy()
     digest = proba_digest(proba)
-    expected = binding["selected_validation"]["prediction_sha256"]
+    expected = binding[FOLD_BLOCK[fold]]["prediction_sha256"]
     if digest != expected:
         raise ValueError(
-            "REPLAY CHECK FAILED: reloading best.pt and re-running validation "
+            f"REPLAY CHECK FAILED: reloading best.pt and re-running {fold} "
             f"produced prediction hash {digest}, not the recorded {expected}. "
             "Refusing to generate explanations from a model that cannot be "
             "shown to be the one that was actually trained and evaluated."
@@ -297,6 +328,10 @@ def build_wrapper(binding: dict[str, Any], model):
     )
     if method == "graphcare":
         return GraphCareGraphXAIWrapper(model, **kwargs)
+    if method == "cei_gnn_v3":
+        from core.explain.cei_bridge import CEIGraphXAIWrapper
+
+        return CEIGraphXAIWrapper(model)
     if method == "clinical_gnn" and conv in BLACK_BOX_CONVS:
         return ClinicalGNNGraphXAIWrapper(model, method=conv, **kwargs)
     if method == "clinical_gnn":
@@ -387,7 +422,8 @@ def _clinical_ig_payloads(wrapper, x, batch, batch_index, target_class: int, ig:
     from core.explain.explanation_contract import build_node_explanation
 
     edge_index = batch.edge_index
-    baseline = ig_clinical.not_recorded_baseline(x, batch.node_type, ig["layout"])
+    baseline = ig_clinical.not_recorded_baseline(x, batch.node_type, ig["layout"],
+                                                 **ig.get("feature_spec", {}))
     attribution, completeness = ig_clinical.integrated_gradients(
         wrapper, x, edge_index, baseline, target_class, ig["steps"])
     importance = ig_clinical.node_importance(attribution).numpy()
@@ -523,7 +559,8 @@ def _audit_subject(wrapper, batch, x, base_vectors, prediction, *, steps, epochs
     draws = []
     try:
         for draw in range(audit.get("stability_draws", 0)):
-            x_perturbed, measured = audit_mod.perturb_values(x, audit["sigma"], seed + 1 + draw)
+            x_perturbed, measured = audit_mod.perturb_values(
+                batch.x.float(), audit["sigma"], seed + 1 + draw)
             perturbed = batch.clone()
             perturbed.x = x_perturbed
             perturbed_x = wrapper.set_context(perturbed)
@@ -577,7 +614,12 @@ def explain_subject(wrapper, data, *, method: str, conv: str | None,
         random_repeats=random_repeats, random_seed=seed)
 
     try:
-        if conv == "hgt":
+        if method == "cei_gnn_v3":
+            edge_attr_contribution = {
+                "status": "not_applicable",
+                "reason": "CEI-GNN's graph metadata (edge_attr, relation, triple) is fixed inside "
+                          "its bound wrapper, so the relation-vs-payload ablation cannot be applied"}
+        elif conv == "hgt":
             edge_attr_contribution = {
                 "status": "not_applicable",
                 "reason": "hgt reads relation identity from edge_triple, not from edge_attr's "
@@ -659,6 +701,7 @@ def _prepare_clinical_ig(bundle, wrapper, subjects, splits, *, tolerance: float,
     layout = (bundle.preprocessing or {}).get("node_feature_layout")
     if not layout:
         raise ValueError("preprocessing.json has no node_feature_layout; cannot build the IG baseline")
+    spec = wrapper.ig_feature_spec() if hasattr(wrapper, "ig_feature_spec") else {}
     errors: dict[int, list[float]] = {}
     for steps in candidates:
         errors[steps] = []
@@ -667,16 +710,20 @@ def _prepare_clinical_ig(bundle, wrapper, subjects, splits, *, tolerance: float,
             x = wrapper.set_context(batch)
             with torch.no_grad():
                 target = int(wrapper(x, batch.edge_index).argmax(-1))
-            baseline = ig_clinical.not_recorded_baseline(x, batch.node_type, layout)
+            baseline = ig_clinical.not_recorded_baseline(x, batch.node_type, layout, **spec)
             _, completeness = ig_clinical.integrated_gradients(
                 wrapper, x, batch.edge_index, baseline, target, steps)
             errors[steps].append(completeness["completeness_error_rel"])
         if max(errors[steps]) <= tolerance:
             break
     chosen = ig_clinical.choose_steps(errors, tolerance)
+    # Real-patient references are rows of the numeric feature matrix; a model whose
+    # explained input is a composite (CEI: numeric + token vectors + type vectors) has
+    # no such rows to draw from, so it gets the primary baseline only.
     bank = (ig_clinical.ReferenceBank.from_graphs(splits["train"][:2000])
-            if reference_draws > 0 else None)
+            if reference_draws > 0 and not spec else None)
     return {"layout": layout, "steps": chosen["steps"], "tolerance": tolerance,
+            "feature_spec": spec,
             "step_selection": chosen, "bank": bank, "reference_draws": reference_draws,
             "keep_zero_baseline": keep_zero_baseline, "seed": seed}
 
@@ -690,7 +737,11 @@ def dated_output_dir(base, method: str, conv: str | None = None) -> Path:
     return Path(base) / name
 
 
-def run_explanations(run_dir, output_dir, *, max_subjects: int | None = None,
+DEFAULT_EXPLAINED_PATIENTS = 500   # decided by the user; the same draw for every method
+
+
+def run_explanations(run_dir, output_dir, *, fold: str = "validation",
+                     max_subjects: int | None = None,
                      sample_patients: int | None = None, sample_seed: int = 1234,
                      steps: int = 32, epochs: int = 50,
                      fidelity_v2_curve_points: int = 3,
@@ -703,25 +754,25 @@ def run_explanations(run_dir, output_dir, *, max_subjects: int | None = None,
                      stability_sigma: float = 0.05,
                      true_class_explanations: bool = True) -> dict[str, Any]:
     """The full pipeline: load -> rebuild split -> replay-check -> explain the chosen
-    validation visits -> write output. Raises before writing anything if the replay
-    check fails. `steps` is the budget of the vendored (zero-baseline) IG; the clinical
+    visits of `fold` ("validation", or "dev" for runs that keep validation closed) ->
+    write output. Raises before writing anything if the replay check fails. `steps` is the budget of the vendored (zero-baseline) IG; the clinical
     IG chooses its own step count from the completeness error."""
     output_dir = Path(output_dir)
     if output_dir.exists() and any(output_dir.iterdir()):
         raise FileExistsError(f"explanation output directory must be empty: {output_dir}")
 
-    bundle = load_run_bundle(run_dir)
+    bundle = load_run_bundle(run_dir, fold)
     binding = bundle.binding
-    splits = rebuild_validation_split(binding)
+    splits = rebuild_validation_split(binding, fold)
     model, is_method_adapter = build_model(binding, bundle.state_dict)
-    replay_check(model, splits, binding, is_method_adapter=is_method_adapter)
+    replay_check(model, splits, binding, is_method_adapter=is_method_adapter, fold=fold)
 
     subjects = select_explained_subjects(
-        splits["validation"], max_subjects=max_subjects,
+        splits[fold], max_subjects=max_subjects,
         sample_patients=sample_patients, sample_seed=sample_seed)
     cohort = build_cohort_v2(
-        binding, fold="validation",
-        fold_sample_ids=[d.sample_id for d in splits["validation"]],
+        binding, fold=fold,
+        fold_sample_ids=[d.sample_id for d in splits[fold]],
         explained_sample_ids=[d.sample_id for d in subjects],
     )
     cohort["sampling"] = {"sample_patients": sample_patients, "sample_seed": sample_seed,
@@ -788,7 +839,8 @@ def run_explanations(run_dir, output_dir, *, max_subjects: int | None = None,
         "conv": conv,
         "run_dir": str(Path(run_dir).resolve()),
         "binding_preprocessing_sha256": binding["preprocessing_sha256"],
-        "validation_sample_ids_sha256": binding["split_sample_ids_sha256"]["validation"],
+        "fold": fold,
+        "fold_sample_ids_sha256": binding["split_sample_ids_sha256"][fold],
         "replay_verified": True,
         "cohort_schema_version": cohort["schema_version"],
         "cohort_file": "cohort.json",
@@ -843,9 +895,12 @@ def _cli() -> None:
     where.add_argument("--output", type=Path, help="a new, empty directory")
     where.add_argument("--output-base", type=Path,
                        help="create a new dated directory under this path")
+    parser.add_argument("--fold", choices=sorted(FOLD_BLOCK), default="validation",
+                        help="fold to explain; use dev for runs that keep validation closed")
     parser.add_argument("--max-subjects", type=int, default=None)
-    parser.add_argument("--sample-patients", type=int, default=None,
-                        help="explain N patients (all their validation visits), same draw for every method")
+    parser.add_argument("--sample-patients", type=int, default=DEFAULT_EXPLAINED_PATIENTS,
+                        help="explain N patients (all their visits in the fold), the same draw for "
+                             f"every method; default {DEFAULT_EXPLAINED_PATIENTS}; 0 = every patient")
     parser.add_argument("--sample-seed", type=int, default=1234)
     parser.add_argument("--steps", type=int, default=32)
     parser.add_argument("--epochs", type=int, default=50)
@@ -864,8 +919,8 @@ def _cli() -> None:
         run_binding = json.loads((args.run_dir / "binding.json").read_text())
         output = dated_output_dir(args.output_base, run_binding["method"], run_binding.get("conv"))
     manifest = run_explanations(
-        args.run_dir, output, max_subjects=args.max_subjects,
-        sample_patients=args.sample_patients, sample_seed=args.sample_seed,
+        args.run_dir, output, fold=args.fold, max_subjects=args.max_subjects,
+        sample_patients=args.sample_patients or None, sample_seed=args.sample_seed,
         steps=args.steps, epochs=args.epochs,
         fidelity_v2_curve_points=args.fidelity_v2_curve_points,
         clinical_ig=not args.no_clinical_ig, ig_tolerance=args.ig_tolerance,
